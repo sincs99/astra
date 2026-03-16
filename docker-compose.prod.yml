@@ -1,0 +1,81 @@
+# ══════════════════════════════════════════════════════════
+# Astra – Docker Compose (Produktion)
+# Start: docker compose -f docker-compose.prod.yml up -d
+#
+# WICHTIG: .env Datei mit sicheren Werten anlegen!
+# ══════════════════════════════════════════════════════════
+
+services:
+  # ── PostgreSQL ─────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-astra}
+      POSTGRES_USER: ${POSTGRES_USER:-astra}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD muss gesetzt sein}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups/postgres:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-astra} -d ${POSTGRES_DB:-astra}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Kein Port-Mapping in Produktion – nur intern erreichbar
+
+  # ── Redis ──────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD:-}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend ────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+    restart: always
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-astra}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-astra}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY muss gesetzt sein}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY muss gesetzt sein}
+      BASE_URL: ${BASE_URL:-https://astra.example.com}
+      FRONTEND_URL: ${FRONTEND_URL:-https://astra.example.com}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://astra.example.com}
+      PROXY_FIX_ENABLED: "true"
+      SESSION_COOKIE_SECURE: "true"
+      RUNNER_ADAPTER: ${RUNNER_ADAPTER:-wings}
+      AUTO_MIGRATE: "true"
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-4}
+      LOG_LEVEL: ${LOG_LEVEL:-WARNING}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["serve"]
+
+  # ── Frontend ───────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api
+    restart: always
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:

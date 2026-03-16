@@ -1,0 +1,87 @@
+# ========================
+# Python / Backend
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+.Python
+env/
+venv/
+.venv/
+pip-wheel-metadata/
+
+# Flask instance folder (enthält SQLite DB etc.)
+backend/instance/
+
+# Python environment
+*.env
+!.env.example
+!backend/.env.example
+
+# pytest / coverage
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# mypy
+.mypy_cache/
+
+# ========================
+# Node / Frontend
+# ========================
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+
+# ========================
+# IDEs & Editors
+# ========================
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# ========================
+# OS-Dateien
+# ========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# ========================
+# Docker
+# ========================
+# Keine Docker-Volumes oder temporäre Daten
+docker-data/
+
+# ========================
+# Logs
+# ========================
+*.log
+logs/
+
+# ========================
+# Diverse
+# ========================
+*.bak
+*.tmp
+*.temp
+.env.local
+.env.*.local
