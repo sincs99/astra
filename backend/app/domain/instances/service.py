@@ -33,6 +33,8 @@ STATUS_REINSTALLING = "reinstalling"
 STATUS_REINSTALL_FAILED = "reinstall_failed"
 STATUS_RESTORING = "restoring"
 STATUS_SUSPENDED = "suspended"
+STATUS_TRANSFERRING = "transferring"
+STATUS_TRANSFER_FAILED = "transfer_failed"
 STATUS_READY = None  # None / null = bereit
 
 # Alle gueltigen Lifecycle-Status-Werte
@@ -43,6 +45,8 @@ VALID_LIFECYCLE_STATUSES = {
     STATUS_REINSTALL_FAILED,
     STATUS_RESTORING,
     STATUS_SUSPENDED,
+    STATUS_TRANSFERRING,
+    STATUS_TRANSFER_FAILED,
     "stopped",  # Legacy-Default
 }
 
@@ -109,6 +113,7 @@ def create_instance(
     cpu: int = 100,
     image: str | None = None,
     startup_command: str | None = None,
+    variable_values: dict | None = None,
 ) -> Instance:
     """
     Erstellt eine neue Instance mit Validierung, Endpoint-Zuweisung und Runner-Hook.
@@ -145,9 +150,11 @@ def create_instance(
     # 4. Endpoint finden oder pruefen
     endpoint = _resolve_endpoint(agent_id, endpoint_id)
 
-    # Image vom Blueprint uebernehmen, falls nicht explizit gesetzt
+    # Image und startup_command vom Blueprint uebernehmen, falls nicht explizit gesetzt
     if not image and blueprint.docker_image:
         image = blueprint.docker_image
+    if not startup_command and blueprint.startup_command:
+        startup_command = blueprint.startup_command
 
     # ── Phase 1: DB-Erstellung ──────────────────────────
 
@@ -165,6 +172,7 @@ def create_instance(
         cpu=cpu,
         image=image,
         startup_command=startup_command,
+        variable_values=variable_values or {},
     )
     db.session.add(instance)
     db.session.flush()  # ID generieren
@@ -287,6 +295,7 @@ def handle_install_callback(instance: Instance, successful: bool) -> Instance:
     """
     current_status = instance.status
     is_reinstall = current_status == STATUS_REINSTALLING
+    is_transfer = current_status == STATUS_TRANSFERRING
     is_first_install = current_status == STATUS_PROVISIONING
 
     # Idempotenz: Wenn bereits ready, ignorieren
@@ -306,7 +315,12 @@ def handle_install_callback(instance: Instance, successful: bool) -> Instance:
 
         db.session.commit()
 
-        if is_reinstall:
+        if is_transfer:
+            logger.info("Instance %s (%s): Transfer erfolgreich", instance.name, instance.uuid)
+            from app.domain.activity.events import log_instance_event
+            log_instance_event("instance.transfer.completed", instance.id,
+                               description="Transfer erfolgreich abgeschlossen")
+        elif is_reinstall:
             logger.info("Instance %s (%s): Reinstall erfolgreich", instance.name, instance.uuid)
             from app.domain.activity.events import log_instance_event, INSTANCE_REINSTALL_COMPLETED
             log_instance_event(INSTANCE_REINSTALL_COMPLETED, instance.id,
@@ -317,7 +331,14 @@ def handle_install_callback(instance: Instance, successful: bool) -> Instance:
             log_instance_event(INSTANCE_INSTALL_COMPLETED, instance.id,
                                description="Installation erfolgreich abgeschlossen")
     else:
-        if is_reinstall:
+        if is_transfer:
+            instance.status = STATUS_TRANSFER_FAILED
+            logger.warning("Instance %s (%s): Transfer fehlgeschlagen", instance.name, instance.uuid)
+            db.session.commit()
+            from app.domain.activity.events import log_instance_event
+            log_instance_event("instance.transfer.failed", instance.id,
+                               description="Transfer fehlgeschlagen")
+        elif is_reinstall:
             instance.status = STATUS_REINSTALL_FAILED
             logger.warning("Instance %s (%s): Reinstall fehlgeschlagen", instance.name, instance.uuid)
             db.session.commit()
@@ -482,6 +503,82 @@ def update_instance_config(instance: Instance, **changes) -> dict:
 # ── Hilfsfunktionen ─────────────────────────────────────
 
 
+# ── Suspension (M29) ────────────────────────────────────
+
+
+def is_instance_suspended(instance: Instance) -> bool:
+    """Gibt True zurueck wenn die Instance administrativ suspendiert ist."""
+    return instance.status == STATUS_SUSPENDED
+
+
+def suspend_instance(instance: Instance, admin_user_id: int, reason: str | None = None) -> Instance:
+    """Setzt eine Instance in den administrativen Suspension-Status.
+
+    Idempotent: Wiederholtes Suspend auf bereits suspendierter Instance
+    aktualisiert Grund und Zeitstempel.
+    """
+    from datetime import datetime, timezone
+
+    instance.status = STATUS_SUSPENDED
+    instance.suspended_reason = reason.strip() if reason and reason.strip() else None
+    instance.suspended_at = datetime.now(timezone.utc)
+    instance.suspended_by_user_id = admin_user_id
+    db.session.commit()
+
+    logger.info(
+        "Instance %s (%s): suspendiert von User %d (Grund: %s)",
+        instance.name, instance.uuid, admin_user_id, reason or "–",
+    )
+
+    from app.domain.activity.events import log_instance_event, INSTANCE_SUSPENDED
+    log_instance_event(
+        INSTANCE_SUSPENDED, instance.id,
+        actor_id=admin_user_id,
+        description=f"Instance suspendiert{f': {reason}' if reason else ''}",
+        properties={"reason": reason, "by_user_id": admin_user_id},
+    )
+
+    return instance
+
+
+def unsuspend_instance(instance: Instance, admin_user_id: int) -> Instance:
+    """Hebt die Suspension einer Instance auf.
+
+    Idempotent: Ist die Instance nicht suspendiert, passiert nichts.
+    Setzt status auf None (ready) und loescht Suspension-Metadaten.
+    """
+    if instance.status != STATUS_SUSPENDED:
+        logger.info(
+            "Instance %s (%s): unsuspend aufgerufen, aber Status ist '%s' – ignoriert",
+            instance.name, instance.uuid, instance.status,
+        )
+        return instance
+
+    instance.status = STATUS_READY
+    instance.suspended_reason = None
+    instance.suspended_at = None
+    instance.suspended_by_user_id = None
+    db.session.commit()
+
+    logger.info(
+        "Instance %s (%s): Suspension aufgehoben von User %d",
+        instance.name, instance.uuid, admin_user_id,
+    )
+
+    from app.domain.activity.events import log_instance_event, INSTANCE_UNSUSPENDED
+    log_instance_event(
+        INSTANCE_UNSUSPENDED, instance.id,
+        actor_id=admin_user_id,
+        description="Suspension aufgehoben",
+        properties={"by_user_id": admin_user_id},
+    )
+
+    return instance
+
+
+# ── Hilfsfunktionen ─────────────────────────────────────
+
+
 def _resolve_endpoint(agent_id: int, endpoint_id: int | None) -> Endpoint:
     """
     Findet einen freien Endpoint fuer den Agent.
@@ -521,3 +618,106 @@ def _resolve_endpoint(agent_id: int, endpoint_id: int | None) -> Endpoint:
         )
 
     return endpoint
+
+
+# ── Server Transfer (Feature 3) ─────────────────────────
+
+
+def transfer_instance(instance: Instance, target_agent_id: int) -> Instance:
+    """Transferiert eine Instance von ihrem aktuellen Agent auf einen anderen.
+
+    Ablauf:
+    1. Ziel-Agent und freien Endpoint validieren
+    2. Status → transferring
+    3. Alten Agent via Runner löschen
+    4. Alten Endpoint freigeben
+    5. Neuen Endpoint und Agent zuweisen
+    6. Neuen Agent via Runner erstellen
+    7. Status bleibt 'transferring' bis Agent-Callback
+
+    Bei Fehler: status → transfer_failed
+    """
+    if instance.agent_id == target_agent_id:
+        raise InstanceActionError("Ziel-Agent ist derselbe wie der aktuelle Agent", 400)
+
+    if instance.status in (STATUS_PROVISIONING, STATUS_REINSTALLING, STATUS_TRANSFERRING):
+        raise InstanceActionError(
+            f"Instance ist im Status '{instance.status}' – Transfer nicht möglich", 409
+        )
+
+    # Ziel-Agent validieren
+    target_agent = db.session.get(Agent, target_agent_id)
+    if not target_agent:
+        raise InstanceActionError(f"Ziel-Agent {target_agent_id} nicht gefunden", 404)
+    if not target_agent.is_active:
+        raise InstanceActionError(f"Ziel-Agent '{target_agent.name}' ist nicht aktiv", 400)
+    if target_agent.in_maintenance:
+        raise InstanceActionError(
+            f"Ziel-Agent '{target_agent.name}' befindet sich im Maintenance-Modus", 409
+        )
+
+    # Freien Endpoint auf Ziel-Agent finden
+    try:
+        new_endpoint = _resolve_endpoint(target_agent_id, None)
+    except InstanceCreationError as e:
+        raise InstanceActionError(e.message, e.status_code)
+
+    old_agent = db.session.get(Agent, instance.agent_id)
+    old_endpoint_id = instance.primary_endpoint_id
+
+    # Status auf transferring setzen
+    instance.status = STATUS_TRANSFERRING
+    db.session.commit()
+
+    logger.info(
+        "Instance %s (%s): Transfer gestartet von Agent %s → Agent %s",
+        instance.name, instance.uuid, instance.agent_id, target_agent_id,
+    )
+
+    from app.domain.activity.events import log_instance_event
+    log_instance_event(
+        "instance.transfer.started", instance.id,
+        description=f"Transfer zu Agent '{target_agent.name}' gestartet",
+        properties={"from_agent_id": instance.agent_id, "to_agent_id": target_agent_id},
+    )
+
+    # Alten Agent via Runner löschen (best-effort)
+    if old_agent:
+        try:
+            runner = get_runner()
+            runner.delete_instance(old_agent, instance)
+        except Exception as e:
+            logger.warning("Transfer: Löschen auf altem Agent fehlgeschlagen: %s", str(e))
+
+    # Alten Endpoint freigeben
+    if old_endpoint_id:
+        old_ep = db.session.get(Endpoint, old_endpoint_id)
+        if old_ep:
+            old_ep.instance_id = None
+
+    # Neuen Endpoint und Agent zuweisen
+    new_endpoint.instance_id = instance.id
+    instance.agent_id = target_agent_id
+    instance.primary_endpoint_id = new_endpoint.id
+    db.session.commit()
+
+    # Auf neuem Agent erstellen
+    try:
+        runner = get_runner()
+        response = runner.create_instance(target_agent, instance)
+
+        if not response.success:
+            logger.warning("Transfer: create_instance auf Ziel-Agent fehlgeschlagen: %s", response.message)
+            instance.status = STATUS_TRANSFER_FAILED
+            db.session.commit()
+            log_instance_event(
+                "instance.transfer.failed", instance.id,
+                description=f"Transfer fehlgeschlagen: {response.message}",
+            )
+
+    except Exception as e:
+        logger.error("Transfer: Runner-Fehler: %s", str(e))
+        instance.status = STATUS_TRANSFER_FAILED
+        db.session.commit()
+
+    return instance

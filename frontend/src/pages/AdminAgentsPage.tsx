@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { api, type Agent, type Endpoint } from "../services/api";
+import {
+  PageLayout, StatusBadge, LoadingState, EmptyState, ErrorState,
+  Toast, useToast,
+  cardStyle, inputStyle, labelStyle, btnPrimary, thStyle, tdStyle,
+} from "../components/ui";
 
 export function AdminAgentsPage() {
+  const toast = useToast();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,23 +41,21 @@ export function AdminAgentsPage() {
     }
   };
 
-  useEffect(() => {
-    loadAll();
-  }, []);
+  useEffect(() => { loadAll(); }, []);
 
   const handleAgentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !fqdn.trim()) return;
-
     try {
       setSubmitting(true);
       setError(null);
       await api.createAgent({ name: name.trim(), fqdn: fqdn.trim() });
       setName("");
       setFqdn("");
+      toast.success("Agent erstellt.");
       await loadAll();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Erstellen");
+      toast.error(err instanceof Error ? err.message : "Fehler beim Erstellen");
     } finally {
       setSubmitting(false);
     }
@@ -60,7 +64,6 @@ export function AdminAgentsPage() {
   const handleEndpointSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!epAgentId || !epPort) return;
-
     try {
       setEpSubmitting(true);
       setError(null);
@@ -69,39 +72,41 @@ export function AdminAgentsPage() {
         port: Number(epPort),
       });
       setEpPort("");
+      toast.success("Endpoint erstellt.");
       await loadAll();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Erstellen");
+      toast.error(err instanceof Error ? err.message : "Fehler beim Erstellen");
     } finally {
       setEpSubmitting(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: 24 }}>
-      <h1>Agents</h1>
+    <PageLayout title="Agents">
+      <Toast {...toast} />
 
       {/* Agent erstellen */}
       <div style={cardStyle}>
-        <h2 style={{ marginTop: 0 }}>Neuer Agent</h2>
-        <form onSubmit={handleAgentSubmit} style={{ display: "flex", gap: 12 }}>
+        <h2 style={{ marginTop: 0, fontSize: 18, fontWeight: 700 }}>Neuer Agent</h2>
+        {error && <ErrorState message={error} onRetry={() => setError(null)} />}
+        <form onSubmit={handleAgentSubmit} style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <input
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={e => setName(e.target.value)}
             placeholder="Name (z.B. Node-ZH-01)"
             required
-            style={{ ...inputStyle, flex: 1 }}
+            style={{ ...inputStyle, flex: 1, minWidth: 160 }}
           />
           <input
             type="text"
             value={fqdn}
-            onChange={(e) => setFqdn(e.target.value)}
+            onChange={e => setFqdn(e.target.value)}
             placeholder="FQDN (z.B. node01.astra.dev)"
             required
-            style={{ ...inputStyle, flex: 1 }}
+            style={{ ...inputStyle, flex: 1, minWidth: 160 }}
           />
-          <button type="submit" disabled={submitting} style={btnStyle}>
+          <button type="submit" disabled={submitting} style={{ ...btnPrimary, opacity: submitting ? 0.6 : 1 }}>
             {submitting ? "…" : "Agent erstellen"}
           </button>
         </form>
@@ -109,26 +114,19 @@ export function AdminAgentsPage() {
 
       {/* Endpoint erstellen */}
       <div style={cardStyle}>
-        <h2 style={{ marginTop: 0 }}>Neuer Endpoint</h2>
-        <form
-          onSubmit={handleEndpointSubmit}
-          style={{ display: "flex", gap: 12, alignItems: "flex-end" }}
-        >
-          <div style={{ flex: 1 }}>
+        <h2 style={{ marginTop: 0, fontSize: 18, fontWeight: 700 }}>Neuer Endpoint</h2>
+        <form onSubmit={handleEndpointSubmit} style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 140 }}>
             <label style={labelStyle}>Agent *</label>
             <select
               value={epAgentId}
-              onChange={(e) =>
-                setEpAgentId(e.target.value ? Number(e.target.value) : "")
-              }
+              onChange={e => setEpAgentId(e.target.value ? Number(e.target.value) : "")}
               required
               style={inputStyle}
             >
               <option value="">– Wählen –</option>
-              {agents.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
+              {agents.map(a => (
+                <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </select>
           </div>
@@ -137,7 +135,7 @@ export function AdminAgentsPage() {
             <input
               type="text"
               value={epIp}
-              onChange={(e) => setEpIp(e.target.value)}
+              onChange={e => setEpIp(e.target.value)}
               placeholder="0.0.0.0"
               style={{ ...inputStyle, width: 130 }}
             />
@@ -147,7 +145,7 @@ export function AdminAgentsPage() {
             <input
               type="number"
               value={epPort}
-              onChange={(e) => setEpPort(e.target.value)}
+              onChange={e => setEpPort(e.target.value)}
               placeholder="25565"
               required
               min={1}
@@ -155,59 +153,34 @@ export function AdminAgentsPage() {
               style={{ ...inputStyle, width: 100 }}
             />
           </div>
-          <button type="submit" disabled={epSubmitting} style={btnStyle}>
+          <button type="submit" disabled={epSubmitting} style={{ ...btnPrimary, opacity: epSubmitting ? 0.6 : 1 }}>
             {epSubmitting ? "…" : "Endpoint erstellen"}
           </button>
         </form>
       </div>
 
-      {/* Fehleranzeige */}
-      {error && (
-        <div style={errorStyle}>{error}</div>
-      )}
-
       {/* Agent-Liste mit Endpoints */}
       {loading ? (
-        <p>Wird geladen...</p>
+        <LoadingState message="Agents werden geladen..." />
       ) : agents.length === 0 ? (
-        <p style={{ color: "#888" }}>Noch keine Agents vorhanden.</p>
+        <EmptyState icon="🖥️" message="Noch keine Agents vorhanden." />
       ) : (
-        agents.map((agent) => {
-          const agentEndpoints = endpoints.filter(
-            (ep) => ep.agent_id === agent.id
-          );
+        agents.map(agent => {
+          const agentEndpoints = endpoints.filter(ep => ep.agent_id === agent.id);
           return (
             <div key={agent.id} style={{ ...cardStyle, marginBottom: 16 }}>
-              <h3 style={{ margin: 0 }}>
-                {agent.name}{" "}
-                <span style={{ fontWeight: 400, color: "#888", fontSize: 14 }}>
-                  {agent.fqdn}
-                </span>
-                {agent.is_active ? (
-                  <span style={{ ...badge, backgroundColor: "#5cb85c" }}>
-                    aktiv
-                  </span>
-                ) : (
-                  <span style={{ ...badge, backgroundColor: "#999" }}>
-                    inaktiv
-                  </span>
-                )}
-              </h3>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <strong style={{ fontSize: 16 }}>{agent.name}</strong>
+                <span style={{ color: "#888", fontSize: 14 }}>{agent.fqdn}</span>
+                <StatusBadge status={agent.is_active ? "active" : "inactive"} size="sm" />
+              </div>
 
               {agentEndpoints.length === 0 ? (
-                <p style={{ color: "#888", margin: "8px 0 0" }}>
-                  Keine Endpoints
-                </p>
+                <p style={{ color: "#888", margin: "4px 0 0", fontSize: 13 }}>Keine Endpoints</p>
               ) : (
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    marginTop: 8,
-                  }}
-                >
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr>
+                    <tr style={{ backgroundColor: "#f5f5f5" }}>
                       <th style={thStyle}>ID</th>
                       <th style={thStyle}>IP:Port</th>
                       <th style={thStyle}>Status</th>
@@ -215,26 +188,14 @@ export function AdminAgentsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {agentEndpoints.map((ep) => (
+                    {agentEndpoints.map(ep => (
                       <tr key={ep.id}>
                         <td style={tdStyle}>{ep.id}</td>
+                        <td style={tdStyle}><code>{ep.ip}:{ep.port}</code></td>
                         <td style={tdStyle}>
-                          <code>
-                            {ep.ip}:{ep.port}
-                          </code>
+                          {ep.is_locked ? "🔒 Gesperrt" : ep.instance_id ? "🟢 Belegt" : "⚪ Frei"}
                         </td>
-                        <td style={tdStyle}>
-                          {ep.is_locked
-                            ? "🔒 Gesperrt"
-                            : ep.instance_id
-                              ? "🟢 Belegt"
-                              : "⚪ Frei"}
-                        </td>
-                        <td style={tdStyle}>
-                          {ep.instance_id
-                            ? `Instance #${ep.instance_id}`
-                            : "–"}
-                        </td>
+                        <td style={tdStyle}>{ep.instance_id ? `Instance #${ep.instance_id}` : "–"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -244,66 +205,6 @@ export function AdminAgentsPage() {
           );
         })
       )}
-    </div>
+    </PageLayout>
   );
 }
-
-// ── Styles ─────────────────────────────────────────────
-
-const cardStyle: React.CSSProperties = {
-  border: "1px solid #ddd",
-  borderRadius: 8,
-  padding: 16,
-  marginBottom: 24,
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  marginBottom: 4,
-  fontWeight: 600,
-  fontSize: 13,
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: 8,
-  boxSizing: "border-box",
-  width: "100%",
-};
-
-const btnStyle: React.CSSProperties = {
-  padding: "8px 20px",
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-};
-
-const errorStyle: React.CSSProperties = {
-  padding: 12,
-  marginBottom: 16,
-  backgroundColor: "#fee",
-  border: "1px solid #c00",
-  borderRadius: 4,
-  color: "#c00",
-};
-
-const badge: React.CSSProperties = {
-  display: "inline-block",
-  padding: "2px 8px",
-  borderRadius: 4,
-  color: "#fff",
-  fontSize: 11,
-  fontWeight: 600,
-  marginLeft: 8,
-};
-
-const thStyle: React.CSSProperties = {
-  padding: 8,
-  textAlign: "left",
-  borderBottom: "1px solid #ddd",
-  fontSize: 12,
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: 8,
-  borderBottom: "1px solid #eee",
-  fontSize: 13,
-};

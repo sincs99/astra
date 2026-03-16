@@ -65,6 +65,21 @@ def _require_owner(uuid: str, user_id: int):
     return instance, None
 
 
+def _require_not_suspended(instance: Instance):
+    """Gibt (None, None) zurueck wenn ok, oder (None, error_response) wenn suspendiert.
+
+    Zentrale Sperrpruefung fuer alle operativen Client-Aktionen (M29).
+    Admin-Lesezugriffe sind nicht betroffen.
+    """
+    from app.domain.instances.service import is_instance_suspended
+    if is_instance_suspended(instance):
+        msg = "Instance ist suspendiert"
+        if instance.suspended_reason:
+            msg += f": {instance.suspended_reason}"
+        return None, (jsonify({"error": msg}), 409)
+    return None, None
+
+
 def _get_agent(instance: Instance) -> Agent | None:
     return db.session.get(Agent, instance.agent_id)
 
@@ -141,6 +156,9 @@ def power_action(uuid: str):
     instance, err = _require_instance(uuid, user_id, perm)
     if err:
         return err
+    _, err = _require_not_suspended(instance)
+    if err:
+        return err
 
     try:
         result = send_power_action(instance, signal)
@@ -158,6 +176,9 @@ def reinstall_endpoint(uuid: str):
     if err:
         return err
     instance, err = _require_owner(uuid, user_id)
+    if err:
+        return err
+    _, err = _require_not_suspended(instance)
     if err:
         return err
 
@@ -186,6 +207,9 @@ def update_build_config(uuid: str):
     instance, err = _require_owner(uuid, user_id)
     if err:
         return err
+    _, err = _require_not_suspended(instance)
+    if err:
+        return err
 
     data = request.get_json()
     if not data:
@@ -194,6 +218,7 @@ def update_build_config(uuid: str):
     # Nur erlaubte Felder durchlassen
     allowed = {"memory", "swap", "disk", "io", "cpu", "image", "startup_command", "name", "description"}
     changes = {k: v for k, v in data.items() if k in allowed}
+
     if not changes:
         return jsonify({"error": "Keine gueltigen Felder angegeben"}), 400
 
@@ -207,6 +232,60 @@ def update_build_config(uuid: str):
     })
 
 
+
+@client_bp.route("/instances/<uuid>/variables", methods=["PATCH"])
+def update_variable_values(uuid: str):
+    """Aktualisiert die Blueprint-Variablen-Werte einer Instance.
+
+    Body: {"SERVER_PORT": "25565", "MAX_PLAYERS": "20", ...}
+    Nur Variablen, die im Blueprint als user_editable=true markiert sind, dürfen
+    von Nicht-Ownern gesetzt werden.
+    """
+    user_id, err = _require_auth()
+    if err:
+        return err
+    instance, err = _require_instance(uuid, user_id)
+    if err:
+        return err
+    _, err = _require_not_suspended(instance)
+    if err:
+        return err
+
+    data = request.get_json()
+    if not data or not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
+
+    # Blueprint-Variablen laden um user_editable zu prüfen
+    from app.domain.blueprints.models import Blueprint
+    blueprint = db.session.get(Blueprint, instance.blueprint_id)
+    bp_vars = {v["env_var"]: v for v in (blueprint.variables or []) if "env_var" in v} if blueprint else {}
+
+    role = get_instance_role(user_id, instance)
+    is_owner = role == "owner"
+
+    # Nur gültige (im Blueprint definierte) Variablen erlauben
+    updated = dict(instance.variable_values or {})
+    rejected = []
+
+    for key, value in data.items():
+        if key not in bp_vars:
+            rejected.append(key)
+            continue
+        var_def = bp_vars[key]
+        if not is_owner and not var_def.get("user_editable", True):
+            rejected.append(key)
+            continue
+        updated[key] = str(value) if value is not None else ""
+
+    instance.variable_values = updated
+    db.session.commit()
+
+    return jsonify({
+        "variable_values": instance.variable_values,
+        "rejected": rejected,
+    })
+
+
 # ── Sync (M16) ─────────────────────────────────────────
 
 @client_bp.route("/instances/<uuid>/sync", methods=["POST"])
@@ -216,6 +295,9 @@ def sync_endpoint(uuid: str):
     if err:
         return err
     instance, err = _require_owner(uuid, user_id)
+    if err:
+        return err
+    _, err = _require_not_suspended(instance)
     if err:
         return err
 
@@ -236,6 +318,9 @@ def websocket_credentials(uuid: str):
         return err
 
     instance, err = _require_instance(uuid, user_id, "control.console")
+    if err:
+        return err
+    _, err = _require_not_suspended(instance)
     if err:
         return err
 
@@ -333,6 +418,9 @@ def write_file_content(uuid: str):
     instance, err = _require_instance(uuid, user_id, "file.update")
     if err:
         return err
+    _, err = _require_not_suspended(instance)
+    if err:
+        return err
 
     data = request.get_json()
     if not data or "path" not in data or "content" not in data:
@@ -356,6 +444,9 @@ def delete_file_endpoint(uuid: str):
     if err:
         return err
     instance, err = _require_instance(uuid, user_id, "file.delete")
+    if err:
+        return err
+    _, err = _require_not_suspended(instance)
     if err:
         return err
 
@@ -383,6 +474,9 @@ def create_directory_endpoint(uuid: str):
     instance, err = _require_instance(uuid, user_id, "file.update")
     if err:
         return err
+    _, err = _require_not_suspended(instance)
+    if err:
+        return err
 
     data = request.get_json()
     if not data or "path" not in data:
@@ -408,6 +502,9 @@ def rename_file_endpoint(uuid: str):
     instance, err = _require_instance(uuid, user_id, "file.update")
     if err:
         return err
+    _, err = _require_not_suspended(instance)
+    if err:
+        return err
 
     data = request.get_json()
     if not data or "source" not in data or "target" not in data:
@@ -421,6 +518,74 @@ def rename_file_endpoint(uuid: str):
         runner = get_runner()
         result = runner.rename_file(agent, instance, data["source"], data["target"])
         return jsonify({"success": result.success, "message": result.message}), 200 if result.success else 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@client_bp.route("/instances/<uuid>/files/compress", methods=["POST"])
+def compress_files_endpoint(uuid: str):
+    """Komprimiert mehrere Dateien/Verzeichnisse zu einem Archiv.
+
+    Body: {"files": ["/path/to/file1", "/path/to/dir"], "destination": "/archive.tar.gz"}
+    """
+    user_id, err = _require_auth()
+    if err:
+        return err
+    instance, err = _require_instance(uuid, user_id, "file.update")
+    if err:
+        return err
+    _, err = _require_not_suspended(instance)
+    if err:
+        return err
+
+    data = request.get_json()
+    if not data or "files" not in data or "destination" not in data:
+        return jsonify({"error": "Fields 'files' and 'destination' are required"}), 400
+
+    files = data["files"]
+    if not isinstance(files, list) or len(files) == 0:
+        return jsonify({"error": "Field 'files' must be a non-empty list"}), 400
+
+    agent = _get_agent(instance)
+    if not agent:
+        return jsonify({"error": "Agent nicht gefunden"}), 500
+
+    try:
+        runner = get_runner()
+        result = runner.compress_files(agent, instance, files, data["destination"])
+        return jsonify({"success": result.success, "message": result.message, "data": result.data})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@client_bp.route("/instances/<uuid>/files/decompress", methods=["POST"])
+def decompress_file_endpoint(uuid: str):
+    """Entpackt ein Archiv in ein Zielverzeichnis.
+
+    Body: {"file": "/archive.tar.gz", "destination": "/target-dir"}
+    """
+    user_id, err = _require_auth()
+    if err:
+        return err
+    instance, err = _require_instance(uuid, user_id, "file.update")
+    if err:
+        return err
+    _, err = _require_not_suspended(instance)
+    if err:
+        return err
+
+    data = request.get_json()
+    if not data or "file" not in data or "destination" not in data:
+        return jsonify({"error": "Fields 'file' and 'destination' are required"}), 400
+
+    agent = _get_agent(instance)
+    if not agent:
+        return jsonify({"error": "Agent nicht gefunden"}), 500
+
+    try:
+        runner = get_runner()
+        result = runner.decompress_file(agent, instance, data["file"], data["destination"])
+        return jsonify({"success": result.success, "message": result.message})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -448,6 +613,9 @@ def create_backup_endpoint(uuid: str):
     instance, err = _require_instance(uuid, user_id, "backup.create")
     if err:
         return err
+    _, err = _require_not_suspended(instance)
+    if err:
+        return err
 
     data = request.get_json()
     if not data or "name" not in data:
@@ -467,6 +635,9 @@ def restore_backup_endpoint(uuid: str, backup_uuid: str):
     if err:
         return err
     instance, err = _require_instance(uuid, user_id, "backup.restore")
+    if err:
+        return err
+    _, err = _require_not_suspended(instance)
     if err:
         return err
 
@@ -489,6 +660,9 @@ def delete_backup_endpoint(uuid: str, backup_uuid: str):
     if err:
         return err
     instance, err = _require_instance(uuid, user_id, "backup.delete")
+    if err:
+        return err
+    _, err = _require_not_suspended(instance)
     if err:
         return err
 
@@ -529,6 +703,9 @@ def create_database_endpoint(uuid: str):
     instance, err = _require_instance(uuid, user_id, "database.create")
     if err:
         return err
+    _, err = _require_not_suspended(instance)
+    if err:
+        return err
 
     data = request.get_json()
     if not data or "provider_id" not in data:
@@ -558,6 +735,9 @@ def rotate_database_password(uuid: str, db_id: int):
     instance, err = _require_instance(uuid, user_id, "database.update")
     if err:
         return err
+    _, err = _require_not_suspended(instance)
+    if err:
+        return err
 
     from app.domain.databases.models import Database
     database = Database.query.filter_by(id=db_id, instance_id=instance.id).first()
@@ -578,6 +758,9 @@ def delete_database_endpoint(uuid: str, db_id: int):
     if err:
         return err
     instance, err = _require_instance(uuid, user_id, "database.delete")
+    if err:
+        return err
+    _, err = _require_not_suspended(instance)
     if err:
         return err
 
@@ -756,6 +939,9 @@ def execute_routine_endpoint(uuid: str, routine_id: int):
     instance, err = _require_owner(uuid, user_id)
     if err:
         return err
+    _, err = _require_not_suspended(instance)
+    if err:
+        return err
 
     from app.domain.routines.models import Routine
     routine = Routine.query.filter_by(id=routine_id, instance_id=instance.id).first()
@@ -873,3 +1059,73 @@ def instance_activity(uuid: str):
     limit = request.args.get("limit", 50, type=int)
     logs = list_for_instance(instance.id, limit=limit)
     return jsonify([l.to_dict() for l in logs])
+
+
+# ── SSH Keys (M28) ──────────────────────────────────────
+
+
+@client_bp.route("/account/ssh-keys", methods=["GET"])
+def list_ssh_keys():
+    """Listet alle SSH-Keys des authentifizierten Users."""
+    user_id, err = _require_auth()
+    if err:
+        return err
+
+    from app.domain.ssh_keys.service import list_user_ssh_keys
+    keys = list_user_ssh_keys(user_id)
+    return jsonify([k.to_dict() for k in keys])
+
+
+@client_bp.route("/account/ssh-keys", methods=["POST"])
+def create_ssh_key():
+    """Fuegt einen neuen SSH-Key zum Account hinzu."""
+    user_id, err = _require_auth()
+    if err:
+        return err
+
+    data = request.get_json(silent=True) or {}
+    name = data.get("name", "")
+    public_key = data.get("public_key", "")
+
+    from app.domain.ssh_keys.service import create_user_ssh_key, SshKeyError
+    try:
+        key = create_user_ssh_key(user_id, name, public_key)
+    except SshKeyError as e:
+        return jsonify({"error": e.message}), e.status_code
+
+    return jsonify(key.to_dict()), 201
+
+
+@client_bp.route("/account/ssh-keys/<int:key_id>", methods=["PATCH"])
+def update_ssh_key(key_id: int):
+    """Benennt einen SSH-Key um."""
+    user_id, err = _require_auth()
+    if err:
+        return err
+
+    data = request.get_json(silent=True) or {}
+    name = data.get("name", "")
+
+    from app.domain.ssh_keys.service import update_user_ssh_key_name, SshKeyError
+    try:
+        key = update_user_ssh_key_name(user_id, key_id, name)
+    except SshKeyError as e:
+        return jsonify({"error": e.message}), e.status_code
+
+    return jsonify(key.to_dict())
+
+
+@client_bp.route("/account/ssh-keys/<int:key_id>", methods=["DELETE"])
+def delete_ssh_key(key_id: int):
+    """Loescht einen SSH-Key."""
+    user_id, err = _require_auth()
+    if err:
+        return err
+
+    from app.domain.ssh_keys.service import delete_user_ssh_key, SshKeyError
+    try:
+        delete_user_ssh_key(user_id, key_id)
+    except SshKeyError as e:
+        return jsonify({"error": e.message}), e.status_code
+
+    return jsonify({"message": "SSH-Key geloescht"})

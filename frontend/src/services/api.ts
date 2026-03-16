@@ -92,6 +92,21 @@ async function request<T = unknown>(
   return (await response.json()) as T;
 }
 
+// ── SSH-Key-Typen (M28) ────────────────────────────────
+
+export interface SshKeyEntry {
+  id: number;
+  name: string;
+  fingerprint: string;
+  public_key: string;
+  created_at: string;
+}
+
+export interface SshKeyCreateRequest {
+  name: string;
+  public_key: string;
+}
+
 // ── Auth-Typen ─────────────────────────────────────────
 
 export interface LoginRequest {
@@ -130,11 +145,23 @@ export interface AgentCreate {
   fqdn: string;
 }
 
+export interface BlueprintVariable {
+  name: string;
+  description: string;
+  env_var: string;
+  default_value: string;
+  user_viewable: boolean;
+  user_editable: boolean;
+}
+
 export interface Blueprint {
   id: number;
   name: string;
   description: string | null;
   docker_image: string | null;
+  startup_command: string | null;
+  install_script: string | null;
+  variables: BlueprintVariable[];
   config_schema: Record<string, unknown> | null;
   created_at: string | null;
   updated_at: string | null;
@@ -144,6 +171,18 @@ export interface BlueprintCreate {
   name: string;
   description?: string;
   docker_image?: string;
+  startup_command?: string;
+  install_script?: string;
+  variables?: BlueprintVariable[];
+}
+
+export interface BlueprintUpdate {
+  name?: string;
+  description?: string;
+  docker_image?: string;
+  startup_command?: string;
+  install_script?: string;
+  variables?: BlueprintVariable[];
 }
 
 export interface Endpoint {
@@ -182,6 +221,10 @@ export interface Instance {
   cpu: number;
   image: string | null;
   startup_command: string | null;
+  variable_values: Record<string, string>;
+  suspended_reason: string | null;
+  suspended_at: string | null;
+  suspended_by_user_id: number | null;
   created_at: string | null;
   updated_at: string | null;
   role?: "owner" | "collaborator" | "none";
@@ -480,6 +523,7 @@ export interface JobSummary {
 
 export interface SystemVersionInfo {
   version: string;
+  release_phase: string;
   build_sha: string | null;
   build_date: string | null;
   build_ref: string | null;
@@ -546,6 +590,13 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  updateBlueprint: (id: number, data: BlueprintUpdate) =>
+    request<Blueprint>(`/admin/blueprints/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  deleteBlueprint: (id: number) =>
+    request<{ message: string }>(`/admin/blueprints/${id}`, { method: "DELETE" }),
 
   // ── Admin: Endpoints ─────────────────────────────────
   getEndpoints: () => request<Endpoint[]>("/admin/endpoints"),
@@ -561,6 +612,11 @@ export const api = {
     request<Instance>("/admin/instances", {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+  transferInstance: (uuid: string, targetAgentId: number) =>
+    request<Instance>(`/admin/instances/${uuid}/transfer`, {
+      method: "POST",
+      body: JSON.stringify({ target_agent_id: targetAgentId }),
     }),
 
   // ── Client: Instances ────────────────────────────────
@@ -635,6 +691,24 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ source, target }),
     }),
+
+  compressFiles: (uuid: string, files: string[], destination: string) =>
+    request<FileActionResult>(`/client/instances/${uuid}/files/compress`, {
+      method: "POST",
+      body: JSON.stringify({ files, destination }),
+    }),
+
+  decompressFile: (uuid: string, file: string, destination: string) =>
+    request<FileActionResult>(`/client/instances/${uuid}/files/decompress`, {
+      method: "POST",
+      body: JSON.stringify({ file, destination }),
+    }),
+
+  updateVariableValues: (uuid: string, values: Record<string, string>) =>
+    request<{ variable_values: Record<string, string>; rejected: string[] }>(
+      `/client/instances/${uuid}/variables`,
+      { method: "PATCH", body: JSON.stringify(values) }
+    ),
 
   // ── Client: Backups ──────────────────────────────────
   getBackups: (uuid: string) =>
@@ -854,4 +928,37 @@ export const api = {
       `/admin/agents/${agentId}/maintenance`,
       { method: "DELETE" }
     ),
+
+  // ── Admin: Suspension (M29) ───────────────────────────
+  suspendInstance: (uuid: string, reason?: string) =>
+    request<{ message: string; instance: Instance }>(`/admin/instances/${uuid}/suspend`, {
+      method: "POST",
+      body: JSON.stringify(reason ? { reason } : {}),
+    }),
+
+  unsuspendInstance: (uuid: string) =>
+    request<{ message: string; instance: Instance }>(`/admin/instances/${uuid}/unsuspend`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+
+  // ── Client: SSH Keys (M28) ─────────────────────────────
+  getSshKeys: () => request<SshKeyEntry[]>("/client/account/ssh-keys"),
+
+  createSshKey: (payload: SshKeyCreateRequest) =>
+    request<SshKeyEntry>("/client/account/ssh-keys", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateSshKeyName: (keyId: number, name: string) =>
+    request<SshKeyEntry>(`/client/account/ssh-keys/${keyId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    }),
+
+  deleteSshKey: (keyId: number) =>
+    request<{ message: string }>(`/client/account/ssh-keys/${keyId}`, {
+      method: "DELETE",
+    }),
 };

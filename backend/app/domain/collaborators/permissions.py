@@ -13,6 +13,7 @@ FILE_PERMISSIONS = [
     "file.read",
     "file.update",
     "file.delete",
+    "file.sftp",  # M30: SFTP-/SSH-Key-Zugriff fuer Collaborators
 ]
 
 BACKUP_PERMISSIONS = [

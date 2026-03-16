@@ -32,6 +32,11 @@ class Instance(db.Model):
     # Zeitpunkt der ersten erfolgreichen Installation
     installed_at = db.Column(db.DateTime, nullable=True)
 
+    # M29: Administrativer Suspension-Status
+    suspended_reason = db.Column(db.String(500), nullable=True)
+    suspended_at = db.Column(db.DateTime, nullable=True)
+    suspended_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+
     # Ressourcen
     memory = db.Column(db.Integer, default=512)       # MB
     swap = db.Column(db.Integer, default=0)            # MB
@@ -43,6 +48,9 @@ class Instance(db.Model):
     image = db.Column(db.String(255), nullable=True)
     startup_command = db.Column(db.Text, nullable=True)
 
+    # Blueprint-Variablen-Werte: {env_var: value} – überschreibt Blueprint-Defaults
+    variable_values = db.Column(db.JSON, nullable=True, default=dict)
+
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -51,7 +59,8 @@ class Instance(db.Model):
     )
 
     # Relationships
-    owner = db.relationship("User", backref="instances", lazy=True)
+    owner = db.relationship("User", foreign_keys=[owner_id], backref="instances", lazy=True)
+    suspended_by = db.relationship("User", foreign_keys=[suspended_by_user_id], lazy=True)
     agent = db.relationship("Agent", backref="instances", lazy=True)
     blueprint = db.relationship("Blueprint", backref="instances", lazy=True)
     primary_endpoint = db.relationship(
@@ -78,6 +87,10 @@ class Instance(db.Model):
             "cpu": self.cpu,
             "image": self.image,
             "startup_command": self.startup_command,
+            "variable_values": self.variable_values or {},
+            "suspended_reason": self.suspended_reason,
+            "suspended_at": self.suspended_at.isoformat() if self.suspended_at else None,
+            "suspended_by_user_id": self.suspended_by_user_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

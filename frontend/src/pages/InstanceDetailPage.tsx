@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   api,
   type Instance,
+  type Blueprint,
   type PowerSignal,
   type ResourceStats,
 } from "../services/api";
@@ -12,17 +13,26 @@ import { BackupManager } from "../components/BackupManager";
 import { CollaboratorManager } from "../components/CollaboratorManager";
 import { RoutineManager } from "../components/RoutineManager";
 import { ActivityLog } from "../components/ActivityLog";
-import { PageLayout, StatusBadge, LoadingState, ErrorState } from "../components/ui";
+import {
+  PageLayout, StatusBadge, LoadingState, ErrorState,
+  Toast, useToast,
+  cardStyle, btnDefault, btnPrimary,
+} from "../components/ui";
 
 export function InstanceDetailPage() {
   const { uuid } = useParams<{ uuid: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
   const [instance, setInstance] = useState<Instance | null>(null);
+  const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
   const [resources, setResources] = useState<ResourceStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
+
+  // Variable editing
+  const [varEdits, setVarEdits] = useState<Record<string, string>>({});
+  const [varSaving, setVarSaving] = useState(false);
 
   const loadInstance = useCallback(async () => {
     if (!uuid) return;
@@ -31,6 +41,24 @@ export function InstanceDetailPage() {
       setError(null);
       const data = await api.getClientInstance(uuid);
       setInstance(data);
+      if (data.blueprint_id) {
+        try {
+          const bps = await api.getBlueprints();
+          const bp = bps.find(b => b.id === data.blueprint_id) ?? null;
+          setBlueprint(bp);
+          if (bp?.variables) {
+            const initial: Record<string, string> = {};
+            for (const v of bp.variables) {
+              if (v.user_viewable || v.user_editable) {
+                initial[v.env_var] = data.variable_values?.[v.env_var] ?? v.default_value ?? "";
+              }
+            }
+            setVarEdits(initial);
+          }
+        } catch {
+          // Blueprint is best-effort
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Fehler beim Laden");
     } finally {
@@ -64,12 +92,11 @@ export function InstanceDetailPage() {
     try {
       setActing(true);
       setError(null);
-      setActionMessage(null);
       const result = await api.sendPowerAction(uuid, signal);
-      setActionMessage(result.message);
+      toast.success(result.message);
       setTimeout(() => loadInstance(), 500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler bei Power-Aktion");
+      toast.error(err instanceof Error ? err.message : "Fehler bei Power-Aktion");
     } finally {
       setActing(false);
     }
@@ -81,10 +108,10 @@ export function InstanceDetailPage() {
       setActing(true);
       setError(null);
       const result = await api.reportInstallResult(uuid, successful);
-      setActionMessage(result.message);
+      toast.success(result.message);
       await loadInstance();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
+      toast.error(err instanceof Error ? err.message : "Fehler");
     } finally {
       setActing(false);
     }
@@ -95,14 +122,31 @@ export function InstanceDetailPage() {
     try {
       setActing(true);
       setError(null);
-      setActionMessage(null);
       const result = await api.reinstallInstance(uuid);
-      setActionMessage(result.message);
+      toast.success(result.message);
       await loadInstance();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Reinstall fehlgeschlagen");
+      toast.error(err instanceof Error ? err.message : "Reinstall fehlgeschlagen");
     } finally {
       setActing(false);
+    }
+  };
+
+  const handleSaveVariables = async () => {
+    if (!uuid) return;
+    try {
+      setVarSaving(true);
+      const result = await api.updateVariableValues(uuid, varEdits);
+      if (result.rejected && result.rejected.length > 0) {
+        toast.error(`Nicht gespeichert: ${result.rejected.join(", ")}`);
+      } else {
+        toast.success("Variablen gespeichert.");
+      }
+      await loadInstance();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Fehler beim Speichern");
+    } finally {
+      setVarSaving(false);
     }
   };
 
@@ -118,7 +162,7 @@ export function InstanceDetailPage() {
     return (
       <PageLayout title="Instance" maxWidth={700}>
         <ErrorState message={error} onRetry={loadInstance} />
-        <button onClick={() => navigate("/")} style={btnStyle}>Zurueck</button>
+        <button onClick={() => navigate("/")} style={btnDefault}>Zurueck</button>
       </PageLayout>
     );
   }
@@ -126,13 +170,16 @@ export function InstanceDetailPage() {
   if (!instance) return null;
 
   const status = instance.status ?? "ready";
+  const viewableVars = blueprint?.variables?.filter(v => v.user_viewable || v.user_editable) ?? [];
 
   return (
     <PageLayout title={instance.name} maxWidth={700}>
+      <Toast {...toast} />
+
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: -12, marginBottom: 16 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button onClick={() => navigate("/")} style={btnStyle}>Zurueck</button>
+          <button onClick={() => navigate("/")} style={btnDefault}>Zurueck</button>
           <StatusBadge status={status} />
           {instance.container_state && (
             <StatusBadge status={instance.container_state} size="sm" />
@@ -144,17 +191,34 @@ export function InstanceDetailPage() {
         <p style={{ color: "#888", marginTop: 4 }}>{instance.description}</p>
       )}
 
-      {error && <div style={errorStyle}>{error}</div>}
-      {actionMessage && <div style={successStyle}>{actionMessage}</div>}
+      {/* Suspension-Banner (M29) */}
+      {instance.status === "suspended" && (
+        <div style={{
+          padding: "12px 16px", marginBottom: 16,
+          backgroundColor: "#fff3e0", border: "1px solid #ffcc80",
+          borderRadius: 8, color: "#e65100",
+        }}>
+          <strong>Instance gesperrt (suspendiert)</strong>
+          {instance.suspended_reason && (
+            <span style={{ marginLeft: 8 }}>— {instance.suspended_reason}</span>
+          )}
+          <div style={{ fontSize: 12, marginTop: 4, color: "#bf360c" }}>
+            Operative Aktionen (Power, Dateien, Backups, Datenbanken, Routinen) sind blockiert.
+            Nur ein Administrator kann die Sperre aufheben.
+          </div>
+        </div>
+      )}
+
+      {error && <ErrorState message={error} />}
 
       {/* Power-Aktionen */}
       <div style={cardStyle}>
         <h3 style={{ marginTop: 0 }}>Power</h3>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={() => handlePower("start")} disabled={acting} style={{ ...powerBtn, backgroundColor: "#5cb85c" }}>▶ Start</button>
-          <button onClick={() => handlePower("stop")} disabled={acting} style={{ ...powerBtn, backgroundColor: "#f0ad4e" }}>⏹ Stop</button>
-          <button onClick={() => handlePower("restart")} disabled={acting} style={{ ...powerBtn, backgroundColor: "#5bc0de" }}>🔄 Restart</button>
-          <button onClick={() => handlePower("kill")} disabled={acting} style={{ ...powerBtn, backgroundColor: "#d9534f" }}>✕ Kill</button>
+          <button onClick={() => handlePower("start")} disabled={acting} style={powerBtn("#5cb85c")}>▶ Start</button>
+          <button onClick={() => handlePower("stop")} disabled={acting} style={powerBtn("#f0ad4e")}>⏹ Stop</button>
+          <button onClick={() => handlePower("restart")} disabled={acting} style={powerBtn("#5bc0de")}>🔄 Restart</button>
+          <button onClick={() => handlePower("kill")} disabled={acting} style={powerBtn("#d9534f")}>✕ Kill</button>
         </div>
 
         {(status === "provisioning" || status === "reinstalling") && (
@@ -163,8 +227,8 @@ export function InstanceDetailPage() {
               {status === "reinstalling" ? "⏳ Reinstallation läuft..." : "⏳ Installation läuft..."}
             </p>
             <p style={{ fontSize: 12, color: "#aaa", margin: "0 0 8px" }}>Simuliere Install-Callback:</p>
-            <button onClick={() => handleInstallCallback(true)} disabled={acting} style={{ ...btnStyle, marginRight: 8 }}>✅ Erfolgreich</button>
-            <button onClick={() => handleInstallCallback(false)} disabled={acting} style={btnStyle}>❌ Fehlgeschlagen</button>
+            <button onClick={() => handleInstallCallback(true)} disabled={acting} style={{ ...btnDefault, marginRight: 8 }}>✅ Erfolgreich</button>
+            <button onClick={() => handleInstallCallback(false)} disabled={acting} style={btnDefault}>❌ Fehlgeschlagen</button>
           </div>
         )}
 
@@ -174,7 +238,7 @@ export function InstanceDetailPage() {
               {status === "reinstall_failed" ? "❌ Reinstallation fehlgeschlagen" : "❌ Installation fehlgeschlagen"}
             </p>
             {instance.role === "owner" && (
-              <button onClick={handleReinstall} disabled={acting} style={{ ...powerBtn, backgroundColor: "#f0ad4e" }}>
+              <button onClick={handleReinstall} disabled={acting} style={powerBtn("#f0ad4e")}>
                 🔄 Reinstall
               </button>
             )}
@@ -187,12 +251,7 @@ export function InstanceDetailPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h3 style={{ margin: 0 }}>Runtime</h3>
           {resources && (
-            <span style={{
-              ...statusBadge(resources.container_status === "running" ? "running" : "stopped"),
-              fontSize: 10,
-            }}>
-              {resources.container_status}
-            </span>
+            <StatusBadge status={resources.container_status === "running" ? "running" : "stopped"} size="sm" />
           )}
         </div>
 
@@ -216,6 +275,51 @@ export function InstanceDetailPage() {
           Auto-Refresh alle 5 Sekunden
         </p>
       </div>
+
+      {/* Variablen */}
+      {viewableVars.length > 0 && (
+        <div style={cardStyle}>
+          <h3 style={{ marginTop: 0 }}>Variablen</h3>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "2px solid #e0e0e0" }}>
+                <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "#555" }}>Name</th>
+                <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "#555" }}>Wert</th>
+              </tr>
+            </thead>
+            <tbody>
+              {viewableVars.map(v => (
+                <tr key={v.env_var} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                  <td style={{ padding: "8px", verticalAlign: "middle" }}>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{v.name}</div>
+                    {v.description && <div style={{ fontSize: 11, color: "#888" }}>{v.description}</div>}
+                    <code style={{ fontSize: 11, color: "#aaa" }}>{v.env_var}</code>
+                  </td>
+                  <td style={{ padding: "8px", verticalAlign: "middle" }}>
+                    {v.user_editable ? (
+                      <input
+                        type="text"
+                        value={varEdits[v.env_var] ?? ""}
+                        onChange={e => setVarEdits(prev => ({ ...prev, [v.env_var]: e.target.value }))}
+                        style={{ padding: "4px 8px", fontSize: 13, borderRadius: 4, border: "1px solid #ccc", width: "100%" }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: 13, fontFamily: "monospace" }}>{varEdits[v.env_var] ?? "–"}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {viewableVars.some(v => v.user_editable) && (
+            <div style={{ marginTop: 12 }}>
+              <button onClick={handleSaveVariables} disabled={varSaving} style={{ ...btnPrimary, opacity: varSaving ? 0.6 : 1 }}>
+                {varSaving ? "Speichern..." : "Variablen speichern"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Console */}
       <div style={cardStyle}>
@@ -252,6 +356,12 @@ export function InstanceDetailPage() {
         />
       </div>
 
+      {/* Activity */}
+      <div style={cardStyle}>
+        <h3 style={{ marginTop: 0 }}>Activity</h3>
+        <ActivityLog instanceUuid={instance.uuid} />
+      </div>
+
       {/* Details */}
       <div style={cardStyle}>
         <h3 style={{ marginTop: 0 }}>Details</h3>
@@ -261,7 +371,7 @@ export function InstanceDetailPage() {
             <DetailRow label="Lifecycle" value={status} />
             <DetailRow label="Container" value={instance.container_state ?? "–"} />
             <DetailRow label="Agent" value={`#${instance.agent_id}`} />
-            <DetailRow label="Blueprint" value={`#${instance.blueprint_id}`} />
+            <DetailRow label="Blueprint" value={blueprint ? `${blueprint.name} (#${instance.blueprint_id})` : `#${instance.blueprint_id}`} />
             <DetailRow label="Owner" value={`#${instance.owner_id}`} />
             <DetailRow label="Image" value={instance.image ?? "–"} mono />
             <DetailRow label="Startup" value={instance.startup_command ?? "–"} mono />
@@ -269,13 +379,7 @@ export function InstanceDetailPage() {
         </table>
       </div>
 
-      {/* Konfigurierte Ressourcen */}
-      {/* Activity */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Activity</h3>
-        <ActivityLog instanceUuid={instance.uuid} />
-      </div>
-
+      {/* Konfigurierte Limits */}
       <div style={cardStyle}>
         <h3 style={{ marginTop: 0 }}>Konfigurierte Limits</h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
@@ -328,15 +432,6 @@ function formatUptime(seconds: number): string {
   return `${Math.floor(seconds / 86400)}d ${Math.floor((seconds % 86400) / 3600)}h`;
 }
 
-// ── Styles ─────────────────────────────────────────────
-
-const cardStyle: React.CSSProperties = { border: "1px solid #ddd", borderRadius: 8, padding: 16, marginTop: 16 };
-const btnStyle: React.CSSProperties = { padding: "6px 14px", cursor: "pointer", border: "1px solid #ddd", borderRadius: 4, backgroundColor: "#fff" };
-const powerBtn: React.CSSProperties = { padding: "8px 16px", cursor: "pointer", border: "none", borderRadius: 4, color: "#fff", fontWeight: 600, fontSize: 13 };
-const errorStyle: React.CSSProperties = { padding: 12, marginTop: 12, backgroundColor: "#fee", border: "1px solid #c00", borderRadius: 4, color: "#c00" };
-const successStyle: React.CSSProperties = { padding: 12, marginTop: 12, backgroundColor: "#efe", border: "1px solid #0a0", borderRadius: 4, color: "#060" };
-
-function statusBadge(status: string): React.CSSProperties {
-  const colors: Record<string, string> = { ready: "#5cb85c", provisioning: "#f0ad4e", provision_failed: "#d9534f", suspended: "#777", stopped: "#999", running: "#5cb85c" };
-  return { display: "inline-block", padding: "4px 12px", borderRadius: 4, backgroundColor: colors[status] ?? "#eee", color: "#fff", fontSize: 12, fontWeight: 600 };
+function powerBtn(bg: string): React.CSSProperties {
+  return { padding: "8px 16px", cursor: "pointer", border: "none", borderRadius: 4, color: "#fff", fontWeight: 600, fontSize: 13, backgroundColor: bg };
 }

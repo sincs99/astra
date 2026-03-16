@@ -161,6 +161,14 @@ class RunnerProtocol(ABC):
     def rename_file(self, agent: Agent, instance: Instance, source: str, target: str) -> RunnerResponse:
         ...
 
+    @abstractmethod
+    def compress_files(self, agent: Agent, instance: Instance, files: list[str], destination: str) -> RunnerResponse:
+        ...
+
+    @abstractmethod
+    def decompress_file(self, agent: Agent, instance: Instance, file: str, destination: str) -> RunnerResponse:
+        ...
+
     # ── Backups ─────────────────────────────────────────
 
     @abstractmethod

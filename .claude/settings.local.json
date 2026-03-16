@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find 'c:/Users/p konezciny/OneDrive - Welti-Furrer AG/Development/astra/reference/app/Models' -type f -name *.php)",
+      "Bash(npm run:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(gh api:*)",
+      "Bash(xargs grep:*)",
+      "Bash(find '/c/Users/p konezciny/OneDrive - Welti-Furrer AG/Development/astra/reference/routes' -type f -name *.php)",
+      "Bash(xargs wc:*)",
+      "Bash(find '/c/Users/p konezciny/OneDrive - Welti-Furrer AG/Development/astra/reference/app/Extensions' -type f -name *.php)"
+    ]
+  }
+}

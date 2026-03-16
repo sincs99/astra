@@ -24,6 +24,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: "System", href: "/admin/system", group: "Operations" },
   // Integrations
   { label: "Webhooks", href: "/admin/webhooks", group: "Integrations" },
+  // Account
+  { label: "SSH Keys", href: "/account/ssh-keys", group: "Account" },
 ];
 
 interface PageLayoutProps {

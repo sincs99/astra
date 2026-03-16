@@ -9,6 +9,7 @@ import { AdminWebhooksPage } from "../pages/AdminWebhooksPage";
 import { AdminJobsPage } from "../pages/AdminJobsPage";
 import { AdminSystemPage } from "../pages/AdminSystemPage";
 import { InstanceDetailPage } from "../pages/InstanceDetailPage";
+import { SshKeysPage } from "../pages/SshKeysPage";
 import { isAuthenticated } from "../services/api";
 
 /**
@@ -35,6 +36,7 @@ export function AppRouter() {
         <Route path="/admin/jobs" element={<ProtectedRoute><AdminJobsPage /></ProtectedRoute>} />
         <Route path="/admin/system" element={<ProtectedRoute><AdminSystemPage /></ProtectedRoute>} />
         <Route path="/instances/:uuid" element={<ProtectedRoute><InstanceDetailPage /></ProtectedRoute>} />
+        <Route path="/account/ssh-keys" element={<ProtectedRoute><SshKeysPage /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   );

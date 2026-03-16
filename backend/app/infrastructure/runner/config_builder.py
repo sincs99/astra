@@ -6,6 +6,7 @@ Basiert auf dem Referenzformat aus ServerConfigurationStructureService.
 
 from app.domain.instances.models import Instance
 from app.domain.endpoints.models import Endpoint
+from app.domain.blueprints.models import Blueprint
 
 
 def build_server_config(instance: Instance) -> dict:
@@ -49,16 +50,29 @@ def build_server_config(instance: Instance) -> dict:
 def _build_environment(instance: Instance) -> dict:
     """Erstellt die Umgebungsvariablen für den Container.
 
-    Kann in Zukunft um Blueprint-spezifische Variablen erweitert werden.
+    Reihenfolge (letzte gewinnt):
+    1. Blueprint-Variablen-Defaults
+    2. Instance-spezifische variable_values
+    3. System-Variablen (STARTUP, SERVER_MEMORY, SERVER_IP, SERVER_PORT)
     """
-    env = {
-        "STARTUP": instance.startup_command or "",
-        "SERVER_MEMORY": str(instance.memory),
-        "SERVER_IP": "0.0.0.0",
-        "SERVER_PORT": "25565",  # Default, wird durch Endpoint überschrieben
-    }
+    env: dict = {}
 
-    # Port vom Primary Endpoint übernehmen
+    # 1. Blueprint-Variablen-Defaults laden
+    if instance.blueprint_id:
+        blueprint = Blueprint.query.get(instance.blueprint_id)
+        if blueprint:
+            env.update(blueprint.get_default_env())
+
+    # 2. Instance-spezifische Werte überschreiben
+    for key, value in (instance.variable_values or {}).items():
+        env[key] = str(value) if value is not None else ""
+
+    # 3. System-Variablen (immer gesetzt, überschreiben alles)
+    env["STARTUP"] = instance.startup_command or ""
+    env["SERVER_MEMORY"] = str(instance.memory)
+    env["SERVER_IP"] = "0.0.0.0"
+    env["SERVER_PORT"] = "25565"
+
     if instance.primary_endpoint_id:
         ep = Endpoint.query.get(instance.primary_endpoint_id)
         if ep:

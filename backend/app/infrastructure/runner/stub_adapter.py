@@ -247,6 +247,19 @@ class StubRunnerAdapter(RunnerProtocol):
 
         return RunnerResponse(success=False, message=f"Pfad '{source}' nicht gefunden")
 
+    def compress_files(self, agent: Agent, instance: Instance, files: list[str], destination: str) -> RunnerResponse:
+        logger.info("[STUB] compress_files: instance=%s, files=%s → %s", instance.uuid, files, destination)
+        fs = self._get_fs(instance)
+        fs[destination] = {"content": "", "size": sum(int(fs.get(f, {}).get("size", 0)) for f in files)}
+        return RunnerResponse(success=True, message=f"Stub: {len(files)} Datei(en) komprimiert → '{destination}'")
+
+    def decompress_file(self, _agent: Agent, instance: Instance, file: str, destination: str) -> RunnerResponse:
+        logger.info("[STUB] decompress_file: instance=%s, file=%s → %s", instance.uuid, file, destination)
+        dirs = self._get_dirs(instance)
+        dest = _normalize(destination)
+        dirs.add(dest)
+        return RunnerResponse(success=True, message=f"Stub: '{file}' entpackt nach '{destination}'")
+
     # ── Backups ─────────────────────────────────────────
 
     def create_backup(self, agent: Agent, instance: Instance, backup: Backup) -> RunnerResponse:

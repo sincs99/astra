@@ -7,7 +7,11 @@ from app.domain.blueprints.models import Blueprint as BlueprintModel
 from app.domain.users.models import User
 from app.domain.instances.models import Instance
 from app.domain.endpoints.models import Endpoint
-from app.domain.instances.service import create_instance, InstanceCreationError
+from app.domain.instances.service import (
+    create_instance, InstanceCreationError,
+    transfer_instance, InstanceActionError,
+    suspend_instance, unsuspend_instance,
+)
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -168,12 +172,48 @@ def create_blueprint():
         name=name,
         description=data.get("description"),
         docker_image=data.get("docker_image"),
+        startup_command=data.get("startup_command"),
+        install_script=data.get("install_script"),
+        variables=data.get("variables", []),
         config_schema=data.get("config_schema"),
     )
     db.session.add(blueprint)
     db.session.commit()
 
     return jsonify(blueprint.to_dict()), 201
+
+
+@admin_bp.route("/blueprints/<int:blueprint_id>", methods=["PATCH"])
+def update_blueprint(blueprint_id: int):
+    blueprint = db.session.get(BlueprintModel, blueprint_id)
+    if not blueprint:
+        return jsonify({"error": f"Blueprint {blueprint_id} nicht gefunden"}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Request body is required"}), 400
+
+    updatable = ["name", "description", "docker_image", "startup_command", "install_script", "variables", "config_schema"]
+    for field in updatable:
+        if field in data:
+            setattr(blueprint, field, data[field])
+
+    db.session.commit()
+    return jsonify(blueprint.to_dict())
+
+
+@admin_bp.route("/blueprints/<int:blueprint_id>", methods=["DELETE"])
+def delete_blueprint(blueprint_id: int):
+    blueprint = db.session.get(BlueprintModel, blueprint_id)
+    if not blueprint:
+        return jsonify({"error": f"Blueprint {blueprint_id} nicht gefunden"}), 404
+
+    if blueprint.instances:
+        return jsonify({"error": "Blueprint wird noch von Instances verwendet"}), 409
+
+    db.session.delete(blueprint)
+    db.session.commit()
+    return jsonify({"message": f"Blueprint '{blueprint.name}' gelöscht"})
 
 
 # ── Endpoints ───────────────────────────────────────────
@@ -258,11 +298,83 @@ def create_instance_route():
             cpu=data.get("cpu", 100),
             image=data.get("image"),
             startup_command=data.get("startup_command"),
+            variable_values=data.get("variable_values"),
         )
         return jsonify(instance.to_dict()), 201
 
     except InstanceCreationError as e:
         return jsonify({"error": e.message}), e.status_code
+
+
+@admin_bp.route("/instances/<string:uuid>/transfer", methods=["POST"])
+def transfer_instance_route(uuid: str):
+    """Transferiert eine Instance auf einen anderen Agent.
+
+    Body: {"target_agent_id": int}
+    """
+    instance = Instance.query.filter_by(uuid=uuid).first()
+    if not instance:
+        return jsonify({"error": "Instance nicht gefunden"}), 404
+
+    data = request.get_json()
+    if not data or "target_agent_id" not in data:
+        return jsonify({"error": "Field 'target_agent_id' is required"}), 400
+
+    try:
+        result = transfer_instance(instance, int(data["target_agent_id"]))
+        return jsonify(result.to_dict())
+    except InstanceActionError as e:
+        return jsonify({"error": e.message}), e.status_code
+
+
+# ── Suspension (M29) ────────────────────────────────────
+
+
+@admin_bp.route("/instances/<string:uuid>/suspend", methods=["POST"])
+def suspend_instance_route(uuid: str):
+    """Suspendiert eine Instance administrativ.
+
+    Nur Admins. Body optional: {"reason": "..."}
+    """
+    from app.domain.auth.service import require_admin
+    admin, err = require_admin()
+    if err:
+        return err
+
+    instance = Instance.query.filter_by(uuid=uuid).first()
+    if not instance:
+        return jsonify({"error": "Instance nicht gefunden"}), 404
+
+    data = request.get_json(silent=True) or {}
+    reason = data.get("reason")
+
+    result = suspend_instance(instance, admin.id, reason=reason)
+    return jsonify({
+        "message": "Instance suspendiert",
+        "instance": result.to_dict(),
+    })
+
+
+@admin_bp.route("/instances/<string:uuid>/unsuspend", methods=["POST"])
+def unsuspend_instance_route(uuid: str):
+    """Hebt die Suspension einer Instance auf.
+
+    Nur Admins.
+    """
+    from app.domain.auth.service import require_admin
+    admin, err = require_admin()
+    if err:
+        return err
+
+    instance = Instance.query.filter_by(uuid=uuid).first()
+    if not instance:
+        return jsonify({"error": "Instance nicht gefunden"}), 404
+
+    result = unsuspend_instance(instance, admin.id)
+    return jsonify({
+        "message": "Suspension aufgehoben",
+        "instance": result.to_dict(),
+    })
 
 
 # ── Activity ────────────────────────────────────────────

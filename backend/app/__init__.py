@@ -352,9 +352,11 @@ def _register_ops_endpoints(app: Flask) -> None:
     @app.route("/ops/info")
     def ops_info():
         """Nicht-sensitive Betriebsinformationen fuer Ops-Teams."""
+        from app.version import RELEASE_PHASE
         return jsonify({
             "service": "astra-backend",
             "version": __version__,
+            "release_phase": RELEASE_PHASE,
             "environment": app.config.get("APP_ENV", "unknown"),
             "runner_adapter": app.config.get("_RUNNER_ADAPTER_NAME", "unknown"),
             "proxy_fix": app.config.get("PROXY_FIX_ENABLED", False),

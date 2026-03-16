@@ -31,6 +31,12 @@ from app.domain.activity.events import (
     DATABASE_PASSWORD_ROTATED,
     AGENT_MAINTENANCE_ENABLED,
     AGENT_MAINTENANCE_DISABLED,
+    SSH_KEY_CREATED,
+    SSH_KEY_DELETED,
+    INSTANCE_SUSPENDED,
+    INSTANCE_UNSUSPENDED,
+    SSH_KEY_AUTH_SUCCESS,
+    SSH_KEY_AUTH_FAILED,
 )
 
 # ── Offizieller Event-Katalog fuer Webhooks ──────────────
@@ -62,6 +68,12 @@ WEBHOOK_EVENTS: dict[str, str] = {
     DATABASE_PASSWORD_ROTATED: "Das Passwort einer Datenbank wurde rotiert",
     AGENT_MAINTENANCE_ENABLED: "Ein Agent wurde in den Maintenance-Modus versetzt",
     AGENT_MAINTENANCE_DISABLED: "Ein Agent wurde aus dem Maintenance-Modus genommen",
+    SSH_KEY_CREATED: "Ein SSH-Key wurde zum Account hinzugefuegt",
+    SSH_KEY_DELETED: "Ein SSH-Key wurde vom Account entfernt",
+    INSTANCE_SUSPENDED: "Eine Instance wurde administrativ suspendiert",
+    INSTANCE_UNSUSPENDED: "Die Suspension einer Instance wurde aufgehoben",
+    SSH_KEY_AUTH_SUCCESS: "SFTP-Key-Authentifizierung erfolgreich",
+    SSH_KEY_AUTH_FAILED: "SFTP-Key-Authentifizierung abgelehnt",
 }
 
 VALID_WEBHOOK_EVENTS: set[str] = set(WEBHOOK_EVENTS.keys())

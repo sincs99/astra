@@ -49,6 +49,19 @@ ROUTINE_EXECUTED = "routine:executed"
 AGENT_MAINTENANCE_ENABLED = "agent:maintenance_enabled"
 AGENT_MAINTENANCE_DISABLED = "agent:maintenance_disabled"
 
+# M28: SSH-Key-Events
+SSH_KEY_CREATED = "ssh_key:created"
+SSH_KEY_UPDATED = "ssh_key:updated"
+SSH_KEY_DELETED = "ssh_key:deleted"
+
+# M29: Suspension-Events
+INSTANCE_SUSPENDED = "instance:suspended"
+INSTANCE_UNSUSPENDED = "instance:unsuspended"
+
+# M30: SFTP-/SSH-Key-Auth-Events
+SSH_KEY_AUTH_SUCCESS = "ssh_key:auth_success"
+SSH_KEY_AUTH_FAILED = "ssh_key:auth_failed"
+
 
 # ── Convenience ─────────────────────────────────────────
 

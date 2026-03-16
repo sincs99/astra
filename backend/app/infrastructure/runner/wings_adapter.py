@@ -274,6 +274,45 @@ class WingsRunnerAdapter(RunnerProtocol):
         else:
             return RunnerResponse(success=False, message=f"Wings rename_file: {response.error}")
 
+    def compress_files(self, agent: Agent, instance: Instance, files: list[str], destination: str) -> RunnerResponse:
+        """Dateien komprimieren.
+
+        Wings API: POST /api/servers/{uuid}/files/compress
+        Body: {"root": "/", "files": ["file1", "file2"]}
+        Die Antwort enthält den Namen des erstellten Archivs.
+        """
+        logger.info("[Wings] compress_files: instance=%s, files=%s → %s", instance.uuid, files, destination)
+
+        root, _ = _split_path(destination)
+        response = self._http.post(
+            agent,
+            f"/api/servers/{instance.uuid}/files/compress",
+            {"root": root, "files": [f.lstrip("/") for f in files]},
+        )
+
+        if response.success:
+            return RunnerResponse(success=True, message=f"Dateien komprimiert → '{destination}'", data=response.data)
+        return RunnerResponse(success=False, message=f"Wings compress_files: {response.error}")
+
+    def decompress_file(self, agent: Agent, instance: Instance, file: str, destination: str) -> RunnerResponse:
+        """Archiv entpacken.
+
+        Wings API: POST /api/servers/{uuid}/files/decompress
+        Body: {"root": "/target", "file": "archive.tar.gz"}
+        """
+        logger.info("[Wings] decompress_file: instance=%s, file=%s → %s", instance.uuid, file, destination)
+
+        _, filename = _split_path(file)
+        response = self._http.post(
+            agent,
+            f"/api/servers/{instance.uuid}/files/decompress",
+            {"root": destination.rstrip("/") or "/", "file": filename},
+        )
+
+        if response.success:
+            return RunnerResponse(success=True, message=f"'{file}' entpackt nach '{destination}'")
+        return RunnerResponse(success=False, message=f"Wings decompress_file: {response.error}")
+
     # ── Backups ─────────────────────────────────────────
 
     def create_backup(self, agent: Agent, instance: Instance, backup: Backup) -> RunnerResponse:

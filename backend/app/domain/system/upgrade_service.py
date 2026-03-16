@@ -35,7 +35,7 @@ def get_migration_status() -> dict:
 
         # Alembic-Konfiguration laden
         migrations_dir = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
             "migrations"
         )
         alembic_cfg = AlembicConfig()

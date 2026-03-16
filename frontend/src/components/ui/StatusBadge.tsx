@@ -22,6 +22,8 @@ const STATUS_CONFIG: Record<string, { bg: string; color: string; label?: string 
   reinstall_failed: { bg: "#ffebee", color: "#d32f2f", label: "Fehler" },
   restoring: { bg: "#fff3e0", color: "#f57c00" },
   suspended: { bg: "#f5f5f5", color: "#888" },
+  transferring: { bg: "#e3f2fd", color: "#1976d2" },
+  transfer_failed: { bg: "#ffebee", color: "#d32f2f", label: "Transfer Fehler" },
   // Health
   healthy: { bg: "#e8f5e9", color: "#4caf50" },
   stale: { bg: "#fff8e1", color: "#f57c00" },

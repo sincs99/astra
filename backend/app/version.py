@@ -1,4 +1,4 @@
-"""Zentrale Versionsquelle fuer Astra (M24).
+"""Zentrale Versionsquelle fuer Astra (M24+M32).
 
 Alle versions- und build-relevanten Informationen werden hier gepflegt.
 Backend, Ops-Endpunkte und CLI beziehen die Version aus diesem Modul.
@@ -10,7 +10,12 @@ from datetime import datetime, timezone
 
 # ── Astra Version (semantisch) ──────────────────────────
 # Dies ist die EINZIGE Stelle, an der die Version gepflegt wird.
-VERSION = "0.27.0-rc1"
+VERSION = "0.32.0-rc"
+
+# ── Release-Phase ────────────────────────────────────────
+# Mögliche Werte: "development", "rc", "pilot", "stable"
+# Wird in Ops-/Admin-Endpunkten exponiert fuer operative Klarheit.
+RELEASE_PHASE = "pilot"
 
 # ── Build-Metadaten ─────────────────────────────────────
 # Werden ueber Umgebungsvariablen oder Git-Informationen gefuellt.
@@ -51,6 +56,7 @@ def get_version_info() -> dict:
     """
     return {
         "version": VERSION,
+        "release_phase": RELEASE_PHASE,
         "build_sha": get_git_sha(),
         "build_date": get_build_date(),
         "build_ref": BUILD_REF,

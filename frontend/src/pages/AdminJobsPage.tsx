@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { api, type JobEntry, type JobSummary } from "../services/api";
+import {
+  PageLayout, StatusBadge, LoadingState, EmptyState, ErrorState,
+  cardStyle, inputStyle, labelStyle, btnDefault, thStyle, tdStyle,
+} from "../components/ui";
 
 type StatusFilter = "" | "pending" | "running" | "completed" | "failed" | "retrying";
 
@@ -19,12 +23,7 @@ export function AdminJobsPage() {
       setLoading(true);
       setError(null);
       const [jobData, summaryData] = await Promise.all([
-        api.getJobs({
-          status: statusFilter || undefined,
-          type: typeFilter || undefined,
-          page,
-          per_page: 50,
-        }),
+        api.getJobs({ status: statusFilter || undefined, type: typeFilter || undefined, page, per_page: 50 }),
         api.getJobsSummary(),
       ]);
       setJobs(jobData.items);
@@ -38,15 +37,12 @@ export function AdminJobsPage() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, [statusFilter, typeFilter, page]);
+  useEffect(() => { loadData(); }, [statusFilter, typeFilter, page]);
 
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: 24 }}>
-      <h1>Background Jobs</h1>
+    <PageLayout title="Background Jobs">
 
-      {/* Summary */}
+      {/* Summary Kacheln */}
       {summary && (
         <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
           <MiniCard label="Gesamt" value={summary.total} />
@@ -80,26 +76,26 @@ export function AdminJobsPage() {
             ))}
           </select>
         </div>
-        <button onClick={loadData} style={{ ...btnStyle, alignSelf: "flex-end" }}>
-          Aktualisieren
+        <button onClick={loadData} style={{ ...btnDefault, alignSelf: "flex-end" }}>
+          ↻ Aktualisieren
         </button>
         <span style={{ fontSize: 13, color: "#888", alignSelf: "flex-end" }}>
           {total} Jobs total, Seite {page}/{pages || 1}
         </span>
       </div>
 
-      {error && <div style={errorStyle}>{error}</div>}
+      {error && <ErrorState message={error} onRetry={loadData} />}
 
       {loading ? (
-        <p>Wird geladen...</p>
+        <LoadingState message="Jobs werden geladen..." />
       ) : jobs.length === 0 ? (
-        <p style={{ color: "#888" }}>Keine Jobs gefunden.</p>
+        <EmptyState icon="⚙️" message="Keine Jobs gefunden." />
       ) : (
         <>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #e0e0e0" }}>
               <thead>
-                <tr>
+                <tr style={{ backgroundColor: "#f5f5f5" }}>
                   <th style={thStyle}>ID</th>
                   <th style={thStyle}>Typ</th>
                   <th style={thStyle}>Status</th>
@@ -112,30 +108,16 @@ export function AdminJobsPage() {
               </thead>
               <tbody>
                 {jobs.map(job => (
-                  <tr key={job.id} style={{ borderBottom: "1px solid #eee" }}>
+                  <tr key={job.id}>
                     <td style={tdStyle}>
-                      <span title={job.uuid} style={{ fontSize: 12, fontFamily: "monospace" }}>
-                        #{job.id}
-                      </span>
+                      <span title={job.uuid} style={{ fontSize: 12, fontFamily: "monospace" }}>#{job.id}</span>
                     </td>
-                    <td style={tdStyle}>
-                      <code style={{ fontSize: 12 }}>{job.job_type}</code>
-                    </td>
-                    <td style={tdStyle}>
-                      <StatusBadge status={job.status} />
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "center" }}>
-                      {job.attempts}/{job.max_attempts}
-                    </td>
-                    <td style={{ ...tdStyle, fontSize: 12, whiteSpace: "nowrap" }}>
-                      {formatDate(job.created_at)}
-                    </td>
-                    <td style={{ ...tdStyle, fontSize: 12, whiteSpace: "nowrap" }}>
-                      {formatDate(job.started_at)}
-                    </td>
-                    <td style={{ ...tdStyle, fontSize: 12, whiteSpace: "nowrap" }}>
-                      {formatDate(job.finished_at)}
-                    </td>
+                    <td style={tdStyle}><code style={{ fontSize: 12 }}>{job.job_type}</code></td>
+                    <td style={tdStyle}><StatusBadge status={job.status} size="sm" /></td>
+                    <td style={{ ...tdStyle, textAlign: "center" }}>{job.attempts}/{job.max_attempts}</td>
+                    <td style={{ ...tdStyle, fontSize: 12, whiteSpace: "nowrap" }}>{formatDate(job.created_at)}</td>
+                    <td style={{ ...tdStyle, fontSize: 12, whiteSpace: "nowrap" }}>{formatDate(job.started_at)}</td>
+                    <td style={{ ...tdStyle, fontSize: 12, whiteSpace: "nowrap" }}>{formatDate(job.finished_at)}</td>
                     <td style={{ ...tdStyle, fontSize: 12, maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {job.error ? (
                         <span style={{ color: "#d32f2f" }} title={job.error}>
@@ -155,41 +137,16 @@ export function AdminJobsPage() {
             </table>
           </div>
 
-          {/* Pagination */}
           {pages > 1 && (
             <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 16 }}>
-              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} style={btnStyle}>Prev</button>
+              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} style={btnDefault}>Prev</button>
               <span style={{ padding: "8px 12px" }}>Seite {page} / {pages}</span>
-              <button disabled={page >= pages} onClick={() => setPage(p => p + 1)} style={btnStyle}>Next</button>
+              <button disabled={page >= pages} onClick={() => setPage(p => p + 1)} style={btnDefault}>Next</button>
             </div>
           )}
         </>
       )}
-
-      <div style={{ marginTop: 32, paddingTop: 16, borderTop: "1px solid #eee" }}>
-        <a href="/" style={linkStyle}>Dashboard</a>
-        <a href="/admin/agents/monitoring" style={{ ...linkStyle, marginLeft: 16 }}>Fleet Monitoring</a>
-      </div>
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const cfg: Record<string, { bg: string; color: string }> = {
-    pending: { bg: "#e3f2fd", color: "#1976d2" },
-    running: { bg: "#fff3e0", color: "#f57c00" },
-    completed: { bg: "#e8f5e9", color: "#4caf50" },
-    failed: { bg: "#ffebee", color: "#d32f2f" },
-    retrying: { bg: "#f3e5f5", color: "#9c27b0" },
-  };
-  const c = cfg[status] || { bg: "#f5f5f5", color: "#666" };
-  return (
-    <span style={{
-      display: "inline-block", padding: "2px 10px", borderRadius: 12,
-      fontSize: 12, fontWeight: 600, backgroundColor: c.bg, color: c.color,
-    }}>
-      {status}
-    </span>
+    </PageLayout>
   );
 }
 
@@ -208,12 +165,3 @@ function formatDate(iso: string | null): string {
     return new Date(iso).toLocaleString("de-CH", { hour: "2-digit", minute: "2-digit", second: "2-digit", day: "2-digit", month: "2-digit" });
   } catch { return iso; }
 }
-
-const cardStyle: React.CSSProperties = { border: "1px solid #ddd", borderRadius: 8, padding: 16, marginBottom: 16 };
-const labelStyle: React.CSSProperties = { display: "block", marginBottom: 4, fontWeight: 600, fontSize: 12, color: "#666" };
-const inputStyle: React.CSSProperties = { padding: 8, borderRadius: 4, border: "1px solid #ccc" };
-const btnStyle: React.CSSProperties = { padding: "8px 16px", cursor: "pointer", borderRadius: 4, border: "1px solid #ccc", backgroundColor: "#f8f8f8" };
-const errorStyle: React.CSSProperties = { padding: 12, marginBottom: 16, backgroundColor: "#fee", border: "1px solid #c00", borderRadius: 4, color: "#c00" };
-const thStyle: React.CSSProperties = { padding: 10, textAlign: "left", borderBottom: "2px solid #ddd", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" };
-const tdStyle: React.CSSProperties = { padding: 10, verticalAlign: "middle" };
-const linkStyle: React.CSSProperties = { color: "#1976d2", textDecoration: "none", fontWeight: 500 };
