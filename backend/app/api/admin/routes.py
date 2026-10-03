@@ -606,6 +606,29 @@ def create_instance_route():
         return jsonify({"error": e.message}), e.status_code
 
 
+@admin_bp.route("/instances/<string:uuid>", methods=["DELETE"])
+def delete_instance_route(uuid: str):
+    """Loescht eine Instance samt abhaengiger Daten (M43).
+
+    Optionaler Body: {"force": true} erzwingt das Loeschen auch waehrend laufender
+    Vorgaenge (provisioning/reinstalling/restoring/transferring).
+    """
+    from app.domain.auth.service import get_current_user
+    from app.domain.instances.service import delete_instance
+
+    instance = Instance.query.filter_by(uuid=uuid).first()
+    if not instance:
+        return jsonify({"error": "Instance nicht gefunden"}), 404
+
+    data = request.get_json(silent=True) or {}
+    actor = get_current_user()
+    try:
+        result = delete_instance(instance, actor.id if actor else None, force=data.get("force") is True)
+    except InstanceActionError as e:
+        return jsonify({"error": e.message}), e.status_code
+    return jsonify({**result, "message": "Instance geloescht"})
+
+
 @admin_bp.route("/instances/<string:uuid>/transfer", methods=["POST"])
 def transfer_instance_route(uuid: str):
     """Transferiert eine Instance auf einen anderen Agent.
