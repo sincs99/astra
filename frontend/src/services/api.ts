@@ -957,6 +957,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  /** Backups einer Instance fuer Admins (Pruefung vor dem Transfer). */
+  getAdminInstanceBackups: (uuid: string) =>
+    request<{ backups: BackupEntry[]; successful_count: number; last_successful_backup_at: string | null }>(
+      `/admin/instances/${uuid}/backups`,
+    ),
   transferInstance: (uuid: string, targetAgentId: number) =>
     request<Instance>(`/admin/instances/${uuid}/transfer`, {
       method: "POST",

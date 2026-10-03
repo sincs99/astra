@@ -95,7 +95,7 @@ describe("AdminInstancesPage Transfer", () => {
     (api.getAgents as ReturnType<typeof vi.fn>).mockResolvedValue([
       { id: 7, name: "N1", fqdn: "a", is_active: true }, { id: 8, name: "N2", fqdn: "b", is_active: true }, { id: 9, name: "N3", fqdn: "c", is_active: false },
     ]);
-    vi.spyOn(api, "getBackups").mockResolvedValue([{ id: 1, is_successful: true, completed_at: "2026-10-01T10:00:00" }] as never);
+    vi.spyOn(api, "getAdminInstanceBackups").mockResolvedValue({ backups: [], successful_count: 1, last_successful_backup_at: "2026-10-01T10:00:00" });
     const transfer = vi.spyOn(api, "transferInstance").mockResolvedValue({} as never);
     render(<MemoryRouter><AdminInstancesPage /></MemoryRouter>);
     fireEvent.click(await screen.findByRole("button", { name: /Transfer/ }));

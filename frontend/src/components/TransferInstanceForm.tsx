@@ -1,20 +1,13 @@
 import { useEffect, useState } from "react";
-import { api, type Agent, type BackupEntry } from "../services/api";
+import { api, type Agent } from "../services/api";
 import { formatDateTime } from "../lib/dates";
 import { btnDanger, btnDefault, inputStyle, labelStyle, ErrorState } from "./ui";
 
 type BackupCheck =
   | { state: "loading" }
-  | { state: "ok"; latest: BackupEntry }
+  | { state: "ok"; lastAt: string | null }
   | { state: "none" }
   | { state: "unknown" };
-
-/** Das juengste erfolgreiche Backup oder undefined. */
-export function latestSuccessfulBackup(backups: BackupEntry[]): BackupEntry | undefined {
-  return backups
-    .filter((b) => b.is_successful)
-    .sort((a, b) => (b.completed_at ?? b.created_at ?? "").localeCompare(a.completed_at ?? a.created_at ?? ""))[0];
-}
 
 interface TransferInstanceFormProps {
   instanceUuid: string;
@@ -38,14 +31,13 @@ export function TransferInstanceForm({ instanceUuid, instanceName, agents, onTra
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Best effort: Die Backup-Liste ist an Owner/Collaborator gebunden und fuer Admins evtl. nicht lesbar
+  // Admin-Endpunkt mit Anzahl und Zeitpunkt des letzten erfolgreichen Backups; bei Fehler gilt nur die Checkbox
   useEffect(() => {
     let cancelled = false;
-    api.getBackups(instanceUuid)
-      .then((list) => {
+    api.getAdminInstanceBackups(instanceUuid)
+      .then((info) => {
         if (cancelled) return;
-        const latest = latestSuccessfulBackup(list);
-        setCheck(latest ? { state: "ok", latest } : { state: "none" });
+        setCheck(info.successful_count > 0 ? { state: "ok", lastAt: info.last_successful_backup_at } : { state: "none" });
       })
       .catch(() => { if (!cancelled) setCheck({ state: "unknown" }); });
     return () => { cancelled = true; };
@@ -77,7 +69,7 @@ export function TransferInstanceForm({ instanceUuid, instanceName, agents, onTra
       <div style={{ fontSize: 13, marginBottom: 12 }} role="status">
         {check.state === "loading" && <span style={{ color: "#666" }}>Backups werden geprüft…</span>}
         {check.state === "ok" && (
-          <span style={{ color: "#2e7d32" }}>Letztes erfolgreiches Backup: {formatDateTime(check.latest.completed_at ?? check.latest.created_at)}</span>
+          <span style={{ color: "#2e7d32" }}>Letztes erfolgreiches Backup: {formatDateTime(check.lastAt)}</span>
         )}
         {check.state === "none" && (
           <span style={{ color: "#c62828", fontWeight: 600 }}>
