@@ -448,7 +448,7 @@ readinessProbe:
 
 - Standard: 20 Login-Versuche pro Minute pro IP
 - Änderbar: `RATELIMIT_AUTH_PER_MINUTE`
-- In-Memory-Store, Reset bei Neustart
+- Zähler liegt in Redis (`REDIS_URL`), gilt also für alle Worker; ohne erreichbares Redis In-Memory pro Prozess
 
 ### WebSocket-Verbindungsprobleme hinter Proxy
 

@@ -39,5 +39,5 @@
 - SSL/TLS-Terminierung wird von externem Reverse Proxy erwartet.
 
 ### Sicherheit
-- Rate Limiting ist In-Memory (reicht fuer Single-Instance, nicht fuer Cluster).
+- Rate Limiting nutzt Redis (`REDIS_URL`); ist Redis nicht erreichbar, faellt es auf einen In-Memory-Zaehler pro Prozess zurueck.
 - CSRF-Schutz ist ueber SameSite Cookies + JWT geloest, kein dedizierter CSRF-Token.
