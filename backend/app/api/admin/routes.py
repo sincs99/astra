@@ -15,6 +15,57 @@ from app.domain.instances.service import (
 
 admin_bp = Blueprint("admin", __name__)
 
+# Wings-Verbindungsfelder, die ueber POST/PATCH /agents gepflegt werden duerfen (M33)
+_AGENT_CONNECTION_FIELDS = (
+    "scheme", "behind_proxy", "daemon_connect", "daemon_listen",
+    "daemon_sftp", "daemon_base", "upload_size",
+)
+
+
+def _require_admin_user():
+    """Gibt (user, None) oder (None, error_response) zurueck.
+
+    Schutz fuer Endpunkte, die Node-Secrets ausliefern oder aendern (M33).
+    Nutzt den zentralen Auth-Service (JWT, API-Key, Dev/Test-Fallback X-User-Id).
+    """
+    from app.domain.auth.service import require_admin
+
+    return require_admin()
+
+
+def _apply_agent_connection_fields(agent: Agent, data: dict) -> str | None:
+    """Uebernimmt Wings-Verbindungsfelder aus dem Request. Gibt Fehlertext oder None zurueck."""
+    if "scheme" in data:
+        scheme = str(data["scheme"] or "").lower()
+        if scheme not in ("http", "https"):
+            return "Field 'scheme' must be 'http' or 'https'"
+        agent.scheme = scheme
+    if "behind_proxy" in data:
+        agent.behind_proxy = bool(data["behind_proxy"])
+    for field in ("daemon_connect", "daemon_listen", "daemon_sftp"):
+        if field in data:
+            try:
+                port = int(data[field])
+            except (TypeError, ValueError):
+                return f"Field '{field}' must be an integer"
+            if not 1 <= port <= 65535:
+                return f"Field '{field}' must be between 1 and 65535"
+            setattr(agent, field, port)
+    if "upload_size" in data:
+        try:
+            size = int(data["upload_size"])
+        except (TypeError, ValueError):
+            return "Field 'upload_size' must be an integer"
+        if size < 1:
+            return "Field 'upload_size' must be positive"
+        agent.upload_size = size
+    if "daemon_base" in data:
+        base = str(data["daemon_base"] or "").strip()
+        if not base.startswith("/"):
+            return "Field 'daemon_base' must be an absolute path"
+        agent.daemon_base = base
+    return None
+
 
 # ── Health ──────────────────────────────────────────────
 
@@ -143,13 +194,146 @@ def create_agent():
         return jsonify({"error": f"Agent with fqdn '{fqdn}' already exists"}), 409
 
     agent = Agent(name=name, fqdn=fqdn)
+    # M33: Node-Credentials fuer die Wings Remote-API
+    agent.generate_daemon_credentials()
+    err = _apply_agent_connection_fields(agent, data)
+    if err:
+        return jsonify({"error": err}), 400
+
     db.session.add(agent)
     db.session.commit()
 
     return jsonify(agent.to_dict()), 201
 
 
+@admin_bp.route("/agents/<int:agent_id>", methods=["PATCH"])
+def update_agent(agent_id: int):
+    """Aktualisiert Name, FQDN, Aktiv-Flag und Wings-Verbindungsfelder eines Agents (M33)."""
+    agent = db.session.get(Agent, agent_id)
+    if not agent:
+        return jsonify({"error": f"Agent mit ID {agent_id} nicht gefunden"}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Request body is required"}), 400
+
+    if "name" in data:
+        if not data["name"]:
+            return jsonify({"error": "Field 'name' must not be empty"}), 400
+        agent.name = data["name"]
+    if "fqdn" in data:
+        fqdn = data["fqdn"]
+        if not fqdn:
+            return jsonify({"error": "Field 'fqdn' must not be empty"}), 400
+        other = Agent.query.filter(Agent.fqdn == fqdn, Agent.id != agent.id).first()
+        if other:
+            return jsonify({"error": f"Agent with fqdn '{fqdn}' already exists"}), 409
+        agent.fqdn = fqdn
+    if "is_active" in data:
+        agent.is_active = bool(data["is_active"])
+
+    err = _apply_agent_connection_fields(agent, data)
+    if err:
+        return jsonify({"error": err}), 400
+
+    db.session.commit()
+    return jsonify(agent.to_dict())
+
+
+@admin_bp.route("/agents/<int:agent_id>/configuration", methods=["GET"])
+def agent_configuration(agent_id: int):
+    """Liefert die Wings config.yml fuer einen Agent (M33).
+
+    Enthaelt das Node-Secret – nur fuer Admins.
+    Antwort: {"agent_id", "yaml", "config"}
+    """
+    _, err = _require_admin_user()
+    if err:
+        return err
+
+    agent = db.session.get(Agent, agent_id)
+    if not agent:
+        return jsonify({"error": f"Agent mit ID {agent_id} nicht gefunden"}), 404
+
+    if not agent.has_daemon_credentials:
+        # Agents aus der Zeit vor M33 haben noch keine Credentials
+        agent.generate_daemon_credentials()
+        db.session.commit()
+    if not agent.uuid:
+        import uuid as _uuid
+        agent.uuid = str(_uuid.uuid4())
+        db.session.commit()
+
+    from flask import current_app
+    remote_url = current_app.config.get("BASE_URL", "http://localhost:5000")
+
+    return jsonify({
+        "agent_id": agent.id,
+        "yaml": agent.get_wings_configuration_yaml(remote_url),
+        "config": agent.get_wings_configuration(remote_url),
+    })
+
+
+@admin_bp.route("/agents/<int:agent_id>/rotate-credentials", methods=["POST"])
+def rotate_agent_credentials(agent_id: int):
+    """Erzeugt neue Node-Credentials (token_id + token). Danach config.yml neu ausrollen (M33)."""
+    user, err = _require_admin_user()
+    if err:
+        return err
+
+    agent = db.session.get(Agent, agent_id)
+    if not agent:
+        return jsonify({"error": f"Agent mit ID {agent_id} nicht gefunden"}), 404
+
+    agent.generate_daemon_credentials()
+    db.session.commit()
+
+    from app.domain.activity.service import log_event
+    try:
+        log_event(
+            "agent:credentials_rotated",
+            actor_id=user.id,
+            subject_id=agent.id,
+            subject_type="agent",
+            description=f"Node-Credentials fuer Agent '{agent.name}' neu erzeugt",
+        )
+    except Exception:  # pragma: no cover - best-effort
+        pass
+
+    return jsonify({
+        "message": "Credentials neu erzeugt. config.yml auf dem Node aktualisieren und Wings neu starten.",
+        "agent": agent.to_dict(),
+    })
+
+
 # ── Blueprints ──────────────────────────────────────────
+
+
+def _validate_blueprint_process_fields(data: dict) -> str | None:
+    """Validiert die Wings-Prozessfelder eines Blueprints (M33). Gibt Fehlertext oder None zurueck."""
+    if "config_startup" in data and data["config_startup"] is not None:
+        cfg = data["config_startup"]
+        if not isinstance(cfg, dict):
+            return "Field 'config_startup' must be an object like {\"done\": [\"...\"]}"
+        done = cfg.get("done")
+        if done is not None and not isinstance(done, (str, list)):
+            return "Field 'config_startup.done' must be a string or a list of strings"
+        if isinstance(done, list) and not all(isinstance(d, str) for d in done):
+            return "Field 'config_startup.done' must contain only strings"
+    if "config_stop" in data and data["config_stop"] is not None:
+        if not isinstance(data["config_stop"], str) or len(data["config_stop"]) > 64:
+            return "Field 'config_stop' must be a string (max 64 chars)"
+    if "config_files" in data and data["config_files"] is not None:
+        if not isinstance(data["config_files"], dict):
+            return "Field 'config_files' must be an object keyed by file name"
+    if "file_denylist" in data and data["file_denylist"] is not None:
+        fdl = data["file_denylist"]
+        if not isinstance(fdl, list) or not all(isinstance(f, str) for f in fdl):
+            return "Field 'file_denylist' must be a list of strings"
+    for field in ("install_container", "install_entrypoint"):
+        if field in data and data[field] is not None and not isinstance(data[field], str):
+            return f"Field '{field}' must be a string"
+    return None
 
 
 @admin_bp.route("/blueprints", methods=["GET"])
@@ -168,14 +352,24 @@ def create_blueprint():
     if not name:
         return jsonify({"error": "Field 'name' is required"}), 400
 
+    err = _validate_blueprint_process_fields(data)
+    if err:
+        return jsonify({"error": err}), 400
+
     blueprint = BlueprintModel(
         name=name,
         description=data.get("description"),
         docker_image=data.get("docker_image"),
         startup_command=data.get("startup_command"),
         install_script=data.get("install_script"),
+        install_container=data.get("install_container"),
+        install_entrypoint=data.get("install_entrypoint"),
         variables=data.get("variables", []),
         config_schema=data.get("config_schema"),
+        config_startup=data.get("config_startup"),
+        config_stop=data.get("config_stop"),
+        config_files=data.get("config_files"),
+        file_denylist=data.get("file_denylist"),
     )
     db.session.add(blueprint)
     db.session.commit()
@@ -193,7 +387,15 @@ def update_blueprint(blueprint_id: int):
     if not data:
         return jsonify({"error": "Request body is required"}), 400
 
-    updatable = ["name", "description", "docker_image", "startup_command", "install_script", "variables", "config_schema"]
+    err = _validate_blueprint_process_fields(data)
+    if err:
+        return jsonify({"error": err}), 400
+
+    updatable = [
+        "name", "description", "docker_image", "startup_command", "install_script",
+        "install_container", "install_entrypoint", "variables", "config_schema",
+        "config_startup", "config_stop", "config_files", "file_denylist",
+    ]
     for field in updatable:
         if field in data:
             setattr(blueprint, field, data[field])

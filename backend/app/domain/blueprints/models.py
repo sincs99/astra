@@ -11,10 +11,21 @@ Variables-Format (blueprint.variables):
     "user_editable": true
   }
 ]
+
+Prozess-Konfiguration fuer Wings (M33, Format wie Pterodactyl/Pelican-Eggs):
+- config_startup: {"done": ["Done ("], "strip_ansi": false}
+- config_stop:    "stop"  (Konsolenbefehl) oder "^SIGTERM" (Signal)
+- config_files:   {"server.properties": {"parser": "properties",
+                    "find": {"server-port": "{{server.build.default.port}}"}}}
+- file_denylist:  ["*.jar"]
 """
 
 from app.extensions import db
 from datetime import datetime, timezone
+
+DEFAULT_INSTALL_CONTAINER = "ghcr.io/pterodactyl/installers:debian"
+DEFAULT_INSTALL_ENTRYPOINT = "bash"
+DEFAULT_CONFIG_STOP = "stop"
 
 
 class Blueprint(db.Model):
@@ -26,9 +37,17 @@ class Blueprint(db.Model):
     docker_image = db.Column(db.String(255), nullable=True)
     startup_command = db.Column(db.Text, nullable=True)
     install_script = db.Column(db.Text, nullable=True)
+    # M33: Install-Container und Entrypoint fuer das Install-Script (Wings)
+    install_container = db.Column(db.String(255), nullable=True)
+    install_entrypoint = db.Column(db.String(64), nullable=True)
     # Variablen-Definitionen: Liste von Variable-Objekten (siehe Doku oben)
     variables = db.Column(db.JSON, nullable=True, default=list)
     config_schema = db.Column(db.JSON, nullable=True)
+    # M33: Prozess-Konfiguration fuer Wings (siehe Modul-Doku)
+    config_startup = db.Column(db.JSON, nullable=True)
+    config_stop = db.Column(db.String(64), nullable=True)
+    config_files = db.Column(db.JSON, nullable=True)
+    file_denylist = db.Column(db.JSON, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -46,6 +65,42 @@ class Blueprint(db.Model):
                 env[env_key] = str(default) if default is not None else ""
         return env
 
+    # ── Wings-Hilfsmethoden (M33) ──────────────────────
+
+    def get_install_container(self) -> str:
+        return self.install_container or DEFAULT_INSTALL_CONTAINER
+
+    def get_install_entrypoint(self) -> str:
+        return self.install_entrypoint or DEFAULT_INSTALL_ENTRYPOINT
+
+    def get_startup_done_lines(self) -> list[str]:
+        """Zeilen, bei denen Wings den Server als 'running' markiert."""
+        cfg = self.config_startup or {}
+        done = cfg.get("done") if isinstance(cfg, dict) else None
+        if isinstance(done, str):
+            return [done] if done else []
+        if isinstance(done, list):
+            return [str(d) for d in done if d]
+        return []
+
+    def get_startup_strip_ansi(self) -> bool:
+        cfg = self.config_startup or {}
+        return bool(cfg.get("strip_ansi", False)) if isinstance(cfg, dict) else False
+
+    def get_stop_configuration(self) -> dict:
+        """Wandelt config_stop in das Wings-Format {type, value} um.
+
+        "stop"      -> {"type": "command", "value": "stop"}
+        "^SIGTERM"  -> {"type": "signal",  "value": "SIGTERM"}
+        """
+        stop = (self.config_stop or DEFAULT_CONFIG_STOP).strip()
+        if stop.startswith("^"):
+            return {"type": "signal", "value": stop[1:].upper()}
+        return {"type": "command", "value": stop}
+
+    def get_file_denylist(self) -> list[str]:
+        return [str(f) for f in (self.file_denylist or []) if f]
+
     def to_dict(self) -> dict:
         return {
             "id": self.id,
@@ -54,8 +109,14 @@ class Blueprint(db.Model):
             "docker_image": self.docker_image,
             "startup_command": self.startup_command,
             "install_script": self.install_script,
+            "install_container": self.install_container,
+            "install_entrypoint": self.install_entrypoint,
             "variables": self.variables or [],
             "config_schema": self.config_schema,
+            "config_startup": self.config_startup,
+            "config_stop": self.config_stop,
+            "config_files": self.config_files,
+            "file_denylist": self.file_denylist or [],
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

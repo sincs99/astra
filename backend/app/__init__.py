@@ -288,11 +288,14 @@ def _register_blueprints(app: Flask) -> None:
     from app.api.client.routes import client_bp
     from app.api.agent.routes import agent_bp
     from app.api.auth.routes import auth_bp
+    from app.api.remote.routes import remote_bp
 
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
     app.register_blueprint(client_bp, url_prefix="/api/client")
     app.register_blueprint(agent_bp, url_prefix="/api/agent")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    # M33: Wings Remote-API (Node-Token-Auth, Pfade wie im Referenz-Panel)
+    app.register_blueprint(remote_bp, url_prefix="/api/remote")
 
 
 # ── Ops-Endpunkte ──────────────────────────────────────

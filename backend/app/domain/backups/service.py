@@ -19,6 +19,20 @@ class BackupError(Exception):
         super().__init__(self.message)
 
 
+def _runner_completed(data: dict | None, default: bool | None = None) -> bool:
+    """Hat der Runner den Auftrag bereits synchron abgeschlossen?
+
+    - data.completed gesetzt -> massgeblich (Stub: True, Wings: False)
+    - sonst: Checksum vorhanden -> abgeschlossen (Runner ohne completed-Flag), andernfalls `default`
+    """
+    data = data or {}
+    if "completed" in data:
+        return bool(data.get("completed"))
+    if default is not None:
+        return default
+    return bool(data.get("checksum"))
+
+
 def list_backups(instance: Instance) -> list[Backup]:
     """Listet alle Backups einer Instance."""
     return (
@@ -50,18 +64,22 @@ def create_backup(
     db.session.add(backup)
     db.session.flush()
 
-    # 2. Runner-Stub aufrufen
+    # 2. Runner aufrufen
+    #    Stub: liefert sofort ein fertiges Ergebnis (data.completed = True).
+    #    Wings: antwortet 202 Accepted und meldet das Ergebnis spaeter per
+    #           POST /api/remote/backups/{uuid} – bis dahin bleibt is_successful=False.
     try:
         runner = get_runner()
         response = runner.create_backup(agent, instance, backup)
 
-        if response.success:
+        if response.success and _runner_completed(response.data):
             backup.is_successful = True
             backup.completed_at = datetime.now(timezone.utc)
-            if response.data:
-                backup.checksum = response.data.get("checksum")
-                backup.bytes = response.data.get("bytes", 0)
+            backup.checksum = response.data.get("checksum")
+            backup.bytes = response.data.get("bytes", 0)
             logger.info("Backup '%s' für Instance %s erfolgreich", name, instance.uuid)
+        elif response.success:
+            logger.info("Backup '%s' für Instance %s gestartet (Abschluss per Remote-Callback)", name, instance.uuid)
         else:
             logger.warning("Backup '%s' fehlgeschlagen: %s", name, response.message)
 
@@ -95,9 +113,12 @@ def restore_backup(instance: Instance, backup: Backup) -> Instance:
         runner = get_runner()
         response = runner.restore_backup(agent, instance, backup)
 
-        if response.success:
+        if response.success and _runner_completed(response.data, default=False):
             instance.status = None  # ready
             logger.info("Restore von Backup '%s' für Instance %s erfolgreich", backup.name, instance.uuid)
+        elif response.success:
+            # Wings: Restore laeuft asynchron, Abschluss per POST /api/remote/backups/{uuid}/restore
+            logger.info("Restore von Backup '%s' für Instance %s gestartet", backup.name, instance.uuid)
         else:
             instance.status = "provision_failed"
             logger.warning("Restore fehlgeschlagen: %s", response.message)
