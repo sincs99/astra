@@ -6,6 +6,7 @@ import {
   Toast, useToast,
   cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, thStyle, tdStyle,
 } from "../components/ui";
+import { formatDateTime } from "../lib/dates";
 
 const EMPTY_VAR: BlueprintVariable = {
   name: "",
@@ -319,7 +320,7 @@ export function AdminBlueprintsPage() {
                       : <span style={{ color: "#d32f2f" }}>fehlt – Server bleibt in Wings auf „starting“</span>}
                   </span>
                   <span><strong>Variablen:</strong> {bp.variables?.length ?? 0}</span>
-                  <span style={{ color: "#666" }}>{bp.created_at ? new Date(bp.created_at).toLocaleString("de-CH") : "–"}</span>
+                  <span style={{ color: "#666" }}>{formatDateTime(bp.created_at)}</span>
                 </div>
 
                 {bp.variables && bp.variables.length > 0 && (

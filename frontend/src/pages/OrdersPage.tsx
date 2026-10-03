@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api, type Order } from "../services/api";
 import { formatDate } from "../lib/dates";
 import { formatPrice } from "../lib/money";
+import { MANUAL_PAYMENT_NOTICE } from "../legal/payment";
 import { isManualPayment, readPaymentReturn, safeCheckoutUrl } from "../lib/checkout";
 import { OrderNotice } from "../components/OrderNotice";
 import { ConnectionAddress } from "../components/ConnectionAddress";
@@ -43,8 +44,8 @@ export function OrdersPage() {
     if (!ret || handledReturn.current) return;
     handledReturn.current = true;
     if (ret.kind === "paid") {
-      toast.success("Danke für deine Zahlung! Wir bestätigen sie gerade und stellen deinen Server bereit.");
-      // Die Bestaetigung kommt asynchron per Webhook: kurz nachladen, bis der Status wechselt
+      toast.success("Zahlung eingegangen, Server wird bereitgestellt.");
+      // Die Bestaetigung kommt asynchron per Webhook: nach 5 s nachladen, solange der Status noch aussteht (max. 6x)
       let tries = 0;
       const timer = setInterval(async () => {
         tries += 1;
@@ -52,13 +53,13 @@ export function OrdersPage() {
           const list = await api.getMyOrders();
           setOrders(list);
           const current = list.find((o) => o.uuid === ret.orderUuid);
-          if (!current || current.status !== "pending_payment" || tries >= 10) clearInterval(timer);
+          if (!current || current.status !== "pending_payment" || tries >= 6) clearInterval(timer);
         } catch {
           clearInterval(timer);
         }
-      }, 3000);
+      }, 5000);
     } else {
-      toast.warning("Zahlung abgebrochen. Deine Bestellung bleibt offen, du kannst jederzeit erneut bezahlen.");
+      toast.warning("Zahlung abgebrochen.");
     }
     setSearchParams({}, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,29 +98,33 @@ export function OrdersPage() {
   };
 
   const action = (o: Order) => {
+    const payButton = (label: string) => manualPayment ? (
+      <span style={{ fontSize: 12, color: "#666", maxWidth: 220 }}>{MANUAL_PAYMENT_NOTICE}</span>
+    ) : (
+      <button type="button" onClick={() => pay(o)} disabled={paying === o.uuid}
+        style={{ ...btnPrimary, padding: "4px 12px", fontSize: 12, opacity: paying === o.uuid ? 0.6 : 1 }}>
+        {paying === o.uuid ? "…" : label}
+      </button>
+    );
     if (o.status === "pending_payment") {
       return (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          {manualPayment ? (
-            <span style={{ fontSize: 12, color: "#666", maxWidth: 220 }}>
-              Zahlung per Überweisung: Wir schalten deinen Server nach Zahlungseingang frei.
-            </span>
-          ) : (
-            <button type="button" onClick={() => pay(o)} disabled={paying === o.uuid}
-              style={{ ...btnPrimary, padding: "4px 12px", fontSize: 12, opacity: paying === o.uuid ? 0.6 : 1 }}>
-              {paying === o.uuid ? "…" : "Jetzt bezahlen"}
-            </button>
-          )}
+          {payButton("Jetzt bezahlen")}
           <ConfirmButton size="sm" danger label="Stornieren"
             confirmMessage="Bestellung wirklich stornieren?" onConfirm={() => cancel(o)} />
         </div>
       );
     }
-    if ((o.status === "active" || o.status === "past_due") && !o.cancel_at_period_end) {
+    if (o.status === "active" || o.status === "past_due") {
       return (
-        <ConfirmButton size="sm" danger label="Kündigen zum Laufzeitende"
-          confirmMessage="Zum Laufzeitende kündigen? Der Server bleibt bis dahin nutzbar."
-          onConfirm={() => cancel(o)} />
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          {payButton("Verlängern und bezahlen")}
+          {!o.cancel_at_period_end && (
+            <ConfirmButton size="sm" danger label="Kündigen zum Laufzeitende"
+              confirmMessage="Zum Laufzeitende kündigen? Der Server bleibt bis dahin nutzbar."
+              onConfirm={() => cancel(o)} />
+          )}
+        </div>
       );
     }
     if (o.status === "awaiting_provisioning") {

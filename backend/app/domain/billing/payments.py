@@ -25,13 +25,20 @@ _ZERO_DECIMAL = {"BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", 
 
 
 class PaymentError(Exception):
-    """Fehler eines Zahlungsvorgangs. `code` ist ein stabiler, maschinenlesbarer Fehlercode fuer das Frontend."""
+    """Fachlicher Zahlungsfehler. `code` ist ein maschinenlesbarer Grund fuer das Frontend
+    (z.B. "manual" = Online-Zahlung nicht aktiviert, "invalid_status")."""
 
     def __init__(self, message: str, status_code: int = 400, code: str | None = None):
         super().__init__(message)
         self.message = message
         self.status_code = status_code
         self.code = code
+
+    def to_response(self) -> dict:
+        body = {"error": self.message}
+        if self.code:
+            body["code"] = self.code
+        return body
 
 
 @dataclass
@@ -66,7 +73,7 @@ class ManualProvider(PaymentProvider):
     def create_checkout(self, order: Order) -> str:
         raise PaymentError(
             "Online-Zahlung ist nicht aktiviert. Bitte bezahle per Ueberweisung, "
-            "wir schalten deine Bestellung nach Zahlungseingang frei.", 409, "manual"
+            "wir schalten deine Bestellung nach Zahlungseingang frei.", 409, code="manual",
         )
 
     def handle_webhook(self, payload: bytes, signature: str | None) -> list[PaymentEvent]:

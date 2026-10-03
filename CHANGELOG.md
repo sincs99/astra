@@ -6,6 +6,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added (Phase 2 – Produktions-Deployment)
+- `POST /api/client/orders/{uuid}/checkout`: 409-Antworten tragen `code` (`manual`, `invalid_status`), `PaymentError.code`
 - `docker-compose.prod.yml`: Container `billing` fuehrt `cli.py billing-tick` alle `BILLING_TICK_INTERVAL` Sekunden (Standard 300) aus; `BILLING_GRACE_DAYS` in `.env.prod.example`
 - `POST/PATCH /api/admin/agents`: Kapazitaetsfelder `memory_total`, `disk_total`, `cpu_total` und `*_overalloc` pflegbar (Ganzzahl >= 0, 0 = kein Limit)
 - `docker-compose.prod.yml`: Caddy als TLS-Terminierung (Let's Encrypt, einziger oeffentlicher Eingang 80/443),
@@ -159,6 +160,8 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `redis` zu `backend/requirements.txt` hinzugefuegt
 
 ### Added (Frontend)
+- Stripe-Frontend an den Vertrag angepasst: "Verlängern und bezahlen" bei aktiven/ueberfaelligen Bestellungen, Hinweis zum manuellen Zahlungsweg aus zentraler Konstante (`src/legal/payment.ts`), Toasts "Zahlung eingegangen, Server wird bereitgestellt." / "Zahlung abgebrochen.", Nachladen nach 5 s
+- Alle Backend-Zeitstempel werden als UTC gelesen (`parseUtc`, `formatDateTime`, `formatTimeAgo`, ...): Aktivitaetslog, Backups, Routinen, API-Keys, SSH-Keys, Jobs, Agents, Blueprints, Fleet Monitoring. Behebt falsche "vor X Std."-Angaben in Browsern ausserhalb von UTC; Strings mit Zeitzonen-Suffix (z.B. `+00:00`) bleiben unveraendert
 - Stripe-Vorbereitung auf `/orders`: Button "Jetzt bezahlen" fuer unbezahlte Bestellungen (`POST /client/orders/{uuid}/checkout` -> Weiterleitung zur `checkout_url`, nur https); bei 409 "manual" verschwindet der Button und es erscheint der Hinweis zur Zahlung per Ueberweisung; Rueckkehr `?paid=<uuid>` (Dank-Toast, Status wird bis zur Bestaetigung nachgeladen) und `?cancelled=<uuid>` (Hinweis, Bestellung bleibt offen)
 - Billing-Tick-Vertrag (M46): Admin-Bestellungen mit "Verlaengern (Zahlung erfassen)" bei active/past_due (Zahlungsreferenz Pflicht), Warnhinweise bei Kunden und Admin (`OrderNotice`): "Gesperrt seit …" und "Server wird am … geloescht" (rot) bei past_due, "Laeuft bis …, wird dann geloescht" bei gekuendigten aktiven Bestellungen; Lösch-Dialog nennt bei laufender Bestellung "… eine Erstattung erfolgt nicht"; Zeitstempel ohne Zeitzone werden als UTC gelesen (`parseUtc`, `formatDateTime`); Vitest laeuft mit fester Zeitzone UTC
 - Rechtsseiten `/impressum`, `/datenschutz`, `/agb` (ohne Login erreichbar, Platzhaltertexte mit Hinweis "vom Betreiber auszufuellen", Betreiberdaten zentral in `src/legal/operator.ts`, offene Platzhalter hervorgehoben), Footer mit Rechtslinks auf allen Seiten inkl. Login/Registrierung (`SiteFooter`); Registrierung mit Pflicht-Checkbox "Ich akzeptiere die AGB und die Datenschutzerklaerung"

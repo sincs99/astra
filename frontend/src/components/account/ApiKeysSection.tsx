@@ -4,6 +4,7 @@ import {
   cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, thStyle, tdStyle,
   ConfirmButton, ErrorState, LoadingState, EmptyState,
 } from "../ui";
+import { formatDateTime } from "../../lib/dates";
 
 /** API-Keys verwalten; der Klartext-Token wird nur direkt nach dem Anlegen angezeigt. */
 export function ApiKeysSection({ onMessage }: { onMessage: (message: string) => void }) {
@@ -125,7 +126,7 @@ export function ApiKeysSection({ onMessage }: { onMessage: (message: string) => 
                   <td style={tdStyle}><code>{k.identifier}</code></td>
                   <td style={tdStyle}>{k.memo || "–"}</td>
                   <td style={tdStyle}>{k.key_type}</td>
-                  <td style={tdStyle}>{k.last_used_at ? new Date(k.last_used_at).toLocaleString("de-CH") : "nie"}</td>
+                  <td style={tdStyle}>{k.last_used_at ? formatDateTime(k.last_used_at) : "nie"}</td>
                   <td style={tdStyle}>
                     <ConfirmButton label="Loeschen" danger size="sm"
                       confirmMessage={`API-Key ${k.identifier} wirklich loeschen? Programme, die ihn nutzen, verlieren den Zugriff.`}

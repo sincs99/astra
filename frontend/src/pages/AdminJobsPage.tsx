@@ -5,6 +5,7 @@ import {
   PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState,
   cardStyle, inputStyle, labelStyle, btnDefault, thStyle, tdStyle,
 } from "../components/ui";
+import { formatLogTime } from "../lib/dates";
 
 type StatusFilter = "" | "pending" | "running" | "completed" | "failed" | "retrying";
 
@@ -166,9 +167,4 @@ function MiniCard({ label, value, color }: { label: string; value: number; color
   );
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return "-";
-  try {
-    return new Date(iso).toLocaleString("de-CH", { hour: "2-digit", minute: "2-digit", second: "2-digit", day: "2-digit", month: "2-digit" });
-  } catch { return iso; }
-}
+const formatDate = formatLogTime;
