@@ -6,6 +6,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added (Phase 2 – Produktions-Deployment)
+- `docker-compose.prod.yml`: Container `billing` fuehrt `cli.py billing-tick` alle `BILLING_TICK_INTERVAL` Sekunden (Standard 300) aus; `BILLING_GRACE_DAYS` in `.env.prod.example`
 - `POST/PATCH /api/admin/agents`: Kapazitaetsfelder `memory_total`, `disk_total`, `cpu_total` und `*_overalloc` pflegbar (Ganzzahl >= 0, 0 = kein Limit)
 - `docker-compose.prod.yml`: Caddy als TLS-Terminierung (Let's Encrypt, einziger oeffentlicher Eingang 80/443),
   Worker-Container fuer die Redis-Job-Queue, Healthchecks fuer Backend/Redis, Redis mit Passwort und AOF,
@@ -142,6 +143,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `redis` zu `backend/requirements.txt` hinzugefuegt
 
 ### Added (Frontend)
+- Oeffentlicher Shop: `/shop` ist ohne Login erreichbar (schlanke Navigation mit Anmelden/Registrieren, Button "Anmelden und bestellen"); Login und Registrierung kehren per `?redirect=` zum urspruenglichen Ziel zurueck (nur interne Pfade, Schutz vor Open Redirect, `lib/redirect.ts`). Admin-Bestellungen heben `awaiting_provisioning` hervor; Blueprint-Name auf Shop-Karten, sobald das Backend ihn liefert
 - Phase 4 gegen die echten Endpunkte (M44, `docs/orders-api.md`): Admin-Produkte `/admin/products` (CRUD, Euro<->Cent, Ressourcen flach im Body, `is_active`, Gratis-Produkte brauchen `max_instances_per_user`), Kunden-Shop `/shop` (Karten, Bestellung mit optionalem Servername, Hinweise je Status), Meine Bestellungen `/orders` (Bestellungen per `uuid`, Status-Badges inkl. `awaiting_provisioning`, Verbindungsadresse, Stornieren sofort vs. Kuendigen zum Laufzeitende), Admin-Bestellungen `/admin/orders` (Statusfilter, "Als bezahlt markieren" mit optionaler Zahlungsreferenz, "Erneut bereitstellen", 409-Text). Navigation "Shop"/"Meine Bestellungen" fuer alle, "Produkte"/"Bestellungen" fuer Admins; Dashboard verweist Kunden ohne Server auf den Shop
 - Instance loeschen (M43): Owner auf der Detailseite ("Instance loeschen", `DELETE /client/instances/{uuid}` mit Namensbestaetigung; gesperrte Instances nur durch Admins), Admin in der Instance-Liste (`DELETE /admin/instances/{uuid}`, "Erzwingen" bei laufenden Vorgaengen, Hinweis wenn das Aufraeumen auf dem Node fehlschlug). Bestaetigung erst nach exakter Eingabe des Namens (`DeleteInstanceForm`); nach dem Loeschen als Owner Redirect aufs Dashboard mit Toast, Admins bekommen bei `runner_cleanup: failed` einen Warn-Toast ("Aufraeumen auf dem Node fehlgeschlagen, bitte Wings pruefen"), Kunden bei gesperrter Instance den Hinweis "Gesperrt, bitte Support kontaktieren"
 - Agent-Formular (Erstellen/Bearbeiten): Kapazitaet Memory/Disk/CPU gesamt und Ueberallokation je Dimension (0 = kein Limit), Validierung 0..1000 % fuer Ueberallokation

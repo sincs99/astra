@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, isAuthenticated, setAccessToken } from "../services/api";
+import { safeRedirectPath } from "../lib/redirect";
 import { inputStyle, labelStyle, btnPrimary, linkStyle } from "../components/ui";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const expired = searchParams.get("expired") === "1";
+  const redirectTo = safeRedirectPath(searchParams.get("redirect"));
   const resetDone = searchParams.get("reset") === "1";
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
@@ -18,7 +20,7 @@ export function LoginPage() {
   const [resent, setResent] = useState(false);
 
   // Bereits eingeloggt -> direkt zum Dashboard (nicht bei abgelaufener Sitzung)
-  if (isAuthenticated() && !expired) return <Navigate to="/" replace />;
+  if (isAuthenticated() && !expired) return <Navigate to={redirectTo} replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +45,7 @@ export function LoginPage() {
         return;
       }
       setAccessToken(result.access_token);
-      navigate("/");
+      navigate(redirectTo);
     } catch (err) {
       if (err instanceof ApiError && err.code === "email_not_verified") setUnverified(true);
       setError(err instanceof Error ? err.message : "Anmeldung fehlgeschlagen");
@@ -166,7 +168,7 @@ export function LoginPage() {
 
         <p style={{ display: "flex", justifyContent: "space-between", fontSize: 14, marginTop: 16 }}>
           <Link to="/password-reset" style={linkStyle}>Passwort vergessen?</Link>
-          <Link to="/register" style={linkStyle}>Konto erstellen</Link>
+          <Link to={redirectTo === "/" ? "/register" : `/register?redirect=${encodeURIComponent(redirectTo)}`} style={linkStyle}>Konto erstellen</Link>
         </p>
       </form>
     </div>

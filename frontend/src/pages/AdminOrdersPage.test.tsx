@@ -63,6 +63,12 @@ describe("AdminOrdersPage", () => {
     await waitFor(() => expect(paid).toHaveBeenCalledWith("o-7", undefined));
   });
 
+  it("hebt wartende Bestellungen hervor", async () => {
+    vi.spyOn(api, "getAdminOrders").mockResolvedValue([pending, awaiting]);
+    mount();
+    expect(await screen.findByText("1 bezahlte Bestellung wartet auf Bereitstellung.")).toBeTruthy();
+  });
+
   it("stellt eine wartende Bestellung erneut bereit", async () => {
     vi.spyOn(api, "getAdminOrders").mockResolvedValue([awaiting]);
     const paid = vi.spyOn(api, "markOrderPaid").mockResolvedValue(makeOrder({ status: "active" }));

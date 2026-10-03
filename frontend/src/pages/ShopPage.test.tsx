@@ -33,6 +33,27 @@ describe("ShopPage", () => {
     expect(within(card).getByText("Für kleine Server")).toBeTruthy();
   });
 
+  it("zeigt den Blueprint-Namen, sobald das Backend ihn liefert", async () => {
+    vi.spyOn(api, "getShopProducts").mockResolvedValue([{ ...product, blueprint_name: "Minecraft Vanilla" }]);
+    mount();
+    expect(await screen.findByText("Minecraft Vanilla")).toBeTruthy();
+  });
+
+  it("zeigt den Shop auch ausgeloggt und fuehrt zum Login mit Rueckkehr zum Shop", async () => {
+    localStorage.clear();
+    const me = vi.mocked(api.getCurrentUser);
+    me.mockClear();
+    vi.spyOn(api, "getShopProducts").mockResolvedValue([product]);
+    mount();
+    const card = await screen.findByRole("article", { name: "Starter" });
+    const login = within(card).getByRole("link", { name: /bestellen/ });
+    expect(login.getAttribute("href")).toBe("/login?redirect=%2Fshop");
+    expect(within(card).queryByRole("button", { name: /bestellen/ })).toBeNull();
+    expect(screen.getByRole("link", { name: "Anmelden" }).getAttribute("href")).toBe("/login?redirect=%2F");
+    expect(screen.getByRole("link", { name: "Registrieren" })).toBeTruthy();
+    expect(me).not.toHaveBeenCalled();
+  });
+
   it("bestellt mit Servername und weist auf die Freischaltung nach Zahlung hin", async () => {
     vi.spyOn(api, "getShopProducts").mockResolvedValue([product]);
     const order = vi.spyOn(api, "createOrder").mockResolvedValue(makeOrder({ status: "pending_payment" }));
