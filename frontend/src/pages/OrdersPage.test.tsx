@@ -48,7 +48,7 @@ describe("OrdersPage", () => {
     expect(first.getByText("n1.example.com:25565")).toBeTruthy();
     expect(within(rows[2]).getByLabelText("Zahlung ausstehend")).toBeTruthy();
     expect(within(rows[3]).getByLabelText("wird bereitgestellt")).toBeTruthy();
-    expect(within(rows[3]).getByText("Bezahlt, wird bereitgestellt")).toBeTruthy();
+    expect(within(rows[3]).getByText("Bezahlt. Dein Server wird automatisch bereitgestellt, sobald Platz frei ist.")).toBeTruthy();
     expect(within(rows[4]).getByText("Produkt #5")).toBeTruthy();
     expect(within(rows[4]).getByLabelText("gekündigt")).toBeTruthy();
   });
