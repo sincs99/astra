@@ -1,0 +1,65 @@
+import { useState } from "react";
+import { api, MIN_PASSWORD_LENGTH } from "../../services/api";
+import { cardStyle, inputStyle, labelStyle, btnPrimary, ErrorState } from "../ui";
+
+/**
+ * Feature-Flag: der Endpunkt POST /api/auth/change-password wird im Backend gebaut.
+ * Freischalten mit VITE_CHANGE_PASSWORD_ENABLED=true (Build-Zeit).
+ */
+export const CHANGE_PASSWORD_ENABLED = import.meta.env.VITE_CHANGE_PASSWORD_ENABLED === "true";
+
+export function PasswordSection({ onChanged }: { onChanged: (message: string) => void }) {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  if (!CHANGE_PASSWORD_ENABLED) return null;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!current || !next) return setError("Bitte alle Felder ausfuellen");
+    if (next.length < MIN_PASSWORD_LENGTH) return setError(`Das neue Passwort muss mindestens ${MIN_PASSWORD_LENGTH} Zeichen lang sein`);
+    if (next !== confirm) return setError("Die neuen Passwoerter stimmen nicht ueberein");
+    try {
+      setBusy(true);
+      setError(null);
+      await api.changePassword(current, next);
+      setCurrent(""); setNext(""); setConfirm("");
+      onChanged("Passwort geaendert.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Passwort konnte nicht geaendert werden");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section style={cardStyle} aria-labelledby="pw-title">
+      <h2 id="pw-title" style={{ marginTop: 0, fontSize: 18 }}>Passwort aendern</h2>
+      {error && <ErrorState message={error} />}
+      <form onSubmit={submit} noValidate style={{ maxWidth: 360 }}>
+        <div style={{ marginBottom: 12 }}>
+          <label htmlFor="pw-current" style={labelStyle}>Aktuelles Passwort</label>
+          <input id="pw-current" type="password" autoComplete="current-password" value={current}
+            onChange={(e) => setCurrent(e.target.value)} style={inputStyle} />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label htmlFor="pw-new" style={labelStyle}>Neues Passwort</label>
+          <input id="pw-new" type="password" autoComplete="new-password" value={next}
+            onChange={(e) => setNext(e.target.value)} style={inputStyle} />
+          <small style={{ color: "#666", fontSize: 12 }}>Mindestens {MIN_PASSWORD_LENGTH} Zeichen</small>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label htmlFor="pw-confirm" style={labelStyle}>Neues Passwort wiederholen</label>
+          <input id="pw-confirm" type="password" autoComplete="new-password" value={confirm}
+            onChange={(e) => setConfirm(e.target.value)} style={inputStyle} />
+        </div>
+        <button type="submit" disabled={busy} style={{ ...btnPrimary, opacity: busy ? 0.6 : 1 }}>
+          {busy ? "..." : "Passwort aendern"}
+        </button>
+      </form>
+    </section>
+  );
+}

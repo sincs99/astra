@@ -51,7 +51,7 @@ export function DashboardPage() {
         <EmptyState
           message={user?.is_admin
             ? "Keine Instances vorhanden. Erstelle eine ueber den Admin-Bereich."
-            : "Du hast noch keinen Server. Wende dich an einen Administrator."}
+            : "Noch kein Server. Bestellung folgt in Phase 4."}
           icon="📦"
         />
       ) : (

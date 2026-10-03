@@ -12,6 +12,8 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
   const [unverified, setUnverified] = useState(false);
   const [resent, setResent] = useState(false);
 
@@ -24,13 +26,22 @@ export function LoginPage() {
       setError("Bitte Username/Email und Passwort eingeben");
       return;
     }
+    if (mfaRequired && !mfaCode.trim()) {
+      setError("Bitte den Code aus deiner Authenticator-App eingeben");
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
       setUnverified(false);
       setResent(false);
-      const result = await api.login(login.trim(), password);
+      const result = await api.login(login.trim(), password, mfaRequired ? mfaCode.trim() : undefined);
+      if ("requires_mfa" in result) {
+        // Zweiter Schritt: Code aus der Authenticator-App (oder Recovery-Code) abfragen
+        setMfaRequired(true);
+        return;
+      }
       setAccessToken(result.access_token);
       navigate("/");
     } catch (err) {
@@ -120,6 +131,26 @@ export function LoginPage() {
           />
         </div>
 
+        {mfaRequired && (
+          <div style={{ marginBottom: 20 }}>
+            <label htmlFor="mfa" style={labelStyle}>Authenticator-Code</label>
+            <input
+              id="mfa"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              autoFocus
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value)}
+              placeholder="123456"
+              style={inputStyle}
+            />
+            <small style={{ color: "#666", fontSize: 12 }}>
+              6-stelliger Code aus deiner App, oder ein Recovery-Code.
+            </small>
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={loading}
@@ -130,7 +161,7 @@ export function LoginPage() {
             cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Wird angemeldet..." : "Anmelden"}
+          {loading ? "Wird angemeldet..." : mfaRequired ? "Bestaetigen" : "Anmelden"}
         </button>
 
         <p style={{ display: "flex", justifyContent: "space-between", fontSize: 14, marginTop: 16 }}>
