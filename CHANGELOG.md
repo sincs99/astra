@@ -25,6 +25,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `redis` zu `backend/requirements.txt` hinzugefuegt
 
 ### Added (Frontend)
+- Self-Service (M34-Frontend): `RegisterPage` (/register), `ForgotPasswordPage` (/password-reset), `ResetPasswordPage` (/password-reset/confirm?token=), Links auf der LoginPage; Meldung "Registrierung ist deaktiviert"; clientseitige Validierung (Passwort min. 8 Zeichen)
 - `PageLayout`: SPA-Navigation per `react-router` (kein Seiten-Reload), `aria-current`, Abmelden-Button
 - `FileBrowser`: Upload von Textdateien (max. 1 MB, Workaround ueber Write-Endpoint) und "Neue Datei"
 - Auto-Refresh (15s, abschaltbar, nur bei sichtbarem Tab) fuer Jobs-Dashboard, Fleet Monitoring, Dashboard und Admin-Instances (`hooks/useAutoRefresh.ts`, `AutoRefreshToggle`)

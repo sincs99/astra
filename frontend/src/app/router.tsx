@@ -10,6 +10,9 @@ import { AdminJobsPage } from "../pages/AdminJobsPage";
 import { AdminSystemPage } from "../pages/AdminSystemPage";
 import { InstanceDetailPage } from "../pages/InstanceDetailPage";
 import { SshKeysPage } from "../pages/SshKeysPage";
+import { RegisterPage } from "../pages/RegisterPage";
+import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "../pages/ResetPasswordPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { isAuthenticated } from "../services/api";
 
@@ -28,6 +31,9 @@ export function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/password-reset" element={<ForgotPasswordPage />} />
+        <Route path="/password-reset/confirm" element={<ResetPasswordPage />} />
         <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/admin/agents" element={<ProtectedRoute><AdminAgentsPage /></ProtectedRoute>} />
         <Route path="/admin/agents/monitoring" element={<ProtectedRoute><AdminAgentsMonitoringPage /></ProtectedRoute>} />

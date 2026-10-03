@@ -39,6 +39,9 @@ export function isAuthenticated(): boolean {
   return !!getAccessToken();
 }
 
+/** Muss zum Backend passen (MIN_PASSWORD_LENGTH in accounts/service.py). */
+export const MIN_PASSWORD_LENGTH = 8;
+
 export function logout() {
   setAccessToken(null);
 }
@@ -633,6 +636,24 @@ export interface PreflightResult {
 
 export const api = {
   // ── Auth ─────────────────────────────────────────────
+  register: (username: string, email: string, password: string) =>
+    request<LoginResponse>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ username, email, password }),
+    }),
+
+  requestPasswordReset: (email: string) =>
+    request<{ message: string }>("/auth/password-reset/request", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  confirmPasswordReset: (token: string, password: string) =>
+    request<{ message: string }>("/auth/password-reset/confirm", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    }),
+
   login: (login: string, password: string) =>
     request<LoginResponse>("/auth/login", {
       method: "POST",
