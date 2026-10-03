@@ -281,6 +281,32 @@ r = webhook(payload)
 billing._apply_payment_event = real
 check("Wiederholung verarbeitet es", r.status_code == 200 and r.json["results"][0]["status"] == "processed" and order(o4)["status"] == "active")
 
+print("Admin: Zahlungsereignisse ansehen")
+r = c.get("/api/admin/payment-events", headers=AH)
+check("Liste -> 200 mit Ereignissen", r.status_code == 200 and len(r.json) >= 8, str(len(r.json)))
+check("Felder und UTC-Zeitstempel", all({"event_id", "provider", "status", "order_uuid", "detail", "received_at"} <= set(e) for e in r.json)
+      and all(e["received_at"].endswith("+00:00") for e in r.json))
+check("neueste zuerst", [e["id"] for e in r.json] == sorted([e["id"] for e in r.json], reverse=True))
+by_status = lambda st: c.get(f"/api/admin/payment-events?status={st}", headers=AH).json
+mism = by_status("mismatch")
+check("Filter mismatch: genau die zwei Abweichungen", {e["event_id"] for e in mism} == {"evt_m1", "evt_m2"} and all("weichen ab" in e["detail"] for e in mism), str([e["event_id"] for e in mism]))
+check("Filter unapplied: Zahlung fuer stornierte Bestellung", [e["event_id"] for e in by_status("unapplied")] == ["evt_cn"])
+check("Filter processed enthaelt die Erstzahlung", "evt_a" in {e["event_id"] for e in by_status("processed")})
+check("Filter ignored enthaelt unbezahlte und unbekannte", {"evt_u", "evt_nf"} <= {e["event_id"] for e in by_status("ignored")})
+check("Filter nach Bestellung", {e["event_id"] for e in c.get(f"/api/admin/payment-events?order_uuid={o1}", headers=AH).json} >= {"evt_a", "evt_b", "evt_c", "evt_d"})
+check("Filter kombinierbar, leer ohne Treffer", c.get(f"/api/admin/payment-events?status=mismatch&order_uuid={o1}", headers=AH).json == [])
+check("limit begrenzt die Liste", len(c.get("/api/admin/payment-events?limit=2", headers=AH).json) == 2)
+check("unbekannter Status -> 400", c.get("/api/admin/payment-events?status=quatsch", headers=AH).status_code == 400)
+check("limit 0 -> 400", c.get("/api/admin/payment-events?limit=0", headers=AH).status_code == 400)
+check("limit 501 -> 400", c.get("/api/admin/payment-events?limit=501", headers=AH).status_code == 400)
+check("limit keine Zahl -> 400", c.get("/api/admin/payment-events?limit=abc", headers=AH).status_code == 400)
+app.config["ADMIN_GUARD_ENABLED"] = True
+check("ohne Login -> 401", c.get("/api/admin/payment-events").status_code == 401)
+check("als Kunde -> 403", c.get("/api/admin/payment-events", headers=U1).status_code == 403)
+check("als Admin -> 200", c.get("/api/admin/payment-events", headers=AH).status_code == 200)
+app.config["ADMIN_GUARD_ENABLED"] = False
+check("nur lesend: POST nicht erlaubt (405)", c.post("/api/admin/payment-events", json={}, headers=AH).status_code == 405)
+
 print("Konfiguration")
 
 
