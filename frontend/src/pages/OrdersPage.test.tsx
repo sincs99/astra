@@ -149,6 +149,26 @@ describe("OrdersPage", () => {
       await waitFor(() => expect(assign).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_2"));
     });
 
+    it("hebt 'Verlängern und bezahlen' bei ueberfaelligen Bestellungen rot hervor", async () => {
+      const overdue2 = makeOrder({ id: 8, uuid: "o-8", status: "past_due", past_due_at: "2026-10-01T08:30:00", scheduled_deletion_at: "2026-10-08T08:30:00" });
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([active, overdue2]);
+      mount();
+      const [normal, urgent] = await screen.findAllByRole("button", { name: "Verlängern und bezahlen" });
+      expect((normal as HTMLElement).style.backgroundColor).toBe("rgb(25, 118, 210)");
+      expect((urgent as HTMLElement).style.backgroundColor).toBe("rgb(211, 47, 47)");
+    });
+
+    it("laedt die Liste neu, wenn der Checkout invalid_status meldet", async () => {
+      const list = vi.spyOn(api, "getMyOrders").mockResolvedValue([pending]);
+      vi.spyOn(api, "createCheckout").mockRejectedValue(new ApiError("Bestellung ist nicht zahlbar", 409, "invalid_status"));
+      mount();
+      fireEvent.click(await screen.findByRole("button", { name: "Jetzt bezahlen" }));
+      expect(await screen.findByText("Bestellung ist nicht zahlbar")).toBeTruthy();
+      await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+      // invalid_status ist kein manueller Zahlungsweg: Button bleibt
+      expect(screen.getByRole("button", { name: "Jetzt bezahlen" })).toBeTruthy();
+    });
+
     it("zeigt bei manuellem Zahlungsweg den zentralen Hinweistext statt aller Bezahl-Buttons", async () => {
       vi.spyOn(api, "getMyOrders").mockResolvedValue([active, pending]);
       vi.spyOn(api, "createCheckout").mockRejectedValue(new ApiError("manual", 409, "manual"));

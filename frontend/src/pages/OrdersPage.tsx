@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, type Order } from "../services/api";
+import { api, ApiError, type Order } from "../services/api";
 import { formatDate } from "../lib/dates";
 import { formatPrice } from "../lib/money";
 import { MANUAL_PAYMENT_NOTICE } from "../legal/payment";
@@ -9,7 +9,7 @@ import { OrderNotice } from "../components/OrderNotice";
 import { ConnectionAddress } from "../components/ConnectionAddress";
 import {
   PageLayout, StatusBadge, LoadingState, ErrorState, EmptyState, ConfirmButton, Toast, useToast,
-  cardStyle, thStyle, tdStyle, linkStyle, btnPrimary,
+  cardStyle, thStyle, tdStyle, linkStyle, btnPrimary, btnDanger,
 } from "../components/ui";
 
 /** Meine Bestellungen (Kunde). */
@@ -77,7 +77,11 @@ export function OrdersPage() {
       window.location.assign(target);
     } catch (err) {
       if (isManualPayment(err)) setManualPayment(true);
-      else toast.error(err instanceof Error ? err.message : "Zahlung konnte nicht gestartet werden");
+      else {
+        toast.error(err instanceof Error ? err.message : "Zahlung konnte nicht gestartet werden");
+        // Der Status der Bestellung hat sich inzwischen geaendert (z.B. bereits bezahlt): Liste aktualisieren
+        if (err instanceof ApiError && err.code === "invalid_status") await load();
+      }
     } finally {
       setPaying(null);
     }
@@ -98,11 +102,12 @@ export function OrdersPage() {
   };
 
   const action = (o: Order) => {
-    const payButton = (label: string) => manualPayment ? (
+    // Bei ueberfaelliger Zahlung ist der Server gesperrt: Bezahl-Button rot hervorheben
+    const payButton = (label: string, urgent = false) => manualPayment ? (
       <span style={{ fontSize: 12, color: "#666", maxWidth: 220 }}>{MANUAL_PAYMENT_NOTICE}</span>
     ) : (
       <button type="button" onClick={() => pay(o)} disabled={paying === o.uuid}
-        style={{ ...btnPrimary, padding: "4px 12px", fontSize: 12, opacity: paying === o.uuid ? 0.6 : 1 }}>
+        style={{ ...(urgent ? btnDanger : btnPrimary), padding: "4px 12px", fontSize: 12, opacity: paying === o.uuid ? 0.6 : 1 }}>
         {paying === o.uuid ? "…" : label}
       </button>
     );
@@ -118,7 +123,7 @@ export function OrdersPage() {
     if (o.status === "active" || o.status === "past_due") {
       return (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          {payButton("Verlängern und bezahlen")}
+          {payButton("Verlängern und bezahlen", o.status === "past_due")}
           {!o.cancel_at_period_end && (
             <ConfirmButton size="sm" danger label="Kündigen zum Laufzeitende"
               confirmMessage="Zum Laufzeitende kündigen? Der Server bleibt bis dahin nutzbar."
