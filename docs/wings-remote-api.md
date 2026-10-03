@@ -127,7 +127,7 @@ Der Benutzername wird am **letzten** Punkt getrennt, `serverid` ist UUID oder Ku
   `file.update` → `file.update`, `file.create`; `file.delete` → `file.delete`.
 - Suspendierte Instanzen werden mit 403 abgelehnt.
 
-Der bisherige Astra-interne Endpunkt `POST /api/agent/sftp-auth` bleibt für Tests bestehen.
+Der bisherige Astra-interne Endpunkt `POST /api/agent/sftp-auth` bleibt bestehen und verlangt seit M36 ebenfalls den Node-Token.
 
 ### Backups und Restore sind asynchron
 
