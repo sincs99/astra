@@ -7,6 +7,9 @@
 
 import { friendlyApiMessage, NETWORK_ERROR_MESSAGE } from "../lib/errors";
 
+/** 401 bedeutet hier "falsches Passwort", nicht "Sitzung abgelaufen". */
+const CREDENTIAL_ENDPOINTS = ["/auth/login", "/auth/change-password"];
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 const TOKEN_KEY = "astra_access_token";
 
@@ -104,8 +107,9 @@ async function request<T = unknown>(
   }
 
   if (!response.ok) {
-    // Abgelaufene/ungueltige Session: Token verwerfen und zum Login (Login-Fehler selbst ausgenommen)
-    if (response.status === 401 && endpoint !== "/auth/login" && token) {
+    // Abgelaufene/ungueltige Session: Token verwerfen und zum Login.
+    // Ausgenommen: Endpunkte, die bei falschen Zugangsdaten selbst 401 liefern.
+    if (response.status === 401 && !CREDENTIAL_ENDPOINTS.includes(endpoint) && token) {
       logout();
       if (window.location.pathname !== "/login") {
         window.location.assign("/login?expired=1");
@@ -618,6 +622,7 @@ export interface AgentMonitoringEntry {
   /** Optional: vom Backend, sobald der Daemon aktiv geprueft wird */
   daemon_reachable?: boolean | null;
   daemon_version?: string | null;
+  daemon_error?: string | null;
 }
 
 export interface FleetSummary {
