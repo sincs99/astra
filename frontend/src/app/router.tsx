@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { LoginPage } from "../pages/LoginPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { AdminAgentsPage } from "../pages/AdminAgentsPage";
@@ -19,7 +19,9 @@ import { ShopPage } from "../pages/ShopPage";
 import { OrdersPage } from "../pages/OrdersPage";
 import { AdminProductsPage } from "../pages/AdminProductsPage";
 import { AdminOrdersPage } from "../pages/AdminOrdersPage";
+import { ImpressumPage, DatenschutzPage, AgbPage } from "../pages/LegalPages";
 import { NotFoundPage } from "../pages/NotFoundPage";
+import { loginUrl } from "../lib/redirect";
 import { isAuthenticated } from "../services/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { LoadingState } from "../components/ui";
@@ -27,9 +29,11 @@ import { LoadingState } from "../components/ui";
 /**
  * Schuetzt Routen: Leitet zu /login um wenn nicht eingeloggt.
  */
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+export function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
   if (!isAuthenticated()) {
-    return <Navigate to="/login" replace />;
+    // Nach dem Login zurueck zur urspruenglich angefragten Seite
+    return <Navigate to={loginUrl(location.pathname + location.search)} replace />;
   }
   return <>{children}</>;
 }
@@ -50,6 +54,9 @@ export function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/impressum" element={<ImpressumPage />} />
+        <Route path="/datenschutz" element={<DatenschutzPage />} />
+        <Route path="/agb" element={<AgbPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/password-reset" element={<ForgotPasswordPage />} />
         <Route path="/password-reset/confirm" element={<ResetPasswordPage />} />
@@ -63,7 +70,7 @@ export function AppRouter() {
         <Route path="/admin/jobs" element={<ProtectedRoute><AdminRoute><AdminJobsPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/admin/system" element={<ProtectedRoute><AdminRoute><AdminSystemPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/instances/:uuid" element={<ProtectedRoute><InstanceDetailPage /></ProtectedRoute>} />
-        <Route path="/shop" element={<ShopPage />} />
+        <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
         <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
         <Route path="/admin/products" element={<ProtectedRoute><AdminRoute><AdminProductsPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/admin/orders" element={<ProtectedRoute><AdminRoute><AdminOrdersPage /></AdminRoute></ProtectedRoute>} />
