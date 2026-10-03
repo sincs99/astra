@@ -55,6 +55,9 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
   const isMobile = useMediaQuery("(max-width: 760px)");
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Browser-Tab-Titel folgt der Seite
+  useEffect(() => { document.title = `${title} – Astra`; }, [title]);
+
   // Menü schliessen bei Seitenwechsel, Escape oder Wechsel zur Desktop-Ansicht
   useEffect(() => { setMenuOpen(false); }, [currentPath, isMobile]);
   useEffect(() => {
