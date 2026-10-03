@@ -29,13 +29,14 @@ export function productToForm(p: Product): ProductFormValues {
   return {
     name: p.name,
     description: p.description ?? "",
-    blueprintId: p.blueprint_id,
-    memory: String(p.memory), disk: String(p.disk), cpu: String(p.cpu), swap: String(p.swap), io: String(p.io),
+    blueprintId: p.blueprint_id ?? "",
+    memory: String(p.resources.memory), disk: String(p.resources.disk), cpu: String(p.resources.cpu),
+    swap: String(p.resources.swap), io: String(p.resources.io),
     price: centsToEuroInput(p.price_cents).replace(".", ","),
     currency: p.currency,
     billingPeriodDays: String(p.billing_period_days),
-    active: p.active,
-    maxInstancesPerUser: p.max_instances_per_user === null ? "" : String(p.max_instances_per_user),
+    active: p.is_active ?? true,
+    maxInstancesPerUser: p.max_instances_per_user == null ? "" : String(p.max_instances_per_user),
   };
 }
 
@@ -63,12 +64,16 @@ export function toProductPayload(v: ProductFormValues): ProductInput | string {
   if (priceCents === null) return "Der Preis muss ein Betrag in Euro mit höchstens 2 Dezimalstellen sein, z.B. 9,99.";
   const currency = v.currency.trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) return "Die Währung muss ein 3-stelliger Code sein, z.B. EUR.";
-  const days = int(v.billingPeriodDays, 1);
-  if (days === null) return "Die Laufzeit muss mindestens 1 Tag betragen.";
+  const days = int(v.billingPeriodDays, 1, 3650);
+  if (days === null) return "Die Laufzeit muss zwischen 1 und 3650 Tagen liegen.";
   let max: number | null = null;
   if (v.maxInstancesPerUser.trim() !== "") {
     max = int(v.maxInstancesPerUser, 1);
     if (max === null) return "Max. Instances pro Nutzer muss leer (unbegrenzt) oder ≥ 1 sein.";
+  }
+  // Gratis-Produkte brauchen ein Limit, sonst gaebe es unbegrenzt viele Gratis-Server (wie im Backend)
+  if (priceCents === 0 && max === null) {
+    return "Kostenlose Produkte brauchen „Max. Instances pro Nutzer“ (sonst unbegrenzt viele Gratis-Server).";
   }
   return {
     name: v.name.trim(),
@@ -78,7 +83,7 @@ export function toProductPayload(v: ProductFormValues): ProductInput | string {
     price_cents: priceCents,
     currency,
     billing_period_days: days,
-    active: v.active,
+    is_active: v.active,
     max_instances_per_user: max,
   };
 }

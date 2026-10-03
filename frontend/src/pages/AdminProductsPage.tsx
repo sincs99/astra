@@ -62,8 +62,8 @@ export function AdminProductsPage() {
 
   const toggleActive = async (p: Product) => {
     try {
-      await api.updateProduct(p.id, { active: !p.active });
-      toast.success(p.active ? `"${p.name}" deaktiviert.` : `"${p.name}" aktiviert.`);
+      await api.updateProduct(p.id, { is_active: !p.is_active });
+      toast.success(p.is_active ? `"${p.name}" deaktiviert.` : `"${p.name}" aktiviert.`);
       await load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
@@ -123,8 +123,8 @@ export function AdminProductsPage() {
               <input id="prod-currency" type="text" maxLength={3} value={form.currency}
                 onChange={(e) => set("currency", e.target.value)} style={inputStyle} />
             </div>
-            {numberField("days", "Laufzeit (Tage)", "billingPeriodDays", 1)}
-            {numberField("max", "Max. Instances pro Nutzer (leer = unbegrenzt)", "maxInstancesPerUser", 1)}
+            {numberField("days", "Laufzeit (Tage)", "billingPeriodDays", 1, 3650)}
+            {numberField("max", "Max. Instances pro Nutzer (leer = unbegrenzt, bei Gratis Pflicht)", "maxInstancesPerUser", 1)}
           </div>
 
           <div style={{ marginTop: 12 }}>
@@ -184,10 +184,10 @@ export function AdminProductsPage() {
                     {p.description && <div style={{ fontSize: 12, color: "#666" }}>{p.description}</div>}
                   </td>
                   <td style={tdStyle}>{blueprints.find((b) => b.id === p.blueprint_id)?.name ?? `#${p.blueprint_id}`}</td>
-                  <td style={{ ...tdStyle, fontSize: 12 }}>{p.memory} MB RAM · {p.disk} MB Disk · {p.cpu}% CPU</td>
+                  <td style={{ ...tdStyle, fontSize: 12 }}>{p.resources.memory} MB RAM · {p.resources.disk} MB Disk · {p.resources.cpu}% CPU</td>
                   <td style={tdStyle}>{formatPrice(p.price_cents, p.currency, p.billing_period_days)}</td>
                   <td style={tdStyle}>
-                    <StatusBadge status={p.active ? "active" : "inactive"} size="sm" />
+                    <StatusBadge status={p.is_active ? "active" : "inactive"} size="sm" />
                   </td>
                   <td style={tdStyle}>
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -196,7 +196,7 @@ export function AdminProductsPage() {
                         ✏️ Bearbeiten
                       </button>
                       <button type="button" style={{ ...btnDefault, padding: "4px 10px", fontSize: 12 }} onClick={() => toggleActive(p)}>
-                        {p.active ? "Deaktivieren" : "Aktivieren"}
+                        {p.is_active ? "Deaktivieren" : "Aktivieren"}
                       </button>
                       <ConfirmButton label="Löschen" danger size="sm"
                         confirmMessage={`Produkt "${p.name}" wirklich löschen?`} onConfirm={() => remove(p)} />

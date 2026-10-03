@@ -199,29 +199,35 @@ export type RegisterResponse =
 
 // ── Phase 4: Produkte & Bestellungen ───────────────────
 
+export interface ProductResources {
+  memory: number;
+  swap: number;
+  disk: number;
+  io: number;
+  cpu: number;
+}
+
+/** Oeffentliche Felder (GET /client/products, ohne Login); Admins bekommen zusaetzlich die internen Felder. */
 export interface Product {
   id: number;
   name: string;
   description: string | null;
-  blueprint_id: number;
-  /** Fuer Kunden mitgeliefert, weil /admin/blueprints fuer sie gesperrt ist (optional) */
-  blueprint_name?: string | null;
-  memory: number;
-  disk: number;
-  cpu: number;
-  swap: number;
-  io: number;
   price_cents: number;
   currency: string;
   billing_period_days: number;
-  active: boolean;
-  max_instances_per_user: number | null;
+  resources: ProductResources;
+  /** Nur Admin-Antworten */
+  blueprint_id?: number;
+  is_active?: boolean;
+  max_instances_per_user?: number | null;
   created_at?: string | null;
+  updated_at?: string | null;
 }
 
+/** Body fuer POST/PATCH /admin/products: Ressourcen FLACH, nicht als `resources`-Objekt. */
 export interface ProductInput {
   name: string;
-  description?: string | null;
+  description: string | null;
   blueprint_id: number;
   memory: number;
   disk: number;
@@ -231,28 +237,50 @@ export interface ProductInput {
   price_cents: number;
   currency: string;
   billing_period_days: number;
-  active: boolean;
+  is_active: boolean;
   max_instances_per_user: number | null;
 }
 
-export type OrderStatus = "pending_payment" | "active" | "past_due" | "cancelled" | "expired";
+export type OrderStatus =
+  | "pending_payment"
+  | "awaiting_provisioning"
+  | "active"
+  | "past_due"
+  | "cancelled"
+  | "expired";
 
+export interface OrderConnection {
+  host: string | null;
+  ip?: string;
+  port: number;
+  address: string;
+}
+
+/** Bestellungen werden ueber `uuid` angesprochen (nicht ueber die numerische id). */
 export interface Order {
   id: number;
-  user_id: number;
-  product_id: number;
-  instance_id: number | null;
-  /** Gewuenschter Servername */
-  name?: string | null;
+  uuid: string;
   status: OrderStatus;
+  product_id: number;
+  product_name: string | null;
+  instance_name: string;
+  instance_uuid: string | null;
+  instance_status: string | null;
+  connection: OrderConnection | null;
+  /** Schnappschuss zum Bestellzeitpunkt */
+  price_cents: number;
+  currency: string;
+  billing_period_days: number;
+  resources: Partial<ProductResources>;
+  payment_reference: string | null;
+  paid_at: string | null;
   current_period_end: string | null;
-  cancel_at_period_end?: boolean;
-  payment_reference?: string | null;
+  cancel_at_period_end: boolean;
+  cancelled_at: string | null;
   created_at: string | null;
-  /** Optionale Anreicherungen des Backends; das Frontend faellt sonst auf IDs zurueck */
-  product_name?: string | null;
+  /** Nur Admin-Antworten */
+  user_id?: number;
   username?: string | null;
-  instance_uuid?: string | null;
 }
 
 // ── Typen ──────────────────────────────────────────────
@@ -1239,18 +1267,28 @@ export const api = {
     request<{ message?: string }>(`/admin/products/${id}`, { method: "DELETE" }),
 
   // ── Phase 4: Shop & Bestellungen (Kunde) ─────────────
+  /** Oeffentlich: nur aktive Pakete ohne interne Felder. */
   getShopProducts: () => request<Product[]>("/client/products"),
-  createOrder: (productId: number, name: string) =>
-    request<Order>("/client/orders", { method: "POST", body: JSON.stringify({ product_id: productId, name }) }),
+  /** `name` ist optional; ohne Name vergibt das Backend einen. */
+  createOrder: (productId: number, name?: string) =>
+    request<Order>("/client/orders", {
+      method: "POST",
+      body: JSON.stringify(name ? { product_id: productId, name } : { product_id: productId }),
+    }),
   getMyOrders: () => request<Order[]>("/client/orders"),
-  cancelOrder: (id: number) =>
-    request<Order>(`/client/orders/${id}/cancel`, { method: "POST", body: JSON.stringify({}) }),
+  /** pending_payment: sofort storniert; active: zum Laufzeitende gekuendigt (cancel_at_period_end). */
+  cancelOrder: (uuid: string) =>
+    request<Order>(`/client/orders/${uuid}/cancel`, { method: "POST", body: JSON.stringify({}) }),
 
   // ── Phase 4: Bestellungen (Admin) ────────────────────
   getAdminOrders: (status?: OrderStatus | "") =>
     request<Order[]>(`/admin/orders${status ? `?status=${encodeURIComponent(status)}` : ""}`),
-  markOrderPaid: (id: number) =>
-    request<Order>(`/admin/orders/${id}/mark-paid`, { method: "POST", body: JSON.stringify({}) }),
+  /** Bei awaiting_provisioning erneut bereitstellen (Zahlung wird nicht doppelt verbucht). */
+  markOrderPaid: (uuid: string, paymentReference?: string) =>
+    request<Order>(`/admin/orders/${uuid}/mark-paid`, {
+      method: "POST",
+      body: JSON.stringify(paymentReference ? { payment_reference: paymentReference } : {}),
+    }),
 
   // ── Instance loeschen (M43) ───────────────────────────
   /** Owner: Body {confirm} muss dem Instance-Namen entsprechen. */
