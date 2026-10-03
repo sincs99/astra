@@ -26,6 +26,24 @@ def _require_env(name: str, default: str | None = None) -> str:
     return value
 
 
+
+def _normalize_database_url(url: str) -> str:
+    """Erzwingt den psycopg2-Treiber fuer PostgreSQL-URLs.
+
+    Ab SQLAlchemy 2.1 ist der Standardtreiber fuer `postgresql://` psycopg (v3),
+    das nicht installiert ist. `postgresql://` und `postgres://` (Heroku-Stil)
+    werden deshalb auf `postgresql+psycopg2://` umgeschrieben; explizite Treiber
+    (`postgresql+psycopg://`, `postgresql+pg8000://`) bleiben unveraendert.
+    """
+    if not url:
+        return url
+    if url.startswith("postgres://"):
+        return "postgresql+psycopg2://" + url[len("postgres://"):]
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg2://" + url[len("postgresql://"):]
+    return url
+
+
 class Config:
     """Basis-Konfiguration fuer die Flask-App."""
 
@@ -37,7 +55,7 @@ class Config:
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret-key")
 
     # ── Datenbank ───────────────────────────────────────
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///astra.db")
+    SQLALCHEMY_DATABASE_URI = _normalize_database_url(os.getenv("DATABASE_URL", "sqlite:///astra.db"))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS: dict = {}
 

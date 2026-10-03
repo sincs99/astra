@@ -20,6 +20,19 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 ### Changed
 - `frontend/nginx.conf`: `X-Forwarded-Proto` wird vom vorgelagerten Proxy durchgereicht (statt `$scheme`),
   damit das Backend hinter Caddy `https` erkennt; Backend nutzt `PROXY_FIX_X_FOR/X_PROTO=2`
+- `cli.py db-init` (neu) ersetzt `flask db upgrade` im Entrypoint: frische Datenbank -> `create_all()` +
+  `stamp head`, bestehende Datenbank -> `upgrade`. Die Migrationen legen die Basistabellen nicht selbst an,
+  ein `flask db upgrade` auf leerer DB brach bisher mit "relation instances does not exist" ab
+- `requirements.txt`: SQLAlchemy auf 2.0.54 gepinnt
+
+### Fixed (gegen echtes PostgreSQL 16 und SQLite verifiziert)
+- PostgreSQL-URLs werden auf den psycopg2-Treiber normalisiert (`postgresql://` -> `postgresql+psycopg2://`).
+  Mit SQLAlchemy >= 2.1 waere sonst psycopg v3 der Default und der Start schlug mit
+  `ModuleNotFoundError: psycopg` fehl
+- Migration `k1f2g3h4i5j6` (M29 Suspension) brach auf SQLite im Batch-Modus mit "Constraint must have a name"
+  ab; jetzt `ALTER TABLE ADD COLUMN` ohne Neuaufbau (FK-Constraint nur auf PostgreSQL)
+- Migration `l2g3h4i5j6k7` (M33) nutzt fuer `agents.uuid` einen Unique-Index statt einer Batch-Constraint
+  (gleicher SQLite-Fehler); Up-/Downgrade-Roundtrip auf beiden Datenbanken getestet
 
 ### Security (M35 – Admin-Guard)
 - Der gesamte `/api/admin`-Blueprint verlangt jetzt einen angemeldeten Admin (`before_request`, JWT, API-Key oder in Dev/Test `X-User-Id`). Ausnahme: `GET /api/admin/health`. Ohne Login 401, ohne Admin-Recht 403

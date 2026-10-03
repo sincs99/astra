@@ -38,10 +38,13 @@ def _column_exists(table, column):
 
 
 def upgrade():
+    # Hinweis: Eindeutigkeit von agents.uuid ueber einen Unique-Index statt einer
+    # Constraint im Batch-Modus. Auf SQLite wuerde create_unique_constraint die Tabelle
+    # neu aufbauen und an den unbenannten Alt-Constraints (fqdn) scheitern
+    # ("Constraint must have a name"); ADD COLUMN + CREATE UNIQUE INDEX laeuft ueberall.
     with op.batch_alter_table("agents", schema=None) as batch_op:
         if not _column_exists("agents", "uuid"):
             batch_op.add_column(sa.Column("uuid", sa.String(36), nullable=True))
-            batch_op.create_unique_constraint("uq_agents_uuid", ["uuid"])
         if not _column_exists("agents", "behind_proxy"):
             batch_op.add_column(sa.Column("behind_proxy", sa.Boolean(), nullable=True, server_default=sa.false()))
         if not _column_exists("agents", "daemon_sftp"):
@@ -59,6 +62,10 @@ def upgrade():
     rows = bind.execute(sa.select(agents.c.id).where(agents.c.uuid.is_(None))).fetchall()
     for (agent_id,) in rows:
         bind.execute(agents.update().where(agents.c.id == agent_id).values(uuid=str(uuid.uuid4())))
+
+    existing_indexes = {ix["name"] for ix in sa_inspect(bind).get_indexes("agents")}
+    if "uq_agents_uuid" not in existing_indexes:
+        op.create_index("uq_agents_uuid", "agents", ["uuid"], unique=True)
 
     with op.batch_alter_table("blueprints", schema=None) as batch_op:
         if not _column_exists("blueprints", "install_container"):
@@ -89,5 +96,6 @@ def downgrade():
         batch_op.drop_column("daemon_base")
         batch_op.drop_column("daemon_sftp")
         batch_op.drop_column("behind_proxy")
-        batch_op.drop_constraint("uq_agents_uuid", type_="unique")
+    op.drop_index("uq_agents_uuid", table_name="agents")
+    with op.batch_alter_table("agents", schema=None) as batch_op:
         batch_op.drop_column("uuid")
