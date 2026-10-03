@@ -7,6 +7,7 @@ import {
   type PowerSignal,
   type ResourceStats,
 } from "../services/api";
+import { ConnectionAddress } from "../components/ConnectionAddress";
 import { ServerConsole } from "../components/ServerConsole";
 import { FileBrowser } from "../components/FileBrowser";
 import { BackupManager } from "../components/BackupManager";
@@ -189,6 +190,12 @@ export function InstanceDetailPage() {
 
       {instance.description && (
         <p style={{ color: "#888", marginTop: 4 }}>{instance.description}</p>
+      )}
+
+      {instance.connection && (
+        <div style={{ marginBottom: 16 }}>
+          <ConnectionAddress connection={instance.connection} />
+        </div>
       )}
 
       {/* Suspension-Banner (M29) */}

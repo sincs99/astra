@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type Instance, getSimulatedUserId } from "../services/api";
+import { ConnectionAddress } from "../components/ConnectionAddress";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, ErrorState, EmptyState, cardStyle } from "../components/ui";
 
@@ -74,6 +75,11 @@ export function DashboardPage() {
                   {inst.memory} MB RAM &middot; {inst.disk} MB Disk &middot; {inst.cpu}% CPU
                 </span>
               </div>
+              {inst.connection && (
+                <div style={{ marginTop: 8 }}>
+                  <ConnectionAddress connection={inst.connection} compact />
+                </div>
+              )}
             </div>
           ))}
         </div>
