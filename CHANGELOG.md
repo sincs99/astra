@@ -6,6 +6,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added (Phase 2 – Produktions-Deployment)
+- `docker-compose.prod.yml`: Container `billing` fuehrt `cli.py billing-tick` alle `BILLING_TICK_INTERVAL` Sekunden (Standard 300) aus; `BILLING_GRACE_DAYS` in `.env.prod.example`
 - `POST/PATCH /api/admin/agents`: Kapazitaetsfelder `memory_total`, `disk_total`, `cpu_total` und `*_overalloc` pflegbar (Ganzzahl >= 0, 0 = kein Limit)
 - `docker-compose.prod.yml`: Caddy als TLS-Terminierung (Let's Encrypt, einziger oeffentlicher Eingang 80/443),
   Worker-Container fuer die Redis-Job-Queue, Healthchecks fuer Backend/Redis, Redis mit Passwort und AOF,
