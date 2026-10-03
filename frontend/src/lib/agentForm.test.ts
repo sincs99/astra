@@ -28,7 +28,7 @@ describe("toAgentPayload", () => {
     expect(toAgentPayload({ ...valid, sftp: "x" })).toMatch(/SFTP-Port/);
   });
 
-  it("uebernimmt Kapazitaet und Ueberallokation, 0 bedeutet kein Limit", () => {
+  it("uebernimmt Kapazitaet und Überallokation, 0 bedeutet kein Limit", () => {
     expect(toAgentPayload(valid)).toMatchObject({
       memory_total: 0, disk_total: 0, cpu_total: 0, memory_overalloc: 0, disk_overalloc: 0, cpu_overalloc: 0,
     });
@@ -40,12 +40,12 @@ describe("toAgentPayload", () => {
     expect(toAgentPayload({ ...valid, memoryTotal: "-1" })).toMatch(/Memory gesamt/);
     expect(toAgentPayload({ ...valid, diskTotal: "1.5" })).toMatch(/Disk gesamt/);
     expect(toAgentPayload({ ...valid, cpuTotal: "x" })).toMatch(/CPU gesamt/);
-    expect(toAgentPayload({ ...valid, memoryOveralloc: "1001" })).toMatch(/Memory-Ueberallokation/);
-    expect(toAgentPayload({ ...valid, diskOveralloc: "-5" })).toMatch(/Disk-Ueberallokation/);
-    expect(toAgentPayload({ ...valid, cpuOveralloc: "abc" })).toMatch(/CPU-Ueberallokation/);
+    expect(toAgentPayload({ ...valid, memoryOveralloc: "1001" })).toMatch(/Memory-Überallokation/);
+    expect(toAgentPayload({ ...valid, diskOveralloc: "-5" })).toMatch(/Disk-Überallokation/);
+    expect(toAgentPayload({ ...valid, cpuOveralloc: "abc" })).toMatch(/CPU-Überallokation/);
   });
 
-  it("nutzt Defaults fuer leeres Datenverzeichnis und ungueltige Upload-Groesse", () => {
+  it("nutzt Defaults für leeres Datenverzeichnis und ungueltige Upload-Groesse", () => {
     const payload = toAgentPayload({ ...valid, base: "  ", uploadSize: "-5" });
     expect(payload).toMatchObject({ daemon_base: "/var/lib/pterodactyl/volumes", upload_size: 100 });
   });

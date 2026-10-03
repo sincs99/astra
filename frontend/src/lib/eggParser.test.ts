@@ -21,7 +21,7 @@ describe("parseEgg", () => {
   });
 
   it("lehnt ungueltiges JSON ab", () => {
-    expect(() => parseEgg("nope")).toThrow("Kein gueltiges JSON");
+    expect(() => parseEgg("nope")).toThrow("Kein gültiges JSON");
   });
 
   it.each(["[]", "null", "42", '"text"'])("lehnt Nicht-Objekt %s ab", (input) => {

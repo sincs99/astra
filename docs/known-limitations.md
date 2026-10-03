@@ -39,7 +39,7 @@
 - **Tick-Betrieb:** Der Billing-Tick laeuft als Schleife im Compose-Service `billing`. Ohne laufenden Tick werden weder Ablaeufe durchgesetzt noch Erinnerungen verschickt; es gibt keine Ueberwachung dafuer ausser dem Container-Status und dem Exit-Code von `billing-tick`.
 
 ### UI / Frontend
-- Responsive Design ist grundlegend (Tabellen scrollen horizontal), Navigation ist mobil als Hamburger-Menue umgesetzt, Tabellen und Formulare sind aber nicht vollstaendig Mobile-optimiert.
+- Responsive Design: Kundenseiten (Dashboard, Server, Bestellungen, Konto, Shop) sind mobil nutzbar (Hamburger-Menue, Bestellungen als Karten); Admin-Tabellen scrollen auf kleinen Bildschirmen horizontal.
 - File-Upload nur fuer Textdateien bis 1 MB (kein Multipart-Endpoint im Backend).
 - Nicht alle Admin-Seiten verwenden bereits die neuen `PageLayout`/`StatusBadge`-Komponenten (schrittweise Migration).
 - Keine Echtzeit-Updates via WebSocket fuer Admin-Ansichten; Jobs, Fleet Monitoring, Dashboard und Admin-Instances pollen alle 15s (abschaltbar), andere Seiten nur manuell.

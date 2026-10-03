@@ -5,6 +5,7 @@ import { formatDate } from "../lib/dates";
 import { formatPrice } from "../lib/money";
 import { MANUAL_PAYMENT_NOTICE } from "../legal/payment";
 import { isManualPayment, readPaymentReturn, safeCheckoutUrl } from "../lib/checkout";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { OrderNotice } from "../components/OrderNotice";
 import { ConnectionAddress } from "../components/ConnectionAddress";
 import {
@@ -19,6 +20,8 @@ export function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  // Auf schmalen Bildschirmen sonst ausserhalb des sichtbaren Bereichs: Aktionen -> Karten statt Tabelle
+  const compact = useMediaQuery("(max-width: 640px)");
   const [paying, setPaying] = useState<string | null>(null);
   // Sobald der Checkout mit 409 "manual" antwortet, wird nicht online bezahlt: Button ausblenden
   const [manualPayment, setManualPayment] = useState(false);
@@ -107,6 +110,34 @@ export function OrdersPage() {
     }
   };
 
+  const productCell = (o: Order) => (
+    <div>
+      <strong>{o.product_name ?? `Produkt #${o.product_id}`}</strong>
+      <div style={{ fontSize: 12, color: "#666" }}>
+        {formatPrice(o.price_cents, o.currency, o.billing_period_days)}
+      </div>
+    </div>
+  );
+
+  const endCell = (o: Order) => (
+    <>
+      {formatDate(o.current_period_end)}
+      <OrderNotice order={o} />
+    </>
+  );
+
+  const serverCell = (o: Order) => (
+    <>
+      <div>{o.instance_name}</div>
+      {o.instance_uuid && (
+        <>
+          <Link to={`/instances/${o.instance_uuid}`} style={linkStyle}>Zum Server</Link>
+          {o.connection && <div style={{ marginTop: 4 }}><ConnectionAddress connection={o.connection} compact /></div>}
+        </>
+      )}
+    </>
+  );
+
   const action = (o: Order) => {
     // Bei überfälliger Zahlung ist der Server gesperrt: Bezahl-Button rot hervorheben
     const payButton = (label: string, urgent = false) => manualPayment ? (
@@ -129,7 +160,7 @@ export function OrdersPage() {
     if (o.status === "active" || o.status === "past_due") {
       return (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          {/* Kostenlose Bestellungen haben nichts zu bezahlen: weder Bezahl-Button noch Ueberweisungshinweis */}
+          {/* Kostenlose Bestellungen haben nichts zu bezahlen: weder Bezahl-Button noch Überweisungshinweis */}
           {o.price_cents > 0 && payButton("Verlängern und bezahlen", o.status === "past_due")}
           {!o.cancel_at_period_end && (
             <ConfirmButton size="sm" danger label="Kündigen zum Laufzeitende"
@@ -157,6 +188,25 @@ export function OrdersPage() {
           <p style={{ textAlign: "center" }}><Link to="/shop" style={linkStyle}>Zum Shop</Link></p>
         </div>
       ) : (
+        compact ? (
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 12 }} aria-label="Meine Bestellungen">
+            {orders.map((o) => (
+              <li key={o.uuid} style={{ ...cardStyle, marginBottom: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                  {productCell(o)}
+                  <StatusBadge status={o.status} size="sm" />
+                </div>
+                <dl style={{ margin: "12px 0", display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px 12px", fontSize: 14 }}>
+                  <dt style={{ color: "#555" }}>Laufzeitende</dt>
+                  <dd style={{ margin: 0 }}>{endCell(o)}</dd>
+                  <dt style={{ color: "#555" }}>Server</dt>
+                  <dd style={{ margin: 0 }}>{serverCell(o)}</dd>
+                </dl>
+                {action(o) !== "–" && <div>{action(o)}</div>}
+              </li>
+            ))}
+          </ul>
+        ) : (
         <div style={{ ...cardStyle, padding: 0, overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <caption style={{ position: "absolute", left: -9999 }}>Meine Bestellungen</caption>
@@ -172,32 +222,17 @@ export function OrdersPage() {
             <tbody>
               {orders.map((o) => (
                 <tr key={o.uuid}>
-                  <td style={tdStyle}>
-                    <strong>{o.product_name ?? `Produkt #${o.product_id}`}</strong>
-                    <div style={{ fontSize: 12, color: "#666" }}>
-                      {formatPrice(o.price_cents, o.currency, o.billing_period_days)}
-                    </div>
-                  </td>
+                  <td style={tdStyle}>{productCell(o)}</td>
                   <td style={tdStyle}><StatusBadge status={o.status} size="sm" /></td>
-                  <td style={tdStyle}>
-                    {formatDate(o.current_period_end)}
-                    <OrderNotice order={o} />
-                  </td>
-                  <td style={tdStyle}>
-                    <div>{o.instance_name}</div>
-                    {o.instance_uuid && (
-                      <>
-                        <Link to={`/instances/${o.instance_uuid}`} style={linkStyle}>Zum Server</Link>
-                        {o.connection && <div style={{ marginTop: 4 }}><ConnectionAddress connection={o.connection} compact /></div>}
-                      </>
-                    )}
-                  </td>
+                  <td style={tdStyle}>{endCell(o)}</td>
+                  <td style={tdStyle}>{serverCell(o)}</td>
                   <td style={tdStyle}>{action(o)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        )
       )}
     </PageLayout>
   );
