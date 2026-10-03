@@ -197,6 +197,96 @@ def reinstall_endpoint(uuid: str):
         return jsonify({"error": e.message}), e.status_code
 
 
+# ── Shop: Produkte und Bestellungen (M44) ──────────────
+
+@client_bp.route("/products", methods=["GET"])
+def list_shop_products():
+    """Oeffentliche Produktliste (nur aktive Pakete, ohne interne Felder)."""
+    from app.domain.billing.models import Product
+    products = Product.query.filter_by(is_active=True).order_by(Product.price_cents, Product.id).all()
+    return jsonify([p.to_public_dict() for p in products])
+
+
+def _current_db_user():
+    """Der eingeloggte Nutzer als User-Objekt oder (None, 401-Antwort)."""
+    from app.domain.users.models import User
+    user_id, err = _require_auth()
+    if err:
+        return None, err
+    user = db.session.get(User, user_id)
+    if not user:
+        return None, (jsonify({"error": "Authentifizierung erforderlich"}), 401)
+    return user, None
+
+
+@client_bp.route("/orders", methods=["GET"])
+def list_my_orders():
+    from sqlalchemy.orm import joinedload
+    from app.domain.billing.models import Order
+    user, err = _current_db_user()
+    if err:
+        return err
+    orders = (
+        Order.query.options(joinedload(Order.instance).joinedload(Instance.agent),
+                            joinedload(Order.instance).joinedload(Instance.primary_endpoint))
+        .filter_by(user_id=user.id).order_by(Order.created_at.desc(), Order.id.desc()).all()
+    )
+    return jsonify([o.to_dict() for o in orders])
+
+
+@client_bp.route("/orders/<uuid>", methods=["GET"])
+def get_my_order(uuid: str):
+    from app.domain.billing.models import Order
+    user, err = _current_db_user()
+    if err:
+        return err
+    order = Order.query.filter_by(uuid=uuid, user_id=user.id).first()
+    if not order:
+        return jsonify({"error": "Bestellung nicht gefunden"}), 404
+    return jsonify(order.to_dict())
+
+
+@client_bp.route("/orders", methods=["POST"])
+def create_my_order():
+    """Bestellt ein Paket. Body: {"product_id": 1, "name": "Mein Server" (optional)}.
+
+    Ressourcen und Preis kommen aus dem Produkt. Kostenlose Pakete werden sofort bereitgestellt,
+    alle anderen bleiben bis zur Zahlung `pending_payment`.
+    """
+    from flask import current_app
+    from app.domain.billing.service import BillingError, create_order
+    user, err = _current_db_user()
+    if err:
+        return err
+    if current_app.config.get("EMAIL_VERIFICATION_REQUIRED") and user.email_verified_at is None:
+        return jsonify({"error": "Bitte bestaetige zuerst deine E-Mail-Adresse",
+                        "code": "email_not_verified"}), 403
+    data = request.get_json(silent=True) or {}
+    try:
+        order = create_order(user, data.get("product_id"), data.get("name"))
+    except BillingError as e:
+        return jsonify({"error": e.message}), e.status_code
+    return jsonify(order.to_dict()), 201
+
+
+@client_bp.route("/orders/<uuid>/cancel", methods=["POST"])
+def cancel_my_order(uuid: str):
+    """Storniert eine offene Bestellung bzw. merkt eine aktive zum Laufzeitende zur Kuendigung vor."""
+    from app.domain.billing.models import Order
+    from app.domain.billing.service import BillingError, cancel_order
+    user, err = _current_db_user()
+    if err:
+        return err
+    order = Order.query.filter_by(uuid=uuid, user_id=user.id).first()
+    if not order:
+        return jsonify({"error": "Bestellung nicht gefunden"}), 404
+    try:
+        order = cancel_order(order, user.id)
+    except BillingError as e:
+        return jsonify({"error": e.message}), e.status_code
+    return jsonify(order.to_dict())
+
+
 # ── Loeschen (M43) ─────────────────────────────────────
 
 @client_bp.route("/instances/<uuid>", methods=["DELETE"])
