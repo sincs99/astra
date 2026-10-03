@@ -99,6 +99,8 @@ check("ohne Login erreichbar", r.status_code == 200)
 check("nur aktive Produkte", "Starter" in names and "Gratis" in names and "Inaktiv" not in names, str(names))
 check("keine internen Felder", all(not ({"blueprint_id", "is_active", "max_instances_per_user"} & set(p)) for p in r.json))
 check("Preis und Ressourcen sichtbar", r.json[-1]["price_cents"] == 499 and r.json[-1]["resources"]["memory"] == 1024)
+check("blueprint_name statt Blueprint-ID", all(p["blueprint_name"] == "mc" for p in r.json) and not any("blueprint_id" in p for p in r.json))
+check("Admin-Produkte liefern blueprint_name ebenfalls", all(p["blueprint_name"] == "mc" for p in c.get("/api/admin/products", headers=AH).json))
 
 print("Bestellung anlegen")
 check("ohne Login -> 401", c.post("/api/client/orders", json={"product_id": pid}).status_code == 401)

@@ -445,8 +445,34 @@ def _suspend_for_payment(order: Order, instance: Instance, now: datetime) -> boo
     return True
 
 
-def _process_order(order_id: int, now: datetime, grace: timedelta) -> str | None:
-    """Bearbeitet eine Bestellung. Rueckgabe: 'past_due', 'expired' oder None (nichts zu tun)."""
+def _nothing() -> None:
+    db.session.rollback()  # Zeilensperre loesen
+    return None
+
+
+def _remind_if_due(order: Order, end: datetime, now: datetime, reminder: timedelta) -> bool:
+    """Erinnerungsmail vor Laufzeitende, hoechstens einmal pro Order und Periode."""
+    if (reminder <= timedelta(0) or order.status != ORDER_ACTIVE or order.cancel_at_period_end
+            or order.price_cents == 0 or timedelta(days=order.billing_period_days) <= reminder
+            or now < end - reminder or order.reminded_for_period_end == end):
+        return False
+    order.reminded_for_period_end = end
+    db.session.commit()  # erst markieren: bei einem Fehler danach lieber keine Mail als jeden Tick eine
+    _log("order:reminder", order, None, "Erinnerung vor Laufzeitende verschickt",
+         {"current_period_end": end.isoformat()})
+    _mail_order(
+        order, "Astra: Die Laufzeit deines Servers endet bald",
+        f"Hallo,\n\ndie Laufzeit deines Servers '{order.instance_name}' endet am {end:%d.%m.%Y %H:%M} UTC.\n"
+        f"Bitte veranlasse rechtzeitig die Zahlung ({order.price_cents / 100:.2f} {order.currency} fuer "
+        f"{order.billing_period_days} Tage), sonst wird der Server gesperrt und nach der Karenzzeit geloescht.\n"
+        f"Bestellung: {order.uuid}\n",
+    )
+    return True
+
+
+def _process_order(order_id: int, now: datetime, grace: timedelta, reminder: timedelta | None = None) -> str | None:
+    """Bearbeitet eine Bestellung. Rueckgabe: 'past_due', 'expired', 'reminded', 'renewed' oder None."""
+    reminder = reminder if reminder is not None else timedelta(0)
     # Zeilensperre und Statuspruefung: ein parallel laufender Tick oder eine Zahlung darf nicht ueberfahren werden
     order = db.session.query(Order).filter_by(id=order_id).with_for_update().one()
     if order.status not in (ORDER_ACTIVE, ORDER_PAST_DUE):
@@ -462,12 +488,16 @@ def _process_order(order_id: int, now: datetime, grace: timedelta) -> str | None
     if end is None:
         raise RuntimeError("current_period_end fehlt")
     if end >= now:
-        db.session.rollback()
-        return None  # noch nicht faellig
+        return "reminded" if _remind_if_due(order, end, now, reminder) else _nothing()
 
     if order.cancel_at_period_end:
         _expire_order(order, instance, "cancelled_at_period_end")
         return "expired"
+
+    if order.price_cents == 0:
+        # Kostenlose Pakete laufen weiter: der Kunde kann nichts bezahlen, also verlaengert der Tick selbst
+        renew_order(order, f"free-auto:{end.isoformat()}", None, now)
+        return "renewed"
 
     if order.status == ORDER_ACTIVE:
         return "past_due" if _suspend_for_payment(order, instance, now) else None
@@ -495,18 +525,23 @@ def run_billing_tick(now: datetime | None = None) -> dict:
 
     Jede Bestellung wird einzeln committed; ein Fehler blockiert die anderen nicht (er wird gemeldet und
     die Bestellung im naechsten Tick erneut versucht).
-    Rueckgabe: {"checked", "past_due", "expired", "errors": [{"order", "error"}]}
+    5. Erinnerungsmail `BILLING_REMINDER_DAYS` vor Laufzeitende (hoechstens einmal pro Order und Periode,
+       nur bezahlte Bestellungen ohne Kuendigung)
+    6. Kostenlose Bestellungen (price_cents = 0) werden bei Ablauf automatisch verlaengert
+
+    Rueckgabe: {"checked", "past_due", "expired", "reminded", "renewed", "errors": [{"order", "error"}]}
     """
     from flask import current_app
     now = _utc_naive(now) or _now()
     grace = timedelta(days=current_app.config.get("BILLING_GRACE_DAYS", 7))
+    reminder = timedelta(days=current_app.config.get("BILLING_REMINDER_DAYS", 3))
 
     ids = [oid for (oid,) in db.session.query(Order.id)
            .filter(Order.status.in_((ORDER_ACTIVE, ORDER_PAST_DUE))).order_by(Order.id).all()]
-    summary = {"checked": len(ids), "past_due": 0, "expired": 0, "errors": []}
+    summary = {"checked": len(ids), "past_due": 0, "expired": 0, "reminded": 0, "renewed": 0, "errors": []}
     for order_id in ids:
         try:
-            outcome = _process_order(order_id, now, grace)
+            outcome = _process_order(order_id, now, grace, reminder)
             if outcome:
                 summary[outcome] += 1
         except Exception as e:
