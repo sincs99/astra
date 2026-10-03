@@ -78,6 +78,30 @@ describe("AdminOrdersPage", () => {
     await waitFor(() => expect(paid).toHaveBeenCalledWith("o-7", undefined));
   });
 
+  it("verlangt bei aktiven und ueberfaelligen Bestellungen eine Zahlungsreferenz (Verlaengerung)", async () => {
+    const overdue = makeOrder({ id: 10, uuid: "o-10", status: "past_due", user_id: 2, username: "bob", past_due_at: "2026-10-01T08:30:00", scheduled_deletion_at: "2026-10-08T08:30:00" });
+    vi.spyOn(api, "getAdminOrders").mockResolvedValue([active, overdue]);
+    const paid = vi.spyOn(api, "markOrderPaid").mockResolvedValue(makeOrder({ status: "active", current_period_end: "2026-12-15T00:00:00" }));
+    mount();
+    const buttons = await screen.findAllByRole("button", { name: "Verlängern (Zahlung erfassen)" });
+    expect(buttons).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: "Als bezahlt markieren" })).toBeNull();
+    expect(screen.getByText(/Server wird am 8\.10\.2026 gelöscht/)).toBeTruthy();
+
+    fireEvent.click(buttons[0]);
+    const field = screen.getByLabelText("Zahlungsreferenz *") as HTMLInputElement;
+    expect(field.required).toBe(true);
+    // Leere Referenz: kein Request, klare Meldung
+    fireEvent.submit(field.closest("form")!);
+    expect(await screen.findByText(/Zahlungsreferenz erforderlich/)).toBeTruthy();
+    expect(paid).not.toHaveBeenCalled();
+
+    fireEvent.change(field, { target: { value: " ÜW-2026-11 " } });
+    fireEvent.click(screen.getByRole("button", { name: "Verlängerung buchen" }));
+    await waitFor(() => expect(paid).toHaveBeenCalledWith("o-8", "ÜW-2026-11"));
+    expect(await screen.findByText(/Bestellung #8 verlängert bis 15\.12\.2026/)).toBeTruthy();
+  });
+
   it("hebt wartende Bestellungen hervor", async () => {
     vi.spyOn(api, "getAdminOrders").mockResolvedValue([pending, awaiting]);
     mount();

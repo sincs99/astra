@@ -10,13 +10,15 @@ interface DeleteInstanceFormProps {
   status?: string | null;
   /** Admin: "Erzwingen" anbieten, wenn die Instance in einem laufenden Vorgang ist */
   allowForce?: boolean;
+  /** Zusatzhinweis, z.B. zur laufenden Bestellung */
+  notice?: string | null;
   onDelete: (force: boolean) => Promise<void>;
   onCancel: () => void;
   idPrefix?: string;
 }
 
 /** Loeschen erst nach Eingabe des Instance-Namens (ein ConfirmButton reicht hier nicht). */
-export function DeleteInstanceForm({ name, status, allowForce = false, onDelete, onCancel, idPrefix = "del" }: DeleteInstanceFormProps) {
+export function DeleteInstanceForm({ name, status, allowForce = false, notice, onDelete, onCancel, idPrefix = "del" }: DeleteInstanceFormProps) {
   const [typed, setTyped] = useState("");
   const [force, setForce] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -45,6 +47,9 @@ export function DeleteInstanceForm({ name, status, allowForce = false, onDelete,
         <strong>Das lässt sich nicht rückgängig machen.</strong> Alle Dateien, Backups, Datenbanken, Collaborators und
         Routinen dieser Instance werden gelöscht, die Endpoints werden freigegeben.
       </p>
+      {notice && (
+        <p style={{ margin: "0 0 12px", fontSize: 13, color: "#c62828", fontWeight: 600 }}>{notice}</p>
+      )}
       <label htmlFor={`${idPrefix}-confirm`} style={labelStyle}>
         Zur Bestätigung den Namen <code>{name}</code> eingeben
       </label>

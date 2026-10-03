@@ -14,7 +14,14 @@ const active = makeOrder({
 const pending = makeOrder({ id: 2, uuid: "o-2", status: "pending_payment", instance_name: "Offen" });
 const awaiting = makeOrder({ id: 3, uuid: "o-3", status: "awaiting_provisioning", instance_name: "Wartet" });
 const cancelled = makeOrder({ id: 4, uuid: "o-4", status: "cancelled", product_name: null });
-const endingActive = makeOrder({ id: 5, uuid: "o-5", status: "active", cancel_at_period_end: true });
+const endingActive = makeOrder({
+  id: 5, uuid: "o-5", status: "active", cancel_at_period_end: true,
+  current_period_end: "2026-11-30T00:00:00", scheduled_deletion_at: "2026-11-30T00:00:00",
+});
+const overdue = makeOrder({
+  id: 6, uuid: "o-6", status: "past_due", past_due_at: "2026-10-01T08:30:00",
+  scheduled_deletion_at: "2026-10-08T08:30:00", current_period_end: "2026-09-30T00:00:00",
+});
 
 function mount() {
   return render(<MemoryRouter><OrdersPage /></MemoryRouter>);
@@ -61,8 +68,16 @@ describe("OrdersPage", () => {
   it("bietet bei bereits gekuendigten, beendeten oder in Bereitstellung befindlichen Bestellungen keine Kuendigung an", async () => {
     vi.spyOn(api, "getMyOrders").mockResolvedValue([cancelled, endingActive, awaiting]);
     mount();
-    await screen.findByText("gekündigt zum Laufzeitende");
+    await screen.findByText(/Läuft bis .*, wird dann gelöscht/);
     expect(screen.queryByRole("button", { name: /Kündigen|Stornieren/ })).toBeNull();
+  });
+
+  it("warnt bei ueberfaelligen Bestellungen deutlich vor Sperre und Loeschung", async () => {
+    vi.spyOn(api, "getMyOrders").mockResolvedValue([overdue]);
+    mount();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toMatch(/Gesperrt seit 1\.10\.2026/);
+    expect(alert.textContent).toMatch(/Server wird am 8\.10\.2026 gelöscht/);
   });
 
   it("zeigt den Leerzustand mit Link zum Shop", async () => {
