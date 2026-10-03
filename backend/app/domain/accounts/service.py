@@ -114,6 +114,17 @@ def resend_verification(email: str) -> None:
         send_verification_email(user)
 
 
+def change_password(user: User, current_password: str, new_password: str) -> None:
+    """Passwort fuer einen eingeloggten Nutzer aendern (aktuelles Passwort erforderlich)."""
+    if not current_password or not user.check_password(current_password):
+        raise AccountError("Aktuelles Passwort ist falsch", 401)
+    _check_password(new_password)
+    if new_password == current_password:
+        raise AccountError("Das neue Passwort muss sich vom aktuellen unterscheiden")
+    user.set_password(new_password)
+    db.session.commit()
+
+
 def request_password_reset(email: str) -> None:
     """Sendet einen Reset-Link, falls die Adresse existiert. Verraet nichts nach aussen."""
     if not email:

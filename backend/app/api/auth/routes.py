@@ -153,6 +153,27 @@ def password_reset_confirm():
     return jsonify({"message": "Passwort wurde geaendert"})
 
 
+@auth_bp.route("/change-password", methods=["POST"])
+def change_password_endpoint():
+    """Aendert das Passwort des eingeloggten Nutzers. Body: {current_password, new_password}."""
+    from app.domain.accounts.service import AccountError, change_password
+
+    user, err = require_auth()
+    if err:
+        return err
+
+    data = request.get_json(silent=True) or {}
+    try:
+        change_password(user, data.get("current_password"), data.get("new_password"))
+    except AccountError as e:
+        _log_auth_event("auth:password_change_failed", user.id,
+                        f"Passwort-Aenderung fehlgeschlagen: {user.username}")
+        return jsonify({"error": e.message}), e.status_code
+
+    _log_auth_event("auth:password_changed", user.id, f"Passwort geaendert: {user.username}")
+    return jsonify({"message": "Passwort wurde geaendert"})
+
+
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
     """Logout – Server-seitig nur Activity-Log, Token-Invalidierung ist clientseitig."""

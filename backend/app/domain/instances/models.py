@@ -78,6 +78,7 @@ class Instance(db.Model):
             "host": host,
             "ip": ep.ip,
             "port": ep.port,
+            "sftp_port": agent.daemon_sftp if agent is not None else None,
             "address": f"{host or ep.ip}:{ep.port}",
         }
 
