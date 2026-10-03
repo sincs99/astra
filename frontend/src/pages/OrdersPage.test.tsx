@@ -295,4 +295,43 @@ describe("OrdersPage", () => {
       await waitFor(() => expect(cancel).toHaveBeenCalledWith("o-1"));
     });
   });
+
+  describe("Automatische Aktualisierung", () => {
+    beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); });
+    afterEach(() => { vi.useRealTimers(); });
+
+    it("laedt alle 30 s still nach und zeigt den Wechsel auf aktiv ohne Neuladen", async () => {
+      const waiting = makeOrder({ id: 3, uuid: "o-3", status: "awaiting_provisioning", instance_name: "Wartet" });
+      const list = vi.spyOn(api, "getMyOrders")
+        .mockResolvedValueOnce([waiting])
+        .mockResolvedValue([{ ...waiting, status: "active", current_period_end: "2026-12-01T00:00:00", instance_uuid: "inst-9" }]);
+      mount();
+      await screen.findByText(/Dein Server wird automatisch bereitgestellt/);
+      await vi.advanceTimersByTimeAsync(30500);
+      await waitFor(() => expect(screen.getByLabelText("aktiv")).toBeTruthy());
+      expect(screen.getByRole("link", { name: "Zum Server" }).getAttribute("href")).toBe("/instances/inst-9");
+      expect(list.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("laesst die Liste bei einem Fehler des stillen Nachladens stehen", async () => {
+      const list = vi.spyOn(api, "getMyOrders").mockResolvedValueOnce([active]).mockRejectedValue(new Error("Server nicht erreichbar"));
+      mount();
+      await screen.findByText("15.11.2026");
+      await vi.advanceTimersByTimeAsync(30500);
+      await waitFor(() => expect(list.mock.calls.length).toBeGreaterThanOrEqual(2));
+      expect(screen.getByText("15.11.2026")).toBeTruthy();
+      expect(screen.queryByText("Server nicht erreichbar")).toBeNull();
+    });
+
+    it("laesst sich abschalten und merkt sich die Einstellung", async () => {
+      const list = vi.spyOn(api, "getMyOrders").mockResolvedValue([active]);
+      mount();
+      const toggle = await screen.findByLabelText("Auto-Refresh (30s)");
+      fireEvent.click(toggle);
+      expect(localStorage.getItem("astra.autorefresh.orders")).toBe("0");
+      const calls = list.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(65000);
+      expect(list.mock.calls.length).toBe(calls);
+    });
+  });
 });

@@ -5,11 +5,12 @@ import { formatDate } from "../lib/dates";
 import { formatPrice } from "../lib/money";
 import { MANUAL_PAYMENT_NOTICE } from "../legal/payment";
 import { isManualPayment, readPaymentReturn, safeCheckoutUrl } from "../lib/checkout";
+import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { OrderNotice } from "../components/OrderNotice";
 import { ConnectionAddress } from "../components/ConnectionAddress";
 import {
-  PageLayout, StatusBadge, LoadingState, ErrorState, EmptyState, ConfirmButton, Toast, useToast,
+  PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, ErrorState, EmptyState, ConfirmButton, Toast, useToast,
   cardStyle, thStyle, tdStyle, linkStyle, btnPrimary, btnDanger,
 } from "../components/ui";
 
@@ -27,10 +28,12 @@ export function OrdersPage() {
   const [manualPayment, setManualPayment] = useState(false);
   const handledReturn = useRef(false);
 
-  const load = async () => {
+  // Stilles Nachladen, damit Kunden z.B. den Wechsel auf "aktiv" ohne Neuladen sehen
+  const [autoRefresh, setAutoRefresh] = useAutoRefreshSetting("orders");
+
+  const load = async (silent = false) => {
     try {
-      setLoading(true);
-      setError(null);
+      if (!silent) { setLoading(true); setError(null); }
       const [list, billing] = await Promise.all([
         api.getMyOrders(),
         // Zahlungsweg einmal beim Laden erfragen; schlaegt das fehl, bleibt der Fallback (Checkout probieren, 409 "manual")
@@ -39,13 +42,16 @@ export function OrdersPage() {
       setOrders(list);
       if (billing) setManualPayment(!billing.online_payment);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Bestellungen konnten nicht geladen werden");
+      // Bei stillem Nachladen die vorhandene Liste nicht durch einen Fehler ersetzen
+      if (!silent) setError(err instanceof Error ? err.message : "Bestellungen konnten nicht geladen werden");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { load(); }, []);
+
+  useAutoRefresh(() => load(true), 30000, autoRefresh);
 
   // Rückkehr von Stripe: /orders?paid=<uuid> bzw. ?cancelled=<uuid> -> Toast, Parameter entfernen
   useEffect(() => {
@@ -179,7 +185,12 @@ export function OrdersPage() {
   return (
     <PageLayout title="Meine Bestellungen">
       <Toast {...toast} />
-      {error && <ErrorState message={error} onRetry={load} />}
+      {orders.length > 0 && (
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={30} />
+        </div>
+      )}
+      {error && <ErrorState message={error} onRetry={() => load()} />}
       {loading ? (
         <LoadingState message="Bestellungen werden geladen..." />
       ) : orders.length === 0 && !error ? (

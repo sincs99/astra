@@ -184,6 +184,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `redis` zu `backend/requirements.txt` hinzugefuegt
 
 ### Added (Frontend)
+- Meine Bestellungen aktualisiert sich alle 30 s still (nur bei sichtbarem Tab, abschaltbar, Einstellung wird gemerkt), damit der Wechsel von "wird bereitgestellt" auf "aktiv" ohne Neuladen sichtbar wird; Hinweistext zur automatischen Bereitstellung (M52)
 - CI fuer das Frontend (`.github/workflows/frontend.yml`): Typecheck, Vitest und Build bei Aenderungen unter `frontend/`
 - Meine Bestellungen auf schmalen Bildschirmen (<= 640 px) als Karten statt Tabelle (Aktionen waren sonst ausserhalb des sichtbaren Bereichs); Admin-Navigation bricht in mehrere Zeilen um statt abgeschnitten zu scrollen; `frontend/README.md` neu (Routen, Struktur, vom Betreiber zu pflegende Dateien, Hinweise); letzte ASCII-Umlaute in Admin-Formularen korrigiert
 - Sicherer Instance-Transfer (Admin): statt des Ein-Klick-Transfers ein Dialog (`TransferInstanceForm`) mit roter Warnung "Beim Transfer werden die Serverdaten NICHT uebertragen …", Pflicht-Checkbox "Ich habe ein aktuelles Backup" und Bestaetigung per Instanzname; Backup-Pruefung ueber `GET /admin/instances/{uuid}/backups` (`successful_count`, `last_successful_backup_at`): ohne erfolgreiches Backup ist der Transfer gesperrt, sonst wird das letzte Backup mit Datum angezeigt; ist die Abfrage nicht moeglich, gilt nur die Checkbox
