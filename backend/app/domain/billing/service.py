@@ -214,8 +214,14 @@ def create_order(user: User, product_id, name=None) -> Order:
     return order
 
 
-def fulfill_order(order: Order) -> Order:
-    """Legt die Instance einer bezahlten Bestellung an (automatische Platzierung)."""
+def fulfill_order(order: Order, now: datetime | None = None, log_failure: bool = True) -> Order:
+    """Legt die Instance einer bezahlten Bestellung an (automatische Platzierung).
+
+    Die Laufzeit beginnt mit der Bereitstellung, nicht mit der Zahlung: Wartet eine bezahlte Bestellung
+    auf einen freien Node, verliert der Kunde dadurch keine Zeit. `log_failure=False` unterdrueckt das
+    Event `order:provision_failed` (fuer die automatische Wiederholung im Tick, sonst eins pro Lauf).
+    """
+    now = _utc_naive(now) or _now()
     from app.domain.instances.service import create_instance, InstanceCreationError
 
     snap = order.snapshot
@@ -230,13 +236,14 @@ def fulfill_order(order: Order) -> Order:
         order = db.session.get(Order, order.id)
         order.status = ORDER_AWAITING_PROVISIONING
         db.session.commit()
-        _log("order:provision_failed", order, None, f"Instance konnte nicht angelegt werden: {e.message}",
-             {"reason": e.message})
+        if log_failure:
+            _log("order:provision_failed", order, None, f"Instance konnte nicht angelegt werden: {e.message}",
+                 {"reason": e.message})
         raise BillingError(f"Bestellung bezahlt, aber Instance konnte nicht angelegt werden: {e.message}", 409)
 
     order.instance_id = instance.id
     order.status = ORDER_ACTIVE
-    order.current_period_end = (order.paid_at or _now()) + timedelta(days=order.billing_period_days)
+    order.current_period_end = now + timedelta(days=order.billing_period_days)
     order.past_due_at = None
     db.session.commit()
     return order
@@ -266,7 +273,7 @@ def mark_order_paid(order: Order, payment_reference: str | None = None, actor_id
         order.payment_references = [ref] if ref else []
         db.session.commit()
         _log("order:paid", order, actor_id, "Bestellung als bezahlt markiert", {"payment_reference": ref})
-    return fulfill_order(order)
+    return fulfill_order(order, now)
 
 
 def renew_order(order: Order, payment_reference: str | None, actor_id: int | None = None,
@@ -531,6 +538,29 @@ def _process_order(order_id: int, now: datetime, grace: timedelta, reminder: tim
     return None
 
 
+def _retry_provisioning(order_id: int, now: datetime) -> bool:
+    """Stellt eine bezahlte Bestellung ohne Instance erneut bereit. True = jetzt bereitgestellt."""
+    order = db.session.query(Order).filter_by(id=order_id).with_for_update().one()
+    if order.status != ORDER_AWAITING_PROVISIONING or order.instance_id:
+        db.session.rollback()
+        return False  # inzwischen vom Admin oder einer Zahlung bereitgestellt
+    try:
+        fulfill_order(order, now, log_failure=False)
+    except BillingError:
+        return False  # weiterhin kein Platz: leise im naechsten Tick erneut
+    order = db.session.get(Order, order_id)
+    _log("order:provisioned", order, None, "Bezahlte Bestellung nachtraeglich automatisch bereitgestellt")
+    instance = db.session.get(Instance, order.instance_id)
+    info = instance.connection_info() if instance else None
+    address = f"\nVerbindungsadresse: {info['address']}\n" if info else ""
+    _mail_order(
+        order, "Astra: Dein Server ist bereit",
+        f"Hallo,\n\ndein Server '{order.instance_name}' wurde bereitgestellt und kann jetzt genutzt werden.\n"
+        f"{address}Bestellung: {order.uuid}\n",
+    )
+    return True
+
+
 def run_billing_tick(now: datetime | None = None) -> dict:
     """Setzt die Laufzeiten durch. Idempotent, gedacht fuer Cron/Compose alle paar Minuten.
 
@@ -544,8 +574,10 @@ def run_billing_tick(now: datetime | None = None) -> dict:
     5. Erinnerungsmail `BILLING_REMINDER_DAYS` vor Laufzeitende (hoechstens einmal pro Order und Periode,
        nur bezahlte Bestellungen ohne Kuendigung)
     6. Kostenlose Bestellungen (price_cents = 0) werden bei Ablauf automatisch verlaengert
+    7. Bezahlte Bestellungen ohne Instance (awaiting_provisioning) werden erneut bereitgestellt, sobald ein Node
+       Platz hat (aelteste Zahlung zuerst, ohne Event bei jedem erfolglosen Versuch); die Laufzeit beginnt dann
 
-    Rueckgabe: {"checked", "past_due", "expired", "reminded", "renewed", "errors": [{"order", "error"}]}
+    Rueckgabe: {"checked", "past_due", "expired", "reminded", "renewed", "provisioned", "errors": [{"order", "error"}]}
     """
     from flask import current_app
     now = _utc_naive(now) or _now()
@@ -554,7 +586,11 @@ def run_billing_tick(now: datetime | None = None) -> dict:
 
     ids = [oid for (oid,) in db.session.query(Order.id)
            .filter(Order.status.in_((ORDER_ACTIVE, ORDER_PAST_DUE))).order_by(Order.id).all()]
-    summary = {"checked": len(ids), "past_due": 0, "expired": 0, "reminded": 0, "renewed": 0, "errors": []}
+    waiting = [oid for (oid,) in db.session.query(Order.id)
+               .filter(Order.status == ORDER_AWAITING_PROVISIONING, Order.instance_id.is_(None))
+               .order_by(Order.paid_at, Order.id).all()]
+    summary = {"checked": len(ids) + len(waiting), "past_due": 0, "expired": 0, "reminded": 0, "renewed": 0,
+               "provisioned": 0, "errors": []}
     for order_id in ids:
         try:
             outcome = _process_order(order_id, now, grace, reminder)
@@ -565,6 +601,16 @@ def run_billing_tick(now: datetime | None = None) -> dict:
             order = db.session.get(Order, order_id)
             summary["errors"].append({"order": order.uuid if order else order_id, "error": f"{type(e).__name__}: {e}"})
             logger.exception("Billing-Tick: Bestellung %s fehlgeschlagen", order_id)
+
+    for order_id in waiting:
+        try:
+            if _retry_provisioning(order_id, now):
+                summary["provisioned"] += 1
+        except Exception as e:
+            db.session.rollback()
+            order = db.session.get(Order, order_id)
+            summary["errors"].append({"order": order.uuid if order else order_id, "error": f"{type(e).__name__}: {e}"})
+            logger.exception("Billing-Tick: Bereitstellung der Bestellung %s fehlgeschlagen", order_id)
 
     logger.info("Billing-Tick: %s", summary)
     return summary

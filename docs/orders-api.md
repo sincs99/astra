@@ -27,8 +27,10 @@ Billing-Tick setzt Laufzeiten durch. Bezahlt wird manuell (Admin bestätigt, Sta
    (`current_period_end` = Zahlung + Laufzeit).
 
 Ist nach der Zahlung kein Node frei, bleibt die Bestellung bezahlt, aber `awaiting_provisioning`.
-Der Admin schafft Platz (Endpoints, Kapazität) und ruft `mark-paid` erneut auf. Die Zahlung wird
-dabei nicht doppelt verbucht.
+Sobald ein Node Platz hat (Endpoints, Kapazität), stellt der Billing-Tick sie **automatisch** bereit (älteste
+Zahlung zuerst, Mail „Dein Server ist bereit“, Event `order:provisioned`). Der Admin kann das auch von Hand
+anstoßen, indem er `mark-paid` erneut aufruft. Die Zahlung wird dabei nie doppelt verbucht. Die Laufzeit beginnt
+mit der Bereitstellung, nicht mit der Zahlung: Wer warten muss, verliert keine Zeit.
 
 ## Verlängerung
 
@@ -44,7 +46,7 @@ Kündigung bleibt erhalten.
 | Status | Bedeutung |
 |---|---|
 | `pending_payment` | angelegt, noch nicht bezahlt |
-| `awaiting_provisioning` | bezahlt, Instance fehlt noch (kein Platz) |
+| `awaiting_provisioning` | bezahlt, Instance fehlt noch (kein Platz), der Tick wiederholt die Bereitstellung |
 | `active` | bezahlt, Instance läuft |
 | `past_due` | Laufzeit abgelaufen, Instance gesperrt und gestoppt, Karenzzeit läuft |
 | `cancelled` | offene Bestellung vom Kunden storniert |
@@ -57,7 +59,7 @@ bis zum Laufzeitende weiter.
 
 `python cli.py billing-tick` setzt die Laufzeiten durch. Er ist idempotent und für Cron oder einen
 Compose-Service gedacht (alle 5 Minuten reichen). Ausgabe: eine JSON-Zeile
-`{"checked", "past_due", "expired", "reminded", "renewed", "errors": [...]}`, Exit-Code 1 bei Fehlern.
+`{"checked", "past_due", "expired", "reminded", "renewed", "provisioned", "errors": [...]}`, Exit-Code 1 bei Fehlern.
 
 | Situation | Aktion |
 |---|---|
@@ -66,6 +68,7 @@ Compose-Service gedacht (alle 5 Minuten reichen). Ausgabe: eine JSON-Zeile
 | Kündigung zum Laufzeitende, Laufzeit abgelaufen | sofort gelöscht, `expired` (ohne Karenzzeit) |
 | Instance existiert nicht mehr | `expired`, ohne Runner-Aufruf |
 | `BILLING_REMINDER_DAYS` (Standard 3) vor Laufzeitende | Mail, Event `order:reminder`, höchstens einmal pro Bestellung und Laufzeit; `0` schaltet ab. Normale Bestellungen (bezahlt, Laufzeit länger als das Fenster): „Laufzeit endet bald“. Gekündigte: einmalig „Server wird am X gelöscht“ |
+| `awaiting_provisioning` (bezahlt, keine Instance) | erneute Bereitstellung bei freiem Platz (`provisioned`), ohne Event bei jedem erfolglosen Versuch; Mail und Event `order:provisioned` bei Erfolg |
 | Kostenloses Paket (`price_cents = 0`), Laufzeit abgelaufen | wird automatisch verlängert (`renewed`, Referenz `free-auto:...`), keine Sperre, keine Mail; nach Kündigung läuft es zum Laufzeitende aus |
 
 Sicherheiten:
@@ -77,7 +80,7 @@ Sicherheiten:
   Tag. Danach sperrt er trotzdem.
 - Jede Bestellung wird einzeln committed. Ein Fehler (steht in `errors`) blockiert die anderen nicht, die
   Bestellung wird im nächsten Tick erneut versucht.
-- Pending-, bezahlt-unbereitgestellte und beendete Bestellungen fasst der Tick nie an.
+- Bestellungen mit Status `pending_payment`, `cancelled` und `expired` fasst der Tick nie an.
 
 Wird eine Instance direkt gelöscht (Admin oder Kunde), setzt Astra die verknüpfte lebende Bestellung auf
 `expired`. Ein bereits bezahlter Rest der Laufzeit wird nicht erstattet. Die Bestellung zeigt
@@ -179,7 +182,7 @@ header = f"t={t},v1={sig}"          # als Header "Stripe-Signature" senden
 | Webhook 404 | `PAYMENT_PROVIDER` ist nicht `stripe` |
 | Webhook 500 | Stripe wiederholt automatisch. Backend-Log prüfen (`Stripe-Webhook: Verarbeitung fehlgeschlagen`), das Ereignis bleibt in `payment_events` mit Status `received` und wird bei der Wiederholung erneut versucht |
 | Kunde hat bezahlt, Bestellung bleibt `pending_payment` | Webhook noch nicht angekommen oder fehlgeschlagen. Stripe-Dashboard → Webhooks → Zustellungen prüfen, ggf. „Erneut senden“ |
-| Bestellung `awaiting_provisioning` | Bezahlt, aber kein Node mit Platz/Endpoint. Kapazität schaffen, dann `mark-paid` erneut aufrufen (verbucht nicht doppelt) |
+| Bestellung `awaiting_provisioning` | Bezahlt, aber kein Node mit Platz/Endpoint. Kapazität schaffen; der Tick stellt sie beim nächsten Lauf bereit (oder `mark-paid` erneut aufrufen, verbucht nicht doppelt) |
 | `payment_events.status = mismatch` | Betrag oder Währung weichen von der Bestellung ab. Es wurde **nichts freigeschaltet**. Prüfen, ob eine Zahlung im Dashboard erstattet oder die Bestellung manuell bearbeitet werden muss |
 | `payment_events.status = unapplied` / Event `order:payment_unapplied` | Geld ist eingegangen, die Bestellung war schon storniert oder beendet. **Erstattung im Stripe-Dashboard** veranlassen (Astra erstattet nie automatisch) |
 | `502 provider_unavailable` beim Checkout | Stripe nicht erreichbar oder Schlüssel ungültig; Backend-Log prüfen |
@@ -210,7 +213,7 @@ header = f"t={t},v1={sig}"          # als Header "Stripe-Signature" senden
 | `POST /api/admin/orders/{uuid}/mark-paid` | Admin | `{payment_reference?}` Zahlung bestätigen und Instance bereitstellen; auf `active`/`past_due` ist die Referenz Pflicht (Verlängerung) |
 
 Activity- und Webhook-Events: `order:created`, `order:paid`, `order:provision_failed`, `order:cancelled`,
-`order:past_due`, `order:renewed`, `order:expired`, `order:reminder`, `order:payment_unapplied`.
+`order:past_due`, `order:renewed`, `order:expired`, `order:reminder`, `order:payment_unapplied`, `order:provisioned`.
 
 ## Noch nicht enthalten
 

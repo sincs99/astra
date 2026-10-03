@@ -426,7 +426,7 @@ with tempfile.TemporaryDirectory() as tmp:
                          cwd=os.path.dirname(__file__))
     line = [l for l in out.stdout.splitlines() if l.startswith("{")]
     summary = json.loads(line[-1]) if line else {}
-check("CLI: Exit 0 und JSON-Zusammenfassung", out.returncode == 0 and summary == {"checked": 0, "past_due": 0, "expired": 0, "reminded": 0, "renewed": 0, "errors": []},
+check("CLI: Exit 0 und JSON-Zusammenfassung", out.returncode == 0 and summary == {"checked": 0, "past_due": 0, "expired": 0, "reminded": 0, "renewed": 0, "provisioned": 0, "errors": []},
       out.stdout[-200:] + out.stderr[-200:])
 
 print(f"\n{passed} OK, {failed} FAIL")
