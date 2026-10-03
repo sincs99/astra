@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, type Instance, getSimulatedUserId } from "../services/api";
+import { api, type Instance } from "../services/api";
 import { ConnectionAddress } from "../components/ConnectionAddress";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, ErrorState, EmptyState, cardStyle } from "../components/ui";
 
@@ -29,12 +30,12 @@ export function DashboardPage() {
 
   useAutoRefresh(() => load(true), 15000, autoRefresh);
 
-  const userId = getSimulatedUserId();
+  const user = useCurrentUser();
 
   return (
     <PageLayout title="Dashboard" maxWidth={900}>
       <p style={{ color: "#666", marginTop: -12, marginBottom: 24, fontSize: 14 }}>
-        Eingeloggt als User #{userId}
+        Eingeloggt als {user ? user.username : "…"}
       </p>
 
       {error && <ErrorState message={error} onRetry={() => load()} />}
@@ -47,7 +48,12 @@ export function DashboardPage() {
       {loading ? (
         <LoadingState />
       ) : instances.length === 0 ? (
-        <EmptyState message="Keine Instances vorhanden. Erstelle eine ueber den Admin-Bereich." icon="📦" />
+        <EmptyState
+          message={user?.is_admin
+            ? "Keine Instances vorhanden. Erstelle eine ueber den Admin-Bereich."
+            : "Du hast noch keinen Server. Wende dich an einen Administrator."}
+          icon="📦"
+        />
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
           {instances.map((inst) => (
