@@ -9,7 +9,7 @@
  * - Grau (#666): offline, unknown, inactive, none
  */
 
-export { StatusBadge } from "./StatusBadge";
+export { StatusBadge, statusLabel } from "./StatusBadge";
 export { LoadingState } from "./LoadingState";
 export { ErrorState } from "./ErrorState";
 export { EmptyState } from "./EmptyState";

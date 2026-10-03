@@ -34,6 +34,9 @@ describe("DeleteInstanceForm", () => {
   it("sperrt Kunden bei laufendem Vorgang mit Hinweis", () => {
     render(<DeleteInstanceForm name="S" status="provisioning" onDelete={vi.fn()} onCancel={() => {}} />);
     expect(screen.getByText(/Löschen ist erst danach möglich/)).toBeTruthy();
+    // Kunden sehen den deutschen Status, nicht den Rohwert
+    expect(screen.getByText(/gerade „wird eingerichtet“/)).toBeTruthy();
+    expect(screen.queryByText(/provisioning/)).toBeNull();
     typeName("S");
     expect(deleteBtn().disabled).toBe(true);
   });

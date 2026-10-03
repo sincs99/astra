@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { btnDanger, btnDefault, inputStyle, labelStyle, ErrorState } from "./ui";
+import { btnDanger, btnDefault, inputStyle, labelStyle, statusLabel, ErrorState } from "./ui";
 
 /** Status, bei denen das Backend das Löschen ohne `force` mit 409 ablehnt. */
 export const DELETE_BLOCKING_STATUSES = ["provisioning", "reinstalling", "restoring", "transferring"];
@@ -58,12 +58,12 @@ export function DeleteInstanceForm({ name, status, allowForce = false, notice, o
       {allowForce && blocked && (
         <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, marginTop: 8 }}>
           <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} />
-          Erzwingen (Status „{status}“ – laufender Vorgang wird abgebrochen)
+          Erzwingen (Status „{statusLabel(status)}“ – laufender Vorgang wird abgebrochen)
         </label>
       )}
       {!allowForce && blocked && (
         <p style={{ fontSize: 12, color: "#c62828", margin: "8px 0 0" }}>
-          Der Server ist im Status „{status}“. Löschen ist erst danach möglich.
+          Der Server ist gerade „{statusLabel(status)}“. Löschen ist erst danach möglich.
         </p>
       )}
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>

@@ -32,6 +32,7 @@ beforeEach(() => {
   localStorage.setItem("astra_access_token", "t");
   vi.spyOn(api, "getCurrentUser").mockResolvedValue({ id: 2, username: "bob", is_admin: false } as never);
   vi.spyOn(window, "confirm").mockReturnValue(true);
+  vi.spyOn(api, "getBillingInfo").mockResolvedValue({ payment_provider: "stripe", online_payment: true });
 });
 afterEach(() => { cleanup(); localStorage.clear(); });
 
@@ -93,6 +94,53 @@ describe("OrdersPage", () => {
     mount();
     fireEvent.click(await screen.findByRole("button", { name: "Kündigen zum Laufzeitende" }));
     expect(await screen.findByText(/kann nicht storniert werden/)).toBeTruthy();
+  });
+
+  describe("Zahlungsweg (billing-info)", () => {
+    it("rendert bei manuellem Anbieter keine Bezahl-Buttons und nennt den Zahlungsweg sofort", async () => {
+      vi.spyOn(api, "getBillingInfo").mockResolvedValue({ payment_provider: "manual", online_payment: false });
+      const checkout = vi.spyOn(api, "createCheckout");
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([active, pending]);
+      mount();
+      expect((await screen.findAllByText("Zahlung per Überweisung, Freischaltung durch den Betreiber."))).toHaveLength(2);
+      expect(screen.queryByRole("button", { name: /bezahlen/ })).toBeNull();
+      expect(checkout).not.toHaveBeenCalled();
+    });
+
+    it("zeigt bei Stripe die Bezahl-Buttons", async () => {
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([pending]);
+      mount();
+      expect(await screen.findByRole("button", { name: "Jetzt bezahlen" })).toBeTruthy();
+      expect(screen.queryByText(/Zahlung per Überweisung/)).toBeNull();
+    });
+
+    it("faellt auf die Buttons zurueck, wenn billing-info nicht geladen werden kann", async () => {
+      vi.spyOn(api, "getBillingInfo").mockRejectedValue(new Error("nicht verfuegbar"));
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([pending]);
+      mount();
+      expect(await screen.findByRole("button", { name: "Jetzt bezahlen" })).toBeTruthy();
+    });
+
+    it("zeigt Fehler wie nothing_to_pay und provider_unavailable mit dem Text des Backends", async () => {
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([pending]);
+      const checkout = vi.spyOn(api, "createCheckout").mockRejectedValueOnce(new ApiError("Für diese Bestellung ist nichts zu zahlen", 409, "nothing_to_pay"));
+      mount();
+      fireEvent.click(await screen.findByRole("button", { name: "Jetzt bezahlen" }));
+      expect(await screen.findByText("Für diese Bestellung ist nichts zu zahlen")).toBeTruthy();
+      checkout.mockRejectedValueOnce(new ApiError("Der Zahlungsanbieter ist gerade nicht erreichbar", 502, "provider_unavailable"));
+      fireEvent.click(screen.getByRole("button", { name: "Jetzt bezahlen" }));
+      expect(await screen.findByText("Der Zahlungsanbieter ist gerade nicht erreichbar")).toBeTruthy();
+    });
+  });
+
+  it("bietet bei kostenlosen Bestellungen keine Zahlung an (nichts zu bezahlen)", async () => {
+    const free = makeOrder({ id: 12, uuid: "o-12", status: "active", price_cents: 0, current_period_end: "2026-11-15T00:00:00" });
+    vi.spyOn(api, "getBillingInfo").mockResolvedValue({ payment_provider: "manual", online_payment: false });
+    vi.spyOn(api, "getMyOrders").mockResolvedValue([free]);
+    mount();
+    await screen.findByRole("button", { name: "Kündigen zum Laufzeitende" });
+    expect(screen.queryByText(/Überweisung/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /bezahlen/ })).toBeNull();
   });
 
   describe("Zahlung (Stripe-Checkout)", () => {

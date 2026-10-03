@@ -25,10 +25,10 @@ const STATUS_CONFIG: Record<string, { bg: string; color: string; label?: string 
   transferring: { bg: "#e3f2fd", color: "#1565c0", label: "wird verschoben" },
   transfer_failed: { bg: "#ffebee", color: "#c62828", label: "Transfer Fehler" },
   // Health
-  healthy: { bg: "#e8f5e9", color: "#2e7d32" },
-  stale: { bg: "#fff8e1", color: "#bf360c" },
-  degraded: { bg: "#ffebee", color: "#c62828" },
-  unreachable: { bg: "#f5f5f5", color: "#666" },
+  healthy: { bg: "#e8f5e9", color: "#2e7d32", label: "gesund" },
+  stale: { bg: "#fff8e1", color: "#bf360c", label: "veraltet" },
+  degraded: { bg: "#ffebee", color: "#c62828", label: "beeinträchtigt" },
+  unreachable: { bg: "#f5f5f5", color: "#666", label: "nicht erreichbar" },
   // Jobs
   pending: { bg: "#e3f2fd", color: "#1565c0", label: "ausstehend" },
   completed: { bg: "#e8f5e9", color: "#2e7d32", label: "abgeschlossen" },
@@ -53,6 +53,12 @@ const STATUS_CONFIG: Record<string, { bg: string; color: string; label?: string 
   info: { bg: "#e3f2fd", color: "#1565c0" },
   success: { bg: "#e8f5e9", color: "#2e7d32" },
 };
+
+/** Deutsche Bezeichnung eines Status fuer Fliesstexte (Fallback: der Rohwert). */
+export function statusLabel(status: string | null | undefined): string {
+  const s = (status || "unknown").toLowerCase();
+  return STATUS_CONFIG[s]?.label ?? s;
+}
 
 interface StatusBadgeProps {
   status: string | null | undefined;

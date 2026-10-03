@@ -9,6 +9,10 @@ describe("fixUmlauts", () => {
     expect(fixUmlauts("Instance geloescht, Kuendigung zum Laufzeitende vorgemerkt")).toBe("Instance gelöscht, Kündigung zum Laufzeitende vorgemerkt");
   });
 
+  it("korrigiert auch Fehlertexte der Platzierung", () => {
+    expect(fixUmlauts("Kein Agent mit freiem Endpoint und ausreichender Kapazitaet verfügbar")).toBe("Kein Agent mit freiem Endpoint und ausreichender Kapazität verfügbar");
+  });
+
   it("veraendert keine Teilwoerter und keine unbekannten Woerter", () => {
     const text = "neue Queue, true value, Dateien, Blueprint, continue, fuerst, Ueberblick";
     expect(fixUmlauts(text)).toBe(text);

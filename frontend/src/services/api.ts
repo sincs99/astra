@@ -1282,6 +1282,9 @@ export const api = {
       body: JSON.stringify(name ? { product_id: productId, name } : { product_id: productId }),
     }),
   getMyOrders: () => request<Order[]>("/client/orders"),
+  /** Welcher Zahlungsweg aktiv ist: "manual" (Ueberweisung) oder "stripe" (online). */
+  getBillingInfo: () =>
+    request<{ payment_provider: "manual" | "stripe" | string; online_payment: boolean }>("/client/billing-info"),
   /** Startet die Zahlung (Stripe Checkout). 409 "manual", solange kein Zahlungsanbieter konfiguriert ist. */
   createCheckout: (uuid: string) =>
     request<{ checkout_url: string }>(`/client/orders/${uuid}/checkout`, { method: "POST", body: JSON.stringify({}) }),

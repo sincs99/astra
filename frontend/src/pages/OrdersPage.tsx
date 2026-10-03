@@ -28,7 +28,13 @@ export function OrdersPage() {
     try {
       setLoading(true);
       setError(null);
-      setOrders(await api.getMyOrders());
+      const [list, billing] = await Promise.all([
+        api.getMyOrders(),
+        // Zahlungsweg einmal beim Laden erfragen; schlaegt das fehl, bleibt der Fallback (Checkout probieren, 409 "manual")
+        api.getBillingInfo().catch(() => null),
+      ]);
+      setOrders(list);
+      if (billing) setManualPayment(!billing.online_payment);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Bestellungen konnten nicht geladen werden");
     } finally {
@@ -123,7 +129,8 @@ export function OrdersPage() {
     if (o.status === "active" || o.status === "past_due") {
       return (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          {payButton("Verlängern und bezahlen", o.status === "past_due")}
+          {/* Kostenlose Bestellungen haben nichts zu bezahlen: weder Bezahl-Button noch Ueberweisungshinweis */}
+          {o.price_cents > 0 && payButton("Verlängern und bezahlen", o.status === "past_due")}
           {!o.cancel_at_period_end && (
             <ConfirmButton size="sm" danger label="Kündigen zum Laufzeitende"
               confirmMessage="Zum Laufzeitende kündigen? Der Server bleibt bis dahin nutzbar."
