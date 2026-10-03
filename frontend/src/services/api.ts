@@ -5,6 +5,8 @@
  * In Produktion:  VITE_API_BASE_URL oder /api (hinter Nginx)
  */
 
+import { friendlyApiMessage, NETWORK_ERROR_MESSAGE } from "../lib/errors";
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 const TOKEN_KEY = "astra_access_token";
 
@@ -94,7 +96,12 @@ async function request<T = unknown>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, { ...options, headers });
+  let response: Response;
+  try {
+    response = await fetch(url, { ...options, headers });
+  } catch {
+    throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
+  }
 
   if (!response.ok) {
     // Abgelaufene/ungueltige Session: Token verwerfen und zum Login (Login-Fehler selbst ausgenommen)
@@ -106,7 +113,7 @@ async function request<T = unknown>(
     }
     const error = (await response.json().catch(() => ({}))) as Record<string, string>;
     throw new ApiError(
-      error.error || `Request failed: ${response.status}`,
+      friendlyApiMessage(response.status, error.error || `Request failed: ${response.status}`),
       response.status,
       error.code,
     );

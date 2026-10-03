@@ -45,6 +45,17 @@ describe("api.request", () => {
     expect(getAccessToken()).toBe("alt");
   });
 
+  it("zeigt bei fehlender Admin-Berechtigung eine verstaendliche Meldung", async () => {
+    setAccessToken("tok");
+    mockFetch(403, { error: "Admin-Berechtigung erforderlich" });
+    await expect(api.getAgents()).rejects.toThrow("Nur Administratoren");
+  });
+
+  it("meldet einen nicht erreichbaren Server verstaendlich", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    await expect(api.getAgents()).rejects.toThrow("nicht erreichbar");
+  });
+
   it("sendet beim Passwort-Reset das Feld 'password'", async () => {
     const fetchMock = mockFetch(200, { message: "ok" });
     await api.confirmPasswordReset("t", "geheim123");
