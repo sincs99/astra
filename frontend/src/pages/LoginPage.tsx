@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { api, isAuthenticated, setAccessToken } from "../services/api";
-import { inputStyle, labelStyle, btnPrimary } from "../components/ui";
+import { inputStyle, labelStyle, btnPrimary, linkStyle } from "../components/ui";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const expired = searchParams.get("expired") === "1";
+  const resetDone = searchParams.get("reset") === "1";
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +39,15 @@ export function LoginPage() {
   return (
     <div style={{ maxWidth: 400, margin: "clamp(24px, 10vh, 80px) auto", padding: 24 }}>
       <h1 style={{ textAlign: "center", marginBottom: 24 }}>Astra Login</h1>
+
+      {resetDone && !error && (
+        <div role="status" style={{
+          padding: "10px 14px", backgroundColor: "#e8f5e9", color: "#2e7d32",
+          borderRadius: 6, marginBottom: 16, fontSize: 14,
+        }}>
+          Dein Passwort wurde geaendert. Bitte melde dich jetzt an.
+        </div>
+      )}
 
       {expired && !error && (
         <div role="status" style={{
@@ -105,6 +115,11 @@ export function LoginPage() {
         >
           {loading ? "Wird angemeldet..." : "Anmelden"}
         </button>
+
+        <p style={{ display: "flex", justifyContent: "space-between", fontSize: 14, marginTop: 16 }}>
+          <Link to="/password-reset" style={linkStyle}>Passwort vergessen?</Link>
+          <Link to="/register" style={linkStyle}>Konto erstellen</Link>
+        </p>
       </form>
     </div>
   );
