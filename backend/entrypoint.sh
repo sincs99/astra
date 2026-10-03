@@ -22,7 +22,8 @@ log() {
 # ── Migrationen ─────────────────────────────────────────
 run_migrate() {
     log "Starte Datenbankmigrationen..."
-    flask db upgrade
+    # db-init: frische DB -> create_all + stamp head, bestehende DB -> flask db upgrade
+    python cli.py db-init
     RESULT=$?
     if [ $RESULT -ne 0 ]; then
         log "FEHLER: Migration fehlgeschlagen (Exit-Code: $RESULT)"

@@ -127,7 +127,8 @@ Manuell entspricht das `docker compose up -d` (mit `COMPOSE_FILE=docker-compose.
 ### 3. Migrationen und Bootstrap
 
 ```bash
-# Migrationen laufen automatisch bei AUTO_MIGRATE=true
+# Migrationen laufen automatisch bei AUTO_MIGRATE=true (python cli.py db-init:
+# frische DB -> Schema anlegen + stamp head, bestehende DB -> upgrade)
 # Oder manuell:
 docker compose exec backend ./entrypoint.sh migrate
 
