@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { api, isAuthenticated, setAccessToken, MIN_PASSWORD_LENGTH } from "../services/api";
 import { inputStyle, labelStyle, btnPrimary, linkStyle } from "../components/ui";
+import { safeRedirectPath } from "../lib/redirect";
 import { AuthCard, AuthMessage } from "../components/AuthCard";
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = safeRedirectPath(searchParams.get("redirect"));
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,7 +19,7 @@ export function RegisterPage() {
   const [resent, setResent] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  if (isAuthenticated()) return <Navigate to="/" replace />;
+  if (isAuthenticated()) return <Navigate to={redirectTo} replace />;
 
   const validate = (): string | null => {
     if (!username.trim() || !email.trim() || !password) return "Bitte alle Felder ausfuellen";
@@ -37,7 +40,7 @@ export function RegisterPage() {
       const result = await api.register(username.trim(), email.trim(), password);
       if ("access_token" in result) {
         setAccessToken(result.access_token);
-        navigate("/");
+        navigate(redirectTo);
       } else {
         // E-Mail-Verifizierung aktiv: erst nach Klick auf den Link in der Mail ist ein Login moeglich
         setVerifyPending(true);
@@ -107,7 +110,7 @@ export function RegisterPage() {
             {loading ? "Wird erstellt..." : "Konto erstellen"}
           </button>
           <p style={{ textAlign: "center", fontSize: 14 }}>
-            Schon ein Konto? <Link to="/login" style={linkStyle}>Anmelden</Link>
+            Schon ein Konto? <Link to={redirectTo === "/" ? "/login" : `/login?redirect=${encodeURIComponent(redirectTo)}`} style={linkStyle}>Anmelden</Link>
           </p>
         </form>
       )}
