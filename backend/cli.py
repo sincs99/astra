@@ -36,6 +36,38 @@ def cmd_bootstrap(args):
         return 0 if result["created"] or "existiert" in result["message"] else 1
 
 
+def cmd_import_blueprint(args):
+    """Importiert ein Pterodactyl/Pelican-Egg (JSON/YAML) oder natives Blueprint-JSON."""
+    import json
+
+    from app import create_app
+    from app.extensions import db
+    from app.domain.blueprints.egg_import import EggImportError, import_blueprint
+
+    try:
+        with open(args.file, encoding="utf-8") as fh:
+            raw = fh.read()
+        if args.file.lower().endswith((".yaml", ".yml")):
+            import yaml
+            data = yaml.safe_load(raw)
+        else:
+            data = json.loads(raw)
+    except (OSError, ValueError) as exc:
+        print(f"[Import] Datei konnte nicht gelesen werden: {exc}")
+        return 1
+
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        try:
+            blueprint = import_blueprint(data)
+        except EggImportError as exc:
+            print(f"[Import] Fehler: {exc}")
+            return 1
+        print(f"[Import] Blueprint '{blueprint.name}' angelegt (ID {blueprint.id})")
+    return 0
+
+
 def cmd_check_config(args):
     """Prueft die aktuelle Konfiguration auf Probleme."""
     from app import create_app
@@ -157,6 +189,12 @@ def main():
     bp.add_argument("--password", default="admin", help="Admin-Passwort")
     bp.add_argument("--force", action="store_true", help="Bestehenden User zum Admin machen")
 
+    # ── import-blueprint ────────────────────────────────
+    ip = subparsers.add_parser(
+        "import-blueprint", help="Importiert ein Pterodactyl/Pelican-Egg als Blueprint"
+    )
+    ip.add_argument("file", help="Pfad zur Egg- oder Blueprint-Datei (.json, .yaml)")
+
     # ── check-config ────────────────────────────────────
     subparsers.add_parser("check-config", help="Prueft die Konfiguration")
 
@@ -187,6 +225,7 @@ def main():
 
     commands = {
         "bootstrap": cmd_bootstrap,
+        "import-blueprint": cmd_import_blueprint,
         "check-config": cmd_check_config,
         "db-status": cmd_db_status,
         "worker": cmd_worker,

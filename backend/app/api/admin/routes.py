@@ -392,6 +392,21 @@ def create_blueprint():
     return jsonify(blueprint.to_dict()), 201
 
 
+@admin_bp.route("/blueprints/import", methods=["POST"])
+def import_blueprint_endpoint():
+    """Importiert ein Pterodactyl/Pelican-Egg oder natives Blueprint-JSON ("format": "astra")."""
+    from app.domain.blueprints.egg_import import EggImportError, import_blueprint
+
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "JSON body required"}), 400
+    try:
+        blueprint = import_blueprint(data)
+    except EggImportError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify(blueprint.to_dict()), 201
+
+
 @admin_bp.route("/blueprints/<int:blueprint_id>", methods=["PATCH"])
 def update_blueprint(blueprint_id: int):
     blueprint = db.session.get(BlueprintModel, blueprint_id)
