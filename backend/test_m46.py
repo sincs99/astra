@@ -322,6 +322,79 @@ check("Kunde loescht eigene Instance -> 200, Bestellung expired", r.status_code 
 r = c.post(f"/api/admin/orders/{od_}/mark-paid", json={"payment_reference": "spaet"}, headers=AH)
 check("expired Bestellung kann nicht verlaengert werden -> 409", r.status_code == 409)
 
+print("Erinnerung vor Laufzeitende")
+REM = app.config["BILLING_REMINDER_DAYS"]
+check("Standard: 3 Tage", REM == 3)
+orr, ir = paid_order()
+endr = order(orr)["end"]
+mail.outbox.clear()
+res = tick(endr - D(days=REM, hours=1))
+check("vor dem Erinnerungsfenster: keine Mail", res["reminded"] == 0 and not mail.outbox)
+def mails_for(ou):
+    return [m for m in mail.outbox if ou in m["body"]]
+
+
+res = tick(endr - D(days=REM) + D(minutes=1))
+check("im Erinnerungsfenster: Mail + Event", res["reminded"] >= 1 and len(mails_for(orr)) == 1 and events("order:reminder") >= 1, str(res))
+check("Mail nennt Laufzeitende und Bestellung", mails_for(orr)[0]["to"] == "k1@t.local" and "endet" in mails_for(orr)[0]["subject"])
+res = tick(endr - D(days=1))
+check("hoechstens einmal pro Periode", len(mails_for(orr)) == 1)
+check("Instance bleibt unberuehrt", instance(ir)["status"] is None and order(orr)["status"] == "active")
+r = c.post(f"/api/admin/orders/{orr}/mark-paid", json={"payment_reference": "rem-renew"}, headers=AH)
+new_end = order(orr)["end"]
+res = tick(new_end - D(days=REM) + D(minutes=1))
+check("nach Verlaengerung gibt es in der naechsten Periode wieder eine Erinnerung", len(mails_for(orr)) == 2, str(len(mails_for(orr))))
+# gekuendigt: keine Erinnerung
+ork, ik = paid_order()
+c.post(f"/api/client/orders/{ork}/cancel", headers=U1)
+res = tick(order(ork)["end"] - D(days=1))
+check("gekuendigte Bestellung bekommt keine Erinnerung", len(mails_for(ork)) == 0)
+# Erinnerung abschaltbar
+app.config["BILLING_REMINDER_DAYS"] = 0
+orz, iz2 = paid_order()
+res = tick(order(orz)["end"] - D(hours=1))
+check("BILLING_REMINDER_DAYS=0 schaltet die Erinnerung ab", len(mails_for(orz)) == 0)
+app.config["BILLING_REMINDER_DAYS"] = REM
+# ueberfaellige Bestellungen bekommen keine Erinnerung mehr, sondern die past_due-Mail
+orp, ip_ = paid_order()
+tick(order(orp)["end"] + D(hours=1))
+check("nach Ablauf: past_due statt Erinnerung", order(orp)["status"] == "past_due"
+      and all("endet bald" not in m["subject"] for m in mails_for(orp)))
+# kurze Laufzeit (<= Erinnerungsfenster): keine Erinnerung direkt nach dem Kauf
+r = c.post("/api/admin/products", json={"name": "Kurz", "blueprint_id": ids["bp"], "memory": 256, "disk": 500, "cpu": 50,
+                                         "price_cents": 100, "billing_period_days": 2}, headers=AH)
+short_pid = r.json["id"]
+rr = c.post("/api/client/orders", json={"product_id": short_pid}, headers=U1).json["uuid"]
+c.post(f"/api/admin/orders/{rr}/mark-paid", json={"payment_reference": "short-1"}, headers=AH)
+res = tick(datetime.utcnow() + D(hours=1))
+check("Laufzeit kuerzer als Erinnerungsfenster: keine Erinnerung", len(mails_for(rr)) == 0)
+
+print("Kostenlose Pakete laufen weiter")
+r = c.post("/api/admin/products", json={"name": "Gratis", "blueprint_id": ids["bp"], "memory": 256, "disk": 500, "cpu": 50,
+                                         "price_cents": 0, "max_instances_per_user": 3, "billing_period_days": 30}, headers=AH)
+free_pid = r.json["id"]
+r = c.post("/api/client/orders", json={"product_id": free_pid, "name": "gratis1"}, headers=U1)
+ofree = r.json["uuid"]
+ifree = r.json["instance_uuid"]
+with app.app_context():
+    report_install(c, ifree, True)
+endf = order(ofree)["end"]
+mail.outbox.clear()
+res = tick(endf + D(hours=1))
+check("Ablauf: automatisch verlaengert (renewed)", res["renewed"] >= 1, str(res))
+o = order(ofree)
+check("Status active, Instance laeuft, neues Ende ca. 30 Tage", o["status"] == "active" and instance(ifree)["status"] is None
+      and o["end"] > endf + D(days=29), str(o))
+check("keine Mail an den Kunden bei Gratis-Verlaengerung", len(mails_for(ofree)) == 0)
+check("Referenz free-auto vermerkt", any(x.startswith("free-auto:") for x in o["refs"]), str(o["refs"]))
+o_before = order(ofree)
+tick(endf + D(hours=2))
+check("zweiter Tick: nichts mehr (idempotent)", order(ofree)["end"] == o_before["end"] and order(ofree)["refs"] == o_before["refs"])
+check("Event order:renewed", events("order:renewed") >= 2)
+c.post(f"/api/client/orders/{ofree}/cancel", headers=U1)
+tick(order(ofree)["end"] + D(hours=1))
+check("gekuendigtes Gratis-Paket laeuft zum Laufzeitende aus", instance(ifree) is None and order(ofree)["status"] == "expired")
+
 print("Konfiguration")
 app.config["BILLING_GRACE_DAYS"] = 0
 oz, iz = paid_order()
@@ -343,7 +416,7 @@ with tempfile.TemporaryDirectory() as tmp:
                          cwd=os.path.dirname(__file__))
     line = [l for l in out.stdout.splitlines() if l.startswith("{")]
     summary = json.loads(line[-1]) if line else {}
-check("CLI: Exit 0 und JSON-Zusammenfassung", out.returncode == 0 and summary == {"checked": 0, "past_due": 0, "expired": 0, "errors": []},
+check("CLI: Exit 0 und JSON-Zusammenfassung", out.returncode == 0 and summary == {"checked": 0, "past_due": 0, "expired": 0, "reminded": 0, "renewed": 0, "errors": []},
       out.stdout[-200:] + out.stderr[-200:])
 
 print(f"\n{passed} OK, {failed} FAIL")

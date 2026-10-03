@@ -47,7 +47,7 @@ bis zum Laufzeitende weiter.
 
 `python cli.py billing-tick` setzt die Laufzeiten durch. Er ist idempotent und für Cron oder einen
 Compose-Service gedacht (alle 5 Minuten reichen). Ausgabe: eine JSON-Zeile
-`{"checked", "past_due", "expired", "errors": [...]}`, Exit-Code 1 bei Fehlern.
+`{"checked", "past_due", "expired", "reminded", "renewed", "errors": [...]}`, Exit-Code 1 bei Fehlern.
 
 | Situation | Aktion |
 |---|---|
@@ -55,6 +55,8 @@ Compose-Service gedacht (alle 5 Minuten reichen). Ausgabe: eine JSON-Zeile
 | `past_due` länger als `BILLING_GRACE_DAYS` (Standard 7) | Instance gelöscht (`force`), `expired`, Mail |
 | Kündigung zum Laufzeitende, Laufzeit abgelaufen | sofort gelöscht, `expired` (ohne Karenzzeit) |
 | Instance existiert nicht mehr | `expired`, ohne Runner-Aufruf |
+| `BILLING_REMINDER_DAYS` (Standard 3) vor Laufzeitende | Erinnerungsmail, Event `order:reminder`, höchstens einmal pro Bestellung und Laufzeit; nur bezahlte Bestellungen ohne Kündigung, Laufzeit länger als das Fenster; `0` schaltet ab |
+| Kostenloses Paket (`price_cents = 0`), Laufzeit abgelaufen | wird automatisch verlängert (`renewed`, Referenz `free-auto:...`), keine Sperre, keine Mail; nach Kündigung läuft es zum Laufzeitende aus |
 
 Sicherheiten:
 
@@ -94,10 +96,10 @@ Wird eine Instance direkt gelöscht (Admin oder Kunde), setzt Astra die verknüp
 | `POST /api/admin/orders/{uuid}/mark-paid` | Admin | `{payment_reference?}` Zahlung bestätigen, Instance bereitstellen |
 
 Activity- und Webhook-Events: `order:created`, `order:paid`, `order:provision_failed`, `order:cancelled`,
-`order:past_due`, `order:renewed`, `order:expired`.
+`order:past_due`, `order:renewed`, `order:expired`, `order:reminder`.
 
 ## Noch nicht enthalten
 
-Zahlungsanbieter mit Webhook, Zahlungserinnerung vor Ablauf, Mails zu Bestellungen beim Anlegen und Bezahlen,
+Zahlungsanbieter mit Webhook, Mails zu Bestellungen beim Anlegen und Bezahlen,
 Rechnungen mit Umsatzsteuer, Frontend (Shop, Bestellübersicht, Admin-Seiten). Rechtliche
 Voraussetzungen siehe [phase4-plan.md](phase4-plan.md).

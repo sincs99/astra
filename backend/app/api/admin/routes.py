@@ -483,7 +483,8 @@ def _billing_error(e):
 @admin_bp.route("/products", methods=["GET"])
 def list_products():
     from app.domain.billing.models import Product
-    products = Product.query.order_by(Product.price_cents, Product.id).all()
+    from sqlalchemy.orm import joinedload
+    products = Product.query.options(joinedload(Product.blueprint)).order_by(Product.price_cents, Product.id).all()
     return jsonify([p.to_dict() for p in products])
 
 

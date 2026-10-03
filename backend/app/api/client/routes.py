@@ -203,7 +203,9 @@ def reinstall_endpoint(uuid: str):
 def list_shop_products():
     """Oeffentliche Produktliste (nur aktive Pakete, ohne interne Felder)."""
     from app.domain.billing.models import Product
-    products = Product.query.filter_by(is_active=True).order_by(Product.price_cents, Product.id).all()
+    from sqlalchemy.orm import joinedload
+    products = (Product.query.options(joinedload(Product.blueprint)).filter_by(is_active=True)
+                .order_by(Product.price_cents, Product.id).all())
     return jsonify([p.to_public_dict() for p in products])
 
 
