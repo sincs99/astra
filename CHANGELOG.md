@@ -16,6 +16,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `AGENT_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus
 - `backend/test_m36.py` (17 Tests)
 
+### Added (M37 – Egg-Import)
+- `backend/app/domain/blueprints/egg_import.py`: `convert_egg()` wandelt Pterodactyl-Eggs (PTDL_v1/v2) und Pelican-Eggs (PLCN_v1..v3) in Blueprint-Felder um (JSON-String-Configs, `docker_images`, `startup_commands`, `env_variable` -> `env_var`, `^C` -> `^SIGINT`); Platzhalter bleiben unveraendert
+- `POST /api/admin/blueprints/import` – Egg oder natives Blueprint-JSON (`"format": "astra"`) -> 201 mit Blueprint, 400 bei ungueltigen Daten
+- CLI: `python cli.py import-blueprint <datei.json|yaml>`
+- `blueprints/minecraft-paper.json` – reduziertes Beispiel-Egg (Paper, Java 21). Die Minecraft-EULA wird nicht automatisch akzeptiert
+- `backend/test_m37.py` (35 Tests)
+
 ### Added (Self-Service Teil 1)
 - `POST /api/auth/register` – Selbstregistrierung, standardmaessig AUS (`REGISTRATION_ENABLED=true` zum Aktivieren), neue Nutzer sind nie Admin
 - `POST /api/auth/password-reset/request` und `/confirm` – Reset per signiertem, zeitlich begrenztem Einmal-Link (`PASSWORD_RESET_TTL_MINUTES`, Standard 60), antwortet unabhaengig von der Adresse gleich

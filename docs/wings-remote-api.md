@@ -189,3 +189,22 @@ Panel auf 443.
 - Rate-Limiting für `/api/remote/sftp/auth` (alle Anfragen kommen von Node-IPs;
   ein IP-basiertes Limit würde legitime Key-Versuche blockieren).
 - Mounts (`allowed_mounts` in der config.yml ist leer).
+
+## Eggs importieren (M37)
+
+Pterodactyl- und Pelican-Eggs lassen sich 1:1 als Blueprint übernehmen:
+
+```bash
+# per CLI (JSON oder YAML)
+python cli.py import-blueprint ../blueprints/minecraft-paper.json
+
+# per API (Admin-Token nötig)
+curl -X POST https://panel.example/api/admin/blueprints/import \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  --data @blueprints/minecraft-paper.json
+```
+
+Erkannt werden `meta.version` `PTDL_*`/`PLCN_*` sowie das native Astra-Format (`"format": "astra"`).
+Die Pterodactyl-Platzhalter wie `{{server.build.default.port}}` bleiben erhalten, der Config-Builder
+versteht sie. Das mitgelieferte Beispiel `blueprints/minecraft-paper.json` ist ein reduziertes eigenes Egg;
+die Minecraft-EULA muss der Serverbesitzer selbst in `eula.txt` akzeptieren.
