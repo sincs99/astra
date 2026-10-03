@@ -84,6 +84,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `redis` zu `backend/requirements.txt` hinzugefuegt
 
 ### Added (Frontend)
+- Endpoint-Formular: Port-Bereich (`25565-25600`) ueber `POST /admin/agents/{id}/endpoints/bulk`, Ergebnis-Toast "n angelegt, m uebersprungen"; Einzelport wie bisher (`lib/portRange.ts`)
 - Blueprint-Import-UI (`BlueprintImport`) auf der Blueprint-Admin-Seite: Egg-JSON per Datei oder Textarea, Vorschau, Aufruf `POST /api/admin/blueprints/import` (Feature-Flag entfernt, immer sichtbar)
 - Verbindungsadresse (`ConnectionAddress`) mit Kopier-Button auf Dashboard und Instance-Detail; erscheint, sobald die Instance-Antwort ein Feld `connection` {host, port, address} liefert
 - Agents: Bearbeiten-Formular (`PATCH /admin/agents/{id}`) und getrennte Felder Connect-Port (Panel -> Wings, z.B. 443 hinter Caddy) und Listen-Port (Wings lokal, z.B. 8080) im Erstellen- und Bearbeiten-Formular; Port-Validierung 1-65535

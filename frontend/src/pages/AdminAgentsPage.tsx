@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Agent, type Endpoint } from "../services/api";
+import { parsePortRange } from "../lib/portRange";
 import { EMPTY_AGENT_FORM, agentToForm, toAgentPayload, type AgentFormValues } from "../lib/agentForm";
 import {
   PageLayout, StatusBadge, LoadingState, EmptyState, ErrorState, ConfirmButton,
@@ -103,16 +104,23 @@ export function AdminAgentsPage() {
 
   const handleEndpointSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!epAgentId || !epPort) return;
+    if (!epAgentId) return;
+    const range = parsePortRange(epPort);
+    if (typeof range === "string") { toast.error(range); return; }
+    const ip = epIp.trim() || "0.0.0.0";
     try {
       setEpSubmitting(true);
       setError(null);
-      await api.createEndpoint(epAgentId as number, {
-        ip: epIp.trim() || "0.0.0.0",
-        port: Number(epPort),
-      });
+      if (range.start === range.end) {
+        await api.createEndpoint(epAgentId as number, { ip, port: range.start });
+        toast.success("Endpoint erstellt.");
+      } else {
+        const result = await api.createEndpointsBulk(epAgentId as number, {
+          ip, port_start: range.start, port_end: range.end,
+        });
+        toast.success(`${result.created} angelegt, ${result.skipped} übersprungen.`);
+      }
       setEpPort("");
-      toast.success("Endpoint erstellt.");
       await loadAll();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Fehler beim Erstellen");
@@ -207,22 +215,25 @@ export function AdminAgentsPage() {
             />
           </div>
           <div>
-            <label htmlFor="fld-3" style={labelStyle}>Port *</label>
+            <label htmlFor="fld-3" style={labelStyle}>Port oder Bereich *</label>
             <input id="fld-3"
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={epPort}
               onChange={e => setEpPort(e.target.value)}
-              placeholder="25565"
+              placeholder="25565 oder 25565-25600"
               required
-              min={1}
-              max={65535}
-              style={{ ...inputStyle, width: 100 }}
+              aria-describedby="ep-range-hint"
+              style={{ ...inputStyle, width: 190 }}
             />
           </div>
           <button type="submit" disabled={epSubmitting} style={{ ...btnPrimary, opacity: epSubmitting ? 0.6 : 1 }}>
-            {epSubmitting ? "…" : "Endpoint erstellen"}
+            {epSubmitting ? "…" : "Endpoint(s) erstellen"}
           </button>
         </form>
+        <p id="ep-range-hint" style={{ color: "#666", fontSize: 12, margin: "8px 0 0" }}>
+          Ein Bereich wie <code>25565-25600</code> legt alle Ports auf einmal an (max. 1000); vorhandene werden übersprungen.
+        </p>
       </div>
 
       {/* Agent bearbeiten */}
