@@ -44,6 +44,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M46 Nachtrag – Erinnerung, Gratis-Verlaengerung, blueprint_name)
+- Erinnerungsmail `BILLING_REMINDER_DAYS` (Standard 3, 0 = aus) vor Laufzeitende, Event `order:reminder`, hoechstens einmal pro Bestellung und Laufzeit (`orders.reminded_for_period_end`, Migration `p6k7l8m9n0o1`); nur bezahlte Bestellungen ohne Kuendigung mit Laufzeit laenger als das Fenster
+- Kostenlose Bestellungen (`price_cents = 0`) werden vom Tick bei Ablauf automatisch verlaengert statt gesperrt und geloescht (der Kunde kann nichts bezahlen); gekuendigte laufen zum Laufzeitende aus. Tick-Zusammenfassung enthaelt jetzt `reminded` und `renewed`
+- `Product.to_public_dict()`/`to_dict()` liefern `blueprint_name` (Listen laden den Blueprint per Join mit), `blueprint_id` bleibt intern
+- Tests: `test_m46.py` (83), `test_m44.py` (87)
+
 ### Added (M46 – Billing-Tick)
 - `python cli.py billing-tick` (idempotent, alle paar Minuten per Cron/Compose): `active` + Laufzeit abgelaufen -> `past_due` (Instance suspendiert mit Grund "Zahlung überfällig", synchronisiert und auf dem Node beendet, Mail); `past_due` laenger als `BILLING_GRACE_DAYS` (Standard 7) -> Instance geloescht (`force`), `expired`, Mail; Kuendigung zum Laufzeitende -> sofort geloescht; fehlende Instance -> `expired` ohne Runner-Aufruf. Ausgabe als JSON `{checked, past_due, expired, errors}`, Exit-Code 1 bei Fehlern
 - Karenzzeit zaehlt ab `orders.past_due_at` (nicht ab Laufzeitende), ein Tick-Ausfall kostet Kunden keine Karenzzeit; bestehende Admin-Sperren werden nicht ueberschrieben; bei laufender Installation/Transfer wartet der Tick bis zu einen Tag; jede Bestellung wird einzeln committed, Fehler blockieren die anderen

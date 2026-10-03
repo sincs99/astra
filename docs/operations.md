@@ -178,6 +178,7 @@ in der Agents-Ansicht. Details: `docs/wings-remote-api.md`.
 | `JWT_ACCESS_TOKEN_EXPIRES_HOURS` | Token-Gültigkeit | 24 |
 | `MFA_ISSUER_NAME` | TOTP Issuer | Astra |
 | `RATELIMIT_ENABLED` | Rate Limiting aktiv | true |
+| `BILLING_REMINDER_DAYS` | Tage vor Laufzeitende für die Erinnerungsmail, 0 = aus (Billing-Tick) | 3 |
 | `BILLING_GRACE_DAYS` | Tage von überfälliger Zahlung bis zur Löschung der Instance (Billing-Tick) | 7 |
 | `REGISTRATION_ENABLED` | Selbstregistrierung erlauben | false |
 | `EMAIL_VERIFICATION_REQUIRED` | Login erst nach bestaetigter E-Mail (braucht funktionierendes SMTP) | false |

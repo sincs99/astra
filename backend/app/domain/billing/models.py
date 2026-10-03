@@ -70,6 +70,7 @@ class Product(db.Model):
             "id": self.id,
             "name": self.name,
             "description": self.description,
+            "blueprint_name": self.blueprint.name if self.blueprint else None,
             "price_cents": self.price_cents,
             "currency": self.currency,
             "billing_period_days": self.billing_period_days,
@@ -118,6 +119,8 @@ class Order(db.Model):
     cancel_at_period_end = db.Column(db.Boolean, nullable=False, default=False)
     # Seit wann die Bestellung ueberfaellig ist (Beginn der Karenzzeit, M46)
     past_due_at = db.Column(db.DateTime, nullable=True)
+    # Fuer welches Laufzeitende die Erinnerungsmail schon verschickt wurde (hoechstens eine pro Periode)
+    reminded_for_period_end = db.Column(db.DateTime, nullable=True)
     cancelled_at = db.Column(db.DateTime, nullable=True)
 
     created_at = db.Column(db.DateTime, default=_now)
