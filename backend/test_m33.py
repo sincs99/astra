@@ -837,6 +837,18 @@ check("Legacy /api/agent ist entfernt (M40) -> 404", resp.status_code == 404)
 resp = client.get("/api/admin/agents")
 check("GET /api/admin/agents ohne daemon_token", all("daemon_token" not in a for a in resp.get_json()))
 
+with app.app_context():
+    from app.domain.backups.models import Backup
+    db.session.add(Backup(instance_id=_inst_id, name="admin-view", is_successful=True))
+    db.session.commit()
+resp = client.get(f"/api/admin/instances/{_inst_uuid}/backups", headers=admin_headers())
+ab = resp.get_json()
+check("Admin: Backups einer Instance lesbar", resp.status_code == 200 and isinstance(ab.get("backups"), list), str(ab))
+check("Admin: successful_count und last_successful_backup_at gesetzt",
+      ab.get("successful_count", 0) >= 1 and ab.get("last_successful_backup_at"), str(ab))
+resp = client.get("/api/admin/instances/00000000-0000-0000-0000-000000000000/backups", headers=admin_headers())
+check("Admin: Backups unbekannter Instance -> 404", resp.status_code == 404)
+
 resp = client.get("/health")
 check("/health ok", resp.status_code == 200)
 
