@@ -284,7 +284,8 @@ def checkout_my_order(uuid: str):
     """Startet die Online-Zahlung. Antwort: {"checkout_url": "..."}.
 
     Erlaubt bei pending_payment (Erstzahlung) sowie active/past_due (Verlaengerung).
-    Mit PAYMENT_PROVIDER=manual 409 mit Hinweis auf die Ueberweisung.
+    Fehler tragen einen `code`: 409 `manual` (PAYMENT_PROVIDER=manual, Hinweis auf die Ueberweisung),
+    409 `invalid_status`, 409 `nothing_to_pay`/`unsupported_currency`, 502 `provider_unavailable`/`provider_error`.
     """
     from app.domain.billing.models import ORDER_ACTIVE, ORDER_PAST_DUE, ORDER_PENDING_PAYMENT, Order
     from app.domain.billing.payments import PaymentError, get_provider
@@ -295,14 +296,15 @@ def checkout_my_order(uuid: str):
     if not order:
         return jsonify({"error": "Bestellung nicht gefunden"}), 404
     if order.status not in (ORDER_PENDING_PAYMENT, ORDER_ACTIVE, ORDER_PAST_DUE):
-        return jsonify({
-            "error": f"Bestellung im Status '{order.status}' kann nicht bezahlt werden",
-            "code": "invalid_status",
-        }), 409
+        return jsonify({"error": f"Bestellung im Status '{order.status}' kann nicht bezahlt werden",
+                        "code": "invalid_status"}), 409
     try:
         url = get_provider().create_checkout(order)
     except PaymentError as e:
-        return jsonify(e.to_response()), e.status_code
+        body = {"error": e.message}
+        if e.code:
+            body["code"] = e.code
+        return jsonify(body), e.status_code
     return jsonify({"checkout_url": url})
 
 

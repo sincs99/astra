@@ -21,6 +21,7 @@ from app.domain.billing.models import (
 from app.domain.blueprints.models import Blueprint
 from app.domain.instances.models import Instance
 from app.domain.users.models import User
+from app.utils.timeutil import iso_utc
 
 logger = logging.getLogger(__name__)
 
@@ -310,7 +311,7 @@ def renew_order(order: Order, payment_reference: str | None, actor_id: int | Non
 
     _log("order:renewed", order, actor_id, "Bestellung verlaengert",
          {"payment_reference": payment_reference, "was_past_due": was_past_due, "unsuspended": lifted,
-          "current_period_end": order.current_period_end.isoformat()})
+          "current_period_end": iso_utc(order.current_period_end)})
     return order
 
 
@@ -433,7 +434,7 @@ def _suspend_for_payment(order: Order, instance: Instance, now: datetime) -> boo
         _best_effort(send_power_action, instance, "kill")
 
     _log("order:past_due", order, None, "Bestellung ueberfaellig, Instance suspendiert",
-         {"suspended": newly_suspended, "current_period_end": order.current_period_end.isoformat()})
+         {"suspended": newly_suspended, "current_period_end": iso_utc(order.current_period_end)})
     from flask import current_app
     days = current_app.config.get("BILLING_GRACE_DAYS", 7)
     _mail_order(
@@ -466,7 +467,7 @@ def _remind_if_due(order: Order, end: datetime, now: datetime, reminder: timedel
     db.session.commit()  # erst markieren: bei einem Fehler danach lieber keine Mail als jeden Tick eine
     _log("order:reminder", order, None,
          "Loeschhinweis vor Laufzeitende verschickt" if cancelled else "Erinnerung vor Laufzeitende verschickt",
-         {"current_period_end": end.isoformat(), "kind": "deletion_notice" if cancelled else "expiry_reminder"})
+         {"current_period_end": iso_utc(end), "kind": "deletion_notice" if cancelled else "expiry_reminder"})
     if cancelled:
         _mail_order(
             order, "Astra: Dein Server wird bald geloescht",

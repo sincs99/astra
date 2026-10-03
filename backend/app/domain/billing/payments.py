@@ -25,20 +25,13 @@ _ZERO_DECIMAL = {"BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", 
 
 
 class PaymentError(Exception):
-    """Fachlicher Zahlungsfehler. `code` ist ein maschinenlesbarer Grund fuer das Frontend
-    (z.B. "manual" = Online-Zahlung nicht aktiviert, "invalid_status")."""
+    """Fehler eines Zahlungsvorgangs. `code` ist ein stabiler, maschinenlesbarer Fehlercode fuer das Frontend."""
 
     def __init__(self, message: str, status_code: int = 400, code: str | None = None):
         super().__init__(message)
         self.message = message
         self.status_code = status_code
         self.code = code
-
-    def to_response(self) -> dict:
-        body = {"error": self.message}
-        if self.code:
-            body["code"] = self.code
-        return body
 
 
 @dataclass
@@ -73,7 +66,7 @@ class ManualProvider(PaymentProvider):
     def create_checkout(self, order: Order) -> str:
         raise PaymentError(
             "Online-Zahlung ist nicht aktiviert. Bitte bezahle per Ueberweisung, "
-            "wir schalten deine Bestellung nach Zahlungseingang frei.", 409, code="manual",
+            "wir schalten deine Bestellung nach Zahlungseingang frei.", 409, "manual"
         )
 
     def handle_webhook(self, payload: bytes, signature: str | None) -> list[PaymentEvent]:
@@ -96,9 +89,9 @@ class StripeProvider(PaymentProvider):
 
         currency = (order.currency or "").upper()
         if currency in _ZERO_DECIMAL:
-            raise PaymentError(f"Waehrung {currency} wird fuer Online-Zahlung nicht unterstuetzt", 409)
+            raise PaymentError(f"Waehrung {currency} wird fuer Online-Zahlung nicht unterstuetzt", 409, "unsupported_currency")
         if order.price_cents <= 0:
-            raise PaymentError("Fuer diese Bestellung ist nichts zu bezahlen", 409)
+            raise PaymentError("Fuer diese Bestellung ist nichts zu bezahlen", 409, "nothing_to_pay")
 
         product_name = (order.snapshot or {}).get("product_name") or "Server"
         user = order.user
@@ -127,10 +120,14 @@ class StripeProvider(PaymentProvider):
             )
         except stripe.StripeError as e:
             logger.error("Stripe-Checkout fuer Bestellung %s fehlgeschlagen: %s", order.uuid, e)
-            raise PaymentError("Zahlungsanbieter ist gerade nicht erreichbar, bitte spaeter erneut versuchen", 502)
-        if not getattr(session, "url", None):
-            raise PaymentError("Zahlungsanbieter lieferte keine Checkout-URL", 502)
-        return session.url
+            raise PaymentError("Zahlungsanbieter ist gerade nicht erreichbar, bitte spaeter erneut versuchen", 502,
+                               "provider_unavailable")
+        url = getattr(session, "url", None)
+        # Nur https weiterreichen: der Kunde wird auf diese URL geleitet
+        if not isinstance(url, str) or not url.startswith("https://"):
+            logger.error("Stripe lieferte keine gueltige https-Checkout-URL fuer Bestellung %s", order.uuid)
+            raise PaymentError("Zahlungsanbieter lieferte keine gueltige Checkout-URL", 502, "provider_error")
+        return url
 
     def handle_webhook(self, payload: bytes, signature: str | None) -> list[PaymentEvent]:
         import stripe

@@ -6,6 +6,7 @@ import string
 import uuid as _uuid
 from app.extensions import db
 from datetime import datetime, timezone
+from app.utils.timeutil import iso_utc
 
 # Laengen wie im Referenz-Panel (Node::DAEMON_TOKEN_ID_LENGTH / DAEMON_TOKEN_LENGTH)
 DAEMON_TOKEN_ID_LENGTH = 16
@@ -230,7 +231,7 @@ class Agent(db.Model):
             "health_status": self.get_health_status(stale_threshold_minutes),
             "is_active": self.is_active,
             "is_stale": self.is_stale(stale_threshold_minutes),
-            "last_seen_at": self.last_seen_at.isoformat() if self.last_seen_at else None,
+            "last_seen_at": iso_utc(self.last_seen_at),
         }
 
     # ── Maintenance-Hilfsmethoden (M25) ─────────────────
@@ -261,7 +262,7 @@ class Agent(db.Model):
             "daemon_token_id": self.daemon_token_id,
             "has_daemon_credentials": self.has_daemon_credentials,
             # daemon_token bewusst NICHT in to_dict – Secret
-            "last_seen_at": self.last_seen_at.isoformat() if self.last_seen_at else None,
+            "last_seen_at": iso_utc(self.last_seen_at),
             "memory_total": self.memory_total or 0,
             "disk_total": self.disk_total or 0,
             "cpu_total": self.cpu_total or 0,
@@ -270,9 +271,9 @@ class Agent(db.Model):
             "cpu_overalloc": self.cpu_overalloc or 0,
             "maintenance_mode": bool(self.maintenance_mode),
             "maintenance_reason": self.maintenance_reason,
-            "maintenance_started_at": self.maintenance_started_at.isoformat() if self.maintenance_started_at else None,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "maintenance_started_at": iso_utc(self.maintenance_started_at),
+            "created_at": iso_utc(self.created_at),
+            "updated_at": iso_utc(self.updated_at),
         }
 
     def __repr__(self):

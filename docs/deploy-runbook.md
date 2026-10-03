@@ -222,6 +222,34 @@ Dann unter **Admin → Instances** eine Instanz anlegen: Blueprint Paper, Agent 
 
 ---
 
+## 9a. Zahlungen (Phase 4)
+
+Standard ist `PAYMENT_PROVIDER=manual`: Kunden bestellen, überweisen, der Admin klickt unter
+**Admin → Bestellungen** auf *Als bezahlt markieren*. Dafür ist kein Zahlungskonto nötig.
+
+Online-Zahlung per Stripe:
+
+1. Stripe-Konto anlegen, im Dashboard zuerst den **Test-Modus** verwenden.
+2. In `.env`: `PAYMENT_PROVIDER=stripe`, `STRIPE_SECRET_KEY=sk_test_…`, danach Webhook im Stripe-Dashboard
+   anlegen: URL `https://panel.deinedomain.de/api/payments/stripe`, Ereignisse
+   `checkout.session.completed` und `checkout.session.async_payment_succeeded`. Das dort angezeigte
+   Signing Secret als `STRIPE_WEBHOOK_SECRET=whsec_…` eintragen.
+3. `./scripts/deploy.sh` (Backend-Image wird neu gebaut, das Stripe-Paket ist Teil davon).
+4. Mit einer Testbestellung und der Stripe-Testkarte `4242 4242 4242 4242` durchspielen:
+   Kunde klickt *Jetzt bezahlen*, kommt nach `/orders?paid=…` zurück, der Webhook stellt den Server bereit.
+   Lokal lässt sich der Webhook mit der Stripe CLI nachstellen (`stripe listen --forward-to …`).
+5. Erst nach erfolgreichem Testlauf auf die Live-Schlüssel wechseln.
+
+Betrieb: Bestellungen mit Status `mismatch` oder Activity-Events `order:payment_unapplied` bedeuten,
+dass Geld eingegangen ist, aber nichts freigeschaltet wurde (Betrag oder Währung passten nicht, oder die
+Bestellung war schon storniert). Diese Fälle im Stripe-Dashboard prüfen und ggf. erstatten. Abgelaufene
+Bestellungen sperrt der Billing-Tick, nach `BILLING_GRACE_DAYS` löscht er den Server; `BILLING_REMINDER_DAYS`
+Tage vorher geht eine Erinnerung per Mail (nur mit konfiguriertem `MAIL_SERVER`).
+
+Details zu Endpunkten, Status und Stripe-Einrichtung: `docs/orders-api.md`.
+
+---
+
 ## 10. Umzug auf einen gemieteten Server
 
 Weil alles über Domains läuft, ist der Umzug ein Restore:

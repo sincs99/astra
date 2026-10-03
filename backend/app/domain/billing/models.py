@@ -9,6 +9,7 @@ import uuid as _uuid
 from datetime import datetime, timedelta, timezone
 
 from app.extensions import db
+from app.utils.timeutil import iso_utc
 
 # Bestell-Status
 ORDER_PENDING_PAYMENT = "pending_payment"          # angelegt, noch nicht bezahlt
@@ -83,8 +84,8 @@ class Product(db.Model):
             "blueprint_id": self.blueprint_id,
             "is_active": self.is_active,
             "max_instances_per_user": self.max_instances_per_user,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": iso_utc(self.created_at),
+            "updated_at": iso_utc(self.updated_at),
         })
         return d
 
@@ -161,13 +162,13 @@ class Order(db.Model):
             "billing_period_days": self.billing_period_days,
             "resources": {k: (self.snapshot or {}).get(k) for k in ("memory", "swap", "disk", "io", "cpu")},
             "payment_reference": self.payment_reference,
-            "paid_at": self.paid_at.isoformat() if self.paid_at else None,
-            "current_period_end": self.current_period_end.isoformat() if self.current_period_end else None,
+            "paid_at": iso_utc(self.paid_at),
+            "current_period_end": iso_utc(self.current_period_end),
             "cancel_at_period_end": bool(self.cancel_at_period_end),
-            "past_due_at": self.past_due_at.isoformat() if self.past_due_at else None,
-            "scheduled_deletion_at": deletion.isoformat() if deletion else None,
-            "cancelled_at": self.cancelled_at.isoformat() if self.cancelled_at else None,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "past_due_at": iso_utc(self.past_due_at),
+            "scheduled_deletion_at": iso_utc(deletion),
+            "cancelled_at": iso_utc(self.cancelled_at),
+            "created_at": iso_utc(self.created_at),
         }
         if include_user:
             d["user_id"] = self.user_id
@@ -199,6 +200,6 @@ class PaymentEvent(db.Model):
             "id": self.id, "event_id": self.event_id, "provider": self.provider,
             "event_type": self.event_type, "order_uuid": self.order_uuid, "status": self.status,
             "detail": self.detail,
-            "received_at": self.received_at.isoformat() if self.received_at else None,
-            "processed_at": self.processed_at.isoformat() if self.processed_at else None,
+            "received_at": iso_utc(self.received_at),
+            "processed_at": iso_utc(self.processed_at),
         }

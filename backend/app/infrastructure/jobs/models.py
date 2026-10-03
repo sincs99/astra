@@ -7,6 +7,7 @@ import uuid as _uuid
 from datetime import datetime, timezone
 
 from app.extensions import db
+from app.utils.timeutil import iso_utc
 
 
 class JobStatus:
@@ -86,10 +87,10 @@ class JobRecord(db.Model):
             "payload_summary": self.payload_summary,
             "result": self.result,
             "error": self.error,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "started_at": self.started_at.isoformat() if self.started_at else None,
-            "finished_at": self.finished_at.isoformat() if self.finished_at else None,
-            "scheduled_at": self.scheduled_at.isoformat() if self.scheduled_at else None,
+            "created_at": iso_utc(self.created_at),
+            "started_at": iso_utc(self.started_at),
+            "finished_at": iso_utc(self.finished_at),
+            "scheduled_at": iso_utc(self.scheduled_at),
         }
 
     def __repr__(self):
