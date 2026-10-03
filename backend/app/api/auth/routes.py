@@ -69,6 +69,53 @@ def login():
     })
 
 
+# ── Registrierung / Passwort-Reset ───────────────────────
+
+
+@auth_bp.route("/register", methods=["POST"])
+def register():
+    """Selbstregistrierung (nur wenn REGISTRATION_ENABLED=true)."""
+    from app.domain.accounts.service import AccountError, register_user
+
+    data = request.get_json() or {}
+    try:
+        user = register_user(data.get("username"), data.get("email"), data.get("password"))
+    except AccountError as e:
+        return jsonify({"error": e.message}), e.status_code
+
+    _log_auth_event("auth:register", user.id, f"Registrierung: {user.username}")
+    return jsonify({
+        "access_token": issue_access_token(user),
+        "token_type": "Bearer",
+        "user": user.to_dict(),
+    }), 201
+
+
+@auth_bp.route("/password-reset/request", methods=["POST"])
+def password_reset_request():
+    """Sendet einen Reset-Link. Antwortet immer gleich, damit keine Adressen preisgegeben werden."""
+    from app.domain.accounts.service import request_password_reset
+
+    data = request.get_json() or {}
+    request_password_reset(data.get("email"))
+    return jsonify({"message": "Falls die Adresse existiert, wurde eine E-Mail versendet"})
+
+
+@auth_bp.route("/password-reset/confirm", methods=["POST"])
+def password_reset_confirm():
+    """Setzt das Passwort mit einem Reset-Token neu."""
+    from app.domain.accounts.service import AccountError, confirm_password_reset
+
+    data = request.get_json() or {}
+    try:
+        user = confirm_password_reset(data.get("token"), data.get("password"))
+    except AccountError as e:
+        return jsonify({"error": e.message}), e.status_code
+
+    _log_auth_event("auth:password_reset", user.id, f"Passwort zurueckgesetzt: {user.username}")
+    return jsonify({"message": "Passwort wurde geaendert"})
+
+
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
     """Logout – Server-seitig nur Activity-Log, Token-Invalidierung ist clientseitig."""

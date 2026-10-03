@@ -154,6 +154,11 @@ Alle Umgebungsvariablen sind in `backend/.env.example` dokumentiert.
 | `RUNNER_TIMEOUT_CONNECT` | Verbindungstimeout (Sek.) | 5 |
 | `RUNNER_TIMEOUT_READ` | Lese-Timeout (Sek.) | 30 |
 
+Wings ruft das Panel unter `BASE_URL` + `/api/remote/...` auf (Node-Token-Auth).
+`BASE_URL` muss deshalb vom Node aus erreichbar sein. Die `config.yml` fuer einen
+Node liefert `GET /api/admin/agents/{id}/configuration` bzw. der Button *config.yml*
+in der Agents-Ansicht. Details: `docs/wings-remote-api.md`.
+
 ### Auth / Sicherheit
 
 | Variable | Beschreibung | Default |
@@ -161,6 +166,11 @@ Alle Umgebungsvariablen sind in `backend/.env.example` dokumentiert.
 | `JWT_ACCESS_TOKEN_EXPIRES_HOURS` | Token-Gültigkeit | 24 |
 | `MFA_ISSUER_NAME` | TOTP Issuer | Astra |
 | `RATELIMIT_ENABLED` | Rate Limiting aktiv | true |
+| `REGISTRATION_ENABLED` | Selbstregistrierung erlauben | false |
+| `PASSWORD_RESET_TTL_MINUTES` | Gueltigkeit des Reset-Links | 60 |
+| `FRONTEND_URL` | Basis-URL fuer Links in Mails | http://localhost:3000 |
+| `MAIL_SERVER` / `MAIL_PORT` / `MAIL_USE_TLS` | SMTP-Server (leer = kein Versand, nur Log) | – / 587 / true |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_FROM` | SMTP-Zugang und Absender | – / – / astra@localhost |
 | `RATELIMIT_AUTH_PER_MINUTE` | Max Login-Versuche/Min | 20 |
 
 ### Reverse Proxy
@@ -448,7 +458,7 @@ readinessProbe:
 
 - Standard: 20 Login-Versuche pro Minute pro IP
 - Änderbar: `RATELIMIT_AUTH_PER_MINUTE`
-- In-Memory-Store, Reset bei Neustart
+- Zähler liegt in Redis (`REDIS_URL`), gilt also für alle Worker; ohne erreichbares Redis In-Memory pro Prozess
 
 ### WebSocket-Verbindungsprobleme hinter Proxy
 

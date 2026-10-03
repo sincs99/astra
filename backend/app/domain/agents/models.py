@@ -1,14 +1,28 @@
-"""Agent-Domain-Modell mit Health-Tracking, Kapazitaet (M22) und Maintenance (M25)."""
+"""Agent-Domain-Modell mit Health-Tracking, Kapazitaet (M22), Maintenance (M25)
+und Wings-Node-Credentials (M33)."""
 
 import secrets
+import string
+import uuid as _uuid
 from app.extensions import db
 from datetime import datetime, timezone
+
+# Laengen wie im Referenz-Panel (Node::DAEMON_TOKEN_ID_LENGTH / DAEMON_TOKEN_LENGTH)
+DAEMON_TOKEN_ID_LENGTH = 16
+DAEMON_TOKEN_LENGTH = 64
+_TOKEN_ALPHABET = string.ascii_letters + string.digits
+
+
+def _random_string(length: int) -> str:
+    return "".join(secrets.choice(_TOKEN_ALPHABET) for _ in range(length))
 
 
 class Agent(db.Model):
     __tablename__ = "agents"
 
     id = db.Column(db.Integer, primary_key=True)
+    # M33: Node-UUID fuer die Wings config.yml
+    uuid = db.Column(db.String(36), unique=True, nullable=True, default=lambda: str(_uuid.uuid4()))
     name = db.Column(db.String(120), nullable=False)
     fqdn = db.Column(db.String(255), unique=True, nullable=False)
     token_hash = db.Column(db.String(256), nullable=True)
@@ -16,8 +30,13 @@ class Agent(db.Model):
 
     # Wings-Verbindung
     scheme = db.Column(db.String(8), default="https")
+    behind_proxy = db.Column(db.Boolean, default=False)       # M33: TLS terminiert ein Proxy vor Wings
     daemon_connect = db.Column(db.Integer, default=8080)
     daemon_listen = db.Column(db.Integer, default=8080)
+    daemon_sftp = db.Column(db.Integer, default=2022)          # M33: SFTP-Port von Wings
+    daemon_base = db.Column(db.String(255), default="/var/lib/pterodactyl/volumes")  # M33: Daten-Verzeichnis
+    upload_size = db.Column(db.Integer, default=256)           # M33: Upload-Limit in MB
+    # Node-Credentials: Wings authentifiziert sich am Panel mit "Bearer {token_id}.{token}"
     daemon_token_id = db.Column(db.String(16), nullable=True)
     daemon_token = db.Column(db.String(256), nullable=True)
 
@@ -49,6 +68,62 @@ class Agent(db.Model):
         scheme = self.scheme or "https"
         port = self.daemon_connect or 8080
         return f"{scheme}://{self.fqdn}:{port}"
+
+    # ── Node-Credentials (M33) ──────────────────────────
+
+    def generate_daemon_credentials(self) -> None:
+        """Erzeugt neue Wings-Node-Credentials (token_id + token).
+
+        Danach muss die config.yml auf dem Node neu ausgerollt werden,
+        sonst kann sich Wings nicht mehr am Panel authentifizieren.
+        """
+        self.daemon_token_id = _random_string(DAEMON_TOKEN_ID_LENGTH)
+        self.daemon_token = _random_string(DAEMON_TOKEN_LENGTH)
+
+    @property
+    def has_daemon_credentials(self) -> bool:
+        return bool(self.daemon_token_id and self.daemon_token)
+
+    def get_wings_configuration(self, remote_url: str) -> dict:
+        """Erzeugt die Wings-Konfiguration (Inhalt von /etc/pterodactyl/config.yml).
+
+        Format entspricht Node::getConfiguration() im Referenz-Panel.
+        """
+        fqdn = (self.fqdn or "").lower()
+        scheme = self.scheme or "https"
+        return {
+            "debug": False,
+            "uuid": self.uuid,
+            "token_id": self.daemon_token_id,
+            "token": self.daemon_token,
+            "api": {
+                "host": "0.0.0.0",
+                "port": self.daemon_listen or 8080,
+                "ssl": {
+                    "enabled": (not self.behind_proxy) and scheme == "https",
+                    "cert": f"/etc/letsencrypt/live/{fqdn}/fullchain.pem",
+                    "key": f"/etc/letsencrypt/live/{fqdn}/privkey.pem",
+                },
+                "upload_limit": self.upload_size or 256,
+            },
+            "system": {
+                "data": self.daemon_base or "/var/lib/pterodactyl/volumes",
+                "sftp": {
+                    "bind_port": self.daemon_sftp or 2022,
+                },
+            },
+            "allowed_mounts": [],
+            "remote": remote_url.rstrip("/"),
+        }
+
+    def get_wings_configuration_yaml(self, remote_url: str) -> str:
+        import yaml
+        return yaml.safe_dump(
+            self.get_wings_configuration(remote_url),
+            sort_keys=False,
+            default_flow_style=False,
+            allow_unicode=True,
+        )
 
     def touch(self) -> None:
         """Aktualisiert last_seen_at auf jetzt."""
@@ -172,13 +247,19 @@ class Agent(db.Model):
     def to_dict(self) -> dict:
         return {
             "id": self.id,
+            "uuid": self.uuid,
             "name": self.name,
             "fqdn": self.fqdn,
             "is_active": self.is_active,
             "scheme": self.scheme,
+            "behind_proxy": bool(self.behind_proxy),
             "daemon_connect": self.daemon_connect,
             "daemon_listen": self.daemon_listen,
+            "daemon_sftp": self.daemon_sftp,
+            "daemon_base": self.daemon_base,
+            "upload_size": self.upload_size,
             "daemon_token_id": self.daemon_token_id,
+            "has_daemon_credentials": self.has_daemon_credentials,
             # daemon_token bewusst NICHT in to_dict – Secret
             "last_seen_at": self.last_seen_at.isoformat() if self.last_seen_at else None,
             "memory_total": self.memory_total or 0,

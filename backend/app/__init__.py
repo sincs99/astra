@@ -171,11 +171,9 @@ def _register_security_headers(app: Flask) -> None:
 # ── Rate Limiting ───────────────────────────────────────
 
 
-_rate_limit_store: dict[str, list] = {}
-
-
 def _register_rate_limiting(app: Flask) -> None:
-    """Einfaches In-Memory Rate Limiting fuer Auth-Endpunkte."""
+    """Rate Limiting fuer Auth-Endpunkte (Redis, Fallback In-Memory)."""
+    from app.infrastructure import ratelimit
 
     @app.before_request
     def check_rate_limit():
@@ -183,31 +181,24 @@ def _register_rate_limiting(app: Flask) -> None:
             return None
 
         # Nur Auth-Endpunkte limitieren
-        auth_paths = ["/api/auth/login"]
+        auth_paths = [
+            "/api/auth/login",
+            "/api/auth/register",
+            "/api/auth/password-reset/request",
+            "/api/auth/password-reset/confirm",
+        ]
         if request.path not in auth_paths:
             return None
 
         max_per_minute = app.config.get("RATELIMIT_AUTH_PER_MINUTE", 20)
         client_ip = request.remote_addr or "unknown"
         key = f"{client_ip}:{request.path}"
-        now = datetime.now(timezone.utc).timestamp()
-        window = 60.0  # 1 Minute
 
-        # Alte Eintraege bereinigen
-        if key in _rate_limit_store:
-            _rate_limit_store[key] = [
-                t for t in _rate_limit_store[key] if now - t < window
-            ]
-        else:
-            _rate_limit_store[key] = []
-
-        if len(_rate_limit_store[key]) >= max_per_minute:
+        if not ratelimit.allow(key, max_per_minute, app.config.get("REDIS_URL")):
             return jsonify({
                 "error": "Rate limit exceeded",
-                "retry_after": int(window),
+                "retry_after": ratelimit.WINDOW_SECONDS,
             }), 429
-
-        _rate_limit_store[key].append(now)
         return None
 
 
@@ -297,11 +288,14 @@ def _register_blueprints(app: Flask) -> None:
     from app.api.client.routes import client_bp
     from app.api.agent.routes import agent_bp
     from app.api.auth.routes import auth_bp
+    from app.api.remote.routes import remote_bp
 
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
     app.register_blueprint(client_bp, url_prefix="/api/client")
     app.register_blueprint(agent_bp, url_prefix="/api/agent")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    # M33: Wings Remote-API (Node-Token-Auth, Pfade wie im Referenz-Panel)
+    app.register_blueprint(remote_bp, url_prefix="/api/remote")
 
 
 # ── Ops-Endpunkte ──────────────────────────────────────

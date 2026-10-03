@@ -88,6 +88,14 @@ Nur ein Administrator kann die Suspension aufheben (`POST /api/admin/instances/<
 
 ---
 
+## Wings-Endpunkt (M33)
+
+Ein echter Wings-Daemon nutzt nicht den unten beschriebenen Astra-internen Endpunkt,
+sondern `POST /api/remote/sftp/auth` mit Node-Token-Auth und dem Wings-Format
+`{"type": "password"|"public_key", "username": "user.serverid", "password": "..."}`.
+Der Public-Key-Pfad ruft intern `authorize_ssh_key_access()` auf, die Regeln dieses
+Dokuments gelten also unveraendert. Siehe `docs/wings-remote-api.md`.
+
 ## Agent-API-Endpunkt
 
 ```

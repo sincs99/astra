@@ -172,7 +172,7 @@ Diese Einschränkungen sind bekannt, dokumentiert und für v1.0 akzeptiert:
 | Stub-Adapter als Dev-Default | Wings-Adapter für Produktion vorhanden |
 | SyncQueue als Dev-Default | RedisQueue für Produktion konfigurierbar |
 | SQLite in Dev/Test | PostgreSQL für Produktion empfohlen |
-| Rate Limiting In-Memory | Ausreichend für Single-Instance |
+| Rate Limiting mit In-Memory-Fallback | Redis-Zähler aktiv, Fallback nur wenn Redis fehlt |
 | Kein automatisches Agent-Drain bei Maintenance | Manuelle Prozedur dokumentiert |
 | MFA ohne Recovery-Code-Flow | Fallback via Admin-Reset möglich |
 | Fleet Monitoring DB-basiert, kein Live-Stream | Ausreichend für Betrieb; Prometheus optional |

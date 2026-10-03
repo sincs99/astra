@@ -140,9 +140,21 @@ export interface User {
 
 export interface Agent {
   id: number;
+  uuid: string | null;
   name: string;
   fqdn: string;
   is_active: boolean;
+  scheme: string;
+  behind_proxy: boolean;
+  daemon_connect: number;
+  daemon_listen: number;
+  daemon_sftp: number;
+  daemon_base: string;
+  upload_size: number;
+  daemon_token_id: string | null;
+  has_daemon_credentials: boolean;
+  last_seen_at: string | null;
+  maintenance_mode: boolean;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -150,6 +162,32 @@ export interface Agent {
 export interface AgentCreate {
   name: string;
   fqdn: string;
+  scheme?: string;
+  behind_proxy?: boolean;
+  daemon_connect?: number;
+  daemon_listen?: number;
+  daemon_sftp?: number;
+  daemon_base?: string;
+}
+
+export interface AgentUpdate {
+  name?: string;
+  fqdn?: string;
+  is_active?: boolean;
+  scheme?: string;
+  behind_proxy?: boolean;
+  daemon_connect?: number;
+  daemon_listen?: number;
+  daemon_sftp?: number;
+  daemon_base?: string;
+  upload_size?: number;
+}
+
+/** Antwort von GET /admin/agents/{id}/configuration – Inhalt der Wings config.yml */
+export interface AgentConfiguration {
+  agent_id: number;
+  yaml: string;
+  config: Record<string, unknown>;
 }
 
 export interface BlueprintVariable {
@@ -161,6 +199,12 @@ export interface BlueprintVariable {
   user_editable: boolean;
 }
 
+/** Startup-Erkennung fuer Wings: Zeilen, bei denen der Server als "running" gilt. */
+export interface BlueprintStartupConfig {
+  done: string[];
+  strip_ansi?: boolean;
+}
+
 export interface Blueprint {
   id: number;
   name: string;
@@ -168,8 +212,14 @@ export interface Blueprint {
   docker_image: string | null;
   startup_command: string | null;
   install_script: string | null;
+  install_container: string | null;
+  install_entrypoint: string | null;
   variables: BlueprintVariable[];
   config_schema: Record<string, unknown> | null;
+  config_startup: BlueprintStartupConfig | null;
+  config_stop: string | null;
+  config_files: Record<string, unknown> | null;
+  file_denylist: string[];
   created_at: string | null;
   updated_at: string | null;
 }
@@ -180,7 +230,13 @@ export interface BlueprintCreate {
   docker_image?: string;
   startup_command?: string;
   install_script?: string;
+  install_container?: string;
+  install_entrypoint?: string;
   variables?: BlueprintVariable[];
+  config_startup?: BlueprintStartupConfig;
+  config_stop?: string;
+  config_files?: Record<string, unknown>;
+  file_denylist?: string[];
 }
 
 export interface BlueprintUpdate {
@@ -189,7 +245,13 @@ export interface BlueprintUpdate {
   docker_image?: string;
   startup_command?: string;
   install_script?: string;
+  install_container?: string;
+  install_entrypoint?: string;
   variables?: BlueprintVariable[];
+  config_startup?: BlueprintStartupConfig;
+  config_stop?: string;
+  config_files?: Record<string, unknown>;
+  file_denylist?: string[];
 }
 
 export interface Endpoint {
@@ -588,6 +650,19 @@ export const api = {
     request<Agent>("/admin/agents", {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+  updateAgent: (agentId: number, data: AgentUpdate) =>
+    request<Agent>(`/admin/agents/${agentId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  // M33: Wings config.yml fuer den Node
+  getAgentConfiguration: (agentId: number) =>
+    request<AgentConfiguration>(`/admin/agents/${agentId}/configuration`),
+  // M33: Neue Node-Credentials (token_id + token) erzeugen
+  rotateAgentCredentials: (agentId: number) =>
+    request<{ message: string; agent: Agent }>(`/admin/agents/${agentId}/rotate-credentials`, {
+      method: "POST",
     }),
 
   // ── Admin: Blueprints ────────────────────────────────

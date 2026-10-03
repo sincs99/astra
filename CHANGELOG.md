@@ -5,6 +5,25 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Security (M35 – Admin-Guard)
+- Der gesamte `/api/admin`-Blueprint verlangt jetzt einen angemeldeten Admin (`before_request`, JWT, API-Key oder in Dev/Test `X-User-Id`). Ausnahme: `GET /api/admin/health`. Ohne Login 401, ohne Admin-Recht 403
+- Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
+- `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
+- Weiterhin offen: `/api/agent/*` (Legacy-Callbacks, durch `/api/remote` ersetzt)
+
+### Added (Self-Service Teil 1)
+- `POST /api/auth/register` – Selbstregistrierung, standardmaessig AUS (`REGISTRATION_ENABLED=true` zum Aktivieren), neue Nutzer sind nie Admin
+- `POST /api/auth/password-reset/request` und `/confirm` – Reset per signiertem, zeitlich begrenztem Einmal-Link (`PASSWORD_RESET_TTL_MINUTES`, Standard 60), antwortet unabhaengig von der Adresse gleich
+- `backend/app/infrastructure/mail.py` – SMTP-Versand (`MAIL_SERVER`, `MAIL_PORT`, `MAIL_USE_TLS`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`), ohne `MAIL_SERVER` nur Logging
+- `FRONTEND_URL` fuer den Link in der Reset-Mail
+- Neue Auth-Pfade unterliegen dem Rate Limiting
+- `backend/test_m34.py` (18 Tests)
+- Noch offen: E-Mail-Verifizierung bei Registrierung, Frontend-Seiten (Registrieren, Passwort vergessen)
+
+### Changed
+- Rate Limiting fuer `/api/auth/login` nutzt jetzt Redis (geteilter Zaehler ueber alle Gunicorn-Worker), mit In-Memory-Fallback wenn Redis nicht erreichbar ist (`backend/app/infrastructure/ratelimit.py`)
+- `redis` zu `backend/requirements.txt` hinzugefuegt
+
 ### Added (Frontend)
 - `PageLayout`: SPA-Navigation per `react-router` (kein Seiten-Reload), `aria-current`, Abmelden-Button
 - `FileBrowser`: Upload von Textdateien (max. 1 MB, Workaround ueber Write-Endpoint) und "Neue Datei"
@@ -16,6 +35,48 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed (Frontend)
 - Responsive Layout: dynamisches Padding, horizontal scrollbare Tabellen, `FileBrowser`-Grid bricht auf schmalen Screens um
+
+## [0.33.0-rc] - 2026-10-03
+
+### Added (M33 – Wings Remote-API)
+- `backend/app/api/remote/` – Remote-API unter `/api/remote`, die ein unveraenderter Wings-Daemon
+  (Pterodactyl/Pelican) am Panel aufruft. Pfade und Formate wie `routes/api-remote.php` im Referenz-Panel:
+  - `GET /servers` (paginiert, Wings-Boot), `POST /servers/reset`
+  - `GET /servers/{uuid}` (settings + process_configuration), `GET/POST /servers/{uuid}/install`
+  - `POST /servers/{uuid}/container/status`, `GET|POST /servers/{uuid}/transfer/success|failure`
+  - `POST /sftp/auth` (Passwort und Public Key, Wings-Permission-Mapping)
+  - `POST /activity` (Wings-Events werden als ActivityLog mit subject_type=instance gespeichert)
+  - `GET|POST /backups/{uuid}`, `POST /backups/{uuid}/restore`
+- Node-Token-Authentifizierung (`Authorization: Bearer {token_id}.{token}`), konstante Zeitvergleiche,
+  jeder Request aktualisiert `last_seen_at` des Agents
+- Agent-Credentials werden beim Anlegen automatisch erzeugt; `POST /api/admin/agents/{id}/rotate-credentials`
+- `GET /api/admin/agents/{id}/configuration` – Wings `config.yml` (YAML + JSON) pro Agent
+- `PATCH /api/admin/agents/{id}` – Wings-Verbindungsfelder pflegen (scheme, behind_proxy, Ports, daemon_base, upload_size)
+- Agent-Felder: `uuid`, `behind_proxy`, `daemon_sftp`, `daemon_base`, `upload_size`
+- Blueprint-Felder fuer die Wings-Prozesskonfiguration: `install_container`, `install_entrypoint`,
+  `config_startup`, `config_stop`, `config_files`, `file_denylist`
+- `config_builder.py`: `egg`-Block in den settings, `build_process_configuration()`,
+  `build_install_payload()`, Platzhalter-Ersetzung (`{{server.*}}`, `{{env.*}}`) fuer Config-Dateien
+- Frontend: Agents-Seite zeigt Token-ID, config.yml-Dialog und Credential-Rotation; Blueprint-Formular
+  mit Install-Container, Stop-Befehl, Startup-Erkennung und Datei-Denylist
+- Migration `l2g3h4i5j6k7_milestone33_wings_remote_api`
+- `docs/wings-remote-api.md` – Endpunkte, Auth, Node-Einrichtung, Fehlersuche
+- Testsuite `backend/test_m33.py`
+
+### Changed
+- Backups/Restore: Wings antwortet asynchron (202). Ein Backup gilt erst nach dem Remote-Callback als
+  erfolgreich; der Stub meldet weiterhin synchron (`completed: true`)
+- Websocket-Token enthaelt `user_uuid` (User-ID als String) fuer Wings-Activity-Events; `iss` faellt auf `BASE_URL` zurueck
+- `backend/app/version.py`: VERSION auf `0.33.0-rc`
+- `requirements.txt`: PyYAML fuer den config.yml-Export
+
+### Fixed
+- `backend/test_m30.py` rief `/agent/sftp-auth` statt `/api/agent/sftp-auth` auf (Testsuite brach ab)
+
+### Notes
+- M33 schliesst die groesste Luecke fuer den Pilotbetrieb: Ohne Remote-API konnte Wings keinen Server booten
+- Bewusst nicht enthalten: S3-Presigned-Uploads, Mounts, Rate-Limit auf `/sftp/auth`
+
 
 ## [0.32.0-rc] - 2026-03-16
 

@@ -84,6 +84,21 @@ class Config:
     RATELIMIT_ENABLED = os.getenv("RATELIMIT_ENABLED", "true").lower() == "true"
     RATELIMIT_AUTH_PER_MINUTE = int(os.getenv("RATELIMIT_AUTH_PER_MINUTE", "20"))
 
+    # ── Admin-Guard (M35) ───────────────────────────────
+    # Nur fuer Tests abschaltbar; in Dev/Prod immer aktiv.
+    ADMIN_GUARD_ENABLED = True
+
+    # ── Accounts / Mail ─────────────────────────────────
+    REGISTRATION_ENABLED = os.getenv("REGISTRATION_ENABLED", "false").lower() == "true"
+    PASSWORD_RESET_TTL_MINUTES = int(os.getenv("PASSWORD_RESET_TTL_MINUTES", "60"))
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    MAIL_SERVER = os.getenv("MAIL_SERVER", "")
+    MAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
+    MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
+    MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
+    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
+    MAIL_FROM = os.getenv("MAIL_FROM", "astra@localhost")
+
     # ── Logging ─────────────────────────────────────────
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LOG_FORMAT = os.getenv(
@@ -172,6 +187,7 @@ class TestingConfig(Config):
     SECRET_KEY = "testing-secret-key"
     JWT_SECRET_KEY = "testing-jwt-secret-key"
     RATELIMIT_ENABLED = False
+    ADMIN_GUARD_ENABLED = False  # Legacy-Tests rufen /api/admin ohne Auth auf; test_m35 schaltet ihn ein
     WEBHOOK_MAX_RETRIES = 1
     WEBHOOK_RETRY_DELAYS = "0"
     WEBHOOK_REQUEST_TIMEOUT = 2

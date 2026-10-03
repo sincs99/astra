@@ -4,6 +4,8 @@
 
 ### Runner / Wings-Integration
 - **Stub-Adapter** laeuft in Dev/Test als Default. Wings-Adapter fuer Produktion vorhanden, aber erfordert echte Wings-Instanz.
+- Seit M33 stellt Astra die Wings Remote-API (`/api/remote`) bereit; S3-Presigned-Uploads und Mounts sind nicht enthalten (siehe `docs/wings-remote-api.md`).
+- Die Remote-API wurde gegen den Vertrag des Referenz-Panels gebaut und per Tests abgesichert, aber noch nicht gegen einen laufenden Wings-Daemon abgenommen (Teil des Pilot-Go/No-Go).
 - Konsolen-Websocket funktioniert nur mit echtem Wings-Daemon (im Stub simuliert).
 - Dateioperationen im Stub-Modus liefern simulierte Daten.
 
@@ -40,5 +42,6 @@
 - SSL/TLS-Terminierung wird von externem Reverse Proxy erwartet.
 
 ### Sicherheit
-- Rate Limiting ist In-Memory (reicht fuer Single-Instance, nicht fuer Cluster).
+- **Offen (Blocker vor Internet-Betrieb):** Die Legacy-Routen unter `/api/agent` pruefen keine Authentifizierung. Wings nutzt `/api/remote` (Node-Token), die alten Agent-Routen sollten abgeschaltet oder per Token geschuetzt werden. `/api/admin` ist seit M35 durch einen Admin-Guard geschuetzt.
+- Rate Limiting nutzt Redis (`REDIS_URL`); ist Redis nicht erreichbar, faellt es auf einen In-Memory-Zaehler pro Prozess zurueck.
 - CSRF-Schutz ist ueber SameSite Cookies + JWT geloest, kein dedizierter CSRF-Token.
