@@ -5,9 +5,10 @@ import { cardStyle, StatusBadge, statusLabel } from "./ui";
 
 /**
  * Admin-System: Zustand des Billing-Ticks (Mahnung/Ablauf/Loeschung).
+ * Mit onlyWhenUnhealthy (Dashboard) erscheint sie nur bei Stoerung.
  * Fehler (z.B. 404 bei aelterem Backend) blenden die Karte still aus.
  */
-export function BillingTickCard() {
+export function BillingTickCard({ onlyWhenUnhealthy = false }: { onlyWhenUnhealthy?: boolean }) {
   const [status, setStatus] = useState<BillingStatus | null>(null);
 
   useEffect(() => {
@@ -16,7 +17,7 @@ export function BillingTickCard() {
     return () => { alive = false; };
   }, []);
 
-  if (!status) return null;
+  if (!status || (onlyWhenUnhealthy && status.healthy)) return null;
   const counts = Object.entries(status.orders_by_status).filter(([, n]) => n > 0);
 
   return (
