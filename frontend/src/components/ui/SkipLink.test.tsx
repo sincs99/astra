@@ -1,5 +1,8 @@
+// @vitest-environment jsdom
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect } from "vitest";
+import { cleanup } from "@testing-library/react";
+afterEach(cleanup);
 import { SkipLink } from "./SkipLink";
 
 describe("SkipLink", () => {
