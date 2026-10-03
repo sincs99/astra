@@ -102,6 +102,21 @@ def cmd_db_init(args):
     return 0
 
 
+def cmd_billing_tick(args):
+    """Setzt Laufzeiten durch (ueberfaellig -> suspendiert, Karenzzeit vorbei -> geloescht). Fuer Cron/Compose."""
+    import json
+
+    from app import create_app
+    from app.domain.billing.service import run_billing_tick
+
+    app = create_app()
+    with app.app_context():
+        summary = run_billing_tick()
+    print(json.dumps(summary, ensure_ascii=False))
+    # Exit-Code 1 bei Fehlern, damit Cron/Monitoring sie bemerkt (betroffene Bestellungen werden erneut versucht)
+    return 1 if summary["errors"] else 0
+
+
 def cmd_check_config(args):
     """Prueft die aktuelle Konfiguration auf Probleme."""
     from app import create_app
@@ -229,6 +244,11 @@ def main():
     )
     ip.add_argument("file", help="Pfad zur Egg- oder Blueprint-Datei (.json, .yaml)")
 
+    # ── billing-tick (M46) ──────────────────────────────
+    subparsers.add_parser(
+        "billing-tick", help="Billing-Tick: Laufzeiten durchsetzen (idempotent, alle paar Minuten ausfuehren)"
+    )
+
     # ── check-config ────────────────────────────────────
     subparsers.add_parser("check-config", help="Prueft die Konfiguration")
 
@@ -263,6 +283,7 @@ def main():
     commands = {
         "bootstrap": cmd_bootstrap,
         "import-blueprint": cmd_import_blueprint,
+        "billing-tick": cmd_billing_tick,
         "check-config": cmd_check_config,
         "db-init": cmd_db_init,
         "db-status": cmd_db_status,

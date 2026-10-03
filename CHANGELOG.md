@@ -43,6 +43,16 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M46 – Billing-Tick)
+- `python cli.py billing-tick` (idempotent, alle paar Minuten per Cron/Compose): `active` + Laufzeit abgelaufen -> `past_due` (Instance suspendiert mit Grund "Zahlung überfällig", synchronisiert und auf dem Node beendet, Mail); `past_due` laenger als `BILLING_GRACE_DAYS` (Standard 7) -> Instance geloescht (`force`), `expired`, Mail; Kuendigung zum Laufzeitende -> sofort geloescht; fehlende Instance -> `expired` ohne Runner-Aufruf. Ausgabe als JSON `{checked, past_due, expired, errors}`, Exit-Code 1 bei Fehlern
+- Karenzzeit zaehlt ab `orders.past_due_at` (nicht ab Laufzeitende), ein Tick-Ausfall kostet Kunden keine Karenzzeit; bestehende Admin-Sperren werden nicht ueberschrieben; bei laufender Installation/Transfer wartet der Tick bis zu einen Tag; jede Bestellung wird einzeln committed, Fehler blockieren die anderen
+- Verlaengerung ueber `POST /api/admin/orders/{uuid}/mark-paid` auf `active`/`past_due`: neues Ende ab `max(jetzt, altes Ende)`, `payment_reference` ist **Pflicht** (400) und macht den Aufruf idempotent (verbuchte Referenzen in `orders.payment_references`), hebt nur die Sperre "Zahlung überfällig" auf. **Aenderung gegenueber M44:** mark-paid auf eine aktive Bestellung ist ohne Referenz kein No-op mehr, sondern 400
+- `delete_instance` loest verknuepfte Bestellungen von der Instance (Fremdschluessel `orders.instance_id`; ohne das scheitert das Loeschen einer bestellten Instance auf PostgreSQL) und setzt lebende Bestellungen auf `expired`
+- Bestellungen liefern `past_due_at` und `scheduled_deletion_at`; neue Events `order:past_due`, `order:renewed`, `order:expired`; Config `BILLING_GRACE_DAYS`
+- Migration `o5j6k7l8m9n0` (`orders.past_due_at`, `orders.payment_references` mit Backfill aus `payment_reference`), Datum/Zeit der Bestellungen jetzt durchgehend naive UTC
+- `suspend_instance`/`unsuspend_instance` akzeptieren `admin_user_id=None` (System) ohne Logging-Fehler
+- `backend/test_m46.py` (65 Tests, Zeit per `now=` eingefroren), `docs/orders-api.md` ergaenzt
+
 ### Added (M44 – Produkte und Bestellungen)
 - Neue Tabellen `products` und `orders` (Migration `n4i5j6k7l8m9`, Upgrade/Downgrade geprueft, Schema stimmt mit `create_all` ueberein). Bestellungen halten einen Schnappschuss von Preis, Laufzeit und Ressourcen
 - Admin: `GET/POST /api/admin/products`, `GET/PATCH/DELETE /api/admin/products/{id}`, `GET /api/admin/orders` (Filter `status`, `user_id`), `GET /api/admin/orders/{uuid}`, `POST /api/admin/orders/{uuid}/mark-paid` (manuelle Zahlung, stellt die Instance per automatischer Platzierung bereit; idempotent; ohne freien Node bleibt die Bestellung `awaiting_provisioning` und kann erneut bereitgestellt werden)

@@ -16,14 +16,21 @@ from app.extensions import db
 from app.domain.billing.models import (
     Order, Product,
     ORDER_PENDING_PAYMENT, ORDER_AWAITING_PROVISIONING, ORDER_ACTIVE,
-    ORDER_PAST_DUE, ORDER_CANCELLED, ORDER_COUNTING_STATUSES,
+    ORDER_PAST_DUE, ORDER_CANCELLED, ORDER_EXPIRED, ORDER_COUNTING_STATUSES,
 )
 from app.domain.blueprints.models import Blueprint
+from app.domain.instances.models import Instance
 from app.domain.users.models import User
 
 logger = logging.getLogger(__name__)
 
 MAX_PENDING_ORDERS_PER_USER = 5
+# Suspendierungsgrund bei ueberfaelliger Zahlung: nur Suspensions mit genau diesem Grund hebt eine
+# Verlaengerung wieder auf (eine Admin-Sperre z.B. wegen Missbrauch bleibt bestehen)
+PAYMENT_SUSPEND_REASON = "Zahlung überfällig"
+# So lange wartet der Tick bei laufender Installation/Transfer/Wiederherstellung, bevor er trotzdem sperrt
+# (ein Install-Callback wuerde eine zu frueh gesetzte Sperre sonst stillschweigend aufheben)
+BLOCKED_STATUS_WAIT = timedelta(days=1)
 _CURRENCY_RE = re.compile(r"^[A-Z]{3}$")
 
 
@@ -35,7 +42,14 @@ class BillingError(Exception):
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    """Naive UTC wie die DateTime-Spalten (keine Serverzeitzonen-Effekte)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _utc_naive(value: datetime | None) -> datetime | None:
+    if value is not None and value.tzinfo is not None:
+        value = value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value
 
 
 # ── Produkte ────────────────────────────────────────────
@@ -222,32 +236,90 @@ def fulfill_order(order: Order) -> Order:
     order.instance_id = instance.id
     order.status = ORDER_ACTIVE
     order.current_period_end = (order.paid_at or _now()) + timedelta(days=order.billing_period_days)
+    order.past_due_at = None
     db.session.commit()
     return order
 
 
-def mark_order_paid(order: Order, payment_reference: str | None = None, actor_id: int | None = None) -> Order:
-    """Zahlung bestaetigen und Instance bereitstellen. Idempotent bei bereits aktiven Bestellungen.
+def mark_order_paid(order: Order, payment_reference: str | None = None, actor_id: int | None = None,
+                    now: datetime | None = None) -> Order:
+    """Zahlung bestaetigen.
 
-    Eine bezahlte Bestellung ohne Instance (awaiting_provisioning) wird erneut bereitgestellt,
-    ohne die Zahlung ein zweites Mal zu verbuchen.
+    - pending_payment: erste Zahlung, Instance wird bereitgestellt
+    - awaiting_provisioning: Instance erneut bereitstellen, Zahlung nicht doppelt verbuchen
+    - active / past_due: Verlaengerung um eine Laufzeit (siehe renew_order), erfordert `payment_reference`
     """
-    # Zeilensperre: zwei gleichzeitige "bezahlt"-Aufrufe duerfen nur eine Instance erzeugen (PostgreSQL)
+    # Zeilensperre: zwei gleichzeitige Aufrufe duerfen nur einmal verbuchen/bereitstellen (PostgreSQL)
     order = db.session.query(Order).filter_by(id=order.id).with_for_update().one()
+    now = _utc_naive(now) or _now()
+    ref = (payment_reference or "").strip()[:191] or None
 
-    if order.status in (ORDER_ACTIVE, ORDER_PAST_DUE) and order.instance_id:
-        return order
+    if order.status in (ORDER_ACTIVE, ORDER_PAST_DUE):
+        return renew_order(order, ref, actor_id, now)
     if order.status not in (ORDER_PENDING_PAYMENT, ORDER_AWAITING_PROVISIONING):
         raise BillingError(f"Bestellung im Status '{order.status}' kann nicht als bezahlt markiert werden", 409)
 
-    first_payment = order.status == ORDER_PENDING_PAYMENT
-    if first_payment:
-        order.paid_at = _now()
-        order.payment_reference = (payment_reference or "")[:191] or None
+    if order.status == ORDER_PENDING_PAYMENT:
+        order.paid_at = now
+        order.payment_reference = ref
+        order.payment_references = [ref] if ref else []
         db.session.commit()
-        _log("order:paid", order, actor_id, "Bestellung als bezahlt markiert",
-             {"payment_reference": order.payment_reference})
+        _log("order:paid", order, actor_id, "Bestellung als bezahlt markiert", {"payment_reference": ref})
     return fulfill_order(order)
+
+
+def renew_order(order: Order, payment_reference: str | None, actor_id: int | None = None,
+                now: datetime | None = None) -> Order:
+    """Verlaengert eine aktive oder ueberfaellige Bestellung um eine Laufzeit.
+
+    Das neue Ende zaehlt ab max(jetzt, bisheriges Ende): Vorauszahlungen verfallen nicht, eine verspaetete
+    Zahlung verschenkt aber keine Zeit. Eine bereits verbuchte `payment_reference` ist ein No-op, so
+    entsteht bei Doppelklick oder Wiederholung keine zweite Verlaengerung. Eine Suspendierung wegen
+    ueberfaelliger Zahlung wird aufgehoben, eine Admin-Sperre aus anderem Grund bleibt bestehen.
+    Eine vorgemerkte Kuendigung (cancel_at_period_end) bleibt erhalten.
+    """
+    now = _utc_naive(now) or _now()
+    if not payment_reference:
+        raise BillingError(
+            "Fuer eine Verlaengerung ist 'payment_reference' erforderlich (verhindert doppeltes Verbuchen)", 400
+        )
+    refs = list(order.payment_references or [])
+    if payment_reference in refs:
+        return order  # diese Zahlung ist schon verbucht
+
+    instance = db.session.get(Instance, order.instance_id) if order.instance_id else None
+    if instance is None:
+        raise BillingError("Die Instance dieser Bestellung existiert nicht mehr – keine Verlaengerung moeglich", 409)
+
+    was_past_due = order.status == ORDER_PAST_DUE
+    base = max(now, order.current_period_end or now)
+    order.current_period_end = base + timedelta(days=order.billing_period_days)
+    order.payment_reference = payment_reference
+    order.payment_references = refs + [payment_reference]
+    order.status = ORDER_ACTIVE
+    order.past_due_at = None
+    db.session.commit()
+
+    lifted = False
+    from app.domain.instances.service import STATUS_SUSPENDED
+    if instance.status == STATUS_SUSPENDED and instance.suspended_reason == PAYMENT_SUSPEND_REASON:
+        from app.domain.instances.service import unsuspend_instance, sync_instance
+        unsuspend_instance(instance, actor_id)
+        _best_effort(sync_instance, instance)
+        lifted = True
+
+    _log("order:renewed", order, actor_id, "Bestellung verlaengert",
+         {"payment_reference": payment_reference, "was_past_due": was_past_due, "unsuspended": lifted,
+          "current_period_end": order.current_period_end.isoformat()})
+    return order
+
+
+def _best_effort(func, *args):
+    try:
+        return func(*args)
+    except Exception as e:  # pragma: no cover - Netzwerk-/Runner-Fehler duerfen den Ablauf nie stoppen
+        logger.warning("%s fehlgeschlagen (best effort): %s", getattr(func, "__name__", func), e)
+        return None
 
 
 def cancel_order(order: Order, actor_id: int | None = None) -> Order:
@@ -268,3 +340,180 @@ def cancel_order(order: Order, actor_id: int | None = None) -> Order:
     else:
         raise BillingError(f"Bestellung im Status '{order.status}' kann nicht storniert werden", 409)
     return order
+
+
+# ── Instance geloescht: verknuepfte Bestellungen beenden (M46) ──
+
+
+def detach_orders_from_instance(instance_id: int) -> list[int]:
+    """Loest Bestellungen von einer Instance, die gleich geloescht wird (ohne Commit).
+
+    Noetig wegen der Fremdschluessel-Beziehung orders.instance_id -> instances.id. Lebende Bestellungen
+    (active, past_due) sind danach `expired`: ohne Server gibt es nichts mehr zu verlaengern.
+    Rueckgabe: IDs der beendeten Bestellungen (fuer das Activity-Event nach dem Commit).
+    """
+    expired = []
+    for order in Order.query.filter_by(instance_id=instance_id).all():
+        order.instance_id = None
+        if order.status in (ORDER_ACTIVE, ORDER_PAST_DUE):
+            order.status = ORDER_EXPIRED
+            order.past_due_at = None
+            expired.append(order.id)
+    return expired
+
+
+def log_orders_expired(order_ids: list[int], reason: str) -> None:
+    for order_id in order_ids:
+        order = db.session.get(Order, order_id)
+        if order:
+            _log("order:expired", order, None, f"Bestellung beendet ({reason})", {"reason": reason})
+
+
+# ── Billing-Tick (M46) ──────────────────────────────────
+
+
+def _mail_order(order: Order, subject: str, body: str) -> None:
+    try:
+        from flask import current_app
+        from app.infrastructure.mail import send_mail
+        user = db.session.get(User, order.user_id)
+        if user and user.email:
+            send_mail(current_app, user.email, subject, body)
+    except Exception:  # pragma: no cover - Mail darf den Tick nie stoppen
+        logger.exception("Mail zur Bestellung %s fehlgeschlagen", order.uuid)
+
+
+def _blocking_status(instance: Instance) -> bool:
+    from app.domain.instances.service import _DELETE_BLOCKING_STATUSES
+    return instance.status in _DELETE_BLOCKING_STATUSES
+
+
+def _expire_order(order: Order, instance: Instance | None, reason: str) -> None:
+    """Beendet eine Bestellung: Instance loeschen (falls vorhanden), Status expired, Mail."""
+    if instance is not None:
+        from app.domain.instances.service import delete_instance
+        # delete_instance setzt die Bestellung auf expired, loest sie von der Instance und loggt order:expired
+        delete_instance(instance, None, force=True, order_reason=reason)
+        db.session.refresh(order)
+    else:
+        # Instance fehlt bereits: kein Runner-Aufruf, nur Status
+        order.instance_id = None
+        order.status = ORDER_EXPIRED
+        order.past_due_at = None
+        db.session.commit()
+        log_orders_expired([order.id], reason)
+    _mail_order(
+        order, "Astra: Dein Server wurde beendet",
+        f"Hallo,\n\ndein Server '{order.instance_name}' wurde beendet und geloescht "
+        f"({'Kuendigung zum Laufzeitende' if reason == 'cancelled_at_period_end' else 'Zahlung nicht eingegangen'}).\n"
+        f"Bestellung: {order.uuid}\n",
+    )
+
+
+def _suspend_for_payment(order: Order, instance: Instance, now: datetime) -> bool:
+    """Ueberfaellige Bestellung: Instance sperren und stoppen. False = spaeter erneut versuchen."""
+    from app.domain.instances.service import (
+        STATUS_SUSPENDED, suspend_instance, sync_instance, send_power_action,
+    )
+    if _blocking_status(instance) and now < (order.current_period_end or now) + BLOCKED_STATUS_WAIT:
+        return False  # laufende Installation/Transfer: bis zu einem Tag spaeter erneut versuchen
+
+    # Eine bestehende Admin-Sperre (z.B. Missbrauch) nicht ueberschreiben
+    newly_suspended = instance.status != STATUS_SUSPENDED
+    if newly_suspended:
+        suspend_instance(instance, None, PAYMENT_SUSPEND_REASON)
+
+    order.status = ORDER_PAST_DUE
+    order.past_due_at = now
+    db.session.commit()
+
+    if newly_suspended:
+        # Wings kennt die Sperre erst nach dem Sync; der laufende Server wird zusaetzlich beendet
+        _best_effort(sync_instance, instance)
+        _best_effort(send_power_action, instance, "kill")
+
+    _log("order:past_due", order, None, "Bestellung ueberfaellig, Instance suspendiert",
+         {"suspended": newly_suspended, "current_period_end": order.current_period_end.isoformat()})
+    from flask import current_app
+    days = current_app.config.get("BILLING_GRACE_DAYS", 7)
+    _mail_order(
+        order, "Astra: Zahlung ueberfaellig – dein Server wurde gesperrt",
+        f"Hallo,\n\ndie Laufzeit deines Servers '{order.instance_name}' ist abgelaufen, der Server wurde gesperrt.\n"
+        f"Bitte begleiche die Zahlung innerhalb von {days} Tagen, sonst wird er geloescht.\n"
+        f"Bestellung: {order.uuid}\n",
+    )
+    return True
+
+
+def _process_order(order_id: int, now: datetime, grace: timedelta) -> str | None:
+    """Bearbeitet eine Bestellung. Rueckgabe: 'past_due', 'expired' oder None (nichts zu tun)."""
+    # Zeilensperre und Statuspruefung: ein parallel laufender Tick oder eine Zahlung darf nicht ueberfahren werden
+    order = db.session.query(Order).filter_by(id=order_id).with_for_update().one()
+    if order.status not in (ORDER_ACTIVE, ORDER_PAST_DUE):
+        db.session.rollback()
+        return None
+
+    instance = db.session.get(Instance, order.instance_id) if order.instance_id else None
+    if instance is None:
+        _expire_order(order, None, "instance_missing")
+        return "expired"
+
+    end = order.current_period_end
+    if end is None:
+        raise RuntimeError("current_period_end fehlt")
+    if end >= now:
+        db.session.rollback()
+        return None  # noch nicht faellig
+
+    if order.cancel_at_period_end:
+        _expire_order(order, instance, "cancelled_at_period_end")
+        return "expired"
+
+    if order.status == ORDER_ACTIVE:
+        return "past_due" if _suspend_for_payment(order, instance, now) else None
+
+    # past_due: Karenzzeit laeuft seit past_due_at (nicht seit Laufzeitende, damit ein Ausfall des Ticks
+    # den Kunden nicht um seine Karenzzeit bringt)
+    if order.past_due_at is None:
+        order.past_due_at = now
+        db.session.commit()
+        return None
+    if order.past_due_at + grace <= now:
+        _expire_order(order, instance, "grace_period_over")
+        return "expired"
+    db.session.rollback()
+    return None
+
+
+def run_billing_tick(now: datetime | None = None) -> dict:
+    """Setzt die Laufzeiten durch. Idempotent, gedacht fuer Cron/Compose alle paar Minuten.
+
+    1. active und Laufzeit abgelaufen -> past_due, Instance suspendiert und gestoppt, Mail
+    2. past_due laenger als BILLING_GRACE_DAYS -> Instance geloescht, expired, Mail
+    3. Kuendigung zum Laufzeitende und Laufzeit abgelaufen -> sofort geloescht, expired
+    4. Instance existiert nicht mehr -> expired ohne Runner-Aufruf
+
+    Jede Bestellung wird einzeln committed; ein Fehler blockiert die anderen nicht (er wird gemeldet und
+    die Bestellung im naechsten Tick erneut versucht).
+    Rueckgabe: {"checked", "past_due", "expired", "errors": [{"order", "error"}]}
+    """
+    from flask import current_app
+    now = _utc_naive(now) or _now()
+    grace = timedelta(days=current_app.config.get("BILLING_GRACE_DAYS", 7))
+
+    ids = [oid for (oid,) in db.session.query(Order.id)
+           .filter(Order.status.in_((ORDER_ACTIVE, ORDER_PAST_DUE))).order_by(Order.id).all()]
+    summary = {"checked": len(ids), "past_due": 0, "expired": 0, "errors": []}
+    for order_id in ids:
+        try:
+            outcome = _process_order(order_id, now, grace)
+            if outcome:
+                summary[outcome] += 1
+        except Exception as e:
+            db.session.rollback()
+            order = db.session.get(Order, order_id)
+            summary["errors"].append({"order": order.uuid if order else order_id, "error": f"{type(e).__name__}: {e}"})
+            logger.exception("Billing-Tick: Bestellung %s fehlgeschlagen", order_id)
+
+    logger.info("Billing-Tick: %s", summary)
+    return summary

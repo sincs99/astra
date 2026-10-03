@@ -108,6 +108,8 @@ class Config:
 
     # ── Accounts / Mail ─────────────────────────────────
     REGISTRATION_ENABLED = os.getenv("REGISTRATION_ENABLED", "false").lower() == "true"
+    # M46: Tage zwischen Ablauf der Laufzeit (Suspend) und automatischer Loeschung der Instance
+    BILLING_GRACE_DAYS = max(int(os.getenv("BILLING_GRACE_DAYS", "7")), 0)
     # M38: Login erst nach bestaetigter E-Mail-Adresse (Registrierung sendet Verifizierungs-Link)
     EMAIL_VERIFICATION_REQUIRED = os.getenv("EMAIL_VERIFICATION_REQUIRED", "false").lower() == "true"
     EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "48"))

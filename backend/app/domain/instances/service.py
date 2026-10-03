@@ -529,7 +529,7 @@ def is_instance_suspended(instance: Instance) -> bool:
     return instance.status == STATUS_SUSPENDED
 
 
-def suspend_instance(instance: Instance, admin_user_id: int, reason: str | None = None) -> Instance:
+def suspend_instance(instance: Instance, admin_user_id: int | None, reason: str | None = None) -> Instance:
     """Setzt eine Instance in den administrativen Suspension-Status.
 
     Idempotent: Wiederholtes Suspend auf bereits suspendierter Instance
@@ -544,8 +544,8 @@ def suspend_instance(instance: Instance, admin_user_id: int, reason: str | None 
     db.session.commit()
 
     logger.info(
-        "Instance %s (%s): suspendiert von User %d (Grund: %s)",
-        instance.name, instance.uuid, admin_user_id, reason or "–",
+        "Instance %s (%s): suspendiert von User %s (Grund: %s)",
+        instance.name, instance.uuid, admin_user_id if admin_user_id is not None else "System", reason or "–",
     )
 
     from app.domain.activity.events import log_instance_event, INSTANCE_SUSPENDED
@@ -565,7 +565,8 @@ _DELETE_BLOCKING_STATUSES = (
 )
 
 
-def delete_instance(instance: Instance, actor_id: int | None = None, force: bool = False) -> dict:
+def delete_instance(instance: Instance, actor_id: int | None = None, force: bool = False,
+                    order_reason: str = "instance_deleted") -> dict:
     """Loescht eine Instance samt abhaengiger Daten und gibt ihre Endpoints frei (M43).
 
     Ablauf:
@@ -635,6 +636,9 @@ def delete_instance(instance: Instance, actor_id: int | None = None, force: bool
         for routine in Routine.query.filter_by(instance_id=instance_id).all():
             Action.query.filter_by(routine_id=routine.id).delete(synchronize_session=False)
             db.session.delete(routine)
+        # Bestellungen von der Instance loesen (Fremdschluessel) und lebende beenden (M46)
+        from app.domain.billing.service import detach_orders_from_instance
+        expired_orders = detach_orders_from_instance(instance_id)
         Backup.query.filter_by(instance_id=instance_id).delete(synchronize_session=False)
         Database.query.filter_by(instance_id=instance_id).delete(synchronize_session=False)
         Collaborator.query.filter_by(instance_id=instance_id).delete(synchronize_session=False)
@@ -647,6 +651,9 @@ def delete_instance(instance: Instance, actor_id: int | None = None, force: bool
     logger.info("Instance %s (%s) geloescht (runner_cleanup=%s, force=%s)",
                 info["name"], info["uuid"], "ok" if runner_ok else "failed", force)
 
+    from app.domain.billing.service import log_orders_expired
+    log_orders_expired(expired_orders, order_reason)
+
     from app.domain.activity.events import log_instance_event, INSTANCE_DELETED
     log_instance_event(
         INSTANCE_DELETED, instance_id, actor_id,
@@ -658,7 +665,7 @@ def delete_instance(instance: Instance, actor_id: int | None = None, force: bool
             "runner_cleanup": "ok" if runner_ok else "failed", "forced": force}
 
 
-def unsuspend_instance(instance: Instance, admin_user_id: int) -> Instance:
+def unsuspend_instance(instance: Instance, admin_user_id: int | None) -> Instance:
     """Hebt die Suspension einer Instance auf.
 
     Idempotent: Ist die Instance nicht suspendiert, passiert nichts.
@@ -678,8 +685,8 @@ def unsuspend_instance(instance: Instance, admin_user_id: int) -> Instance:
     db.session.commit()
 
     logger.info(
-        "Instance %s (%s): Suspension aufgehoben von User %d",
-        instance.name, instance.uuid, admin_user_id,
+        "Instance %s (%s): Suspension aufgehoben von User %s",
+        instance.name, instance.uuid, admin_user_id if admin_user_id is not None else "System",
     )
 
     from app.domain.activity.events import log_instance_event, INSTANCE_UNSUSPENDED
