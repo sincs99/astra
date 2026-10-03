@@ -261,7 +261,7 @@ def create_my_order():
     if err:
         return err
     if current_app.config.get("EMAIL_VERIFICATION_REQUIRED") and user.email_verified_at is None:
-        return jsonify({"error": "Bitte bestaetige zuerst deine E-Mail-Adresse",
+        return jsonify({"error": "Bitte bestätige zuerst deine E-Mail-Adresse",
                         "code": "email_not_verified"}), 403
     data = request.get_json(silent=True) or {}
     try:
@@ -347,13 +347,13 @@ def delete_instance_endpoint(uuid: str):
 
     data = request.get_json(silent=True) or {}
     if data.get("confirm") != instance.name:
-        return jsonify({"error": "Bestaetigung fehlt: 'confirm' muss dem Namen der Instance entsprechen"}), 400
+        return jsonify({"error": "Bestätigung fehlt: 'confirm' muss dem Namen der Instance entsprechen"}), 400
 
     try:
         result = delete_instance(instance, user_id)
     except InstanceActionError as e:
         return jsonify({"error": e.message}), e.status_code
-    return jsonify({"uuid": result["uuid"], "message": "Instance geloescht"})
+    return jsonify({"uuid": result["uuid"], "message": "Instance gelöscht"})
 
 
 # ── Config-Update (M16) ────────────────────────────────
@@ -383,7 +383,7 @@ def update_build_config(uuid: str):
     changes = {k: v for k, v in data.items() if k in allowed}
 
     if not changes:
-        return jsonify({"error": "Keine gueltigen Felder angegeben"}), 400
+        return jsonify({"error": "Keine gültigen Felder angegeben"}), 400
 
     result = update_instance_config(instance, **changes)
 
@@ -935,7 +935,7 @@ def delete_database_endpoint(uuid: str, db_id: int):
     from app.domain.databases.service import delete_database, DatabaseError
     try:
         delete_database(instance, database)
-        return jsonify({"message": "Datenbank geloescht"})
+        return jsonify({"message": "Datenbank gelöscht"})
     except DatabaseError as e:
         return jsonify({"error": e.message}), e.status_code
 
@@ -1291,4 +1291,4 @@ def delete_ssh_key(key_id: int):
     except SshKeyError as e:
         return jsonify({"error": e.message}), e.status_code
 
-    return jsonify({"message": "SSH-Key geloescht"})
+    return jsonify({"message": "SSH-Key gelöscht"})

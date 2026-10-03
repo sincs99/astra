@@ -38,14 +38,14 @@ def login():
 
     if not user:
         _log_auth_event("auth:login_failed", None,
-                        f"Fehlgeschlagener Login-Versuch fuer '{login_field}'",
+                        f"Fehlgeschlagener Login-Versuch für '{login_field}'",
                         {"login": login_field})
-        return jsonify({"error": "Ungueltige Anmeldedaten"}), 401
+        return jsonify({"error": "Ungültige Anmeldedaten"}), 401
 
     # M38: unbestaetigte E-Mail-Adresse
     if current_app.config.get("EMAIL_VERIFICATION_REQUIRED", False) and user.email_verified_at is None:
         return jsonify({
-            "error": "E-Mail-Adresse noch nicht bestaetigt",
+            "error": "E-Mail-Adresse noch nicht bestätigt",
             "code": "email_not_verified",
         }), 403
 
@@ -62,8 +62,8 @@ def login():
         from app.domain.auth.mfa_service import verify_totp
         if not verify_totp(user, mfa_code):
             _log_auth_event("auth:login_failed", user.id,
-                            f"MFA-Verifikation fehlgeschlagen fuer {user.username}")
-            return jsonify({"error": "Ungueltiger MFA-Code"}), 401
+                            f"MFA-Verifikation fehlgeschlagen für {user.username}")
+            return jsonify({"error": "Ungültiger MFA-Code"}), 401
 
     token = issue_access_token(user)
     _log_auth_event("auth:login_success", user.id,
@@ -94,7 +94,7 @@ def register():
     if current_app.config.get("EMAIL_VERIFICATION_REQUIRED", False):
         return jsonify({
             "verification_required": True,
-            "message": "Bitte bestaetige deine E-Mail-Adresse ueber den Link in der Mail",
+            "message": "Bitte bestätige deine E-Mail-Adresse über den Link in der Mail",
             "user": user.to_dict(),
         }), 201
     return jsonify({
@@ -114,8 +114,8 @@ def verify_email_endpoint():
         user = verify_email(data.get("token"))
     except AccountError as e:
         return jsonify({"error": e.message}), e.status_code
-    _log_auth_event("auth:email_verified", user.id, f"E-Mail bestaetigt: {user.username}")
-    return jsonify({"message": "E-Mail-Adresse bestaetigt"})
+    _log_auth_event("auth:email_verified", user.id, f"E-Mail bestätigt: {user.username}")
+    return jsonify({"message": "E-Mail-Adresse bestätigt"})
 
 
 @auth_bp.route("/resend-verification", methods=["POST"])
@@ -125,7 +125,7 @@ def resend_verification_endpoint():
 
     data = request.get_json() or {}
     resend_verification(data.get("email") or data.get("login"))
-    return jsonify({"message": "Falls die Adresse existiert und unbestaetigt ist, wurde eine E-Mail versendet"})
+    return jsonify({"message": "Falls die Adresse existiert und unbestätigt ist, wurde eine E-Mail versendet"})
 
 
 @auth_bp.route("/password-reset/request", methods=["POST"])
@@ -149,8 +149,8 @@ def password_reset_confirm():
     except AccountError as e:
         return jsonify({"error": e.message}), e.status_code
 
-    _log_auth_event("auth:password_reset", user.id, f"Passwort zurueckgesetzt: {user.username}")
-    return jsonify({"message": "Passwort wurde geaendert"})
+    _log_auth_event("auth:password_reset", user.id, f"Passwort zurückgesetzt: {user.username}")
+    return jsonify({"message": "Passwort wurde geändert"})
 
 
 @auth_bp.route("/change-password", methods=["POST"])
@@ -167,11 +167,11 @@ def change_password_endpoint():
         change_password(user, data.get("current_password"), data.get("new_password"))
     except AccountError as e:
         _log_auth_event("auth:password_change_failed", user.id,
-                        f"Passwort-Aenderung fehlgeschlagen: {user.username}")
+                        f"Passwort-Änderung fehlgeschlagen: {user.username}")
         return jsonify({"error": e.message}), e.status_code
 
-    _log_auth_event("auth:password_changed", user.id, f"Passwort geaendert: {user.username}")
-    return jsonify({"message": "Passwort wurde geaendert"})
+    _log_auth_event("auth:password_changed", user.id, f"Passwort geändert: {user.username}")
+    return jsonify({"message": "Passwort wurde geändert"})
 
 
 @auth_bp.route("/logout", methods=["POST"])
@@ -244,7 +244,7 @@ def delete_api_key_endpoint(key_id: int):
     from app.domain.auth.apikey_service import delete_api_key, ApiKeyError
     try:
         delete_api_key(key_id, user.id)
-        return jsonify({"message": "API Key geloescht"})
+        return jsonify({"message": "API Key gelöscht"})
     except ApiKeyError as e:
         return jsonify({"error": e.message}), e.status_code
 

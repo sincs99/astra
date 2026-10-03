@@ -350,7 +350,7 @@ ork, ik = paid_order()
 c.post(f"/api/client/orders/{ork}/cancel", headers=U1)
 res = tick(order(ork)["end"] - D(days=1))
 check("gekuendigte Bestellung: statt Erinnerung einmalig 'wird geloescht'-Hinweis",
-      len(mails_for(ork)) == 1 and "geloescht" in mails_for(ork)[0]["subject"] and "endet bald" not in mails_for(ork)[0]["subject"])
+      len(mails_for(ork)) == 1 and "gelöscht" in mails_for(ork)[0]["subject"] and "endet bald" not in mails_for(ork)[0]["subject"])
 with app.app_context():
     ev = ActivityLog.query.filter(ActivityLog.event == "order:reminder").order_by(ActivityLog.id.desc()).first()
 check("Event order:reminder mit kind=deletion_notice", "deletion_notice" in str(ev.properties), str(ev.properties))

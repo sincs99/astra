@@ -135,7 +135,7 @@ def create_instance(
         agent = pick_agent(memory, disk, cpu)
         if agent is None:
             raise InstanceCreationError(
-                "Kein Agent mit freiem Endpoint und ausreichender Kapazitaet verfuegbar", 409
+                "Kein Agent mit freiem Endpoint und ausreichender Kapazität verfügbar", 409
             )
         agent_id = agent.id
     else:
@@ -148,7 +148,7 @@ def create_instance(
     if agent.in_maintenance:
         raise InstanceCreationError(
             f"Agent '{agent.name}' befindet sich im Maintenance-Modus. "
-            f"Neue Deployments sind nicht moeglich.", 409
+            f"Neue Deployments sind nicht möglich.", 409
         )
 
     # 3. Blueprint pruefen
@@ -394,7 +394,7 @@ def reinstall_instance(instance: Instance) -> Instance:
     # Validierung: Darf nur bei existierender Instance
     if instance.status in (STATUS_PROVISIONING, STATUS_REINSTALLING):
         raise InstanceActionError(
-            f"Instance ist bereits im Status '{instance.status}' – Reinstall nicht moeglich", 409
+            f"Instance ist bereits im Status '{instance.status}' – Reinstall nicht möglich", 409
         )
 
     agent = db.session.get(Agent, instance.agent_id)
@@ -580,7 +580,7 @@ def delete_instance(instance: Instance, actor_id: int | None = None, force: bool
     """
     if instance.status in _DELETE_BLOCKING_STATUSES and not force:
         raise InstanceActionError(
-            f"Instance ist im Status '{instance.status}' – Loeschen nicht moeglich "
+            f"Instance ist im Status '{instance.status}' – Löschen nicht möglich "
             f"(Admin kann mit force erzwingen)", 409
         )
 
@@ -657,7 +657,7 @@ def delete_instance(instance: Instance, actor_id: int | None = None, force: bool
     from app.domain.activity.events import log_instance_event, INSTANCE_DELETED
     log_instance_event(
         INSTANCE_DELETED, instance_id, actor_id,
-        f"Instance '{info['name']}' geloescht",
+        f"Instance '{info['name']}' gelöscht",
         {**info, "runner_cleanup": "ok" if runner_ok else "failed", "forced": force},
     )
 
@@ -717,7 +717,7 @@ def _resolve_endpoint(agent_id: int, endpoint_id: int | None) -> Endpoint:
             )
         if endpoint.agent_id != agent_id:
             raise InstanceCreationError(
-                f"Endpoint {endpoint_id} gehoert nicht zu Agent {agent_id}", 400
+                f"Endpoint {endpoint_id} gehört nicht zu Agent {agent_id}", 400
             )
         if endpoint.instance_id is not None:
             raise InstanceCreationError(
@@ -738,7 +738,7 @@ def _resolve_endpoint(agent_id: int, endpoint_id: int | None) -> Endpoint:
 
     if not endpoint:
         raise InstanceCreationError(
-            f"Kein freier Endpoint auf Agent {agent_id} verfuegbar", 409
+            f"Kein freier Endpoint auf Agent {agent_id} verfügbar", 409
         )
 
     return endpoint

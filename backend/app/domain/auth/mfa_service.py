@@ -56,7 +56,7 @@ def verify_and_enable_mfa(user: User, code: str) -> dict:
 
     totp = pyotp.TOTP(user.mfa_secret)
     if not totp.verify(code, valid_window=1):
-        raise MfaError("Ungueltiger Verifikationscode", 401)
+        raise MfaError("Ungültiger Verifikationscode", 401)
 
     # Recovery-Codes generieren
     recovery_codes = [secrets.token_hex(4) for _ in range(8)]
@@ -72,7 +72,7 @@ def verify_and_enable_mfa(user: User, code: str) -> dict:
         log_event(
             event="auth:mfa_enabled",
             actor_id=user.id,
-            description=f"MFA aktiviert fuer {user.username}",
+            description=f"MFA aktiviert für {user.username}",
         )
     except Exception:
         pass
@@ -127,7 +127,7 @@ def disable_mfa(user: User) -> dict:
         log_event(
             event="auth:mfa_disabled",
             actor_id=user.id,
-            description=f"MFA deaktiviert fuer {user.username}",
+            description=f"MFA deaktiviert für {user.username}",
         )
     except Exception:
         pass

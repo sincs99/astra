@@ -87,7 +87,7 @@ def delete_provider(provider_id: int) -> None:
     count = Database.query.filter_by(provider_id=provider_id).count()
     if count > 0:
         raise DatabaseError(
-            f"Provider hat noch {count} Datenbank(en) – zuerst loeschen", 409
+            f"Provider hat noch {count} Datenbank(en) – zuerst löschen", 409
         )
 
     db.session.delete(provider)
@@ -122,7 +122,7 @@ def create_database(
 
     if not provider.has_capacity():
         raise DatabaseError(
-            f"Provider '{provider.name}' hat max. Kapazitaet erreicht ({provider.max_databases})",
+            f"Provider '{provider.name}' hat max. Kapazität erreicht ({provider.max_databases})",
             409,
         )
 
@@ -187,7 +187,7 @@ def create_database(
 def rotate_password(instance: Instance, database: Database) -> Database:
     """Rotiert das Passwort einer Datenbank."""
     if database.instance_id != instance.id:
-        raise DatabaseError("Datenbank gehoert nicht zu dieser Instance", 403)
+        raise DatabaseError("Datenbank gehört nicht zu dieser Instance", 403)
 
     provider = db.session.get(DatabaseProvider, database.provider_id)
     if not provider:
@@ -211,7 +211,7 @@ def rotate_password(instance: Instance, database: Database) -> Database:
     from app.domain.activity.events import log_instance_event
     log_instance_event(
         "database:password_rotated", instance.id,
-        description=f"Passwort fuer Datenbank '{database.db_name}' rotiert",
+        description=f"Passwort für Datenbank '{database.db_name}' rotiert",
         properties={"db_name": database.db_name},
     )
 
@@ -221,7 +221,7 @@ def rotate_password(instance: Instance, database: Database) -> Database:
 def delete_database(instance: Instance, database: Database) -> None:
     """Loescht eine Datenbank via Provisioning-Adapter."""
     if database.instance_id != instance.id:
-        raise DatabaseError("Datenbank gehoert nicht zu dieser Instance", 403)
+        raise DatabaseError("Datenbank gehört nicht zu dieser Instance", 403)
 
     provider = db.session.get(DatabaseProvider, database.provider_id)
 
@@ -242,6 +242,6 @@ def delete_database(instance: Instance, database: Database) -> None:
     from app.domain.activity.events import log_instance_event
     log_instance_event(
         "database:deleted", instance.id,
-        description=f"Datenbank '{db_name}' geloescht",
+        description=f"Datenbank '{db_name}' gelöscht",
         properties={"db_name": db_name},
     )
