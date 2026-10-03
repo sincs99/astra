@@ -112,6 +112,10 @@ class Config:
     BILLING_GRACE_DAYS = max(int(os.getenv("BILLING_GRACE_DAYS", "7")), 0)
     # M46: Erinnerungsmail so viele Tage vor Laufzeitende (0 = keine Erinnerung)
     BILLING_REMINDER_DAYS = max(int(os.getenv("BILLING_REMINDER_DAYS", "3")), 0)
+    # M48: Zahlungsanbieter: "manual" (Admin bestaetigt Zahlungen) oder "stripe" (Checkout + Webhook)
+    PAYMENT_PROVIDER = os.getenv("PAYMENT_PROVIDER", "manual").strip().lower()
+    STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+    STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
     # M38: Login erst nach bestaetigter E-Mail-Adresse (Registrierung sendet Verifizierungs-Link)
     EMAIL_VERIFICATION_REQUIRED = os.getenv("EMAIL_VERIFICATION_REQUIRED", "false").lower() == "true"
     EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "48"))
@@ -157,6 +161,15 @@ class Config:
                     f"KRITISCH: {key} verwendet den unsicheren Default-Wert. "
                     f"Bitte einen sicheren Wert setzen!"
                 )
+
+        if cls.PAYMENT_PROVIDER not in ("manual", "stripe"):
+            issues.append(
+                f"KRITISCH: PAYMENT_PROVIDER '{cls.PAYMENT_PROVIDER}' ist unbekannt (erlaubt: manual, stripe)."
+            )
+        if cls.PAYMENT_PROVIDER == "stripe" and not (cls.STRIPE_SECRET_KEY and cls.STRIPE_WEBHOOK_SECRET):
+            issues.append(
+                "KRITISCH: PAYMENT_PROVIDER=stripe, aber STRIPE_SECRET_KEY und/oder STRIPE_WEBHOOK_SECRET fehlen."
+            )
 
         if cls.SQLALCHEMY_DATABASE_URI.startswith("sqlite"):
             issues.append(

@@ -21,6 +21,7 @@ from app.domain.billing.models import (
 from app.domain.blueprints.models import Blueprint
 from app.domain.instances.models import Instance
 from app.domain.users.models import User
+from app.utils.timeutil import iso_utc
 
 logger = logging.getLogger(__name__)
 
@@ -310,7 +311,7 @@ def renew_order(order: Order, payment_reference: str | None, actor_id: int | Non
 
     _log("order:renewed", order, actor_id, "Bestellung verlaengert",
          {"payment_reference": payment_reference, "was_past_due": was_past_due, "unsuspended": lifted,
-          "current_period_end": order.current_period_end.isoformat()})
+          "current_period_end": iso_utc(order.current_period_end)})
     return order
 
 
@@ -433,7 +434,7 @@ def _suspend_for_payment(order: Order, instance: Instance, now: datetime) -> boo
         _best_effort(send_power_action, instance, "kill")
 
     _log("order:past_due", order, None, "Bestellung ueberfaellig, Instance suspendiert",
-         {"suspended": newly_suspended, "current_period_end": order.current_period_end.isoformat()})
+         {"suspended": newly_suspended, "current_period_end": iso_utc(order.current_period_end)})
     from flask import current_app
     days = current_app.config.get("BILLING_GRACE_DAYS", 7)
     _mail_order(
@@ -451,22 +452,37 @@ def _nothing() -> None:
 
 
 def _remind_if_due(order: Order, end: datetime, now: datetime, reminder: timedelta) -> bool:
-    """Erinnerungsmail vor Laufzeitende, hoechstens einmal pro Order und Periode."""
-    if (reminder <= timedelta(0) or order.status != ORDER_ACTIVE or order.cancel_at_period_end
-            or order.price_cents == 0 or timedelta(days=order.billing_period_days) <= reminder
+    """Mail vor Laufzeitende, hoechstens einmal pro Order und Periode.
+
+    - normale Bestellung: "Laufzeit endet bald, bitte zahlen" (nur bezahlte, Laufzeit laenger als das Fenster)
+    - gekuendigte Bestellung: einmalig "Server wird am X geloescht"
+    """
+    cancelled = bool(order.cancel_at_period_end)
+    if (reminder <= timedelta(0) or order.status != ORDER_ACTIVE
             or now < end - reminder or order.reminded_for_period_end == end):
+        return False
+    if not cancelled and (order.price_cents == 0 or timedelta(days=order.billing_period_days) <= reminder):
         return False
     order.reminded_for_period_end = end
     db.session.commit()  # erst markieren: bei einem Fehler danach lieber keine Mail als jeden Tick eine
-    _log("order:reminder", order, None, "Erinnerung vor Laufzeitende verschickt",
-         {"current_period_end": end.isoformat()})
-    _mail_order(
-        order, "Astra: Die Laufzeit deines Servers endet bald",
-        f"Hallo,\n\ndie Laufzeit deines Servers '{order.instance_name}' endet am {end:%d.%m.%Y %H:%M} UTC.\n"
-        f"Bitte veranlasse rechtzeitig die Zahlung ({order.price_cents / 100:.2f} {order.currency} fuer "
-        f"{order.billing_period_days} Tage), sonst wird der Server gesperrt und nach der Karenzzeit geloescht.\n"
-        f"Bestellung: {order.uuid}\n",
-    )
+    _log("order:reminder", order, None,
+         "Loeschhinweis vor Laufzeitende verschickt" if cancelled else "Erinnerung vor Laufzeitende verschickt",
+         {"current_period_end": iso_utc(end), "kind": "deletion_notice" if cancelled else "expiry_reminder"})
+    if cancelled:
+        _mail_order(
+            order, "Astra: Dein Server wird bald geloescht",
+            f"Hallo,\n\nwegen deiner Kuendigung wird dein Server '{order.instance_name}' am "
+            f"{end:%d.%m.%Y %H:%M} UTC geloescht. Sichere vorher deine Dateien.\n"
+            f"Bestellung: {order.uuid}\n",
+        )
+    else:
+        _mail_order(
+            order, "Astra: Die Laufzeit deines Servers endet bald",
+            f"Hallo,\n\ndie Laufzeit deines Servers '{order.instance_name}' endet am {end:%d.%m.%Y %H:%M} UTC.\n"
+            f"Bitte veranlasse rechtzeitig die Zahlung ({order.price_cents / 100:.2f} {order.currency} fuer "
+            f"{order.billing_period_days} Tage), sonst wird der Server gesperrt und nach der Karenzzeit geloescht.\n"
+            f"Bestellung: {order.uuid}\n",
+        )
     return True
 
 
@@ -552,3 +568,85 @@ def run_billing_tick(now: datetime | None = None) -> dict:
 
     logger.info("Billing-Tick: %s", summary)
     return summary
+
+
+# ── Zahlungsereignisse des Anbieters (M48) ──────────────
+
+_FINAL_EVENT_STATES = ("processed", "ignored", "unapplied", "mismatch")
+
+
+def process_payment_events(provider: str, events: list) -> list[dict]:
+    """Verarbeitet Ereignisse eines Zahlungsanbieters idempotent.
+
+    - Jede Event-ID wird nur einmal verarbeitet (Tabelle payment_events). Ein Ereignis, dessen Verarbeitung
+      mit einem Fehler abbrach, bleibt `received` und wird bei der naechsten Zustellung erneut versucht.
+    - `paid` verbucht die Zahlung wie mark-paid (Erstbereitstellung oder Verlaengerung), Referenz = Zahlungs-ID
+    - Weicht Betrag oder Waehrung von der Bestellung ab, wird nichts freigeschaltet (`mismatch`)
+    - Ist die Bestellung nicht mehr bezahlbar (storniert/beendet), bleibt das Geld unverbucht (`unapplied`)
+      und es entsteht ein Activity-Event `order:payment_unapplied` (Erstattung pruefen)
+    Rueckgabe: je Ereignis {"event_id", "status", "duplicate"}.
+    """
+    from sqlalchemy.exc import IntegrityError
+    from app.domain.billing.models import PaymentEvent as PaymentEventRow
+
+    results = []
+    for ev in events:
+        row = PaymentEventRow.query.filter_by(event_id=ev.event_id).first()
+        if row is not None and row.status in _FINAL_EVENT_STATES:
+            results.append({"event_id": ev.event_id, "status": row.status, "duplicate": True})
+            continue
+        if row is None:
+            row = PaymentEventRow(event_id=ev.event_id, provider=provider, event_type=ev.type,
+                                  order_uuid=ev.order_uuid, status="received")
+            db.session.add(row)
+            try:
+                db.session.commit()
+            except IntegrityError:  # paralleler Zustellversuch war schneller
+                db.session.rollback()
+                row = PaymentEventRow.query.filter_by(event_id=ev.event_id).first()
+                if row is not None and row.status in _FINAL_EVENT_STATES:
+                    results.append({"event_id": ev.event_id, "status": row.status, "duplicate": True})
+                    continue
+
+        status, detail = _apply_payment_event(ev)
+        row = PaymentEventRow.query.filter_by(event_id=ev.event_id).first()
+        row.status = status
+        row.detail = detail
+        row.processed_at = _now()
+        db.session.commit()
+        results.append({"event_id": ev.event_id, "status": status, "duplicate": False})
+    return results
+
+
+def _apply_payment_event(ev) -> tuple[str, str | None]:
+    if ev.kind != "paid":
+        return "ignored", None
+
+    order = Order.query.filter_by(uuid=ev.order_uuid).first() if ev.order_uuid else None
+    if order is None:
+        logger.warning("Zahlung %s ohne passende Bestellung (order_uuid=%s)", ev.payment_reference, ev.order_uuid)
+        return "ignored", f"Bestellung nicht gefunden (order_uuid={ev.order_uuid})"
+
+    if ev.amount_cents != order.price_cents or (ev.currency or "").upper() != order.currency.upper():
+        detail = (f"Betrag/Waehrung weichen ab: gezahlt {ev.amount_cents} {ev.currency}, "
+                  f"erwartet {order.price_cents} {order.currency}")
+        logger.error("Zahlung %s fuer Bestellung %s nicht verbucht: %s", ev.payment_reference, order.uuid, detail)
+        _log("order:payment_unapplied", order, None, "Zahlung nicht verbucht: " + detail,
+             {"reason": "mismatch", "payment_reference": ev.payment_reference})
+        return "mismatch", detail
+
+    if order.status not in (ORDER_PENDING_PAYMENT, ORDER_AWAITING_PROVISIONING, ORDER_ACTIVE, ORDER_PAST_DUE):
+        detail = f"Bestellung ist '{order.status}', Zahlung {ev.payment_reference} konnte nicht verbucht werden"
+        logger.error(detail)
+        _log("order:payment_unapplied", order, None, detail,
+             {"reason": f"order_{order.status}", "payment_reference": ev.payment_reference})
+        return "unapplied", detail
+
+    try:
+        mark_order_paid(order, ev.payment_reference, None)
+    except BillingError as e:
+        if e.status_code != 409:
+            raise
+        # Zahlung ist verbucht, nur die Bereitstellung steht aus (awaiting_provisioning): kein Grund fuer Wiederholungen
+        return "processed", f"bezahlt, Bereitstellung ausstehend: {e.message}"
+    return "processed", None

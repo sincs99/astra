@@ -3,6 +3,7 @@
 import uuid as _uuid
 from app.extensions import db
 from datetime import datetime, timezone
+from app.utils.timeutil import iso_utc
 
 
 class Instance(db.Model):
@@ -95,7 +96,7 @@ class Instance(db.Model):
             "connection": self.connection_info(),
             "status": self.status,
             "container_state": self.container_state,
-            "installed_at": self.installed_at.isoformat() if self.installed_at else None,
+            "installed_at": iso_utc(self.installed_at),
             "memory": self.memory,
             "swap": self.swap,
             "disk": self.disk,
@@ -105,10 +106,10 @@ class Instance(db.Model):
             "startup_command": self.startup_command,
             "variable_values": self.variable_values or {},
             "suspended_reason": self.suspended_reason,
-            "suspended_at": self.suspended_at.isoformat() if self.suspended_at else None,
+            "suspended_at": iso_utc(self.suspended_at),
             "suspended_by_user_id": self.suspended_by_user_id,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": iso_utc(self.created_at),
+            "updated_at": iso_utc(self.updated_at),
         }
 
     def __repr__(self):

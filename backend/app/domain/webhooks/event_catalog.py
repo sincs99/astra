@@ -44,6 +44,7 @@ from app.domain.activity.events import (
     ORDER_EXPIRED,
     ORDER_RENEWED,
     ORDER_REMINDER,
+    ORDER_PAYMENT_UNAPPLIED,
     SSH_KEY_AUTH_SUCCESS,
     SSH_KEY_AUTH_FAILED,
 )
@@ -89,6 +90,7 @@ WEBHOOK_EVENTS: dict[str, str] = {
     ORDER_EXPIRED: "Eine Bestellung ist beendet, die Instance wurde geloescht",
     ORDER_RENEWED: "Eine Bestellung wurde verlaengert",
     ORDER_REMINDER: "Fuer eine Bestellung wurde die Erinnerung vor Laufzeitende verschickt",
+    ORDER_PAYMENT_UNAPPLIED: "Eine Zahlung ist eingegangen, konnte aber keiner offenen Bestellung zugeordnet werden (Erstattung pruefen)",
     INSTANCE_UNSUSPENDED: "Die Suspension einer Instance wurde aufgehoben",
     SSH_KEY_AUTH_SUCCESS: "SFTP-Key-Authentifizierung erfolgreich",
     SSH_KEY_AUTH_FAILED: "SFTP-Key-Authentifizierung abgelehnt",

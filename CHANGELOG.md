@@ -6,6 +6,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added (Phase 2 – Produktions-Deployment)
+- `POST /api/client/orders/{uuid}/checkout`: 409-Antworten tragen `code` (`manual`, `invalid_status`), `PaymentError.code`
 - `docker-compose.prod.yml`: Container `billing` fuehrt `cli.py billing-tick` alle `BILLING_TICK_INTERVAL` Sekunden (Standard 300) aus; `BILLING_GRACE_DAYS` in `.env.prod.example`
 - `POST/PATCH /api/admin/agents`: Kapazitaetsfelder `memory_total`, `disk_total`, `cpu_total` und `*_overalloc` pflegbar (Ganzzahl >= 0, 0 = kein Limit)
 - `docker-compose.prod.yml`: Caddy als TLS-Terminierung (Let's Encrypt, einziger oeffentlicher Eingang 80/443),
@@ -43,6 +44,22 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Der gesamte `/api/admin`-Blueprint verlangt jetzt einen angemeldeten Admin (`before_request`, JWT, API-Key oder in Dev/Test `X-User-Id`). Ausnahme: `GET /api/admin/health`. Ohne Login 401, ohne Admin-Recht 403
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
+
+### Changed (M49 – Zeitstempel einheitlich UTC)
+- Alle Zeitstempel in API-Antworten haben jetzt einen Zeitzonen-Suffix (`2026-10-03T12:00:00+00:00`). Bisher lieferten naive DB-Werte (SQLite/PostgreSQL) Strings ohne Suffix, die Browser als Ortszeit lesen. Neuer Helfer `iso_utc()` in `backend/app/utils/timeutil.py` (naiv gilt als UTC, aware wird nach UTC umgerechnet, `None` bleibt `None`), eingesetzt in allen `to_dict()`-Methoden (64 Stellen in 18 Dateien) und in den Bestell-Ereignisdaten
+- **Aenderung fuer Clients:** die Werte aendern sich nur um den Suffix, nicht in der Zeit selbst. Die Idempotenz-Referenz `free-auto:<ende>` bleibt unveraendert
+- `backend/test_m49.py` (23 Tests): Helfer, Stichprobe je Modell und ein Crawler, der alle GET-Routen aufruft und jeden zeitstempelartigen String auf Suffix prueft (47 Routen, 83 Zeitstempel); schlaegt ohne die Aenderung fehl
+
+### Changed (M48 Vertrag – Checkout-Fehlercodes)
+- `POST /api/client/orders/{uuid}/checkout`: Fehler tragen einen stabilen `code` (`manual`, `invalid_status`, `nothing_to_pay`, `unsupported_currency`, `provider_unavailable`, `provider_error`); `checkout_url` wird nur ausgeliefert, wenn sie mit `https://` beginnt (sonst 502). `test_m48.py` (64)
+
+### Added (M48 – Zahlungsanbieter Stripe)
+- `backend/app/domain/billing/payments.py`: Provider-Schnittstelle (`create_checkout`, `handle_webhook`) mit `ManualProvider` (Standard) und `StripeProvider` (Stripe Checkout `mode=payment`, Webhook mit `Webhook.construct_event`); `PAYMENT_PROVIDER=manual|stripe`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (`stripe==16.0.0` in `requirements.txt`)
+- `POST /api/client/orders/{uuid}/checkout` -> `{checkout_url}` (pending_payment, active, past_due; 409 bei manual, anderem Status, Gratis-Bestellung und Waehrungen ohne Nachkommastellen; 502 bei Stripe-Fehler ohne Interna), `GET /api/client/billing-info` (oeffentlich)
+- `POST /api/payments/stripe` (ohne Login, Signaturpruefung, Replay-Schutz): `checkout.session.completed`/`async_payment_succeeded` mit `payment_status=paid` verbuchen wie `mark-paid` (Referenz = PaymentIntent); Idempotenz ueber `payment_events` (Event-ID) und `payment_references`; Betrag/Waehrung-Abweichung -> `mismatch` ohne Freischaltung; Zahlung fuer stornierte/beendete Bestellung -> `unapplied`; beides mit Activity-/Webhook-Event `order:payment_unapplied`; kein Platz -> 200 und `awaiting_provisioning`; interne Fehler -> 500 (Stripe wiederholt)
+- Neue Tabelle `payment_events` (Migration `q7l8m9n0o1p2`, Up/Down geprueft); Produktion meldet KRITISCH bei `PAYMENT_PROVIDER=stripe` ohne Schluessel oder unbekanntem Anbieter
+- Gekuendigte Bestellungen bekommen vor Laufzeitende einmalig den Hinweis "Server wird am X geloescht" (Event `order:reminder`, `kind: deletion_notice`), normale Erinnerungen `kind: expiry_reminder`
+- Doku: `docs/orders-api.md` (Einrichtung, Webhook-Regeln, Test-Modus); Tests: `backend/test_m48.py` (60, ohne Netzwerk: Checkout gemockt, Signaturen nach Stripes Verfahren), `test_m46.py` (86)
 
 ### Added (M46 Nachtrag – Erinnerung, Gratis-Verlaengerung, blueprint_name)
 - Erinnerungsmail `BILLING_REMINDER_DAYS` (Standard 3, 0 = aus) vor Laufzeitende, Event `order:reminder`, hoechstens einmal pro Bestellung und Laufzeit (`orders.reminded_for_period_end`, Migration `p6k7l8m9n0o1`); nur bezahlte Bestellungen ohne Kuendigung mit Laufzeit laenger als das Fenster

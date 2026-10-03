@@ -9,6 +9,7 @@ import uuid as _uuid
 from datetime import datetime, timedelta, timezone
 
 from app.extensions import db
+from app.utils.timeutil import iso_utc
 
 # Bestell-Status
 ORDER_PENDING_PAYMENT = "pending_payment"          # angelegt, noch nicht bezahlt
@@ -83,8 +84,8 @@ class Product(db.Model):
             "blueprint_id": self.blueprint_id,
             "is_active": self.is_active,
             "max_instances_per_user": self.max_instances_per_user,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": iso_utc(self.created_at),
+            "updated_at": iso_utc(self.updated_at),
         })
         return d
 
@@ -161,13 +162,13 @@ class Order(db.Model):
             "billing_period_days": self.billing_period_days,
             "resources": {k: (self.snapshot or {}).get(k) for k in ("memory", "swap", "disk", "io", "cpu")},
             "payment_reference": self.payment_reference,
-            "paid_at": self.paid_at.isoformat() if self.paid_at else None,
-            "current_period_end": self.current_period_end.isoformat() if self.current_period_end else None,
+            "paid_at": iso_utc(self.paid_at),
+            "current_period_end": iso_utc(self.current_period_end),
             "cancel_at_period_end": bool(self.cancel_at_period_end),
-            "past_due_at": self.past_due_at.isoformat() if self.past_due_at else None,
-            "scheduled_deletion_at": deletion.isoformat() if deletion else None,
-            "cancelled_at": self.cancelled_at.isoformat() if self.cancelled_at else None,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "past_due_at": iso_utc(self.past_due_at),
+            "scheduled_deletion_at": iso_utc(deletion),
+            "cancelled_at": iso_utc(self.cancelled_at),
+            "created_at": iso_utc(self.created_at),
         }
         if include_user:
             d["user_id"] = self.user_id
@@ -176,3 +177,29 @@ class Order(db.Model):
 
     def __repr__(self):
         return f"<Order {self.uuid} {self.status}>"
+
+
+class PaymentEvent(db.Model):
+    """Eingegangene Ereignisse eines Zahlungsanbieters (Idempotenz und Nachvollziehbarkeit, M48)."""
+
+    __tablename__ = "payment_events"
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.String(255), unique=True, nullable=False)  # ID des Anbieters (Stripe: evt_...)
+    provider = db.Column(db.String(32), nullable=False)
+    event_type = db.Column(db.String(120), nullable=True)
+    order_uuid = db.Column(db.String(36), nullable=True, index=True)
+    # processed | ignored | unapplied (Geld da, Bestellung nicht mehr bezahlbar) | mismatch (Betrag/Waehrung weicht ab)
+    status = db.Column(db.String(32), nullable=False, default="received")
+    detail = db.Column(db.Text, nullable=True)
+    received_at = db.Column(db.DateTime, default=_now)
+    processed_at = db.Column(db.DateTime, nullable=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id, "event_id": self.event_id, "provider": self.provider,
+            "event_type": self.event_type, "order_uuid": self.order_uuid, "status": self.status,
+            "detail": self.detail,
+            "received_at": iso_utc(self.received_at),
+            "processed_at": iso_utc(self.processed_at),
+        }

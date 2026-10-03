@@ -2,6 +2,7 @@
 
 from app.extensions import db
 from datetime import datetime, timezone
+from app.utils.timeutil import iso_utc
 
 
 class Routine(db.Model):
@@ -48,11 +49,11 @@ class Routine(db.Model):
             "is_active": self.is_active,
             "is_processing": self.is_processing,
             "only_when_online": self.only_when_online,
-            "last_run_at": self.last_run_at.isoformat() if self.last_run_at else None,
-            "next_run_at": self.next_run_at.isoformat() if self.next_run_at else None,
+            "last_run_at": iso_utc(self.last_run_at),
+            "next_run_at": iso_utc(self.next_run_at),
             "actions": [a.to_dict() for a in self.actions],
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": iso_utc(self.created_at),
+            "updated_at": iso_utc(self.updated_at),
         }
 
     def __repr__(self):
@@ -91,8 +92,8 @@ class Action(db.Model):
             "delay_seconds": self.delay_seconds,
             "continue_on_failure": self.continue_on_failure,
             "is_queued": self.is_queued,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": iso_utc(self.created_at),
+            "updated_at": iso_utc(self.updated_at),
         }
 
     def __repr__(self):

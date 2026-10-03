@@ -3,6 +3,7 @@
 import uuid as _uuid
 from app.extensions import db
 from datetime import datetime, timezone
+from app.utils.timeutil import iso_utc
 
 
 class Backup(db.Model):
@@ -40,9 +41,9 @@ class Backup(db.Model):
             "bytes": self.bytes,
             "is_successful": self.is_successful,
             "is_locked": self.is_locked,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "completed_at": iso_utc(self.completed_at),
+            "created_at": iso_utc(self.created_at),
+            "updated_at": iso_utc(self.updated_at),
         }
 
     def __repr__(self):

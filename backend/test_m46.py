@@ -24,6 +24,7 @@ from app.domain.instances.service import get_runner, set_runner
 from app.domain.users.models import User
 from app.infrastructure import mail
 from app.infrastructure.runner.stub_adapter import StubRunnerAdapter
+from app.utils.timeutil import iso_utc
 from test_helpers import report_install
 
 passed = 0
@@ -158,7 +159,7 @@ check("past_due_at bleibt der erste Zeitpunkt", order(o1)["past_due_at"] == now1
 with app.app_context():
     od = Order.query.filter_by(uuid=o1).first().to_dict()
 check("API zeigt scheduled_deletion_at = past_due_at + Karenz",
-      od["scheduled_deletion_at"] == (now1 + D(days=GRACE)).isoformat(), str(od["scheduled_deletion_at"]))
+      od["scheduled_deletion_at"] == iso_utc(now1 + D(days=GRACE)), str(od["scheduled_deletion_at"]))
 
 print("Karenzzeit")
 res = tick(now1 + D(days=GRACE) - D(minutes=1))
@@ -220,7 +221,7 @@ tick(order(o4)["end"] - D(hours=1))
 check("vor Laufzeitende: Server laeuft weiter", instance(i4) is not None and order(o4)["status"] == "active")
 with app.app_context():
     od = Order.query.filter_by(uuid=o4).first().to_dict()
-check("scheduled_deletion_at = Laufzeitende", od["scheduled_deletion_at"] == order(o4)["end"].isoformat())
+check("scheduled_deletion_at = Laufzeitende", od["scheduled_deletion_at"] == iso_utc(order(o4)["end"]))
 res = tick(order(o4)["end"] + D(minutes=1))
 check("nach Laufzeitende: direkt expired (kein past_due)", res["expired"] == 1 and res["past_due"] == 0 and instance(i4) is None, str(res))
 check("Bestellung expired", order(o4)["status"] == "expired")
@@ -348,7 +349,16 @@ check("nach Verlaengerung gibt es in der naechsten Periode wieder eine Erinnerun
 ork, ik = paid_order()
 c.post(f"/api/client/orders/{ork}/cancel", headers=U1)
 res = tick(order(ork)["end"] - D(days=1))
-check("gekuendigte Bestellung bekommt keine Erinnerung", len(mails_for(ork)) == 0)
+check("gekuendigte Bestellung: statt Erinnerung einmalig 'wird geloescht'-Hinweis",
+      len(mails_for(ork)) == 1 and "geloescht" in mails_for(ork)[0]["subject"] and "endet bald" not in mails_for(ork)[0]["subject"])
+with app.app_context():
+    ev = ActivityLog.query.filter(ActivityLog.event == "order:reminder").order_by(ActivityLog.id.desc()).first()
+check("Event order:reminder mit kind=deletion_notice", "deletion_notice" in str(ev.properties), str(ev.properties))
+tick(order(ork)["end"] - D(hours=2))
+check("Loeschhinweis nur einmal", len(mails_for(ork)) == 1)
+r = c.post(f"/api/admin/orders/{ork}/mark-paid", json={"payment_reference": "cancelled-but-paid"}, headers=AH)
+tick(order(ork)["end"] - D(hours=1))
+check("nach Verlaengerung gibt es zur neuen Laufzeit wieder einen Hinweis", len(mails_for(ork)) == 2, str(len(mails_for(ork))))
 # Erinnerung abschaltbar
 app.config["BILLING_REMINDER_DAYS"] = 0
 orz, iz2 = paid_order()

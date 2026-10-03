@@ -14,6 +14,7 @@ from app.domain.instances.service import (
     transfer_instance, InstanceActionError,
     suspend_instance, unsuspend_instance,
 )
+from app.utils.timeutil import iso_utc
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -151,7 +152,7 @@ def agents_health():
             "name": a.name,
             "fqdn": a.fqdn,
             "is_active": a.is_active,
-            "last_seen_at": a.last_seen_at.isoformat() if a.last_seen_at else None,
+            "last_seen_at": iso_utc(a.last_seen_at),
             "is_stale": a.is_stale(),
             "instances_count": len(a.instances) if hasattr(a, "instances") else 0,
         })
