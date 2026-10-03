@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type ActivityLogEntry } from "../services/api";
+import { formatLogTime } from "../lib/dates";
 
 interface ActivityLogProps {
   instanceUuid: string;
@@ -41,7 +42,7 @@ export function ActivityLog({ instanceUuid }: ActivityLogProps) {
         {logs.map((l) => (
           <tr key={l.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
             <td style={tdS}>
-              {l.created_at ? new Date(l.created_at).toLocaleString("de-CH", { hour: "2-digit", minute: "2-digit", second: "2-digit", day: "2-digit", month: "2-digit" }) : "–"}
+              {formatLogTime(l.created_at)}
             </td>
             <td style={tdS}>
               <code style={{ fontSize: 11, padding: "1px 4px", backgroundColor: eventColor(l.event), borderRadius: 3 }}>

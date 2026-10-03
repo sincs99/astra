@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type RoutineEntry, ACTION_TYPES } from "../services/api";
+import { formatDateTime } from "../lib/dates";
 
 interface RoutineManagerProps {
   instanceUuid: string;
@@ -152,7 +153,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
 
               {r.last_run_at && (
                 <div style={{ fontSize: 10, color: "#666", marginTop: 2 }}>
-                  Zuletzt: {new Date(r.last_run_at).toLocaleString("de-CH")}
+                  Zuletzt: {formatDateTime(r.last_run_at)}
                 </div>
               )}
 

@@ -136,6 +136,28 @@ describe("OrdersPage", () => {
       expect(screen.getByRole("button", { name: "Jetzt bezahlen" })).toBeTruthy();
     });
 
+    it("bietet bei aktiven und ueberfaelligen Bestellungen 'Verlängern und bezahlen' an", async () => {
+      const overdue2 = makeOrder({ id: 8, uuid: "o-8", status: "past_due", past_due_at: "2026-10-01T08:30:00", scheduled_deletion_at: "2026-10-08T08:30:00" });
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([active, overdue2]);
+      const checkout = vi.spyOn(api, "createCheckout").mockResolvedValue({ checkout_url: "https://checkout.stripe.com/c/pay/cs_2" });
+      mount();
+      const buttons = await screen.findAllByRole("button", { name: "Verlängern und bezahlen" });
+      expect(buttons).toHaveLength(2);
+      expect(screen.queryByRole("button", { name: "Jetzt bezahlen" })).toBeNull();
+      fireEvent.click(buttons[1]);
+      await waitFor(() => expect(checkout).toHaveBeenCalledWith("o-8"));
+      await waitFor(() => expect(assign).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_2"));
+    });
+
+    it("zeigt bei manuellem Zahlungsweg den zentralen Hinweistext statt aller Bezahl-Buttons", async () => {
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([active, pending]);
+      vi.spyOn(api, "createCheckout").mockRejectedValue(new ApiError("manual", 409, "manual"));
+      mount();
+      fireEvent.click(await screen.findByRole("button", { name: "Jetzt bezahlen" }));
+      await waitFor(() => expect(screen.queryByRole("button", { name: /bezahlen/ })).toBeNull());
+      expect(screen.getAllByText("Zahlung per Überweisung, Freischaltung durch den Betreiber.")).toHaveLength(2);
+    });
+
     it("ruft keine unsichere Checkout-Adresse auf", async () => {
       vi.spyOn(api, "getMyOrders").mockResolvedValue([pending]);
       vi.spyOn(api, "createCheckout").mockResolvedValue({ checkout_url: "javascript:alert(1)" });
@@ -147,15 +169,15 @@ describe("OrdersPage", () => {
   });
 
   describe("Rueckkehr von Stripe", () => {
-    it("bedankt sich bei ?paid= und laedt den Status nach, bis die Zahlung bestaetigt ist", async () => {
+    it("meldet bei ?paid= den Zahlungseingang und laedt nach 5 s den Status nach", async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       try {
         const list = vi.spyOn(api, "getMyOrders")
           .mockResolvedValueOnce([pending])
           .mockResolvedValue([{ ...pending, status: "active", current_period_end: "2026-11-15T00:00:00" }]);
         mount("/orders?paid=o-2");
-        expect(await screen.findByText(/Danke für deine Zahlung/)).toBeTruthy();
-        await vi.advanceTimersByTimeAsync(3100);
+        expect(await screen.findByText("Zahlung eingegangen, Server wird bereitgestellt.")).toBeTruthy();
+        await vi.advanceTimersByTimeAsync(5100);
         await waitFor(() => expect(screen.getByLabelText("aktiv")).toBeTruthy());
         // nach dem Statuswechsel wird nicht weiter nachgeladen
         const calls = list.mock.calls.length;
@@ -169,7 +191,7 @@ describe("OrdersPage", () => {
     it("weist bei ?cancelled= auf die offene Bestellung hin", async () => {
       vi.spyOn(api, "getMyOrders").mockResolvedValue([pending]);
       mount("/orders?cancelled=o-2");
-      expect(await screen.findByText(/Zahlung abgebrochen/)).toBeTruthy();
+      expect(await screen.findByText("Zahlung abgebrochen.")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Jetzt bezahlen" })).toBeTruthy();
     });
   });

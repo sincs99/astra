@@ -23,6 +23,7 @@ import {
   thStyle,
   tdStyle,
 } from "../components/ui/styles";
+import { formatDateLong } from "../lib/dates";
 
 export function SshKeysPage() {
   const toast = useToast();
@@ -82,12 +83,7 @@ export function SshKeysPage() {
     }
   };
 
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString("de-CH", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+  const formatDate = formatDateLong;
 
   const truncateKey = (key: string) => {
     const parts = key.trim().split(/\s+/);

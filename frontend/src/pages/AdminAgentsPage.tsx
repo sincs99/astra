@@ -10,6 +10,7 @@ import {
   Toast, useToast,
   cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, thStyle, tdStyle,
 } from "../components/ui";
+import { formatDateTime } from "../lib/dates";
 
 export function AdminAgentsPage() {
   const toast = useToast();
@@ -344,7 +345,7 @@ export function AdminAgentsPage() {
                 <span><strong>SFTP:</strong> {agent.daemon_sftp}</span>
                 <span><strong>Daten:</strong> <code>{agent.daemon_base}</code></span>
                 {agent.behind_proxy && <span>Hinter Proxy</span>}
-                <span><strong>Zuletzt gesehen:</strong> {agent.last_seen_at ? new Date(agent.last_seen_at).toLocaleString("de-CH") : "noch nie"}</span>
+                <span><strong>Zuletzt gesehen:</strong> {agent.last_seen_at ? formatDateTime(agent.last_seen_at) : "noch nie"}</span>
               </div>
 
               {health[agent.id] && (
