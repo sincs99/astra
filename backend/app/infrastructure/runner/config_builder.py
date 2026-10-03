@@ -8,11 +8,14 @@ und EggConfigurationService.
 
 from __future__ import annotations
 
+import logging
 import re
 
 from app.domain.instances.models import Instance
 from app.domain.endpoints.models import Endpoint
 from app.domain.blueprints.models import Blueprint
+
+logger = logging.getLogger(__name__)
 
 _PLACEHOLDER_RE = re.compile(r"{{(?P<key>[\w.-]*)}}")
 
@@ -140,7 +143,10 @@ def _build_environment(instance: Instance, blueprint: Blueprint | None, primary_
     env["STARTUP"] = instance.startup_command or ""
     env["SERVER_MEMORY"] = str(instance.memory)
     env["SERVER_IP"] = primary_ep.ip if (primary_ep and primary_ep.ip) else "0.0.0.0"
-    env["SERVER_PORT"] = str(primary_ep.port) if primary_ep else "25565"
+    if primary_ep is None:
+        # Kein stiller Standard-Port: wie im Referenz-Panel (allocation->port ?? 0)
+        logger.warning("Instance %s hat keinen primaeren Endpoint, SERVER_PORT=0", instance.uuid)
+    env["SERVER_PORT"] = str(primary_ep.port) if primary_ep else "0"
     # Pterodactyl-kompatible Zusatzvariablen (viele Eggs/Images erwarten sie)
     env["P_SERVER_UUID"] = instance.uuid
     env["P_SERVER_ALLOCATION_LIMIT"] = "1"
@@ -177,7 +183,7 @@ def _build_allocations(
 
     # Default Allocation
     default_ip = primary_ep.ip if primary_ep else "0.0.0.0"
-    default_port = primary_ep.port if primary_ep else 25565
+    default_port = primary_ep.port if primary_ep else 0
 
     # Mappings: IP → [Port, Port, ...]
     mappings: dict[str, list[int]] = {}
@@ -187,8 +193,8 @@ def _build_allocations(
             mappings[ip] = []
         mappings[ip].append(ep.port)
 
-    # Mindestens den Default-Port in Mappings haben
-    if not mappings:
+    # Mindestens den Default-Port in Mappings haben (nur mit echtem primaeren Endpoint)
+    if not mappings and primary_ep is not None:
         mappings[default_ip] = [default_port]
 
     return {

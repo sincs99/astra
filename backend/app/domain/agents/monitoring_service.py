@@ -23,7 +23,11 @@ DEFAULT_STALE_THRESHOLD_MINUTES = 10
 # ── Agent-Monitoring-Eintrag ────────────────────────────
 
 
-def get_agent_monitoring(agent: Agent, stale_threshold: int = DEFAULT_STALE_THRESHOLD_MINUTES) -> dict:
+def get_agent_monitoring(
+    agent: Agent,
+    stale_threshold: int = DEFAULT_STALE_THRESHOLD_MINUTES,
+    daemon: dict | None = None,
+) -> dict:
     """Erstellt einen vollstaendigen Monitoring-Eintrag fuer einen Agent.
 
     Enthaelt: Identifikation, Health, Kapazitaet, Auslastung, Endpoints.
@@ -32,6 +36,9 @@ def get_agent_monitoring(agent: Agent, stale_threshold: int = DEFAULT_STALE_THRE
     capacity = agent.get_capacity_summary()
     utilization = agent.get_utilization_summary()
     endpoint_summary = _get_endpoint_summary(agent)
+    if daemon is None:
+        from app.domain.agents.reachability import check_daemon
+        daemon = check_daemon(agent)
 
     return {
         # Identifikation
@@ -44,6 +51,11 @@ def get_agent_monitoring(agent: Agent, stale_threshold: int = DEFAULT_STALE_THRE
         "is_active": health["is_active"],
         "is_stale": health["is_stale"],
         "last_seen_at": health["last_seen_at"],
+
+        # Erreichbarkeit des Wings-Daemons (M41, GET /api/system, 30s gecacht)
+        "daemon_reachable": daemon["daemon_reachable"],
+        "daemon_version": daemon["daemon_version"],
+        "daemon_error": daemon.get("daemon_error"),
 
         # Maintenance (M25)
         "maintenance_mode": bool(agent.maintenance_mode),
@@ -106,8 +118,11 @@ def get_all_agents_monitoring(
     agents = query.all()
     result = []
 
+    from app.domain.agents.reachability import check_daemons
+    daemons = check_daemons(agents)
+
     for agent in agents:
-        entry = get_agent_monitoring(agent, stale_threshold)
+        entry = get_agent_monitoring(agent, stale_threshold, daemon=daemons[agent.id])
 
         # Health-Filter anwenden (nach Berechnung, da abgeleiteter Wert)
         if health_filter and entry["health_status"] != health_filter:

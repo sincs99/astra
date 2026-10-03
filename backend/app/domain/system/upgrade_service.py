@@ -149,6 +149,22 @@ def run_preflight_check() -> dict:
     except Exception:
         checks["redis"] = "unknown"
 
+    # 5. Wings-Daemons erreichbar (nur Warnung, blockiert nichts)
+    try:
+        from app.domain.agents.models import Agent
+        from app.domain.agents.reachability import check_daemons
+        agents = [a for a in Agent.query.filter_by(is_active=True).all() if not a.in_maintenance]
+        results = check_daemons(agents)
+        down = [a.name for a in agents if not results[a.id]["daemon_reachable"]]
+        if down:
+            checks["agents_reachable"] = "warning"
+            issues.append(f"{len(down)} aktive(r) Agent(s) nicht erreichbar: {', '.join(down)}")
+        else:
+            checks["agents_reachable"] = "ok"
+    except Exception as e:
+        checks["agents_reachable"] = "unknown"
+        issues.append(f"Agent-Erreichbarkeit nicht pruefbar: {type(e).__name__}")
+
     # Gesamtstatus
     has_errors = any(v.startswith("error") for v in checks.values() if isinstance(v, str))
     has_pending = checks.get("migrations") == "pending"
