@@ -45,6 +45,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Docs (Phase-4-Abschluss)
+- `docs/orders-api.md`: Meilenstein-Uebersicht, Abschnitte "Webhook-Signatur" (Header, HMAC-Schema, Proxy-Hinweis, Secret-Rotation, Selbsttest) und "Fehlersuche (Stripe)", Endpunkttabelle aktualisiert
+- `docs/phase4-plan.md`: Umsetzungsstand je Schritt (M42 bis M49), Ausgangslage mit Status, Abweichungen vom Datenmodell, offene Punkte vor einem Betrieb mit Geld
+- `docs/known-limitations.md`: neuer Abschnitt "Abrechnung und Shop" (keine Rechnungen/USt, keine automatischen Erstattungen, keine Mehrwaehrung, keine Abonnements, Stripe nur gemockt getestet, keine automatische Wiederholung der Bereitstellung, Bestell-Mails, Kapazitaet nach Zuweisung, kein CAPTCHA, Tick-Betrieb); korrigiert: der Admin-Transfer loescht auf dem alten Node und legt neu an, **Dateien werden nicht uebertragen**; JWTs bleiben nach Passwortwechsel gueltig
+
 ### Changed (M49 – Zeitstempel einheitlich UTC)
 - Alle Zeitstempel in API-Antworten haben jetzt einen Zeitzonen-Suffix (`2026-10-03T12:00:00+00:00`). Bisher lieferten naive DB-Werte (SQLite/PostgreSQL) Strings ohne Suffix, die Browser als Ortszeit lesen. Neuer Helfer `iso_utc()` in `backend/app/utils/timeutil.py` (naiv gilt als UTC, aware wird nach UTC umgerechnet, `None` bleibt `None`), eingesetzt in allen `to_dict()`-Methoden (64 Stellen in 18 Dateien) und in den Bestell-Ereignisdaten
 - **Aenderung fuer Clients:** die Werte aendern sich nur um den Suffix, nicht in der Zeit selbst. Die Idempotenz-Referenz `free-auto:<ende>` bleibt unveraendert
