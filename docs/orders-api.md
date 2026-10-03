@@ -1,9 +1,17 @@
-# Produkte und Bestellungen (M44)
+# Produkte, Bestellungen und Abrechnung (M44 bis M49)
 
-Phase 4, Schritte 3 und 4 aus [phase4-plan.md](phase4-plan.md): Pakete definieren, Kunden bestellen,
-der Admin bestätigt die Zahlung manuell, die Instance wird automatisch platziert und angelegt.
-Der Billing-Tick (Ablauf → Suspend → Löschen, M46) und die Online-Zahlung mit Stripe (M48) sind umgesetzt.
-Standard bleibt die manuelle Zahlung.
+Referenz für die Shop-Schnittstelle von Astra (Phase 4, Plan in [phase4-plan.md](phase4-plan.md)): Pakete
+definieren, Kunden bestellen und bezahlen, die Instance wird automatisch platziert und angelegt, der
+Billing-Tick setzt Laufzeiten durch. Bezahlt wird manuell (Admin bestätigt, Standard) oder online mit Stripe.
+
+| Meilenstein | Inhalt |
+|---|---|
+| M42 | Kapazitätsprüfung und automatische Platzierung (`pick_agent`) |
+| M43 | Instance löschen (Admin und Besitzer) |
+| M44 | Produkte, Bestellungen, manuelle Zahlung |
+| M46 | Billing-Tick, Verlängerung, Erinnerung, automatische Verlängerung kostenloser Pakete |
+| M48 | Zahlungsanbieter (manuell/Stripe), Checkout, Webhook |
+| M49 | Alle Zeitstempel als UTC mit Suffix |
 
 ## Ablauf
 
@@ -11,8 +19,9 @@ Standard bleibt die manuelle Zahlung.
 2. Kunde ruft `GET /api/client/products` (öffentlich) und bestellt mit `POST /api/client/orders`.
    Die Bestellung ist `pending_payment` und enthält einen **Schnappschuss** von Preis, Laufzeit und
    Ressourcen. Spätere Produktänderungen betreffen sie nicht. Ressourcen kommen nie vom Kunden.
-3. Zahlung geht außerhalb von Astra ein (z. B. Überweisung). Der Admin ruft
-   `POST /api/admin/orders/{uuid}/mark-paid` auf.
+3. Zahlung: entweder geht sie außerhalb von Astra ein (z. B. Überweisung) und der Admin ruft
+   `POST /api/admin/orders/{uuid}/mark-paid` auf, oder der Kunde bezahlt online (Stripe, siehe unten) und der
+   Webhook verbucht automatisch. Beides läuft über dieselbe Logik.
 4. Astra wählt per `pick_agent` einen passenden Node (aktiv, nicht in Wartung, freier Endpoint,
    genug Kapazität), legt die Instance für den Kunden an und setzt die Bestellung auf `active`
    (`current_period_end` = Zahlung + Laufzeit).
@@ -106,6 +115,30 @@ Strings ohne Suffix sonst als Ortszeit. Intern liefert die Datenbank naive UTC-W
    Die Bestellung kann einen Moment brauchen, bis der Webhook angekommen ist; die Seite sollte den Status
    erneut abfragen.
 
+### Webhook-Signatur
+
+Stripe signiert jede Zustellung im Header `Stripe-Signature: t=<Unix-Zeit>,v1=<Signatur>`. Die Signatur ist
+`HMAC-SHA256(STRIPE_WEBHOOK_SECRET, "<t>.<Rohdaten>")` in Hex. Astra prüft sie über `stripe.Webhook.construct_event`
+mit 5 Minuten Toleranz gegen Replay. Wichtig:
+
+- Geprüft wird der **unveränderte Request-Body**. Ein Proxy, der den Body umschreibt oder neu serialisiert,
+  macht jede Signatur ungültig.
+- Wird das Signing-Secret im Stripe-Dashboard rotiert, muss `STRIPE_WEBHOOK_SECRET` angepasst und das Backend
+  neu gestartet werden, sonst antwortet der Webhook mit 400.
+- Test/Live haben **verschiedene** Schlüssel und Signing-Secrets (`sk_test_`/`sk_live_`, getrennte Webhook-Endpunkte).
+
+Zum Prüfen ohne Stripe lässt sich eine gültige Zustellung selbst bauen (nur in Test-Umgebungen):
+
+```python
+import hashlib, hmac, time
+payload = b'{"id":"evt_x","object":"event","type":"checkout.session.completed", ...}'
+t = int(time.time())
+sig = hmac.new(b"whsec_...", f"{t}.".encode() + payload, hashlib.sha256).hexdigest()
+header = f"t={t},v1={sig}"          # als Header "Stripe-Signature" senden
+```
+
+`backend/test_m48.py` macht genau das (ohne Netzwerk, ohne echte Stripe-Aufrufe).
+
 ### Webhook-Regeln
 
 - Ohne Login, geschützt durch die Signaturprüfung (`Stripe-Signature`, Toleranz 5 Minuten). Fehlende oder
@@ -138,6 +171,19 @@ Strings ohne Suffix sonst als Ortszeit. Intern liefert die Datenbank naive UTC-W
 5. Erst nach erfolgreichem Test-Durchlauf auf Live-Schlüssel wechseln. Rechtliche Voraussetzungen
    (Gewerbe, AGB, Widerruf, Rechnungen) siehe [phase4-plan.md](phase4-plan.md).
 
+### Fehlersuche (Stripe)
+
+| Beobachtung | Ursache und Abhilfe |
+|---|---|
+| Stripe zeigt für den Webhook 400 | Signatur ungültig: falsches `STRIPE_WEBHOOK_SECRET` (Test/Live verwechselt oder rotiert), Body durch Proxy verändert oder Serveruhr weicht um mehr als 5 Minuten ab |
+| Webhook 404 | `PAYMENT_PROVIDER` ist nicht `stripe` |
+| Webhook 500 | Stripe wiederholt automatisch. Backend-Log prüfen (`Stripe-Webhook: Verarbeitung fehlgeschlagen`), das Ereignis bleibt in `payment_events` mit Status `received` und wird bei der Wiederholung erneut versucht |
+| Kunde hat bezahlt, Bestellung bleibt `pending_payment` | Webhook noch nicht angekommen oder fehlgeschlagen. Stripe-Dashboard → Webhooks → Zustellungen prüfen, ggf. „Erneut senden“ |
+| Bestellung `awaiting_provisioning` | Bezahlt, aber kein Node mit Platz/Endpoint. Kapazität schaffen, dann `mark-paid` erneut aufrufen (verbucht nicht doppelt) |
+| `payment_events.status = mismatch` | Betrag oder Währung weichen von der Bestellung ab. Es wurde **nichts freigeschaltet**. Prüfen, ob eine Zahlung im Dashboard erstattet oder die Bestellung manuell bearbeitet werden muss |
+| `payment_events.status = unapplied` / Event `order:payment_unapplied` | Geld ist eingegangen, die Bestellung war schon storniert oder beendet. **Erstattung im Stripe-Dashboard** veranlassen (Astra erstattet nie automatisch) |
+| `502 provider_unavailable` beim Checkout | Stripe nicht erreichbar oder Schlüssel ungültig; Backend-Log prüfen |
+
 ## Regeln und Grenzen
 
 - Höchstens 5 offene (`pending_payment`) Bestellungen pro Kunde.
@@ -161,13 +207,14 @@ Strings ohne Suffix sonst als Ortszeit. Intern liefert die Datenbank naive UTC-W
 | `POST /api/payments/stripe` | Stripe | Webhook (Signatur statt Login) |
 | `GET/POST /api/admin/products`, `GET/PATCH/DELETE /{id}` | Admin | Pakete verwalten |
 | `GET /api/admin/orders?status=&user_id=`, `/{uuid}` | Admin | alle Bestellungen |
-| `POST /api/admin/orders/{uuid}/mark-paid` | Admin | `{payment_reference?}` Zahlung bestätigen, Instance bereitstellen |
+| `POST /api/admin/orders/{uuid}/mark-paid` | Admin | `{payment_reference?}` Zahlung bestätigen und Instance bereitstellen; auf `active`/`past_due` ist die Referenz Pflicht (Verlängerung) |
 
 Activity- und Webhook-Events: `order:created`, `order:paid`, `order:provision_failed`, `order:cancelled`,
 `order:past_due`, `order:renewed`, `order:expired`, `order:reminder`, `order:payment_unapplied`.
 
 ## Noch nicht enthalten
 
-Mails zu Bestellungen beim Anlegen und Bezahlen, Erstattungen (manuell im Stripe-Dashboard),
-Rechnungen mit Umsatzsteuer, Frontend (Shop, Bestellübersicht, Admin-Seiten). Rechtliche
-Voraussetzungen siehe [phase4-plan.md](phase4-plan.md).
+Siehe [known-limitations.md](known-limitations.md), Abschnitt „Abrechnung und Shop“: unter anderem Rechnungen mit
+Umsatzsteuer, automatische Erstattungen, Abonnements mit Auto-Verlängerung, Mehrwährungsbetrieb und Mails
+beim Anlegen und Bezahlen einer Bestellung. Rechtliche Voraussetzungen (Gewerbe, AGB, Widerruf, Datenschutz)
+siehe [phase4-plan.md](phase4-plan.md).

@@ -296,15 +296,14 @@ def checkout_my_order(uuid: str):
     if not order:
         return jsonify({"error": "Bestellung nicht gefunden"}), 404
     if order.status not in (ORDER_PENDING_PAYMENT, ORDER_ACTIVE, ORDER_PAST_DUE):
-        return jsonify({"error": f"Bestellung im Status '{order.status}' kann nicht bezahlt werden",
-                        "code": "invalid_status"}), 409
+        return jsonify({
+            "error": f"Bestellung im Status '{order.status}' kann nicht bezahlt werden",
+            "code": "invalid_status",
+        }), 409
     try:
         url = get_provider().create_checkout(order)
     except PaymentError as e:
-        body = {"error": e.message}
-        if e.code:
-            body["code"] = e.code
-        return jsonify(body), e.status_code
+        return jsonify(e.to_response()), e.status_code
     return jsonify({"checkout_url": url})
 
 
