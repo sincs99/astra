@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Agent, type AgentMonitoringEntry, type Endpoint } from "../services/api";
+import { DaemonStatus } from "../components/DaemonStatus";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { parsePortRange } from "../lib/portRange";
 import { EMPTY_AGENT_FORM, agentToForm, toAgentPayload, type AgentFormValues } from "../lib/agentForm";
@@ -316,16 +317,7 @@ export function AdminAgentsPage() {
                 {health[agent.id] && (
                   <>
                     <StatusBadge status={health[agent.id].health_status} size="sm" />
-                    {health[agent.id].daemon_reachable !== undefined && health[agent.id].daemon_reachable !== null && (
-                      <StatusBadge
-                        status={health[agent.id].daemon_reachable ? "ok" : "unreachable"}
-                        label={health[agent.id].daemon_reachable ? "Wings erreichbar" : "Wings nicht erreichbar"}
-                        size="sm"
-                      />
-                    )}
-                    {health[agent.id].daemon_version && (
-                      <span style={{ color: "#666", fontSize: 12 }}>Wings {health[agent.id].daemon_version}</span>
-                    )}
+                    <DaemonStatus {...health[agent.id]} />
                   </>
                 )}
                 <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>

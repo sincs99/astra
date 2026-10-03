@@ -2,12 +2,6 @@ import { useState } from "react";
 import { api, MIN_PASSWORD_LENGTH } from "../../services/api";
 import { cardStyle, inputStyle, labelStyle, btnPrimary, ErrorState } from "../ui";
 
-/**
- * Feature-Flag: der Endpunkt POST /api/auth/change-password wird im Backend gebaut.
- * Freischalten mit VITE_CHANGE_PASSWORD_ENABLED=true (Build-Zeit).
- */
-export const CHANGE_PASSWORD_ENABLED = import.meta.env.VITE_CHANGE_PASSWORD_ENABLED === "true";
-
 export function PasswordSection({ onChanged }: { onChanged: (message: string) => void }) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -15,12 +9,11 @@ export function PasswordSection({ onChanged }: { onChanged: (message: string) =>
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (!CHANGE_PASSWORD_ENABLED) return null;
-
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!current || !next) return setError("Bitte alle Felder ausfuellen");
     if (next.length < MIN_PASSWORD_LENGTH) return setError(`Das neue Passwort muss mindestens ${MIN_PASSWORD_LENGTH} Zeichen lang sein`);
+    if (next === current) return setError("Das neue Passwort muss sich vom aktuellen unterscheiden");
     if (next !== confirm) return setError("Die neuen Passwoerter stimmen nicht ueberein");
     try {
       setBusy(true);
@@ -60,6 +53,9 @@ export function PasswordSection({ onChanged }: { onChanged: (message: string) =>
           {busy ? "..." : "Passwort aendern"}
         </button>
       </form>
+      <p style={{ color: "#666", fontSize: 12, margin: "12px 0 0" }}>
+        Hinweis: Bestehende Sitzungen auf anderen Geraeten bleiben bis zum Ablauf ihres Tokens gueltig.
+      </p>
     </section>
   );
 }

@@ -45,6 +45,14 @@ describe("api.request", () => {
     expect(getAccessToken()).toBe("alt");
   });
 
+  it("behandelt ein falsches aktuelles Passwort beim Passwort-Aendern nicht als abgelaufene Sitzung", async () => {
+    setAccessToken("tok");
+    mockFetch(401, { error: "Aktuelles Passwort ist falsch" });
+    await expect(api.changePassword("falsch", "neuespasswort1")).rejects.toThrow("Aktuelles Passwort ist falsch");
+    expect(assign).not.toHaveBeenCalled();
+    expect(getAccessToken()).toBe("tok");
+  });
+
   it("zeigt bei fehlender Admin-Berechtigung eine verstaendliche Meldung", async () => {
     setAccessToken("tok");
     mockFetch(403, { error: "Admin-Berechtigung erforderlich" });

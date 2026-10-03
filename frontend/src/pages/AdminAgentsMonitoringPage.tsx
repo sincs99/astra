@@ -1,3 +1,4 @@
+import { DaemonStatus } from "../components/DaemonStatus";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { useEffect, useState, useMemo } from "react";
 import { api, type AgentMonitoringEntry, type FleetSummary } from "../services/api";
@@ -206,7 +207,10 @@ function AgentRow({ agent, onRefresh }: { agent: AgentMonitoringEntry; onRefresh
         </div>
       </td>
       <td style={tdStyle}>
-        <StatusBadge status={agent.health_status} size="sm" />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+          <StatusBadge status={agent.health_status} size="sm" />
+          <DaemonStatus {...agent} />
+        </div>
       </td>
       <td style={tdStyle}>
         {agent.last_seen_at ? (

@@ -28,10 +28,39 @@ describe("AccountPage", () => {
     expect(screen.getAllByRole("link", { name: /SSH-Keys verwalten/ })[0].getAttribute("href")).toBe("/account/ssh-keys");
   });
 
-  it("blendet 'Passwort aendern' ohne Feature-Flag aus", async () => {
+  it("aendert das Passwort mit Validierung und zeigt den Sitzungs-Hinweis", async () => {
+    const change = vi.spyOn(api, "changePassword").mockResolvedValue({ message: "ok" });
     mount();
     await screen.findByText("alice@example.com");
-    expect(screen.queryByText("Passwort aendern")).toBeNull();
+    expect(screen.getByText(/Sitzungen auf anderen Geraeten/)).toBeTruthy();
+
+    const fill = (cur: string, next: string, conf: string) => {
+      fireEvent.change(screen.getByLabelText("Aktuelles Passwort"), { target: { value: cur } });
+      fireEvent.change(screen.getByLabelText("Neues Passwort"), { target: { value: next } });
+      fireEvent.change(screen.getByLabelText("Neues Passwort wiederholen"), { target: { value: conf } });
+      fireEvent.click(screen.getByRole("button", { name: "Passwort aendern" }));
+    };
+    fill("altespasswort", "kurz", "kurz");
+    expect((await screen.findByRole("alert")).textContent).toMatch(/mindestens 8/);
+    fill("altespasswort", "altespasswort", "altespasswort");
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/unterscheiden/));
+    fill("altespasswort", "neuespasswort1", "anders12345");
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/stimmen nicht ueberein/));
+    expect(change).not.toHaveBeenCalled();
+
+    fill("altespasswort", "neuespasswort1", "neuespasswort1");
+    await waitFor(() => expect(change).toHaveBeenCalledWith("altespasswort", "neuespasswort1"));
+  });
+
+  it("meldet ein falsches aktuelles Passwort", async () => {
+    vi.spyOn(api, "changePassword").mockRejectedValue(new Error("Aktuelles Passwort ist falsch"));
+    mount();
+    await screen.findByText("alice@example.com");
+    fireEvent.change(screen.getByLabelText("Aktuelles Passwort"), { target: { value: "falsch123" } });
+    fireEvent.change(screen.getByLabelText("Neues Passwort"), { target: { value: "neuespasswort1" } });
+    fireEvent.change(screen.getByLabelText("Neues Passwort wiederholen"), { target: { value: "neuespasswort1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Passwort aendern" }));
+    expect(await screen.findByText("Aktuelles Passwort ist falsch")).toBeTruthy();
   });
 
   it("richtet MFA ein: QR/Secret, Verifikation, Recovery-Codes", async () => {
