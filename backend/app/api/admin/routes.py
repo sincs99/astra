@@ -1,5 +1,6 @@
 """Admin-API-Routen (inkl. M22 Fleet Monitoring)."""
 
+import ipaddress
 from datetime import datetime, timezone
 from flask import Blueprint, current_app, jsonify, request
 from app.extensions import db
@@ -493,12 +494,76 @@ def create_endpoint(agent_id: int):
     return jsonify(endpoint.to_dict()), 201
 
 
+MAX_BULK_ENDPOINTS = 1000
+
+
+def _instance_conn_load():
+    """Laedt Agent und primaeren Endpoint mit, damit `connection` keine Query pro Instanz ausloest."""
+    from sqlalchemy.orm import joinedload
+    return [joinedload(Instance.agent), joinedload(Instance.primary_endpoint)]
+
+
+@admin_bp.route("/agents/<int:agent_id>/endpoints/bulk", methods=["POST"])
+def create_endpoints_bulk(agent_id: int):
+    """Legt einen Port-Bereich als Endpoints an (M39).
+
+    Body: {"ip": "0.0.0.0", "port_start": 25565, "port_end": 25600}
+    Bereits vorhandene Kombinationen aus ip und port werden uebersprungen.
+    Antwort: {"created": n, "skipped": n, "endpoints": [<neu angelegte>]}
+    """
+    agent = db.session.get(Agent, agent_id)
+    if not agent:
+        return jsonify({"error": f"Agent mit ID {agent_id} nicht gefunden"}), 404
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body is required"}), 400
+
+    start, end = data.get("port_start"), data.get("port_end")
+    for label, value in (("port_start", start), ("port_end", end)):
+        if isinstance(value, bool) or not isinstance(value, int):
+            return jsonify({"error": f"Field '{label}' must be an integer"}), 400
+        if not 1 <= value <= 65535:
+            return jsonify({"error": f"Field '{label}' must be between 1 and 65535"}), 400
+    if start > end:
+        return jsonify({"error": "port_start must be <= port_end"}), 400
+    count = end - start + 1
+    if count > MAX_BULK_ENDPOINTS:
+        return jsonify({"error": f"Maximal {MAX_BULK_ENDPOINTS} Ports pro Aufruf (angefragt: {count})"}), 400
+
+    ip = data.get("ip", "0.0.0.0")
+    try:
+        ipaddress.ip_address(ip)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Field 'ip' must be a valid IPv4/IPv6 address"}), 400
+
+    existing = {
+        port for (port,) in db.session.query(Endpoint.port).filter(
+            Endpoint.agent_id == agent_id, Endpoint.ip == ip,
+            Endpoint.port >= start, Endpoint.port <= end,
+        )
+    }
+    new = [Endpoint(agent_id=agent_id, ip=ip, port=port)
+           for port in range(start, end + 1) if port not in existing]
+    db.session.add_all(new)
+    db.session.commit()
+
+    return jsonify({
+        "created": len(new),
+        "skipped": len(existing),
+        "endpoints": [e.to_dict() for e in new],
+    }), 201 if new else 200
+
+
 # ── Instances ───────────────────────────────────────────
 
 
 @admin_bp.route("/instances", methods=["GET"])
 def list_instances():
-    instances = Instance.query.order_by(Instance.created_at.desc()).all()
+    instances = (
+        Instance.query.options(*_instance_conn_load())
+        .order_by(Instance.created_at.desc()).all()
+    )
     return jsonify([i.to_dict() for i in instances])
 
 

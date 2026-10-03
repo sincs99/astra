@@ -32,6 +32,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `AGENT_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus
 - `backend/test_m36.py` (17 Tests)
 
+### Added (M39 – Endpoint-Bulk und Verbindungsadresse)
+- `POST /api/admin/agents/{id}/endpoints/bulk` – Body `{ip, port_start, port_end}` legt einen Port-Bereich an, ueberspringt vorhandene (`ip` + `port` je Agent). Antwort `{created, skipped, endpoints}` (nur neu angelegte), 201 bei neuen Endpoints, sonst 200. Grenzen: 1..65535, `port_start <= port_end`, max. 1000 Ports pro Aufruf, `ip` muss gueltig sein
+- `Instance.to_dict()` liefert `connection`: `{host, ip, port, address}` (`host` = FQDN des Agents, `address` = `host:port`), `null` ohne primaeren Endpoint. Admin- und Client-Listen laden Agent und Endpoint per Join mit, keine Query pro Instanz
+- `backend/test_m39.py` (27 Tests)
+
 ### Added (M38 – E-Mail-Verifizierung)
 - `EMAIL_VERIFICATION_REQUIRED` (Standard `false`): Registrierung sendet einen Bestaetigungs-Link (`EMAIL_VERIFICATION_TTL_HOURS`, Standard 48), Login ist erst nach Bestaetigung moeglich (403, `code: email_not_verified`)
 - `POST /api/auth/verify-email` und `POST /api/auth/resend-verification` (antwortet immer gleich); Token ist an die Adresse gebunden

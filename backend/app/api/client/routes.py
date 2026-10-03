@@ -100,13 +100,17 @@ def list_my_instances():
         return err
 
     # Owner-Instances
-    owned = Instance.query.filter_by(owner_id=user_id).all()
+    from sqlalchemy.orm import joinedload
+    conn = (joinedload(Instance.agent), joinedload(Instance.primary_endpoint))
+    owned = Instance.query.options(*conn).filter_by(owner_id=user_id).all()
 
     # Collaborator-Instances
     from app.domain.collaborators.models import Collaborator
     collabs = Collaborator.query.filter_by(user_id=user_id).all()
     collab_ids = [c.instance_id for c in collabs]
-    shared = Instance.query.filter(Instance.id.in_(collab_ids)).all() if collab_ids else []
+    shared = (
+        Instance.query.options(*conn).filter(Instance.id.in_(collab_ids)).all() if collab_ids else []
+    )
 
     all_instances = owned + shared
     all_instances.sort(key=lambda i: i.created_at or "", reverse=True)
