@@ -771,6 +771,19 @@ resp = client.patch(f"/api/admin/agents/{_new_agent_id}", json={"upload_size": 0
 check("PATCH Agent: upload_size 0 -> 400", resp.status_code == 400)
 resp = client.patch("/api/admin/agents/999999", json={"name": "x"})
 check("PATCH Agent unbekannt -> 404", resp.status_code == 404)
+resp = client.patch(f"/api/admin/agents/{_new_agent_id}", json={"memory_total": 16384, "disk_total": 200000, "cpu_total": 800,
+                                                                "memory_overalloc": 20, "disk_overalloc": 0, "cpu_overalloc": "50"})
+pc = resp.get_json()
+check("PATCH Agent: Kapazitaetsfelder uebernommen", resp.status_code == 200 and pc["memory_total"] == 16384
+      and pc["disk_total"] == 200000 and pc["cpu_total"] == 800 and pc["memory_overalloc"] == 20 and pc["cpu_overalloc"] == 50,
+      str(resp.get_json()))
+resp = client.patch(f"/api/admin/agents/{_new_agent_id}", json={"memory_total": -1})
+check("PATCH Agent: negative Kapazitaet -> 400", resp.status_code == 400)
+resp = client.patch(f"/api/admin/agents/{_new_agent_id}", json={"cpu_total": "viel"})
+check("PATCH Agent: Kapazitaet kein Integer -> 400", resp.status_code == 400)
+resp = client.post("/api/admin/agents", json={"name": "m33-cap", "fqdn": "cap.m33.test", "memory_total": 8192, "memory_overalloc": 10})
+check("POST Agent: Kapazitaetsfelder beim Anlegen", resp.status_code == 201 and resp.get_json()["memory_total"] == 8192
+      and resp.get_json()["memory_overalloc"] == 10, str(resp.get_json()))
 resp = client.patch(f"/api/admin/agents/{_new_agent_id}", json={"is_active": False})
 check("PATCH Agent: deaktivieren", resp.get_json()["is_active"] is False)
 resp = client.get("/api/remote/servers", headers={"Authorization": f"Bearer {new_cfg['token_id']}.{new_cfg['token']}"})

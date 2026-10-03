@@ -37,6 +37,10 @@ _AGENT_CONNECTION_FIELDS = (
     "scheme", "behind_proxy", "daemon_connect", "daemon_listen",
     "daemon_sftp", "daemon_base", "upload_size",
 )
+_AGENT_CAPACITY_FIELDS = (
+    "memory_total", "disk_total", "cpu_total",
+    "memory_overalloc", "disk_overalloc", "cpu_overalloc",
+)
 
 
 def _require_admin_user():
@@ -81,6 +85,20 @@ def _apply_agent_connection_fields(agent: Agent, data: dict) -> str | None:
         if not base.startswith("/"):
             return "Field 'daemon_base' must be an absolute path"
         agent.daemon_base = base
+    # Kapazitaet (M22) und Ueberallokation – Ganzzahlen >= 0, 0 = kein Limit
+    for field in _AGENT_CAPACITY_FIELDS:
+        if field in data:
+            value = data[field]
+            if isinstance(value, bool) or not isinstance(value, int):
+                try:
+                    value = int(str(value))
+                except (TypeError, ValueError):
+                    return f"Field '{field}' must be an integer"
+            if value < 0:
+                return f"Field '{field}' must be >= 0"
+            if field.endswith("_overalloc") and value > 1000:
+                return f"Field '{field}' must be <= 1000"
+            setattr(agent, field, value)
     return None
 
 

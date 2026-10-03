@@ -6,6 +6,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added (Phase 2 – Produktions-Deployment)
+- `POST/PATCH /api/admin/agents`: Kapazitaetsfelder `memory_total`, `disk_total`, `cpu_total` und `*_overalloc` pflegbar (Ganzzahl >= 0, 0 = kein Limit)
 - `docker-compose.prod.yml`: Caddy als TLS-Terminierung (Let's Encrypt, einziger oeffentlicher Eingang 80/443),
   Worker-Container fuer die Redis-Job-Queue, Healthchecks fuer Backend/Redis, Redis mit Passwort und AOF,
   gemeinsamer Backend-Env-Block (`x-backend-env`), kein direktes Port-Mapping fuer Frontend/Backend mehr
