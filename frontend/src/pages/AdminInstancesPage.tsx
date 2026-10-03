@@ -335,11 +335,11 @@ export function AdminInstancesPage() {
                           onCancel={() => setDeletingUuid(null)}
                           onDelete={async (force) => {
                             const result = await api.adminDeleteInstance(inst.uuid, force);
-                            toast.success(
-                              result.runner_cleanup === "failed"
-                                ? `"${inst.name}" gelöscht – Aufräumen auf dem Node ist fehlgeschlagen.`
-                                : `"${inst.name}" gelöscht.`,
-                            );
+                            if (result.runner_cleanup === "failed") {
+                              toast.warning(`Instanz "${inst.name}" gelöscht, Aufräumen auf dem Node fehlgeschlagen, bitte Wings prüfen.`);
+                            } else {
+                              toast.success(`"${inst.name}" gelöscht.`);
+                            }
                             setDeletingUuid(null);
                             await loadAll();
                           }}

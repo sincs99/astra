@@ -58,3 +58,30 @@ describe("AdminInstancesPage Erstellformular", () => {
     expect(await screen.findByText(/Kein Agent mit genug Kapazität/)).toBeTruthy();
   });
 });
+
+describe("AdminInstancesPage Loeschen", () => {
+  const inst = { id: 1, uuid: "u-1", name: "Alt", status: "ready", owner_id: 3, agent_id: 7, blueprint_id: 2,
+    primary_endpoint_id: null, memory: 512, disk: 1024, cpu: 100 };
+
+  async function openDelete() {
+    (api.getInstances as ReturnType<typeof vi.fn>).mockResolvedValue([inst]);
+    render(<MemoryRouter><AdminInstancesPage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: /Löschen/ }));
+    fireEvent.change(await screen.findByLabelText(/Zur Bestätigung den Namen/), { target: { value: "Alt" } });
+  }
+
+  it("warnt Admins, wenn das Aufraeumen auf dem Node fehlgeschlagen ist", async () => {
+    const del = vi.spyOn(api, "adminDeleteInstance").mockResolvedValue({ uuid: "u-1", message: "ok", runner_cleanup: "failed" });
+    await openDelete();
+    fireEvent.click(screen.getByRole("button", { name: "Endgültig löschen" }));
+    await waitFor(() => expect(del).toHaveBeenCalledWith("u-1", false));
+    expect(await screen.findByText(/aufräumen auf dem node fehlgeschlagen, bitte wings prüfen/i)).toBeTruthy();
+  });
+
+  it("bestaetigt normales Loeschen mit Erfolgsmeldung", async () => {
+    vi.spyOn(api, "adminDeleteInstance").mockResolvedValue({ uuid: "u-1", message: "ok", runner_cleanup: "ok" });
+    await openDelete();
+    fireEvent.click(screen.getByRole("button", { name: "Endgültig löschen" }));
+    expect(await screen.findByText('"Alt" gelöscht.')).toBeTruthy();
+  });
+});

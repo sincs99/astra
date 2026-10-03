@@ -1,16 +1,28 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { api, type Instance } from "../services/api";
 import { ConnectionAddress } from "../components/ConnectionAddress";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
-import { PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, ErrorState, EmptyState, cardStyle } from "../components/ui";
+import { PageLayout, AutoRefreshToggle, Toast, useToast, StatusBadge, LoadingState, ErrorState, EmptyState, cardStyle } from "../components/ui";
 
 export function DashboardPage() {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const toast = useToast();
+
+  // Meldung von der vorherigen Seite (z.B. nach dem Loeschen einer Instance), nur einmal anzeigen
+  useEffect(() => {
+    const message = (location.state as { toast?: string } | null)?.toast;
+    if (message) {
+      toast.success(message);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [autoRefresh, setAutoRefresh] = useAutoRefreshSetting("dashboard");
 
@@ -34,6 +46,7 @@ export function DashboardPage() {
 
   return (
     <PageLayout title="Dashboard" maxWidth={900}>
+      <Toast {...toast} />
       <p style={{ color: "#666", marginTop: -12, marginBottom: 24, fontSize: 14 }}>
         Eingeloggt als {user ? user.username : "…"}
       </p>

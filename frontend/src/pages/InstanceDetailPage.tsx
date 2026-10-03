@@ -362,7 +362,7 @@ export function InstanceDetailPage() {
           <h3 style={{ marginTop: 0, color: "#c62828" }}>Instance löschen</h3>
           {instance.status === "suspended" ? (
             <p style={{ margin: 0, fontSize: 13, color: "#666" }}>
-              Gesperrte Instances kann nur ein Administrator löschen.
+              Gesperrt, bitte Support kontaktieren.
             </p>
           ) : deleting ? (
             <DeleteInstanceForm
@@ -372,7 +372,8 @@ export function InstanceDetailPage() {
               onCancel={() => setDeleting(false)}
               onDelete={async () => {
                 await api.deleteInstance(instance.uuid, instance.name);
-                navigate("/");
+                // Toast auf dem Dashboard anzeigen (die Detailseite wird verlassen)
+                navigate("/", { state: { toast: `Instance "${instance.name}" wurde gelöscht.` } });
               }}
             />
           ) : (

@@ -14,8 +14,8 @@ const instance = {
   connection: { host: "n1.example.com", port: 25565, address: "n1.example.com:25565" },
 } as Instance;
 
-function mount() {
-  return render(<MemoryRouter><DashboardPage /></MemoryRouter>);
+function mount(state?: unknown) {
+  return render(<MemoryRouter initialEntries={[{ pathname: "/", state }]}><DashboardPage /></MemoryRouter>);
 }
 
 beforeEach(() => {
@@ -47,6 +47,13 @@ describe("DashboardPage", () => {
     expect(await screen.findByText("Mein Server")).toBeTruthy();
     expect(screen.getByText("n1.example.com:25565")).toBeTruthy();
     expect(screen.getByText("Eingeloggt als bob", { exact: false })).toBeTruthy();
+  });
+
+  it("zeigt die Meldung der vorherigen Seite (z.B. nach dem Loeschen) als Toast", async () => {
+    vi.spyOn(api, "getCurrentUser").mockResolvedValue(customer as never);
+    vi.spyOn(api, "getClientInstances").mockResolvedValue([]);
+    mount({ toast: 'Instance "Alt" wurde gelöscht.' });
+    expect(await screen.findByText('Instance "Alt" wurde gelöscht.')).toBeTruthy();
   });
 
   it("zeigt bei einem Ladefehler eine Meldung und kann es erneut versuchen", async () => {
