@@ -197,6 +197,64 @@ export type RegisterResponse =
   | LoginResponse
   | { verification_required: true; message: string; user: User };
 
+// ── Phase 4: Produkte & Bestellungen ───────────────────
+
+export interface Product {
+  id: number;
+  name: string;
+  description: string | null;
+  blueprint_id: number;
+  /** Fuer Kunden mitgeliefert, weil /admin/blueprints fuer sie gesperrt ist (optional) */
+  blueprint_name?: string | null;
+  memory: number;
+  disk: number;
+  cpu: number;
+  swap: number;
+  io: number;
+  price_cents: number;
+  currency: string;
+  billing_period_days: number;
+  active: boolean;
+  max_instances_per_user: number | null;
+  created_at?: string | null;
+}
+
+export interface ProductInput {
+  name: string;
+  description?: string | null;
+  blueprint_id: number;
+  memory: number;
+  disk: number;
+  cpu: number;
+  swap: number;
+  io: number;
+  price_cents: number;
+  currency: string;
+  billing_period_days: number;
+  active: boolean;
+  max_instances_per_user: number | null;
+}
+
+export type OrderStatus = "pending_payment" | "active" | "past_due" | "cancelled" | "expired";
+
+export interface Order {
+  id: number;
+  user_id: number;
+  product_id: number;
+  instance_id: number | null;
+  /** Gewuenschter Servername */
+  name?: string | null;
+  status: OrderStatus;
+  current_period_end: string | null;
+  cancel_at_period_end?: boolean;
+  payment_reference?: string | null;
+  created_at: string | null;
+  /** Optionale Anreicherungen des Backends; das Frontend faellt sonst auf IDs zurueck */
+  product_name?: string | null;
+  username?: string | null;
+  instance_uuid?: string | null;
+}
+
 // ── Typen ──────────────────────────────────────────────
 
 export interface User {
@@ -1170,6 +1228,29 @@ export const api = {
       `/admin/agents/${agentId}/maintenance`,
       { method: "DELETE" }
     ),
+
+  // ── Phase 4: Produkte (Admin) ────────────────────────
+  getAdminProducts: () => request<Product[]>("/admin/products"),
+  createProduct: (data: ProductInput) =>
+    request<Product>("/admin/products", { method: "POST", body: JSON.stringify(data) }),
+  updateProduct: (id: number, data: Partial<ProductInput>) =>
+    request<Product>(`/admin/products/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteProduct: (id: number) =>
+    request<{ message?: string }>(`/admin/products/${id}`, { method: "DELETE" }),
+
+  // ── Phase 4: Shop & Bestellungen (Kunde) ─────────────
+  getShopProducts: () => request<Product[]>("/client/products"),
+  createOrder: (productId: number, name: string) =>
+    request<Order>("/client/orders", { method: "POST", body: JSON.stringify({ product_id: productId, name }) }),
+  getMyOrders: () => request<Order[]>("/client/orders"),
+  cancelOrder: (id: number) =>
+    request<Order>(`/client/orders/${id}/cancel`, { method: "POST", body: JSON.stringify({}) }),
+
+  // ── Phase 4: Bestellungen (Admin) ────────────────────
+  getAdminOrders: (status?: OrderStatus | "") =>
+    request<Order[]>(`/admin/orders${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  markOrderPaid: (id: number) =>
+    request<Order>(`/admin/orders/${id}/mark-paid`, { method: "POST", body: JSON.stringify({}) }),
 
   // ── Instance loeschen (M43) ───────────────────────────
   /** Owner: Body {confirm} muss dem Instance-Namen entsprechen. */

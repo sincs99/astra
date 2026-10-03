@@ -15,6 +15,10 @@ import { RegisterPage } from "../pages/RegisterPage";
 import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "../pages/ResetPasswordPage";
 import { VerifyEmailPage } from "../pages/VerifyEmailPage";
+import { ShopPage } from "../pages/ShopPage";
+import { OrdersPage } from "../pages/OrdersPage";
+import { AdminProductsPage } from "../pages/AdminProductsPage";
+import { AdminOrdersPage } from "../pages/AdminOrdersPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { isAuthenticated } from "../services/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -59,6 +63,10 @@ export function AppRouter() {
         <Route path="/admin/jobs" element={<ProtectedRoute><AdminRoute><AdminJobsPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/admin/system" element={<ProtectedRoute><AdminRoute><AdminSystemPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/instances/:uuid" element={<ProtectedRoute><InstanceDetailPage /></ProtectedRoute>} />
+        <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
+        <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+        <Route path="/admin/products" element={<ProtectedRoute><AdminRoute><AdminProductsPage /></AdminRoute></ProtectedRoute>} />
+        <Route path="/admin/orders" element={<ProtectedRoute><AdminRoute><AdminOrdersPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
         <Route path="/account/ssh-keys" element={<ProtectedRoute><SshKeysPage /></ProtectedRoute>} />
         <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
