@@ -49,6 +49,14 @@ describe("DeleteInstanceForm", () => {
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith(true));
   });
 
+  it("zeigt den Zusatzhinweis zur laufenden Bestellung nur, wenn er uebergeben wird", () => {
+    const { rerender } = render(<DeleteInstanceForm name="S" status="ready" onDelete={vi.fn()} onCancel={() => {}} />);
+    expect(screen.queryByText(/Erstattung erfolgt nicht/)).toBeNull();
+    rerender(<DeleteInstanceForm name="S" status="ready" notice="Die laufende Bestellung endet damit, eine Erstattung erfolgt nicht."
+      onDelete={vi.fn()} onCancel={() => {}} />);
+    expect(screen.getByText("Die laufende Bestellung endet damit, eine Erstattung erfolgt nicht.")).toBeTruthy();
+  });
+
   it("blendet 'Erzwingen' ohne laufenden Vorgang aus", () => {
     render(<DeleteInstanceForm name="S" status="ready" allowForce onDelete={vi.fn()} onCancel={() => {}} />);
     expect(screen.queryByLabelText(/Erzwingen/)).toBeNull();

@@ -278,6 +278,10 @@ export interface Order {
   paid_at: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
+  /** Zeitpunkt der Sperre wegen ueberfaelliger Zahlung (UTC ohne Zeitzonen-Suffix) */
+  past_due_at?: string | null;
+  /** Geplante Loeschung: Ende der Karenzzeit bzw. Laufzeitende bei Kuendigung, sonst null */
+  scheduled_deletion_at?: string | null;
   cancelled_at: string | null;
   created_at: string | null;
   /** Nur Admin-Antworten */

@@ -13,6 +13,7 @@ export function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [disabled, setDisabled] = useState(false);
   const [verifyPending, setVerifyPending] = useState(false);
@@ -26,6 +27,7 @@ export function RegisterPage() {
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) return "Bitte eine gueltige E-Mail-Adresse eingeben";
     if (password.length < MIN_PASSWORD_LENGTH) return `Das Passwort muss mindestens ${MIN_PASSWORD_LENGTH} Zeichen lang sein`;
     if (password !== confirm) return "Die Passwoerter stimmen nicht ueberein";
+    if (!acceptedTerms) return "Bitte akzeptiere die AGB und die Datenschutzerklaerung";
     return null;
   };
 
@@ -99,10 +101,22 @@ export function RegisterPage() {
               onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
             <small style={{ color: "#666", fontSize: 12 }}>Mindestens {MIN_PASSWORD_LENGTH} Zeichen</small>
           </div>
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 16 }}>
             <label htmlFor="confirm" style={labelStyle}>Passwort wiederholen</label>
             <input id="confirm" type="password" autoComplete="new-password" value={confirm}
               onChange={(e) => setConfirm(e.target.value)} style={inputStyle} />
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <label htmlFor="terms" style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, lineHeight: 1.4 }}>
+              <input id="terms" type="checkbox" checked={acceptedTerms} required aria-required="true"
+                onChange={(e) => setAcceptedTerms(e.target.checked)} style={{ marginTop: 2 }} />
+              <span>
+                Ich akzeptiere die{" "}
+                <Link to="/agb" target="_blank" rel="noopener noreferrer" style={linkStyle}>AGB</Link>
+                {" "}und die{" "}
+                <Link to="/datenschutz" target="_blank" rel="noopener noreferrer" style={linkStyle}>Datenschutzerklärung</Link>.
+              </span>
+            </label>
           </div>
 
           <button type="submit" disabled={loading}

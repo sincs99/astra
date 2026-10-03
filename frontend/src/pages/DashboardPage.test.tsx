@@ -42,6 +42,22 @@ describe("DashboardPage", () => {
     expect(screen.queryByRole("link", { name: /Zum Shop/ })).toBeNull();
   });
 
+  it("zeigt Admins die Karte mit offenen Bestellungen, Kunden nicht", async () => {
+    const orders = vi.spyOn(api, "getAdminOrders").mockResolvedValue([]);
+    vi.spyOn(api, "getClientInstances").mockResolvedValue([]);
+    vi.spyOn(api, "getCurrentUser").mockResolvedValue(admin as never);
+    mount();
+    expect(await screen.findByText(/Offene Bestellungen:/)).toBeTruthy();
+    cleanup();
+    orders.mockClear();
+    localStorage.setItem("astra_access_token", "tok-kunde");
+    vi.spyOn(api, "getCurrentUser").mockResolvedValue(customer as never);
+    mount();
+    await screen.findByText("Eingeloggt als bob");
+    expect(screen.queryByText(/Offene Bestellungen:/)).toBeNull();
+    expect(orders).not.toHaveBeenCalled();
+  });
+
   it("zeigt Server mit Status und Verbindungsadresse", async () => {
     vi.spyOn(api, "getCurrentUser").mockResolvedValue(customer as never);
     vi.spyOn(api, "getClientInstances").mockResolvedValue([instance]);

@@ -7,6 +7,7 @@ import {
   type PowerSignal,
   type ResourceStats,
 } from "../services/api";
+import { hasRunningOrder, ORDER_END_NOTICE } from "../lib/orders";
 import { DeleteInstanceForm } from "../components/DeleteInstanceForm";
 import { SftpAccess } from "../components/SftpAccess";
 import { ConnectionAddress } from "../components/ConnectionAddress";
@@ -33,6 +34,18 @@ export function InstanceDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [orderNotice, setOrderNotice] = useState<string | null>(null);
+
+  // Gehoert die Instance zu einer laufenden Bestellung, endet diese mit dem Loeschen (ohne Erstattung)
+  const startDeleting = async () => {
+    setDeleting(true);
+    try {
+      const orders = await api.getMyOrders();
+      setOrderNotice(hasRunningOrder(orders, uuid) ? ORDER_END_NOTICE : null);
+    } catch {
+      setOrderNotice(null);
+    }
+  };
 
   // Variable editing
   const [varEdits, setVarEdits] = useState<Record<string, string>>({});
@@ -368,6 +381,7 @@ export function InstanceDetailPage() {
             <DeleteInstanceForm
               name={instance.name}
               status={instance.status}
+              notice={orderNotice}
               idPrefix="detail-del"
               onCancel={() => setDeleting(false)}
               onDelete={async () => {
@@ -377,7 +391,7 @@ export function InstanceDetailPage() {
               }}
             />
           ) : (
-            <button type="button" onClick={() => setDeleting(true)} style={{ ...btnDefault, color: "#c62828", borderColor: "#ef9a9a" }}>
+            <button type="button" onClick={startDeleting} style={{ ...btnDefault, color: "#c62828", borderColor: "#ef9a9a" }}>
               Instance löschen…
             </button>
           )}
