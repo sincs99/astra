@@ -115,7 +115,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `LoginPage`: gemeinsame UI-Styles, Label-Verknuepfung, `autocomplete`, `role="alert"`
 
 ### Changed (Frontend)
-- Frontend-Tests mit Vitest (`npm test`, 29 Tests): Egg-Parser, Agent-Formular-Validierung, `useAutoRefresh`, API-Client (Bearer-Token, 401-Handling, Reset-Payload); Logik dafuer nach `src/lib/` ausgelagert
+- Frontend-Tests mit Vitest (`npm test`, 54 Tests): Login/Registrierung/Passwort-Reset inkl. E-Mail-Verifizierung (Komponententests), SFTP-Box, Port-Bereich, Egg-Parser, Agent-Formular-Validierung, `useAutoRefresh`, API-Client (Bearer-Token, 401-Handling, Reset-Payload); Logik dafuer nach `src/lib/` ausgelagert
 - Barrierefreiheit (axe-core, WCAG 2 A/AA, 13 Seiten ohne Verstoesse): Kontraste bei Grautexten, Status-Badges und Kennzahlen, Labels fuer Selects/Inputs auf Agents-, Instances-, Jobs- und Monitoring-Seite
 - Responsive Layout: dynamisches Padding, horizontal scrollbare Tabellen, `FileBrowser`-Grid bricht auf schmalen Screens um
 
