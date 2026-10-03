@@ -165,6 +165,25 @@ def run_preflight_check() -> dict:
         checks["agents_reachable"] = "unknown"
         issues.append(f"Agent-Erreichbarkeit nicht pruefbar: {type(e).__name__}")
 
+    # 6. Billing-Tick laeuft (nur Warnung): ohne Tick keine Ablaeufe, Erinnerungen und Nachbereitstellungen
+    try:
+        from app.domain.billing.service import get_tick_status
+        tick = get_tick_status()
+        if tick["orders_needing_tick"] == 0:
+            checks["billing_tick"] = "not_needed"
+        elif tick["healthy"]:
+            checks["billing_tick"] = "ok"
+        else:
+            checks["billing_tick"] = "warning"
+            since = "noch nie" if tick["age_seconds"] is None else f"vor {tick['age_seconds'] // 60} Minuten"
+            issues.append(
+                f"Billing-Tick lief zuletzt {since} (erlaubt: {tick['max_age_minutes']} Minuten), "
+                f"{tick['orders_needing_tick']} Bestellung(en) warten auf ihn"
+            )
+    except Exception as e:
+        checks["billing_tick"] = "unknown"
+        issues.append(f"Billing-Tick nicht pruefbar: {type(e).__name__}")
+
     # Gesamtstatus
     has_errors = any(v.startswith("error") for v in checks.values() if isinstance(v, str))
     has_pending = checks.get("migrations") == "pending"

@@ -280,6 +280,7 @@ def _import_models() -> None:
     from app.domain.auth import models as _auth_models  # noqa: F401
     from app.domain.ssh_keys import models as _ssh_keys  # noqa: F401
     from app.domain.billing import models as _billing  # noqa: F401
+    from app.domain.system import models as _system_models  # noqa: F401
     from app.infrastructure.jobs import models as _job_models  # noqa: F401
 
 

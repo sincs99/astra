@@ -377,6 +377,63 @@ def log_orders_expired(order_ids: list[int], reason: str) -> None:
             _log("order:expired", order, None, f"Bestellung beendet ({reason})", {"reason": reason})
 
 
+# ── Betriebszustand des Billing-Ticks (M53) ─────────────
+
+TICK_STATE_KEY = "billing_tick"
+_LIVE_STATUSES = (ORDER_ACTIVE, ORDER_PAST_DUE, ORDER_AWAITING_PROVISIONING)
+
+
+def _record_tick(summary: dict, now: datetime) -> None:
+    """Merkt sich Zeitpunkt und Ergebnis des letzten Laufs (auch bei Fehlern), best effort."""
+    from sqlalchemy.exc import IntegrityError
+    from app.domain.system.models import SystemState
+    value = {"last_run_at": iso_utc(now), "summary": summary}
+    try:
+        for _ in range(2):
+            state = db.session.get(SystemState, TICK_STATE_KEY)
+            if state is None:
+                db.session.add(SystemState(key=TICK_STATE_KEY, value=value))
+            else:
+                state.value = value
+            try:
+                db.session.commit()
+                return
+            except IntegrityError:  # zwei Ticks haben gleichzeitig angelegt: noch einmal als Update
+                db.session.rollback()
+    except Exception:  # pragma: no cover - Ueberwachung darf den Tick nie stoeren
+        db.session.rollback()
+        logger.exception("Billing-Tick: Lauf konnte nicht vermerkt werden")
+
+
+def get_tick_status(now: datetime | None = None) -> dict:
+    """Laeuft der Billing-Tick? `healthy` ist nur relevant, solange es Bestellungen gibt, die der Tick braucht
+    (aktiv, ueberfaellig oder wartend). Ohne solche Bestellungen ist ein fehlender Tick unkritisch."""
+    from flask import current_app
+    from app.domain.system.models import SystemState
+    now = _utc_naive(now) or _now()
+    max_age = int(current_app.config.get("BILLING_TICK_MAX_AGE_MINUTES", 15))
+
+    state = db.session.get(SystemState, TICK_STATE_KEY)
+    last_run, summary = None, None
+    if state and isinstance(state.value, dict) and state.value.get("last_run_at"):
+        last_run = _utc_naive(datetime.fromisoformat(state.value["last_run_at"]))
+        summary = state.value.get("summary")
+    age = (now - last_run).total_seconds() if last_run else None
+
+    counts = dict(db.session.query(Order.status, db.func.count(Order.id)).group_by(Order.status).all())
+    needing = sum(counts.get(s, 0) for s in _LIVE_STATUSES)
+    healthy = needing == 0 or (age is not None and age <= max_age * 60)
+    return {
+        "healthy": healthy,
+        "last_run_at": iso_utc(last_run),
+        "age_seconds": int(age) if age is not None else None,
+        "max_age_minutes": max_age,
+        "orders_needing_tick": needing,
+        "orders_by_status": counts,
+        "last_summary": summary,
+    }
+
+
 # ── Billing-Tick (M46) ──────────────────────────────────
 
 
@@ -613,6 +670,7 @@ def run_billing_tick(now: datetime | None = None) -> dict:
             logger.exception("Billing-Tick: Bereitstellung der Bestellung %s fehlgeschlagen", order_id)
 
     logger.info("Billing-Tick: %s", summary)
+    _record_tick(summary, now)
     return summary
 
 

@@ -46,6 +46,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M53 – Ueberwachung des Billing-Ticks)
+- Jeder Tick-Lauf (auch mit Fehlern) vermerkt Zeitpunkt und Ergebnis in der neuen Tabelle `system_state` (Schluessel `billing_tick`, Migration `r8m9n0o1p2q3`, Up/Down geprueft; neues Modell `SystemState`, ein kleiner Schluessel-Wert-Speicher fuer Betriebszustand)
+- `GET /api/admin/billing/status`: `healthy`, `last_run_at`, `age_seconds`, `max_age_minutes`, `orders_needing_tick`, `orders_by_status`, `last_summary`. `healthy` ist false, wenn Bestellungen den Tick brauchen (active, past_due, awaiting_provisioning) und der letzte Lauf aelter als `BILLING_TICK_MAX_AGE_MINUTES` (Standard 15) ist oder fehlt
+- Preflight-Check `billing_tick` (`ok`, `not_needed`, `warning` mit Alter und Zahl der wartenden Bestellungen); nur eine Warnung, blockiert nichts. Das Vermerken ist best effort und kann den Tick nie stoeren
+- `backend/test_m53.py` (30 Tests, inkl. CLI-Lauf und Gegenprobe ohne Vermerken); Doku in `docs/orders-api.md`, `docs/known-limitations.md`, `docs/operations.md`
+
 ### Added (Admin: Zahlungsereignisse ansehen)
 - `GET /api/admin/payment-events` (nur lesen, Admin-Guard): Zahlungsereignisse des Anbieters, neueste zuerst; Filter `status` (`processed`, `ignored`, `unapplied`, `mismatch`, `received`), `order_uuid`, `limit` (1 bis 500, Standard 100; ungueltige Werte ergeben 400). Damit lassen sich `mismatch` (Betrag/Waehrung weicht ab) und `unapplied` (Zahlung fuer beendete Bestellung, Erstattung pruefen) ohne Datenbankzugriff finden. Tests in `test_m48.py` (83), Doku in `docs/orders-api.md`
 
