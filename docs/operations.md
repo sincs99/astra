@@ -181,6 +181,7 @@ in der Agents-Ansicht. Details: `docs/wings-remote-api.md`.
 | `PAYMENT_PROVIDER` | Zahlungsweg: `manual` oder `stripe` (siehe orders-api.md) | manual |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Stripe-Zugang (nur Umgebung, nie ins Repository) | – |
 | `BILLING_REMINDER_DAYS` | Tage vor Laufzeitende für die Erinnerungsmail, 0 = aus (Billing-Tick) | 3 |
+| `BILLING_TICK_MAX_AGE_MINUTES` | Warnung (Preflight, `/api/admin/billing/status`), wenn der Billing-Tick so lange nicht gelaufen ist | 15 |
 | `BILLING_GRACE_DAYS` | Tage von überfälliger Zahlung bis zur Löschung der Instance (Billing-Tick) | 7 |
 | `REGISTRATION_ENABLED` | Selbstregistrierung erlauben | false |
 | `EMAIL_VERIFICATION_REQUIRED` | Login erst nach bestaetigter E-Mail (braucht funktionierendes SMTP) | false |

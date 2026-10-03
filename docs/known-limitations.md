@@ -36,7 +36,7 @@
 - **Bestell-Mails:** Mails gibt es nur bei Erinnerung, Ueberfaelligkeit und Loeschung. Es gibt keine Bestaetigungsmail beim Anlegen oder Bezahlen einer Bestellung. Ohne `MAIL_SERVER` werden Mails nur ins Log geschrieben.
 - **Kapazitaet nach Zuweisung:** Die Kapazitaetspruefung rechnet mit den zugewiesenen Ressourcen der Instances (inkl. Overallocation des Agents), nicht mit der tatsaechlichen Auslastung. Die Zeilensperre gegen parallele Erstellungen wirkt nur auf PostgreSQL.
 - **Missbrauchsschutz:** Registrierung hat Rate Limiting und optionale E-Mail-Verifizierung, aber keine Bot-Erkennung (CAPTCHA). Gratis-Pakete sind nur ueber `max_instances_per_user` begrenzt.
-- **Tick-Betrieb:** Der Billing-Tick laeuft als Schleife im Compose-Service `billing`. Ohne laufenden Tick werden weder Ablaeufe durchgesetzt noch Erinnerungen verschickt; es gibt keine Ueberwachung dafuer ausser dem Container-Status und dem Exit-Code von `billing-tick`.
+- **Tick-Betrieb:** Der Billing-Tick laeuft als Schleife im Compose-Service `billing`. Faellt er aus, werden weder Ablaeufe durchgesetzt noch Erinnerungen verschickt. Seit M53 erkennt das Panel das (`GET /api/admin/billing/status`, Preflight-Check `billing_tick`, Warnung nach `BILLING_TICK_MAX_AGE_MINUTES`, Standard 15). Es gibt aber keine aktive Benachrichtigung: jemand muss den Status oder den Preflight ansehen bzw. einen externen Monitor darauf richten.
 
 ### UI / Frontend
 - Responsive Design: Kundenseiten (Dashboard, Server, Bestellungen, Konto, Shop) sind mobil nutzbar (Hamburger-Menue, Bestellungen als Karten); Admin-Tabellen scrollen auf kleinen Bildschirmen horizontal.

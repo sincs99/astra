@@ -561,6 +561,17 @@ def list_orders():
     return jsonify([o.to_dict(include_user=True) for o in orders])
 
 
+@admin_bp.route("/billing/status", methods=["GET"])
+def billing_status():
+    """Betriebszustand des Billing-Ticks (M53): letzter Lauf, Alter, Ergebnis, Bestellungen je Status.
+
+    `healthy` ist false, wenn Bestellungen auf den Tick warten (aktiv, ueberfaellig, wartend) und der letzte
+    Lauf laenger als BILLING_TICK_MAX_AGE_MINUTES zurueckliegt oder fehlt.
+    """
+    from app.domain.billing.service import get_tick_status
+    return jsonify(get_tick_status())
+
+
 @admin_bp.route("/payment-events", methods=["GET"])
 def list_payment_events():
     """Zahlungsereignisse des Anbieters (nur lesen), neueste zuerst.
