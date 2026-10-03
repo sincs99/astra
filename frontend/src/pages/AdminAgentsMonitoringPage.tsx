@@ -1,7 +1,8 @@
+import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { useEffect, useState, useMemo } from "react";
 import { api, type AgentMonitoringEntry, type FleetSummary } from "../services/api";
 import {
-  PageLayout, StatusBadge, LoadingState, EmptyState, ErrorState,
+  PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState,
   cardStyle, inputStyle, labelStyle, btnDefault, thStyle, tdStyle,
 } from "../components/ui";
 
@@ -19,10 +20,12 @@ export function AdminAgentsMonitoringPage() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortAsc, setSortAsc] = useState(true);
 
-  const loadData = async () => {
+  const [autoRefresh, setAutoRefresh] = useAutoRefreshSetting("monitoring");
+
+  const loadData = async (silent = false) => {
     try {
-      setLoading(true);
-      setError(null);
+      if (!silent) setLoading(true);
+      if (!silent) setError(null);
       const [agentData, summaryData] = await Promise.all([
         api.getAgentsMonitoring({ health: healthFilter || undefined, search: search.trim() || undefined }),
         api.getFleetSummary(),
@@ -30,13 +33,16 @@ export function AdminAgentsMonitoringPage() {
       setAgents(agentData);
       setSummary(summaryData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      // Bei stillem Refresh vorhandene Daten nicht durch Fehler ersetzen
+      if (!silent) setError(err instanceof Error ? err.message : "Fehler beim Laden");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { loadData(); }, [healthFilter]);
+
+  useAutoRefresh(() => loadData(true), 15000, autoRefresh);
 
   useEffect(() => {
     const timer = setTimeout(() => { loadData(); }, 300);
@@ -97,10 +103,11 @@ export function AdminAgentsMonitoringPage() {
             style={{ ...inputStyle, width: "100%" }}
           />
         </div>
-        <button onClick={loadData} style={{ ...btnDefault, alignSelf: "flex-end" }}>↻ Aktualisieren</button>
+        <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
+        <button onClick={() => loadData()} style={{ ...btnDefault, alignSelf: "flex-end" }}>↻ Aktualisieren</button>
       </div>
 
-      {error && <ErrorState message={error} onRetry={loadData} />}
+      {error && <ErrorState message={error} onRetry={() => loadData()} />}
 
       {/* Agent-Tabelle */}
       {loading ? (
@@ -125,7 +132,7 @@ export function AdminAgentsMonitoringPage() {
             </thead>
             <tbody>
               {sortedAgents.map(agent => (
-                <AgentRow key={agent.id} agent={agent} onRefresh={loadData} />
+                <AgentRow key={agent.id} agent={agent} onRefresh={() => loadData()} />
               ))}
             </tbody>
           </table>

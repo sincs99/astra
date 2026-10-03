@@ -4,7 +4,9 @@
  * Stellt eine konsistente Navigationsleiste und Seitenstruktur bereit.
  */
 
-import { linkStyle } from "./styles";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { linkStyle, btnDefault } from "./styles";
+import { logout } from "../../services/api";
 
 interface NavItem {
   label: string;
@@ -35,12 +37,18 @@ interface PageLayoutProps {
 }
 
 export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps) {
-  const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+  const currentPath = useLocation().pathname;
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#fafafa" }}>
       {/* Navigation */}
-      <nav style={{
+      <nav aria-label="Hauptnavigation" style={{
         backgroundColor: "#fff",
         borderBottom: "1px solid #e0e0e0",
         padding: "0 24px",
@@ -51,16 +59,17 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
         <div style={{
           maxWidth, margin: "0 auto",
           display: "flex", alignItems: "center", gap: 24,
-          height: 48, overflow: "auto",
+          height: 48,
         }}>
-          <a href="/" style={{ ...linkStyle, fontWeight: 700, fontSize: 16, marginRight: 8 }}>
+          <Link to="/" style={{ ...linkStyle, fontWeight: 700, fontSize: 16, marginRight: 8, flexShrink: 0 }}>
             Astra
-          </a>
-          <div style={{ display: "flex", gap: 4, fontSize: 13 }}>
+          </Link>
+          <div style={{ display: "flex", gap: 4, fontSize: 13, flex: 1, minWidth: 0, overflowX: "auto" }}>
             {NAV_ITEMS.map((item) => (
-              <a
+              <Link
                 key={item.href}
-                href={item.href}
+                to={item.href}
+                aria-current={currentPath === item.href ? "page" : undefined}
                 style={{
                   ...linkStyle,
                   padding: "6px 10px",
@@ -73,14 +82,21 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
                 }}
               >
                 {item.label}
-              </a>
+              </Link>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            style={{ ...btnDefault, padding: "4px 12px", fontSize: 13, flexShrink: 0 }}
+          >
+            Abmelden
+          </button>
         </div>
       </nav>
 
       {/* Content */}
-      <main style={{ maxWidth, margin: "0 auto", padding: 24 }}>
+      <main style={{ maxWidth, margin: "0 auto", padding: "16px clamp(12px, 4vw, 24px)", overflowX: "auto" }}>
         <h1 style={{ marginTop: 0, marginBottom: 20, fontSize: 24, fontWeight: 700 }}>
           {title}
         </h1>

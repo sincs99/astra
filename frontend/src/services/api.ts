@@ -82,6 +82,13 @@ async function request<T = unknown>(
   const response = await fetch(url, { ...options, headers });
 
   if (!response.ok) {
+    // Abgelaufene/ungueltige Session: Token verwerfen und zum Login (Login-Fehler selbst ausgenommen)
+    if (response.status === 401 && endpoint !== "/auth/login" && token) {
+      logout();
+      if (window.location.pathname !== "/login") {
+        window.location.assign("/login?expired=1");
+      }
+    }
     const error = await response.json().catch(() => ({}));
     throw new Error(
       (error as Record<string, string>).error ||
