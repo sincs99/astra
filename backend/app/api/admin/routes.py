@@ -776,6 +776,23 @@ def delete_instance_route(uuid: str):
     return jsonify({**result, "message": "Instance geloescht"})
 
 
+@admin_bp.route("/instances/<string:uuid>/backups", methods=["GET"])
+def list_instance_backups_admin(uuid: str):
+    """Backups einer Instance fuer Admins (z.B. Pruefung vor einem Transfer)."""
+    from app.domain.backups.service import list_backups
+    instance = Instance.query.filter_by(uuid=uuid).first()
+    if not instance:
+        return jsonify({"error": "Instance nicht gefunden"}), 404
+    backups = list_backups(instance)
+    successful = [b for b in backups if b.is_successful]
+    latest = max(successful, key=lambda b: b.completed_at or b.created_at, default=None)
+    return jsonify({
+        "backups": [b.to_dict() for b in backups],
+        "successful_count": len(successful),
+        "last_successful_backup_at": latest.to_dict()["completed_at"] if latest else None,
+    })
+
+
 @admin_bp.route("/instances/<string:uuid>/transfer", methods=["POST"])
 def transfer_instance_route(uuid: str):
     """Transferiert eine Instance auf einen anderen Agent.
