@@ -1,0 +1,13 @@
+# Wings-Node hinter Caddy (TLS extern, Wings selbst ohne SSL auf :8080).
+# Wird von scripts/deploy.sh nach deploy/sites/node.caddy kopiert, wenn NODE_DOMAIN gesetzt ist.
+# Im Panel: Agent mit scheme=https, daemon_connect=443, daemon_listen=8080, behind_proxy=true.
+__NODE_DOMAIN__ {
+    reverse_proxy host.docker.internal:8080 {
+        # Wings-Konsole laeuft ueber Websockets – Caddy handhabt Upgrade automatisch
+        header_up X-Forwarded-Proto https
+        transport http {
+            read_timeout 0
+            write_timeout 0
+        }
+    }
+}

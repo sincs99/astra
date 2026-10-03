@@ -1,11 +1,73 @@
 # ══════════════════════════════════════════════════════════
 # Astra – Docker Compose (Produktion)
-# Start: docker compose -f docker-compose.prod.yml up -d
 #
-# WICHTIG: .env Datei mit sicheren Werten anlegen!
+# Start:   ./scripts/deploy.sh            (empfohlen)
+#   oder:  docker compose -f docker-compose.prod.yml up -d
+#
+# Setze COMPOSE_FILE=docker-compose.prod.yml in der .env, dann reicht
+# ueberall ein einfaches `docker compose ...` (auch fuer scripts/backup.sh).
+#
+# WICHTIG: .env aus .env.prod.example erzeugen und Secrets setzen!
+#
+# Aufbau:
+#   Internet :80/:443 -> caddy (TLS via Let's Encrypt)
+#        PANEL_DOMAIN  -> frontend (Nginx, SPA + /api-Proxy) -> backend (Gunicorn)
+#        NODE_DOMAIN   -> Wings auf dem Host :8080 (optional, siehe deploy/Caddyfile)
+#   backend/worker    -> postgres, redis (nur intern)
 # ══════════════════════════════════════════════════════════
 
+x-backend-env: &backend-env
+  APP_ENV: production
+  DATABASE_URL: postgresql://${POSTGRES_USER:-astra}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-astra}
+  REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+  SECRET_KEY: ${SECRET_KEY:?SECRET_KEY muss gesetzt sein}
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY muss gesetzt sein}
+  BASE_URL: https://${PANEL_DOMAIN:?PANEL_DOMAIN muss gesetzt sein}
+  FRONTEND_URL: https://${PANEL_DOMAIN}
+  CORS_ORIGINS: https://${PANEL_DOMAIN}
+  # Zwei Proxies vor dem Backend (Caddy -> Nginx) -> X-Forwarded-* zwei Hops
+  PROXY_FIX_ENABLED: "true"
+  PROXY_FIX_X_FOR: "2"
+  PROXY_FIX_X_PROTO: "2"
+  SESSION_COOKIE_SECURE: "true"
+  RUNNER_ADAPTER: ${RUNNER_ADAPTER:-wings}
+  RUNNER_TIMEOUT_CONNECT: ${RUNNER_TIMEOUT_CONNECT:-5}
+  RUNNER_TIMEOUT_READ: ${RUNNER_TIMEOUT_READ:-30}
+  JOB_QUEUE_BACKEND: ${JOB_QUEUE_BACKEND:-redis}
+  RATELIMIT_ENABLED: "true"
+  REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-false}
+  PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-60}
+  MAIL_SERVER: ${MAIL_SERVER:-}
+  MAIL_PORT: ${MAIL_PORT:-587}
+  MAIL_USE_TLS: ${MAIL_USE_TLS:-true}
+  MAIL_USERNAME: ${MAIL_USERNAME:-}
+  MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+  MAIL_FROM: ${MAIL_FROM:-astra@${PANEL_DOMAIN}}
+  LOG_LEVEL: ${LOG_LEVEL:-WARNING}
+
 services:
+  # ── Caddy: TLS-Terminierung + Reverse Proxy ───────────
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      PANEL_DOMAIN: ${PANEL_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@${PANEL_DOMAIN}}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/sites:/etc/caddy/sites:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    extra_hosts:
+      # Erlaubt Caddy, Wings auf dem Host zu erreichen (NODE_DOMAIN -> host.docker.internal:8080)
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - frontend
+
   # ── PostgreSQL ─────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
@@ -28,54 +90,67 @@ services:
   redis:
     image: redis:7-alpine
     restart: always
-    command: redis-server --requirepass ${REDIS_PASSWORD:-}
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein} --appendonly yes
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
 
-  # ── Backend ────────────────────────────────────────────
+  # ── Backend (API) ──────────────────────────────────────
   backend:
     build:
       context: ./backend
+    image: astra-backend:local
     restart: always
     environment:
-      APP_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER:-astra}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-astra}
-      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
-      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY muss gesetzt sein}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY muss gesetzt sein}
-      BASE_URL: ${BASE_URL:-https://astra.example.com}
-      FRONTEND_URL: ${FRONTEND_URL:-https://astra.example.com}
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://astra.example.com}
-      PROXY_FIX_ENABLED: "true"
-      SESSION_COOKIE_SECURE: "true"
-      RUNNER_ADAPTER: ${RUNNER_ADAPTER:-wings}
+      <<: *backend-env
       AUTO_MIGRATE: "true"
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-4}
-      LOG_LEVEL: ${LOG_LEVEL:-WARNING}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     command: ["serve"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
 
-  # ── Frontend ───────────────────────────────────────────
+  # ── Worker (Job-Queue: Webhooks, Routinen) ─────────────
+  worker:
+    image: astra-backend:local
+    restart: always
+    environment:
+      <<: *backend-env
+      AUTO_MIGRATE: "false"
+    depends_on:
+      backend:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    command: ["python", "cli.py", "worker", "--poll-interval", "1"]
+
+  # ── Frontend (Nginx: SPA + /api-Proxy zum Backend) ─────
   frontend:
     build:
       context: ./frontend
       args:
         VITE_API_BASE_URL: /api
     restart: always
-    ports:
-      - "${HTTP_PORT:-80}:80"
     depends_on:
       - backend
+    # Kein Port-Mapping – Caddy ist der einzige oeffentliche Eingang
 
 volumes:
   postgres_data:
   redis_data:
+  caddy_data:
+  caddy_config:

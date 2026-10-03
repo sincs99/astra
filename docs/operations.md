@@ -85,10 +85,17 @@ docker compose up
 
 ## Produktions-Deployment
 
+> Vollständige Schritt-für-Schritt-Anleitung inkl. Wings-Node, Firewall und Abnahme:
+> **`docs/deploy-runbook.md`**. Hier die Kurzfassung.
+
+Der Produktions-Stack (`docker-compose.prod.yml`) besteht aus Caddy (TLS via Let's Encrypt,
+einziger öffentlicher Eingang auf 80/443), Frontend (Nginx), Backend (Gunicorn), Worker
+(Job-Queue), PostgreSQL und Redis. Optional proxyt Caddy auch den Wings-Node (`NODE_DOMAIN`).
+
 ### 1. Umgebungsvariablen vorbereiten
 
 ```bash
-cp backend/.env.example .env
+cp .env.prod.example .env
 ```
 
 **Pflichtfelder für Produktion:**
@@ -111,8 +118,11 @@ python -c "import secrets; print(secrets.token_hex(32))"
 ### 2. Container starten
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d
+./scripts/deploy.sh --bootstrap     # erster Start inkl. Admin
+./scripts/deploy.sh                 # jedes Update
 ```
+
+Manuell entspricht das `docker compose up -d` (mit `COMPOSE_FILE=docker-compose.prod.yml` in der `.env`).
 
 ### 3. Migrationen und Bootstrap
 
@@ -121,7 +131,7 @@ docker compose -f docker-compose.prod.yml up -d
 # Oder manuell:
 docker compose exec backend ./entrypoint.sh migrate
 
-# Ersten Admin erstellen:
+# Ersten Admin erstellen (macht deploy.sh --bootstrap bereits):
 docker compose exec backend ./entrypoint.sh seed
 ```
 
@@ -129,6 +139,7 @@ docker compose exec backend ./entrypoint.sh seed
 
 ```bash
 docker compose exec backend python cli.py check-config
+./scripts/smoke-test.sh https://<PANEL_DOMAIN> admin '<passwort>'
 ```
 
 ---
