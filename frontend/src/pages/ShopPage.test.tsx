@@ -3,14 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { ShopPage } from "./ShopPage";
-import { api, type Product } from "../services/api";
+import { api } from "../services/api";
+import { makeOrder, makeProduct } from "../test/fixtures";
 
-const product = {
-  id: 5, name: "Starter", description: "Für kleine Server", blueprint_id: 1, blueprint_name: "Minecraft Vanilla",
-  memory: 2048, disk: 10240, cpu: 150, swap: 0, io: 500, price_cents: 999, currency: "EUR",
-  billing_period_days: 30, active: true, max_instances_per_user: null,
-} as Product;
-
+// Oeffentliche Produktdaten: ohne interne Felder (kein Blueprint, kein is_active)
+const product = makeProduct({ blueprint_id: undefined, is_active: undefined, max_instances_per_user: undefined });
 const plain = (s: string | null) => (s ?? "").replace(/ | /g, " ");
 
 function mount() {
@@ -25,27 +22,23 @@ beforeEach(() => {
 afterEach(() => { cleanup(); localStorage.clear(); });
 
 describe("ShopPage", () => {
-  it("zeigt Produkte als Karten mit Preis, Ressourcen und Blueprint", async () => {
+  it("zeigt Produkte als Karten mit Preis und Ressourcen", async () => {
     vi.spyOn(api, "getShopProducts").mockResolvedValue([product]);
     mount();
-    const card = (await screen.findByRole("article", { name: "Starter" }));
+    const card = await screen.findByRole("article", { name: "Starter" });
     expect(plain(within(card).getByText(/€/).textContent)).toBe("9,99 € / 30 Tage");
     expect(within(card).getByText("2048 MB RAM")).toBeTruthy();
     expect(within(card).getByText("10240 MB Disk")).toBeTruthy();
     expect(within(card).getByText("150% CPU")).toBeTruthy();
-    expect(within(card).getByText("Minecraft Vanilla")).toBeTruthy();
+    expect(within(card).getByText("Für kleine Server")).toBeTruthy();
   });
 
-  it("bestellt mit Servername und zeigt den Hinweis zur Freischaltung", async () => {
+  it("bestellt mit Servername und weist auf die Freischaltung nach Zahlung hin", async () => {
     vi.spyOn(api, "getShopProducts").mockResolvedValue([product]);
-    const order = vi.spyOn(api, "createOrder").mockResolvedValue({ id: 1, status: "pending_payment" } as never);
+    const order = vi.spyOn(api, "createOrder").mockResolvedValue(makeOrder({ status: "pending_payment" }));
     mount();
     fireEvent.click(await screen.findByRole("button", { name: "Starter bestellen" }));
-    fireEvent.click(screen.getByRole("button", { name: "Verbindlich bestellen" }));
-    expect((await screen.findByRole("alert")).textContent).toMatch(/Namen/);
-    expect(order).not.toHaveBeenCalled();
-
-    fireEvent.change(screen.getByLabelText("Servername"), { target: { value: "  Mein Server " } });
+    fireEvent.change(screen.getByLabelText("Servername (optional)"), { target: { value: "  Mein Server " } });
     fireEvent.click(screen.getByRole("button", { name: "Verbindlich bestellen" }));
     await waitFor(() => expect(order).toHaveBeenCalledWith(5, "Mein Server"));
     expect(await screen.findByText(/Bestellung eingegangen/)).toBeTruthy();
@@ -53,15 +46,37 @@ describe("ShopPage", () => {
     expect(screen.getByRole("link", { name: "Zu meinen Bestellungen" }).getAttribute("href")).toBe("/orders");
   });
 
-  it("zeigt Fehler der Bestellung (z.B. Limit erreicht) und laesst das Formular offen", async () => {
+  it("erlaubt eine Bestellung ohne Servername (optional)", async () => {
     vi.spyOn(api, "getShopProducts").mockResolvedValue([product]);
-    vi.spyOn(api, "createOrder").mockRejectedValue(new Error("Maximale Anzahl Instances erreicht"));
+    const order = vi.spyOn(api, "createOrder").mockResolvedValue(makeOrder());
     mount();
     fireEvent.click(await screen.findByRole("button", { name: "Starter bestellen" }));
-    fireEvent.change(screen.getByLabelText("Servername"), { target: { value: "S" } });
     fireEvent.click(screen.getByRole("button", { name: "Verbindlich bestellen" }));
-    expect(await screen.findByText("Maximale Anzahl Instances erreicht")).toBeTruthy();
-    expect(screen.getByLabelText("Servername")).toBeTruthy();
+    await waitFor(() => expect(order).toHaveBeenCalledWith(5, undefined));
+  });
+
+  it("meldet bei kostenlosen Produkten die sofortige Bereitstellung bzw. fehlenden Platz", async () => {
+    vi.spyOn(api, "getShopProducts").mockResolvedValue([product]);
+    const order = vi.spyOn(api, "createOrder").mockResolvedValue(makeOrder({ status: "active" }));
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Starter bestellen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Verbindlich bestellen" }));
+    expect(await screen.findByText(/Dein Server wurde bereitgestellt/)).toBeTruthy();
+
+    order.mockResolvedValue(makeOrder({ status: "awaiting_provisioning" }));
+    fireEvent.click(screen.getByRole("button", { name: "Starter bestellen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Verbindlich bestellen" }));
+    expect(await screen.findByText(/sobald Platz frei ist/)).toBeTruthy();
+  });
+
+  it("zeigt Fehler der Bestellung (z.B. zu viele offene Bestellungen) und laesst das Formular offen", async () => {
+    vi.spyOn(api, "getShopProducts").mockResolvedValue([product]);
+    vi.spyOn(api, "createOrder").mockRejectedValue(new Error("Zu viele offene Bestellungen (5) – bitte erst bezahlen oder stornieren"));
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Starter bestellen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Verbindlich bestellen" }));
+    expect(await screen.findByText(/Zu viele offene Bestellungen/)).toBeTruthy();
+    expect(screen.getByLabelText("Servername (optional)")).toBeTruthy();
   });
 
   it("zeigt Leer- und Fehlerzustand", async () => {

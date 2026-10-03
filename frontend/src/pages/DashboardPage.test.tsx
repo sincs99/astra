@@ -25,11 +25,12 @@ beforeEach(() => {
 afterEach(() => { cleanup(); localStorage.clear(); });
 
 describe("DashboardPage", () => {
-  it("zeigt Kunden ohne Server den Platzhalter fuer die Bestellung", async () => {
+  it("verweist Kunden ohne Server auf den Shop", async () => {
     vi.spyOn(api, "getCurrentUser").mockResolvedValue(customer as never);
     vi.spyOn(api, "getClientInstances").mockResolvedValue([]);
     mount();
-    expect(await screen.findByText("Noch kein Server. Bestellung folgt in Phase 4.")).toBeTruthy();
+    expect(await screen.findByText("Du hast noch keinen Server.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Zum Shop und Server bestellen" }).getAttribute("href")).toBe("/shop");
     expect(screen.queryByText(/Admin-Bereich/)).toBeNull();
   });
 
@@ -38,6 +39,7 @@ describe("DashboardPage", () => {
     vi.spyOn(api, "getClientInstances").mockResolvedValue([]);
     mount();
     expect(await screen.findByText(/ueber den Admin-Bereich/)).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Zum Shop/ })).toBeNull();
   });
 
   it("zeigt Server mit Status und Verbindungsadresse", async () => {

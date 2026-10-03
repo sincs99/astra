@@ -36,6 +36,7 @@ const STATUS_CONFIG: Record<string, { bg: string; color: string; label?: string 
   retrying: { bg: "#f3e5f5", color: "#7b1fa2" },
   // Bestellungen (Phase 4)
   pending_payment: { bg: "#e3f2fd", color: "#1565c0", label: "Zahlung ausstehend" },
+  awaiting_provisioning: { bg: "#e3f2fd", color: "#1565c0", label: "wird bereitgestellt" },
   past_due: { bg: "#fff3e0", color: "#bf360c", label: "überfällig" },
   cancelled: { bg: "#f5f5f5", color: "#666", label: "gekündigt" },
   expired: { bg: "#ffebee", color: "#c62828", label: "abgelaufen" },
