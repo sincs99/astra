@@ -98,6 +98,8 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `redis` zu `backend/requirements.txt` hinzugefuegt
 
 ### Added (Frontend)
+- Konto-Seite `/account` (Navigation "Konto"): Profil, MFA/TOTP einrichten (QR-Code clientseitig mit `qrcode`, Secret als Text, Verifikation, Recovery-Codes einmalig) und deaktivieren, API-Keys (Liste, anlegen, loeschen; Token nur einmal sichtbar), Link auf SSH-Keys, "Passwort aendern" hinter Feature-Flag `VITE_CHANGE_PASSWORD_ENABLED=true` (Backend `POST /auth/change-password`)
+- Login: zweiter Schritt fuer MFA (`requires_mfa` -> Code/Recovery-Code); vorher konnten sich MFA-Nutzer im Frontend nicht anmelden
 - Agents-Seite: Health-Badge je Agent (`GET /admin/agents/monitoring`, 15s Auto-Refresh), optional "Wings erreichbar"/Version sobald `daemon_reachable`/`daemon_version` geliefert werden
 - Kunden-/Admin-Trennung im UI: Admin-Links nur fuer `is_admin`, Admin-Routen leiten Kunden zum Dashboard um (`AdminRoute`, `useCurrentUser`); Dashboard zeigt den Benutzernamen statt "User #id" und einen Kunden-Leerzustand
 - Instance-Detail: Box "SFTP-Zugang" (Host, Port, Benutzername `<user>.<uuid[:8]>` mit Kopier-Buttons, Hinweis auf Panel-Passwort/SSH-Key). Port aus `connection.sftp_port`, fuer Admins sonst aus der Agent-Liste
