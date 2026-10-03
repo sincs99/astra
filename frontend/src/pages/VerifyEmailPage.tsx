@@ -6,7 +6,7 @@ import { AuthCard, AuthMessage } from "../components/AuthCard";
 
 type State = "loading" | "ok" | "error" | "missing";
 
-/** Ziel des Links aus der Bestaetigungs-Mail: /verify-email?token=... */
+/** Ziel des Links aus der Bestätigungs-Mail: /verify-email?token=... */
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
@@ -20,18 +20,18 @@ export function VerifyEmailPage() {
       .then(() => { if (!cancelled) setState("ok"); })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Bestaetigung fehlgeschlagen");
+        setError(err instanceof Error ? err.message : "Bestätigung fehlgeschlagen");
         setState("error");
       });
     return () => { cancelled = true; };
   }, [token]);
 
   return (
-    <AuthCard title="E-Mail bestaetigen">
-      {state === "loading" && <AuthMessage kind="success">Deine Adresse wird bestaetigt...</AuthMessage>}
+    <AuthCard title="E-Mail bestätigen">
+      {state === "loading" && <AuthMessage kind="success">Deine Adresse wird bestätigt...</AuthMessage>}
       {state === "ok" && (
         <>
-          <AuthMessage kind="success">Deine E-Mail-Adresse wurde bestaetigt. Du kannst dich jetzt anmelden.</AuthMessage>
+          <AuthMessage kind="success">Deine E-Mail-Adresse wurde bestätigt. Du kannst dich jetzt anmelden.</AuthMessage>
           <p style={{ textAlign: "center" }}><Link to="/login" style={linkStyle}>Zum Login</Link></p>
         </>
       )}
@@ -46,7 +46,7 @@ export function VerifyEmailPage() {
       )}
       {state === "missing" && (
         <>
-          <AuthMessage kind="error">Der Link ist unvollstaendig (Token fehlt).</AuthMessage>
+          <AuthMessage kind="error">Der Link ist unvollständig (Token fehlt).</AuthMessage>
           <p style={{ textAlign: "center" }}><Link to="/login" style={linkStyle}>Zum Login</Link></p>
         </>
       )}

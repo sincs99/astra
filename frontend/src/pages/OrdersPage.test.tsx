@@ -52,7 +52,7 @@ describe("OrdersPage", () => {
     expect(within(rows[4]).getByLabelText("gekündigt")).toBeTruthy();
   });
 
-  it("unterscheidet Stornieren (sofort) und Kuendigen zum Laufzeitende, beides ueber die uuid", async () => {
+  it("unterscheidet Stornieren (sofort) und Kuendigen zum Laufzeitende, beides über die uuid", async () => {
     vi.spyOn(api, "getMyOrders").mockResolvedValue([active, pending]);
     const cancel = vi.spyOn(api, "cancelOrder").mockResolvedValue(active);
     mount();
@@ -103,7 +103,7 @@ describe("OrdersPage", () => {
     });
     afterEach(() => { vi.unstubAllGlobals(); });
 
-    it("startet den Checkout fuer unbezahlte Bestellungen und leitet zur Zahlungsseite weiter", async () => {
+    it("startet den Checkout für unbezahlte Bestellungen und leitet zur Zahlungsseite weiter", async () => {
       vi.spyOn(api, "getMyOrders").mockResolvedValue([active, pending]);
       const checkout = vi.spyOn(api, "createCheckout").mockResolvedValue({ checkout_url: "https://checkout.stripe.com/c/pay/cs_1" });
       mount();
@@ -123,7 +123,7 @@ describe("OrdersPage", () => {
       await waitFor(() => expect(screen.queryByRole("button", { name: "Jetzt bezahlen" })).toBeNull());
       expect(screen.getAllByText(/Zahlung per Überweisung/)).toHaveLength(2);
       expect(assign).not.toHaveBeenCalled();
-      // Stornieren bleibt moeglich
+      // Stornieren bleibt möglich
       expect(screen.getAllByRole("button", { name: "Stornieren" })).toHaveLength(2);
     });
 
@@ -149,6 +149,26 @@ describe("OrdersPage", () => {
       await waitFor(() => expect(assign).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_2"));
     });
 
+    it("hebt 'Verlängern und bezahlen' bei ueberfaelligen Bestellungen rot hervor", async () => {
+      const overdue2 = makeOrder({ id: 8, uuid: "o-8", status: "past_due", past_due_at: "2026-10-01T08:30:00", scheduled_deletion_at: "2026-10-08T08:30:00" });
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([active, overdue2]);
+      mount();
+      const [normal, urgent] = await screen.findAllByRole("button", { name: "Verlängern und bezahlen" });
+      expect((normal as HTMLElement).style.backgroundColor).toBe("rgb(25, 118, 210)");
+      expect((urgent as HTMLElement).style.backgroundColor).toBe("rgb(211, 47, 47)");
+    });
+
+    it("lädt die Liste neu, wenn der Checkout invalid_status meldet", async () => {
+      const list = vi.spyOn(api, "getMyOrders").mockResolvedValue([pending]);
+      vi.spyOn(api, "createCheckout").mockRejectedValue(new ApiError("Bestellung ist nicht zahlbar", 409, "invalid_status"));
+      mount();
+      fireEvent.click(await screen.findByRole("button", { name: "Jetzt bezahlen" }));
+      expect(await screen.findByText("Bestellung ist nicht zahlbar")).toBeTruthy();
+      await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+      // invalid_status ist kein manueller Zahlungsweg: Button bleibt
+      expect(screen.getByRole("button", { name: "Jetzt bezahlen" })).toBeTruthy();
+    });
+
     it("zeigt bei manuellem Zahlungsweg den zentralen Hinweistext statt aller Bezahl-Buttons", async () => {
       vi.spyOn(api, "getMyOrders").mockResolvedValue([active, pending]);
       vi.spyOn(api, "createCheckout").mockRejectedValue(new ApiError("manual", 409, "manual"));
@@ -168,8 +188,8 @@ describe("OrdersPage", () => {
     });
   });
 
-  describe("Rueckkehr von Stripe", () => {
-    it("meldet bei ?paid= den Zahlungseingang und laedt nach 5 s den Status nach", async () => {
+  describe("Rückkehr von Stripe", () => {
+    it("meldet bei ?paid= den Zahlungseingang und lädt nach 5 s den Status nach", async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       try {
         const list = vi.spyOn(api, "getMyOrders")

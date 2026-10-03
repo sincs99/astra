@@ -38,7 +38,7 @@ describe("DashboardPage", () => {
     vi.spyOn(api, "getCurrentUser").mockResolvedValue(admin as never);
     vi.spyOn(api, "getClientInstances").mockResolvedValue([]);
     mount();
-    expect(await screen.findByText(/ueber den Admin-Bereich/)).toBeTruthy();
+    expect(await screen.findByText(/über den Admin-Bereich/)).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Zum Shop/ })).toBeNull();
   });
 
@@ -67,7 +67,7 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Eingeloggt als bob", { exact: false })).toBeTruthy();
   });
 
-  it("zeigt die Meldung der vorherigen Seite (z.B. nach dem Loeschen) als Toast", async () => {
+  it("zeigt die Meldung der vorherigen Seite (z.B. nach dem Löschen) als Toast", async () => {
     vi.spyOn(api, "getCurrentUser").mockResolvedValue(customer as never);
     vi.spyOn(api, "getClientInstances").mockResolvedValue([]);
     mount({ toast: 'Instance "Alt" wurde gelöscht.' });

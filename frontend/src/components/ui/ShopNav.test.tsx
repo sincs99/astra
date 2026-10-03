@@ -30,7 +30,7 @@ describe("Navigation (Shop und Verkauf)", () => {
     expect(link("Agents")).toBeNull();
   });
 
-  it("zeigt Admins zusaetzlich Produkte und Bestellungen", async () => {
+  it("zeigt Admins zusätzlich Produkte und Bestellungen", async () => {
     const link = await mountNav(true);
     expect(link("Shop")).toBeTruthy();
     expect(link("Produkte")?.getAttribute("href")).toBe("/admin/products");

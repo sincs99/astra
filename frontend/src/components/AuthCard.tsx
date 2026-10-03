@@ -6,7 +6,7 @@ interface AuthCardProps {
   children: ReactNode;
 }
 
-/** Zentrierte Karte fuer oeffentliche Seiten (Login, Registrierung, Passwort-Reset). */
+/** Zentrierte Karte für öffentliche Seiten (Login, Registrierung, Passwort-Reset). */
 export function AuthCard({ title, children }: AuthCardProps) {
   return (
     <div style={{ maxWidth: 400, margin: "clamp(24px, 10vh, 80px) auto", padding: 24 }}>

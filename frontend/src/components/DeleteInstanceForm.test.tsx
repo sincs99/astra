@@ -10,7 +10,7 @@ const typeName = (value: string) =>
 const deleteBtn = () => screen.getByRole("button", { name: "Endgültig löschen" }) as HTMLButtonElement;
 
 describe("DeleteInstanceForm", () => {
-  it("aktiviert Loeschen erst bei exakter Namenseingabe", async () => {
+  it("aktiviert Löschen erst bei exakter Namenseingabe", async () => {
     const onDelete = vi.fn().mockResolvedValue(undefined);
     render(<DeleteInstanceForm name="Mein Server" status="ready" onDelete={onDelete} onCancel={() => {}} />);
     expect(deleteBtn().disabled).toBe(true);

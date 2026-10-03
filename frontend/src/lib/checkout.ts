@@ -2,7 +2,7 @@ import { ApiError } from "../services/api";
 
 /**
  * Das Backend antwortet auf den Checkout-Aufruf mit 409 "manual", solange kein Zahlungsanbieter
- * konfiguriert ist (Zahlung ausserhalb von Astra, Admin bestaetigt). Erkannt wird sowohl ein Fehlercode
+ * konfiguriert ist (Zahlung ausserhalb von Astra, Admin bestätigt). Erkannt wird sowohl ein Fehlercode
  * "manual" als auch ein Fehlertext, der "manual" enthaelt.
  */
 export function isManualPayment(err: unknown): boolean {
@@ -22,7 +22,7 @@ export function safeCheckoutUrl(url: unknown): string | null {
 
 export type PaymentReturn = { kind: "paid" | "cancelled"; orderUuid: string } | null;
 
-/** Liest die Rueckkehr von Stripe: /orders?paid=<uuid> oder ?cancelled=<uuid>. */
+/** Liest die Rückkehr von Stripe: /orders?paid=<uuid> oder ?cancelled=<uuid>. */
 export function readPaymentReturn(params: URLSearchParams): PaymentReturn {
   const paid = params.get("paid");
   if (paid) return { kind: "paid", orderUuid: paid };

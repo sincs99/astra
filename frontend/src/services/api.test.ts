@@ -39,8 +39,8 @@ describe("api.request", () => {
 
   it("behandelt ein falsches Passwort beim Login nicht als abgelaufene Sitzung", async () => {
     setAccessToken("alt");
-    mockFetch(401, { error: "Ungueltige Zugangsdaten" });
-    await expect(api.login("a", "b")).rejects.toThrow("Ungueltige Zugangsdaten");
+    mockFetch(401, { error: "Ungueltige Zugangsdaten" }); // Backend liefert ASCII-Schreibweise
+    await expect(api.login("a", "b")).rejects.toThrow("Ungültige Zugangsdaten");
     expect(assign).not.toHaveBeenCalled();
     expect(getAccessToken()).toBe("alt");
   });
