@@ -103,6 +103,8 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `redis` zu `backend/requirements.txt` hinzugefuegt
 
 ### Added (Frontend)
+- Agents-Seite: Health-Badge je Agent (`GET /admin/agents/monitoring`, 15s Auto-Refresh), optional "Wings erreichbar"/Version sobald `daemon_reachable`/`daemon_version` geliefert werden
+- Kunden-/Admin-Trennung im UI: Admin-Links nur fuer `is_admin`, Admin-Routen leiten Kunden zum Dashboard um (`AdminRoute`, `useCurrentUser`); Dashboard zeigt den Benutzernamen statt "User #id" und einen Kunden-Leerzustand
 - Instance-Detail: Box "SFTP-Zugang" (Host, Port, Benutzername `<user>.<uuid[:8]>` mit Kopier-Buttons, Hinweis auf Panel-Passwort/SSH-Key). Port aus `connection.sftp_port`, fuer Admins sonst aus der Agent-Liste
 - Endpoint-Formular: Port-Bereich (`25565-25600`) ueber `POST /admin/agents/{id}/endpoints/bulk`, Ergebnis-Toast "n angelegt, m uebersprungen"; Einzelport wie bisher (`lib/portRange.ts`)
 - Blueprint-Import-UI (`BlueprintImport`) auf der Blueprint-Admin-Seite: Egg-JSON per Datei oder Textarea, Vorschau, Aufruf `POST /api/admin/blueprints/import` (Feature-Flag entfernt, immer sichtbar)

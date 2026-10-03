@@ -8,26 +8,29 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { linkStyle, btnDefault } from "./styles";
 import { logout } from "../../services/api";
+import { useCurrentUser, resetCurrentUserCache } from "../../hooks/useCurrentUser";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 interface NavItem {
   label: string;
   href: string;
   group: string;
+  /** Nur fuer Administratoren sichtbar */
+  adminOnly?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
   // Core
   { label: "Dashboard", href: "/", group: "Core" },
-  { label: "Agents", href: "/admin/agents", group: "Core" },
-  { label: "Blueprints", href: "/admin/blueprints", group: "Core" },
-  { label: "Instances", href: "/admin/instances", group: "Core" },
+  { label: "Agents", adminOnly: true, href: "/admin/agents", group: "Core" },
+  { label: "Blueprints", adminOnly: true, href: "/admin/blueprints", group: "Core" },
+  { label: "Instances", adminOnly: true, href: "/admin/instances", group: "Core" },
   // Operations
-  { label: "Fleet Monitoring", href: "/admin/agents/monitoring", group: "Operations" },
-  { label: "Jobs", href: "/admin/jobs", group: "Operations" },
-  { label: "System", href: "/admin/system", group: "Operations" },
+  { label: "Fleet Monitoring", adminOnly: true, href: "/admin/agents/monitoring", group: "Operations" },
+  { label: "Jobs", adminOnly: true, href: "/admin/jobs", group: "Operations" },
+  { label: "System", adminOnly: true, href: "/admin/system", group: "Operations" },
   // Integrations
-  { label: "Webhooks", href: "/admin/webhooks", group: "Integrations" },
+  { label: "Webhooks", adminOnly: true, href: "/admin/webhooks", group: "Integrations" },
   // Account
   { label: "SSH Keys", href: "/account/ssh-keys", group: "Account" },
 ];
@@ -53,10 +56,14 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
     return () => document.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
-  const groups = Array.from(new Set(NAV_ITEMS.map((i) => i.group)));
+  const user = useCurrentUser();
+  // Waehrend der User laedt, gelten die Admin-Links als nicht sichtbar (kein Flackern fuer Kunden)
+  const navItems = NAV_ITEMS.filter((i) => !i.adminOnly || user?.is_admin);
+  const groups = Array.from(new Set(navItems.map((i) => i.group)));
 
   const handleLogout = () => {
     logout();
+    resetCurrentUserCache();
     navigate("/login");
   };
 
@@ -93,7 +100,7 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
             </button>
           )}
           {!isMobile && <div style={{ display: "flex", gap: 4, fontSize: 13, flex: 1, minWidth: 0, overflowX: "auto" }}>
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.href}
                 to={item.href}
@@ -131,7 +138,7 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
                 <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, color: "#666", padding: "4px 10px" }}>
                   {group}
                 </div>
-                {NAV_ITEMS.filter((i) => i.group === group).map((item) => (
+                {navItems.filter((i) => i.group === group).map((item) => (
                   <Link
                     key={item.href}
                     to={item.href}
