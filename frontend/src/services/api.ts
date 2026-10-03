@@ -324,8 +324,12 @@ export interface Instance {
 }
 
 export interface InstanceConnection {
-  host: string;
+  /** FQDN des Agents; null falls kein Agent geladen */
+  host: string | null;
+  ip?: string;
   port: number;
+  /** SFTP-Port des Agents (optional, falls das Backend ihn mitliefert) */
+  sftp_port?: number;
   /** Fertige Adresse, z.B. "node1.example.com:25565" */
   address: string;
 }
@@ -755,6 +759,13 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  /** Port-Bereich als Endpoints anlegen; bereits vorhandene ip:port werden uebersprungen. */
+  createEndpointsBulk: (agentId: number, data: { ip?: string; port_start: number; port_end: number }) =>
+    request<{ created: number; skipped: number; endpoints: Endpoint[] }>(
+      `/admin/agents/${agentId}/endpoints/bulk`,
+      { method: "POST", body: JSON.stringify(data) },
+    ),
 
   // ── Admin: Instances ─────────────────────────────────
   getInstances: () => request<Instance[]>("/admin/instances"),
