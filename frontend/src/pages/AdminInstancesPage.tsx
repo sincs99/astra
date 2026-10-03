@@ -128,33 +128,33 @@ export function AdminInstancesPage() {
         <form onSubmit={handleSubmit}>
           <div style={grid2}>
             <div>
-              <label style={labelStyle}>Name *</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="z.B. MC-Server-1" required style={inputStyle} />
+              <label htmlFor="fld-8" style={labelStyle}>Name *</label>
+              <input id="fld-8" type="text" value={name} onChange={e => setName(e.target.value)} placeholder="z.B. MC-Server-1" required style={inputStyle} />
             </div>
             <div>
-              <label style={labelStyle}>Beschreibung</label>
-              <input type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional" style={inputStyle} />
+              <label htmlFor="fld-9" style={labelStyle}>Beschreibung</label>
+              <input id="fld-9" type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional" style={inputStyle} />
             </div>
           </div>
 
           <div style={{ ...grid3, marginTop: 12 }}>
             <div>
-              <label style={labelStyle}>Owner *</label>
-              <select value={ownerId} onChange={e => setOwnerId(e.target.value ? Number(e.target.value) : "")} required style={inputStyle}>
+              <label htmlFor="fld-10" style={labelStyle}>Owner *</label>
+              <select id="fld-10" value={ownerId} onChange={e => setOwnerId(e.target.value ? Number(e.target.value) : "")} required style={inputStyle}>
                 <option value="">– Wählen –</option>
                 {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
               </select>
             </div>
             <div>
-              <label style={labelStyle}>Agent *</label>
-              <select value={agentId} onChange={e => { setAgentId(e.target.value ? Number(e.target.value) : ""); setEndpointId(""); }} required style={inputStyle}>
+              <label htmlFor="fld-11" style={labelStyle}>Agent *</label>
+              <select id="fld-11" value={agentId} onChange={e => { setAgentId(e.target.value ? Number(e.target.value) : ""); setEndpointId(""); }} required style={inputStyle}>
                 <option value="">– Wählen –</option>
                 {agents.map(a => <option key={a.id} value={a.id}>{a.name} ({a.fqdn})</option>)}
               </select>
             </div>
             <div>
-              <label style={labelStyle}>Blueprint *</label>
-              <select value={blueprintId} onChange={e => setBlueprintId(e.target.value ? Number(e.target.value) : "")} required style={inputStyle}>
+              <label htmlFor="fld-12" style={labelStyle}>Blueprint *</label>
+              <select id="fld-12" value={blueprintId} onChange={e => setBlueprintId(e.target.value ? Number(e.target.value) : "")} required style={inputStyle}>
                 <option value="">– Wählen –</option>
                 {blueprints.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
@@ -162,8 +162,8 @@ export function AdminInstancesPage() {
           </div>
 
           <div style={{ marginTop: 12 }}>
-            <label style={labelStyle}>Endpoint (optional – sonst automatisch)</label>
-            <select value={endpointId} onChange={e => setEndpointId(e.target.value ? Number(e.target.value) : "")} style={inputStyle} disabled={!agentId}>
+            <label htmlFor="fld-13" style={labelStyle}>Endpoint (optional – sonst automatisch)</label>
+            <select id="fld-13" value={endpointId} onChange={e => setEndpointId(e.target.value ? Number(e.target.value) : "")} style={inputStyle} disabled={!agentId}>
               <option value="">– Automatisch zuweisen –</option>
               {freeEndpoints.map(ep => <option key={ep.id} value={ep.id}>{ep.ip}:{ep.port}</option>)}
             </select>
@@ -181,8 +181,8 @@ export function AdminInstancesPage() {
               { label: "CPU (%)", value: cpu, set: setCpu, min: 1 },
             ].map(f => (
               <div key={f.label}>
-                <label style={labelStyle}>{f.label}</label>
-                <input type="number" value={f.value} onChange={e => f.set(Number(e.target.value))} min={f.min} max={f.max} style={inputStyle} />
+                <label htmlFor={`res-${f.label}`} style={labelStyle}>{f.label}</label>
+                <input id={`res-${f.label}`} type="number" value={f.value} onChange={e => f.set(Number(e.target.value))} min={f.min} max={f.max} style={inputStyle} />
               </div>
             ))}
           </div>
@@ -228,7 +228,7 @@ export function AdminInstancesPage() {
                   <tr key={inst.id}>
                     <td style={tdStyle}>
                       <strong>{inst.name}</strong>
-                      {inst.description && <div style={{ fontSize: 12, color: "#888" }}>{inst.description}</div>}
+                      {inst.description && <div style={{ fontSize: 12, color: "#666" }}>{inst.description}</div>}
                     </td>
                     <td style={tdStyle}>
                       <code style={{ fontSize: 11 }}>{inst.uuid.substring(0, 8)}…</code>

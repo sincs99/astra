@@ -33,7 +33,7 @@ export function DashboardPage() {
 
   return (
     <PageLayout title="Dashboard" maxWidth={900}>
-      <p style={{ color: "#888", marginTop: -12, marginBottom: 24, fontSize: 14 }}>
+      <p style={{ color: "#666", marginTop: -12, marginBottom: 24, fontSize: 14 }}>
         Eingeloggt als User #{userId}
       </p>
 
@@ -62,7 +62,7 @@ export function DashboardPage() {
                 <div>
                   <strong style={{ fontSize: 16 }}>{inst.name}</strong>
                   {inst.description && (
-                    <span style={{ color: "#888", marginLeft: 8, fontSize: 14 }}>
+                    <span style={{ color: "#666", marginLeft: 8, fontSize: 14 }}>
                       {inst.description}
                     </span>
                   )}

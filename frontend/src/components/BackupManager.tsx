@@ -104,9 +104,9 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
 
       {/* Backup-Liste */}
       {loading ? (
-        <p style={{ color: "#888" }}>Backups werden geladen...</p>
+        <p style={{ color: "#666" }}>Backups werden geladen...</p>
       ) : backups.length === 0 ? (
-        <p style={{ color: "#888" }}>Noch keine Backups vorhanden.</p>
+        <p style={{ color: "#666" }}>Noch keine Backups vorhanden.</p>
       ) : (
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
@@ -124,7 +124,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
                 <td style={tdS}>
                   {b.is_locked && "🔒 "}
                   {b.name}
-                  <div style={{ fontSize: 11, color: "#aaa" }}>
+                  <div style={{ fontSize: 11, color: "#666" }}>
                     {b.uuid.substring(0, 8)}…
                   </div>
                 </td>

@@ -171,7 +171,7 @@ export function AdminAgentsPage() {
             {submitting ? "…" : "Agent erstellen"}
           </button>
         </form>
-        <p style={{ color: "#888", fontSize: 12, margin: "8px 0 0" }}>
+        <p style={{ color: "#666", fontSize: 12, margin: "8px 0 0" }}>
           Beim Erstellen werden Node-Credentials erzeugt. Die fertige <code>config.yml</code> für Wings
           gibt es anschließend über den Button beim Agent.
         </p>
@@ -182,8 +182,8 @@ export function AdminAgentsPage() {
         <h2 style={{ marginTop: 0, fontSize: 18, fontWeight: 700 }}>Neuer Endpoint</h2>
         <form onSubmit={handleEndpointSubmit} style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 140 }}>
-            <label style={labelStyle}>Agent *</label>
-            <select
+            <label htmlFor="fld-1" style={labelStyle}>Agent *</label>
+            <select id="fld-1"
               value={epAgentId}
               onChange={e => setEpAgentId(e.target.value ? Number(e.target.value) : "")}
               required
@@ -196,8 +196,8 @@ export function AdminAgentsPage() {
             </select>
           </div>
           <div>
-            <label style={labelStyle}>IP</label>
-            <input
+            <label htmlFor="fld-2" style={labelStyle}>IP</label>
+            <input id="fld-2"
               type="text"
               value={epIp}
               onChange={e => setEpIp(e.target.value)}
@@ -206,8 +206,8 @@ export function AdminAgentsPage() {
             />
           </div>
           <div>
-            <label style={labelStyle}>Port *</label>
-            <input
+            <label htmlFor="fld-3" style={labelStyle}>Port *</label>
+            <input id="fld-3"
               type="number"
               value={epPort}
               onChange={e => setEpPort(e.target.value)}
@@ -278,7 +278,7 @@ export function AdminAgentsPage() {
             <div key={agent.id} style={{ ...cardStyle, marginBottom: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
                 <strong style={{ fontSize: 16 }}>{agent.name}</strong>
-                <span style={{ color: "#888", fontSize: 14 }}>
+                <span style={{ color: "#666", fontSize: 14 }}>
                   {agent.scheme}://{agent.fqdn}:{agent.daemon_connect}
                 </span>
                 <StatusBadge status={agent.is_active ? "active" : "inactive"} size="sm" />
@@ -303,7 +303,7 @@ export function AdminAgentsPage() {
               </div>
 
               {agentEndpoints.length === 0 ? (
-                <p style={{ color: "#888", margin: "4px 0 0", fontSize: 13 }}>Keine Endpoints</p>
+                <p style={{ color: "#666", margin: "4px 0 0", fontSize: 13 }}>Keine Endpoints</p>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
@@ -477,7 +477,7 @@ function AgentFormFields({ values, onChange, idPrefix, showActive }: AgentFormFi
           </label>
         )}
       </div>
-      <p style={{ color: "#888", fontSize: 12, margin: "8px 0 0" }}>
+      <p style={{ color: "#666", fontSize: 12, margin: "8px 0 0" }}>
         <strong>Connect-Port:</strong> unter diesem Port erreicht das Panel Wings (z.B. 443 hinter Caddy).{" "}
         <strong>Listen-Port:</strong> hier lauscht Wings lokal (z.B. 8080).
       </p>

@@ -80,8 +80,8 @@ export function AdminAgentsMonitoringPage() {
       {/* Filter & Suche */}
       <div style={{ ...cardStyle, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div>
-          <label style={labelStyle}>Status-Filter</label>
-          <select
+          <label htmlFor="fld-4" style={labelStyle}>Status-Filter</label>
+          <select id="fld-4"
             value={healthFilter}
             onChange={e => setHealthFilter(e.target.value as HealthFilter)}
             style={inputStyle}
@@ -94,8 +94,8 @@ export function AdminAgentsMonitoringPage() {
           </select>
         </div>
         <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Suche (Name / FQDN)</label>
-          <input
+          <label htmlFor="fld-5" style={labelStyle}>Suche (Name / FQDN)</label>
+          <input id="fld-5"
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -183,9 +183,9 @@ function FleetSummaryCards({ summary }: { summary: FleetSummary }) {
 function SummaryCard({ label, value, detail, color }: { label: string; value: string | number; detail?: string; color?: string }) {
   return (
     <div style={{ ...cardStyle, textAlign: "center", padding: 14 }}>
-      <div style={{ fontSize: 12, color: "#888", textTransform: "uppercase", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 12, color: "#666", textTransform: "uppercase", fontWeight: 600 }}>{label}</div>
       <div style={{ fontSize: 28, fontWeight: 700, color: color || "#333", marginTop: 4 }}>{value}</div>
-      {detail && <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>{detail}</div>}
+      {detail && <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>{detail}</div>}
     </div>
   );
 }
@@ -202,7 +202,7 @@ function AgentRow({ agent, onRefresh }: { agent: AgentMonitoringEntry; onRefresh
       <td style={tdStyle}>
         <div>
           <strong>{agent.name}</strong>
-          <div style={{ fontSize: 11, color: "#888" }}>{agent.fqdn}</div>
+          <div style={{ fontSize: 11, color: "#666" }}>{agent.fqdn}</div>
         </div>
       </td>
       <td style={tdStyle}>
@@ -212,7 +212,7 @@ function AgentRow({ agent, onRefresh }: { agent: AgentMonitoringEntry; onRefresh
         {agent.last_seen_at ? (
           <span title={agent.last_seen_at}>{formatTimeAgo(agent.last_seen_at)}</span>
         ) : (
-          <span style={{ color: "#999" }}>nie</span>
+          <span style={{ color: "#666" }}>nie</span>
         )}
       </td>
       <td style={{ ...tdStyle, textAlign: "center" }}>{agent.instance_count}</td>
@@ -227,9 +227,9 @@ function AgentRow({ agent, onRefresh }: { agent: AgentMonitoringEntry; onRefresh
       </td>
       <td style={{ ...tdStyle, fontSize: 12 }}>
         {ep.total > 0 ? (
-          <span>{ep.assigned}/{ep.total}{ep.locked > 0 && <span style={{ color: "#999" }}> (🔒{ep.locked})</span>}</span>
+          <span>{ep.assigned}/{ep.total}{ep.locked > 0 && <span style={{ color: "#666" }}> (🔒{ep.locked})</span>}</span>
         ) : (
-          <span style={{ color: "#999" }}>-</span>
+          <span style={{ color: "#666" }}>-</span>
         )}
       </td>
       <td style={{ ...tdStyle, textAlign: "center" }}>
@@ -269,7 +269,7 @@ function MaintenanceToggle({ agent, onRefresh }: { agent: AgentMonitoringEntry; 
         <StatusBadge status="maintenance" size="sm" />
       )}
       {agent.maintenance_reason && (
-        <div style={{ fontSize: 10, color: "#888", marginTop: 2 }} title={agent.maintenance_reason}>
+        <div style={{ fontSize: 10, color: "#666", marginTop: 2 }} title={agent.maintenance_reason}>
           {agent.maintenance_reason.substring(0, 30)}
         </div>
       )}
@@ -291,7 +291,7 @@ function MaintenanceToggle({ agent, onRefresh }: { agent: AgentMonitoringEntry; 
 // ── Utilization Bar ──────────────────────────────────────
 
 function UtilizationBar({ used, total, percent, unit }: { used: number; total: number; percent: number; unit: string }) {
-  if (total <= 0) return <span style={{ color: "#999", fontSize: 12 }}>n/a</span>;
+  if (total <= 0) return <span style={{ color: "#666", fontSize: 12 }}>n/a</span>;
   const color = utilizationColor(percent);
   return (
     <div style={{ minWidth: 100 }}>
@@ -308,10 +308,11 @@ function UtilizationBar({ used, total, percent, unit }: { used: number; total: n
 // ── Hilfsfunktionen ──────────────────────────────────────
 
 function utilizationColor(percent: number): string {
-  if (percent >= 90) return "#d32f2f";
-  if (percent >= 70) return "#f57c00";
-  if (percent >= 50) return "#fbc02d";
-  return "#4caf50";
+  // Farben erfuellen WCAG AA (4.5:1) auch als Text
+  if (percent >= 90) return "#c62828";
+  if (percent >= 70) return "#e65100";
+  if (percent >= 50) return "#8d6e00";
+  return "#2e7d32";
 }
 
 function formatMB(mb: number): string {

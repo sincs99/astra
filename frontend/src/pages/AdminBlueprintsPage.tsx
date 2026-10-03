@@ -293,7 +293,7 @@ export function AdminBlueprintsPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
                     <strong style={{ fontSize: 16 }}>{bp.name}</strong>
-                    <span style={{ marginLeft: 8, color: "#aaa", fontSize: 12 }}>#{bp.id}</span>
+                    <span style={{ marginLeft: 8, color: "#666", fontSize: 12 }}>#{bp.id}</span>
                     {bp.description && <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>{bp.description}</div>}
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
@@ -319,7 +319,7 @@ export function AdminBlueprintsPage() {
                       : <span style={{ color: "#d32f2f" }}>fehlt – Server bleibt in Wings auf „starting“</span>}
                   </span>
                   <span><strong>Variablen:</strong> {bp.variables?.length ?? 0}</span>
-                  <span style={{ color: "#aaa" }}>{bp.created_at ? new Date(bp.created_at).toLocaleString("de-CH") : "–"}</span>
+                  <span style={{ color: "#666" }}>{bp.created_at ? new Date(bp.created_at).toLocaleString("de-CH") : "–"}</span>
                 </div>
 
                 {bp.variables && bp.variables.length > 0 && (

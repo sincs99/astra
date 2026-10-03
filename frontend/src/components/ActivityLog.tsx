@@ -24,8 +24,8 @@ export function ActivityLog({ instanceUuid }: ActivityLogProps) {
     load();
   }, [instanceUuid]);
 
-  if (loading) return <p style={{ color: "#888", fontSize: 13 }}>Wird geladen...</p>;
-  if (logs.length === 0) return <p style={{ color: "#888", fontSize: 13 }}>Keine Aktivitäten vorhanden.</p>;
+  if (loading) return <p style={{ color: "#666", fontSize: 13 }}>Wird geladen...</p>;
+  if (logs.length === 0) return <p style={{ color: "#666", fontSize: 13 }}>Keine Aktivitäten vorhanden.</p>;
 
   return (
     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>

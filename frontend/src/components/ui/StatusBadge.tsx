@@ -11,41 +11,41 @@
 
 const STATUS_CONFIG: Record<string, { bg: string; color: string; label?: string }> = {
   // Lifecycle
-  ready: { bg: "#e8f5e9", color: "#4caf50" },
-  running: { bg: "#e8f5e9", color: "#4caf50" },
-  starting: { bg: "#e3f2fd", color: "#1976d2" },
-  stopping: { bg: "#fff3e0", color: "#f57c00" },
-  stopped: { bg: "#f5f5f5", color: "#888" },
-  provisioning: { bg: "#e3f2fd", color: "#1976d2" },
-  provision_failed: { bg: "#ffebee", color: "#d32f2f", label: "Fehler" },
-  reinstalling: { bg: "#e3f2fd", color: "#1976d2" },
-  reinstall_failed: { bg: "#ffebee", color: "#d32f2f", label: "Fehler" },
-  restoring: { bg: "#fff3e0", color: "#f57c00" },
-  suspended: { bg: "#f5f5f5", color: "#888" },
-  transferring: { bg: "#e3f2fd", color: "#1976d2" },
-  transfer_failed: { bg: "#ffebee", color: "#d32f2f", label: "Transfer Fehler" },
+  ready: { bg: "#e8f5e9", color: "#2e7d32" },
+  running: { bg: "#e8f5e9", color: "#2e7d32" },
+  starting: { bg: "#e3f2fd", color: "#1565c0" },
+  stopping: { bg: "#fff3e0", color: "#e65100" },
+  stopped: { bg: "#f5f5f5", color: "#666" },
+  provisioning: { bg: "#e3f2fd", color: "#1565c0" },
+  provision_failed: { bg: "#ffebee", color: "#c62828", label: "Fehler" },
+  reinstalling: { bg: "#e3f2fd", color: "#1565c0" },
+  reinstall_failed: { bg: "#ffebee", color: "#c62828", label: "Fehler" },
+  restoring: { bg: "#fff3e0", color: "#e65100" },
+  suspended: { bg: "#f5f5f5", color: "#666" },
+  transferring: { bg: "#e3f2fd", color: "#1565c0" },
+  transfer_failed: { bg: "#ffebee", color: "#c62828", label: "Transfer Fehler" },
   // Health
-  healthy: { bg: "#e8f5e9", color: "#4caf50" },
-  stale: { bg: "#fff8e1", color: "#f57c00" },
-  degraded: { bg: "#ffebee", color: "#d32f2f" },
-  unreachable: { bg: "#f5f5f5", color: "#888" },
+  healthy: { bg: "#e8f5e9", color: "#2e7d32" },
+  stale: { bg: "#fff8e1", color: "#e65100" },
+  degraded: { bg: "#ffebee", color: "#c62828" },
+  unreachable: { bg: "#f5f5f5", color: "#666" },
   // Jobs
-  pending: { bg: "#e3f2fd", color: "#1976d2" },
-  completed: { bg: "#e8f5e9", color: "#4caf50" },
-  failed: { bg: "#ffebee", color: "#d32f2f" },
-  retrying: { bg: "#f3e5f5", color: "#9c27b0" },
+  pending: { bg: "#e3f2fd", color: "#1565c0" },
+  completed: { bg: "#e8f5e9", color: "#2e7d32" },
+  failed: { bg: "#ffebee", color: "#c62828" },
+  retrying: { bg: "#f3e5f5", color: "#7b1fa2" },
   // Maintenance
   maintenance: { bg: "#fff3e0", color: "#e65100" },
   // Misc
-  ok: { bg: "#e8f5e9", color: "#4caf50" },
-  active: { bg: "#e8f5e9", color: "#4caf50", label: "aktiv" },
-  inactive: { bg: "#f5f5f5", color: "#888", label: "inaktiv" },
-  offline: { bg: "#f5f5f5", color: "#888" },
-  unknown: { bg: "#f5f5f5", color: "#888" },
-  error: { bg: "#ffebee", color: "#d32f2f" },
-  warning: { bg: "#fff3e0", color: "#f57c00" },
-  info: { bg: "#e3f2fd", color: "#1976d2" },
-  success: { bg: "#e8f5e9", color: "#4caf50" },
+  ok: { bg: "#e8f5e9", color: "#2e7d32" },
+  active: { bg: "#e8f5e9", color: "#2e7d32", label: "aktiv" },
+  inactive: { bg: "#f5f5f5", color: "#666", label: "inaktiv" },
+  offline: { bg: "#f5f5f5", color: "#666" },
+  unknown: { bg: "#f5f5f5", color: "#666" },
+  error: { bg: "#ffebee", color: "#c62828" },
+  warning: { bg: "#fff3e0", color: "#e65100" },
+  info: { bg: "#e3f2fd", color: "#1565c0" },
+  success: { bg: "#e8f5e9", color: "#2e7d32" },
 };
 
 interface StatusBadgeProps {
@@ -56,7 +56,7 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, label, size = "md" }: StatusBadgeProps) {
   const s = (status || "unknown").toLowerCase();
-  const cfg = STATUS_CONFIG[s] || { bg: "#f5f5f5", color: "#888" };
+  const cfg = STATUS_CONFIG[s] || { bg: "#f5f5f5", color: "#666" };
   const displayLabel = label || cfg.label || s;
 
   const fontSize = size === "sm" ? 10 : 12;

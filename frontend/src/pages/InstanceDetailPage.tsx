@@ -189,7 +189,7 @@ export function InstanceDetailPage() {
       </div>
 
       {instance.description && (
-        <p style={{ color: "#888", marginTop: 4 }}>{instance.description}</p>
+        <p style={{ color: "#666", marginTop: 4 }}>{instance.description}</p>
       )}
 
       {instance.connection && (
@@ -230,10 +230,10 @@ export function InstanceDetailPage() {
 
         {(status === "provisioning" || status === "reinstalling") && (
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #eee" }}>
-            <p style={{ fontSize: 13, color: "#888", margin: "0 0 8px" }}>
+            <p style={{ fontSize: 13, color: "#666", margin: "0 0 8px" }}>
               {status === "reinstalling" ? "⏳ Reinstallation läuft..." : "⏳ Installation läuft..."}
             </p>
-            <p style={{ fontSize: 12, color: "#aaa", margin: "0 0 8px" }}>Simuliere Install-Callback:</p>
+            <p style={{ fontSize: 12, color: "#666", margin: "0 0 8px" }}>Simuliere Install-Callback:</p>
             <button onClick={() => handleInstallCallback(true)} disabled={acting} style={{ ...btnDefault, marginRight: 8 }}>✅ Erfolgreich</button>
             <button onClick={() => handleInstallCallback(false)} disabled={acting} style={btnDefault}>❌ Fehlgeschlagen</button>
           </div>
@@ -276,9 +276,9 @@ export function InstanceDetailPage() {
             <ResourceBox label="Uptime" value={formatUptime(resources.uptime_seconds)} />
           </div>
         ) : (
-          <p style={{ color: "#888", marginTop: 8 }}>Runtime-Daten werden geladen...</p>
+          <p style={{ color: "#666", marginTop: 8 }}>Runtime-Daten werden geladen...</p>
         )}
-        <p style={{ fontSize: 11, color: "#aaa", marginBottom: 0, marginTop: 8 }}>
+        <p style={{ fontSize: 11, color: "#666", marginBottom: 0, marginTop: 8 }}>
           Auto-Refresh alle 5 Sekunden
         </p>
       </div>
@@ -299,8 +299,8 @@ export function InstanceDetailPage() {
                 <tr key={v.env_var} style={{ borderBottom: "1px solid #f0f0f0" }}>
                   <td style={{ padding: "8px", verticalAlign: "middle" }}>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{v.name}</div>
-                    {v.description && <div style={{ fontSize: 11, color: "#888" }}>{v.description}</div>}
-                    <code style={{ fontSize: 11, color: "#aaa" }}>{v.env_var}</code>
+                    {v.description && <div style={{ fontSize: 11, color: "#666" }}>{v.description}</div>}
+                    <code style={{ fontSize: 11, color: "#666" }}>{v.env_var}</code>
                   </td>
                   <td style={{ padding: "8px", verticalAlign: "middle" }}>
                     {v.user_editable ? (
@@ -416,9 +416,9 @@ function DetailRow({ label, value, mono }: { label: string; value: string; mono?
 function ResourceBox({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div style={{ padding: 12, backgroundColor: "#f8f8f8", borderRadius: 6, textAlign: "center" }}>
-      <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 16, fontWeight: 600 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#aaa" }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 11, color: "#666" }}>{sub}</div>}
     </div>
   );
 }

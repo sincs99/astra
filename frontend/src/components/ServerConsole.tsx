@@ -224,7 +224,7 @@ export function ServerConsole({ instanceUuid }: Props) {
   }, []);
 
   const stateColor: Record<ConnectionState, string> = {
-    disconnected: "#999",
+    disconnected: "#666",
     connecting: "#f0ad4e",
     connected: "#5cb85c",
     error: "#d9534f",
