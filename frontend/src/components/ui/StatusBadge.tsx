@@ -14,19 +14,19 @@ const STATUS_CONFIG: Record<string, { bg: string; color: string; label?: string 
   ready: { bg: "#e8f5e9", color: "#2e7d32" },
   running: { bg: "#e8f5e9", color: "#2e7d32" },
   starting: { bg: "#e3f2fd", color: "#1565c0" },
-  stopping: { bg: "#fff3e0", color: "#e65100" },
+  stopping: { bg: "#fff3e0", color: "#bf360c" },
   stopped: { bg: "#f5f5f5", color: "#666" },
   provisioning: { bg: "#e3f2fd", color: "#1565c0" },
   provision_failed: { bg: "#ffebee", color: "#c62828", label: "Fehler" },
   reinstalling: { bg: "#e3f2fd", color: "#1565c0" },
   reinstall_failed: { bg: "#ffebee", color: "#c62828", label: "Fehler" },
-  restoring: { bg: "#fff3e0", color: "#e65100" },
+  restoring: { bg: "#fff3e0", color: "#bf360c" },
   suspended: { bg: "#f5f5f5", color: "#666" },
   transferring: { bg: "#e3f2fd", color: "#1565c0" },
   transfer_failed: { bg: "#ffebee", color: "#c62828", label: "Transfer Fehler" },
   // Health
   healthy: { bg: "#e8f5e9", color: "#2e7d32" },
-  stale: { bg: "#fff8e1", color: "#e65100" },
+  stale: { bg: "#fff8e1", color: "#bf360c" },
   degraded: { bg: "#ffebee", color: "#c62828" },
   unreachable: { bg: "#f5f5f5", color: "#666" },
   // Jobs
@@ -34,8 +34,13 @@ const STATUS_CONFIG: Record<string, { bg: string; color: string; label?: string 
   completed: { bg: "#e8f5e9", color: "#2e7d32" },
   failed: { bg: "#ffebee", color: "#c62828" },
   retrying: { bg: "#f3e5f5", color: "#7b1fa2" },
+  // Bestellungen (Phase 4)
+  pending_payment: { bg: "#e3f2fd", color: "#1565c0", label: "Zahlung ausstehend" },
+  past_due: { bg: "#fff3e0", color: "#bf360c", label: "überfällig" },
+  cancelled: { bg: "#f5f5f5", color: "#666", label: "gekündigt" },
+  expired: { bg: "#ffebee", color: "#c62828", label: "abgelaufen" },
   // Maintenance
-  maintenance: { bg: "#fff3e0", color: "#e65100" },
+  maintenance: { bg: "#fff3e0", color: "#bf360c" },
   // Misc
   ok: { bg: "#e8f5e9", color: "#2e7d32" },
   active: { bg: "#e8f5e9", color: "#2e7d32", label: "aktiv" },
@@ -43,7 +48,7 @@ const STATUS_CONFIG: Record<string, { bg: string; color: string; label?: string 
   offline: { bg: "#f5f5f5", color: "#666" },
   unknown: { bg: "#f5f5f5", color: "#666" },
   error: { bg: "#ffebee", color: "#c62828" },
-  warning: { bg: "#fff3e0", color: "#e65100" },
+  warning: { bg: "#fff3e0", color: "#bf360c" },
   info: { bg: "#e3f2fd", color: "#1565c0" },
   success: { bg: "#e8f5e9", color: "#2e7d32" },
 };

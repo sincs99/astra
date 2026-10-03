@@ -9,6 +9,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { linkStyle, btnDefault } from "./styles";
 import { logout } from "../../services/api";
 import { useCurrentUser, resetCurrentUserCache } from "../../hooks/useCurrentUser";
+import { SHOP_ENABLED } from "../../config";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 interface NavItem {
@@ -17,6 +18,8 @@ interface NavItem {
   group: string;
   /** Nur fuer Administratoren sichtbar */
   adminOnly?: boolean;
+  /** Phase 4: erst mit VITE_SHOP_ENABLED=true in der Navigation sichtbar (Seite ist per URL immer erreichbar) */
+  shop?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -29,6 +32,11 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Fleet Monitoring", adminOnly: true, href: "/admin/agents/monitoring", group: "Operations" },
   { label: "Jobs", adminOnly: true, href: "/admin/jobs", group: "Operations" },
   { label: "System", adminOnly: true, href: "/admin/system", group: "Operations" },
+  // Shop (Phase 4)
+  { label: "Shop", href: "/shop", group: "Shop", shop: true },
+  { label: "Meine Bestellungen", href: "/orders", group: "Shop", shop: true },
+  { label: "Produkte", href: "/admin/products", group: "Verkauf", adminOnly: true, shop: true },
+  { label: "Bestellungen", href: "/admin/orders", group: "Verkauf", adminOnly: true, shop: true },
   // Integrations
   { label: "Webhooks", adminOnly: true, href: "/admin/webhooks", group: "Integrations" },
   // Account
@@ -59,7 +67,7 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
 
   const user = useCurrentUser();
   // Waehrend der User laedt, gelten die Admin-Links als nicht sichtbar (kein Flackern fuer Kunden)
-  const navItems = NAV_ITEMS.filter((i) => !i.adminOnly || user?.is_admin);
+  const navItems = NAV_ITEMS.filter((i) => (!i.adminOnly || user?.is_admin) && (!i.shop || SHOP_ENABLED));
   const groups = Array.from(new Set(navItems.map((i) => i.group)));
 
   const handleLogout = () => {
