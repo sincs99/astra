@@ -41,6 +41,6 @@
 - SSL/TLS-Terminierung wird von externem Reverse Proxy erwartet.
 
 ### Sicherheit
-- **Offen (Blocker vor Internet-Betrieb):** Die Routen unter `/api/admin` und `/api/agent` pruefen keinen angemeldeten Admin. Nur `GET /api/admin/agents/{id}/configuration` und `POST /api/admin/agents/{id}/rotate-credentials` (M33) erzwingen `require_admin()`. Vor dem Pilot muss ein Admin-Guard auf den gesamten Admin-Blueprint.
+- **Offen (Blocker vor Internet-Betrieb):** Die Legacy-Routen unter `/api/agent` pruefen keine Authentifizierung. Wings nutzt `/api/remote` (Node-Token), die alten Agent-Routen sollten abgeschaltet oder per Token geschuetzt werden. `/api/admin` ist seit M35 durch einen Admin-Guard geschuetzt.
 - Rate Limiting nutzt Redis (`REDIS_URL`); ist Redis nicht erreichbar, faellt es auf einen In-Memory-Zaehler pro Prozess zurueck.
 - CSRF-Schutz ist ueber SameSite Cookies + JWT geloest, kein dedizierter CSRF-Token.

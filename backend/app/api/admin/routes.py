@@ -1,6 +1,6 @@
 """Admin-API-Routen (inkl. M22 Fleet Monitoring)."""
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from app.extensions import db
 from app.domain.agents.models import Agent
 from app.domain.blueprints.models import Blueprint as BlueprintModel
@@ -14,6 +14,21 @@ from app.domain.instances.service import (
 )
 
 admin_bp = Blueprint("admin", __name__)
+
+# Pfade ohne Admin-Pflicht (Liveness-Check)
+_PUBLIC_ADMIN_ENDPOINTS = {"admin.health"}
+
+
+@admin_bp.before_request
+def _admin_guard():
+    """Erzwingt Admin-Authentifizierung fuer den gesamten Admin-Blueprint (M35)."""
+    if not current_app.config.get("ADMIN_GUARD_ENABLED", True):
+        return None
+    if request.method == "OPTIONS" or request.endpoint in _PUBLIC_ADMIN_ENDPOINTS:
+        return None
+    from app.domain.auth.service import require_admin
+    _, err = require_admin()
+    return err
 
 # Wings-Verbindungsfelder, die ueber POST/PATCH /agents gepflegt werden duerfen (M33)
 _AGENT_CONNECTION_FIELDS = (

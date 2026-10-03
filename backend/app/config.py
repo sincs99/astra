@@ -84,6 +84,10 @@ class Config:
     RATELIMIT_ENABLED = os.getenv("RATELIMIT_ENABLED", "true").lower() == "true"
     RATELIMIT_AUTH_PER_MINUTE = int(os.getenv("RATELIMIT_AUTH_PER_MINUTE", "20"))
 
+    # ── Admin-Guard (M35) ───────────────────────────────
+    # Nur fuer Tests abschaltbar; in Dev/Prod immer aktiv.
+    ADMIN_GUARD_ENABLED = True
+
     # ── Accounts / Mail ─────────────────────────────────
     REGISTRATION_ENABLED = os.getenv("REGISTRATION_ENABLED", "false").lower() == "true"
     PASSWORD_RESET_TTL_MINUTES = int(os.getenv("PASSWORD_RESET_TTL_MINUTES", "60"))
@@ -183,6 +187,7 @@ class TestingConfig(Config):
     SECRET_KEY = "testing-secret-key"
     JWT_SECRET_KEY = "testing-jwt-secret-key"
     RATELIMIT_ENABLED = False
+    ADMIN_GUARD_ENABLED = False  # Legacy-Tests rufen /api/admin ohne Auth auf; test_m35 schaltet ihn ein
     WEBHOOK_MAX_RETRIES = 1
     WEBHOOK_RETRY_DELAYS = "0"
     WEBHOOK_REQUEST_TIMEOUT = 2
