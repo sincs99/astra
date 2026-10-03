@@ -1282,6 +1282,9 @@ export const api = {
       body: JSON.stringify(name ? { product_id: productId, name } : { product_id: productId }),
     }),
   getMyOrders: () => request<Order[]>("/client/orders"),
+  /** Startet die Zahlung (Stripe Checkout). 409 "manual", solange kein Zahlungsanbieter konfiguriert ist. */
+  createCheckout: (uuid: string) =>
+    request<{ checkout_url: string }>(`/client/orders/${uuid}/checkout`, { method: "POST", body: JSON.stringify({}) }),
   /** pending_payment: sofort storniert; active: zum Laufzeitende gekuendigt (cancel_at_period_end). */
   cancelOrder: (uuid: string) =>
     request<Order>(`/client/orders/${uuid}/cancel`, { method: "POST", body: JSON.stringify({}) }),

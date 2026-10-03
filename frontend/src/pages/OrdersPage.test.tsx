@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { OrdersPage } from "./OrdersPage";
-import { api } from "../services/api";
+import { api, ApiError } from "../services/api";
 import { makeOrder } from "../test/fixtures";
 
 const active = makeOrder({
@@ -23,8 +23,8 @@ const overdue = makeOrder({
   scheduled_deletion_at: "2026-10-08T08:30:00", current_period_end: "2026-09-30T00:00:00",
 });
 
-function mount() {
-  return render(<MemoryRouter><OrdersPage /></MemoryRouter>);
+function mount(path = "/orders") {
+  return render(<MemoryRouter initialEntries={[path]}><OrdersPage /></MemoryRouter>);
 }
 
 beforeEach(() => {
@@ -93,5 +93,84 @@ describe("OrdersPage", () => {
     mount();
     fireEvent.click(await screen.findByRole("button", { name: "Kündigen zum Laufzeitende" }));
     expect(await screen.findByText(/kann nicht storniert werden/)).toBeTruthy();
+  });
+
+  describe("Zahlung (Stripe-Checkout)", () => {
+    const assign = vi.fn();
+    beforeEach(() => {
+      assign.mockReset();
+      vi.stubGlobal("location", { ...window.location, assign });
+    });
+    afterEach(() => { vi.unstubAllGlobals(); });
+
+    it("startet den Checkout fuer unbezahlte Bestellungen und leitet zur Zahlungsseite weiter", async () => {
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([active, pending]);
+      const checkout = vi.spyOn(api, "createCheckout").mockResolvedValue({ checkout_url: "https://checkout.stripe.com/c/pay/cs_1" });
+      mount();
+      // Nur die unbezahlte Bestellung bekommt den Button
+      const buttons = await screen.findAllByRole("button", { name: "Jetzt bezahlen" });
+      expect(buttons).toHaveLength(1);
+      fireEvent.click(buttons[0]);
+      await waitFor(() => expect(checkout).toHaveBeenCalledWith("o-2"));
+      await waitFor(() => expect(assign).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_1"));
+    });
+
+    it("blendet 'Jetzt bezahlen' bei 409 manual aus und erklaert den Zahlungsweg", async () => {
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([pending, makeOrder({ id: 9, uuid: "o-9", status: "pending_payment" })]);
+      vi.spyOn(api, "createCheckout").mockRejectedValue(new ApiError("Zahlung erfolgt manuell", 409, "manual"));
+      mount();
+      fireEvent.click((await screen.findAllByRole("button", { name: "Jetzt bezahlen" }))[0]);
+      await waitFor(() => expect(screen.queryByRole("button", { name: "Jetzt bezahlen" })).toBeNull());
+      expect(screen.getAllByText(/Zahlung per Überweisung/)).toHaveLength(2);
+      expect(assign).not.toHaveBeenCalled();
+      // Stornieren bleibt moeglich
+      expect(screen.getAllByRole("button", { name: "Stornieren" })).toHaveLength(2);
+    });
+
+    it("zeigt andere Fehler als Meldung und behaelt den Button", async () => {
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([pending]);
+      vi.spyOn(api, "createCheckout").mockRejectedValue(new ApiError("Stripe ist nicht erreichbar", 502));
+      mount();
+      fireEvent.click(await screen.findByRole("button", { name: "Jetzt bezahlen" }));
+      expect(await screen.findByText("Stripe ist nicht erreichbar")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Jetzt bezahlen" })).toBeTruthy();
+    });
+
+    it("ruft keine unsichere Checkout-Adresse auf", async () => {
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([pending]);
+      vi.spyOn(api, "createCheckout").mockResolvedValue({ checkout_url: "javascript:alert(1)" });
+      mount();
+      fireEvent.click(await screen.findByRole("button", { name: "Jetzt bezahlen" }));
+      expect(await screen.findByText(/ungültige Adresse/)).toBeTruthy();
+      expect(assign).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Rueckkehr von Stripe", () => {
+    it("bedankt sich bei ?paid= und laedt den Status nach, bis die Zahlung bestaetigt ist", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        const list = vi.spyOn(api, "getMyOrders")
+          .mockResolvedValueOnce([pending])
+          .mockResolvedValue([{ ...pending, status: "active", current_period_end: "2026-11-15T00:00:00" }]);
+        mount("/orders?paid=o-2");
+        expect(await screen.findByText(/Danke für deine Zahlung/)).toBeTruthy();
+        await vi.advanceTimersByTimeAsync(3100);
+        await waitFor(() => expect(screen.getByLabelText("aktiv")).toBeTruthy());
+        // nach dem Statuswechsel wird nicht weiter nachgeladen
+        const calls = list.mock.calls.length;
+        await vi.advanceTimersByTimeAsync(10000);
+        expect(list.mock.calls.length).toBe(calls);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("weist bei ?cancelled= auf die offene Bestellung hin", async () => {
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([pending]);
+      mount("/orders?cancelled=o-2");
+      expect(await screen.findByText(/Zahlung abgebrochen/)).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Jetzt bezahlen" })).toBeTruthy();
+    });
   });
 });
