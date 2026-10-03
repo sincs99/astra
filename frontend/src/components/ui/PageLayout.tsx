@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { linkStyle, btnDefault } from "./styles";
 import { isAuthenticated, logout } from "../../services/api";
+import { SkipLink } from "./SkipLink";
 import { SiteFooter } from "../SiteFooter";
 import { loginUrl } from "../../lib/redirect";
 import { useCurrentUser, resetCurrentUserCache } from "../../hooks/useCurrentUser";
@@ -82,6 +83,7 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
   if (!isAuthenticated()) {
     return (
       <div style={{ minHeight: "100vh", backgroundColor: "#fafafa" }}>
+        <SkipLink />
         <nav aria-label="Hauptnavigation" style={{
           backgroundColor: "#fff", borderBottom: "1px solid #e0e0e0",
           padding: "0 clamp(12px, 4vw, 24px)", position: "sticky", top: 0, zIndex: 100,
@@ -95,7 +97,7 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
             </Link>
           </div>
         </nav>
-        <main style={{ maxWidth, margin: "0 auto", padding: "16px clamp(12px, 4vw, 24px)", overflowX: "auto" }}>
+        <main id="main-content" tabIndex={-1} style={{ outline: "none", maxWidth, margin: "0 auto", padding: "16px clamp(12px, 4vw, 24px)", overflowX: "auto" }}>
           <h1 style={{ marginTop: 0, marginBottom: 20, fontSize: 24, fontWeight: 700 }}>{title}</h1>
           {children}
         </main>
@@ -106,6 +108,7 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#fafafa" }}>
+      <SkipLink />
       {/* Navigation */}
       <nav aria-label="Hauptnavigation" style={{
         backgroundColor: "#fff",
@@ -204,7 +207,7 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
       </nav>
 
       {/* Content */}
-      <main style={{ maxWidth, margin: "0 auto", padding: "16px clamp(12px, 4vw, 24px)", overflowX: "auto" }}>
+      <main id="main-content" tabIndex={-1} style={{ outline: "none", maxWidth, margin: "0 auto", padding: "16px clamp(12px, 4vw, 24px)", overflowX: "auto" }}>
         <h1 style={{ marginTop: 0, marginBottom: 20, fontSize: 24, fontWeight: 700 }}>
           {title}
         </h1>
