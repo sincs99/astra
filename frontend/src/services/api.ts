@@ -387,7 +387,8 @@ export interface InstanceConnection {
 export interface InstanceCreate {
   name: string;
   owner_id: number;
-  agent_id: number;
+  /** Weggelassen/null: Astra waehlt automatisch einen Agent mit freiem Endpoint und genug Kapazitaet (M42) */
+  agent_id?: number | null;
   blueprint_id: number;
   description?: string;
   endpoint_id?: number;

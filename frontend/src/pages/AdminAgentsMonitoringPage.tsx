@@ -1,3 +1,4 @@
+import { UtilizationBar, utilizationColor, formatMB } from "../components/UtilizationBar";
 import { DaemonStatus } from "../components/DaemonStatus";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { useEffect, useState, useMemo } from "react";
@@ -294,40 +295,7 @@ function MaintenanceToggle({ agent, onRefresh }: { agent: AgentMonitoringEntry; 
 
 // ── Utilization Bar ──────────────────────────────────────
 
-function UtilizationBar({ used, total, percent, unit }: { used: number; total: number; percent: number; unit: string }) {
-  if (total <= 0) return <span style={{ color: "#666", fontSize: 12 }}>n/a</span>;
-  const color = utilizationColor(percent);
-  return (
-    <div style={{ minWidth: 100 }}>
-      <div style={{ height: 6, borderRadius: 3, backgroundColor: "#eee", overflow: "hidden" }}>
-        <div style={{ width: `${Math.min(percent, 100)}%`, height: "100%", backgroundColor: color, borderRadius: 3, transition: "width 0.3s" }} />
-      </div>
-      <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
-        {formatValue(used, unit)} / {formatValue(total, unit)} ({percent}%)
-      </div>
-    </div>
-  );
-}
-
 // ── Hilfsfunktionen ──────────────────────────────────────
-
-function utilizationColor(percent: number): string {
-  // Farben erfuellen WCAG AA (4.5:1) auch als Text
-  if (percent >= 90) return "#c62828";
-  if (percent >= 70) return "#e65100";
-  if (percent >= 50) return "#8d6e00";
-  return "#2e7d32";
-}
-
-function formatMB(mb: number): string {
-  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
-  return `${mb} MB`;
-}
-
-function formatValue(val: number, unit: string): string {
-  if (unit === "MB") return formatMB(val);
-  return `${val}${unit}`;
-}
 
 function formatTimeAgo(isoStr: string): string {
   try {

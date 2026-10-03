@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Agent, type AgentMonitoringEntry, type Endpoint } from "../services/api";
+import { UtilizationBar } from "../components/UtilizationBar";
 import { DaemonStatus } from "../components/DaemonStatus";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { parsePortRange } from "../lib/portRange";
@@ -339,6 +340,23 @@ export function AdminAgentsPage() {
                 {agent.behind_proxy && <span>Hinter Proxy</span>}
                 <span><strong>Zuletzt gesehen:</strong> {agent.last_seen_at ? new Date(agent.last_seen_at).toLocaleString("de-CH") : "noch nie"}</span>
               </div>
+
+              {health[agent.id] && (
+                <div style={{ display: "flex", gap: 24, flexWrap: "wrap", margin: "0 0 12px" }}>
+                  <UtilizationBar label="Memory" unit="MB"
+                    used={health[agent.id].utilization.used_memory_mb}
+                    total={health[agent.id].capacity.effective_memory_mb}
+                    percent={health[agent.id].utilization.memory_utilization} />
+                  <UtilizationBar label="Disk" unit="MB"
+                    used={health[agent.id].utilization.used_disk_mb}
+                    total={health[agent.id].capacity.effective_disk_mb}
+                    percent={health[agent.id].utilization.disk_utilization} />
+                  <UtilizationBar label="CPU" unit="%"
+                    used={health[agent.id].utilization.used_cpu_percent}
+                    total={health[agent.id].capacity.effective_cpu_percent}
+                    percent={health[agent.id].utilization.cpu_utilization} />
+                </div>
+              )}
 
               {agentEndpoints.length === 0 ? (
                 <p style={{ color: "#666", margin: "4px 0 0", fontSize: 13 }}>Keine Endpoints</p>
