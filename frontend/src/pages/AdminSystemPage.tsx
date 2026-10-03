@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type SystemVersionInfo, type UpgradeStatus, type PreflightResult } from "../services/api";
+import { BillingTickCard } from "../components/BillingTickCard";
 import {
   PageLayout, StatusBadge, LoadingState, ErrorState,
   cardStyle, btnDefault,
@@ -42,6 +43,8 @@ export function AdminSystemPage() {
 
       {error && <ErrorState message={error} onRetry={loadData} />}
       {loading && <LoadingState message="System-Info wird geladen..." />}
+
+      <BillingTickCard />
 
       {/* Version & Build */}
       {version && (
