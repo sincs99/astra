@@ -161,6 +161,11 @@ Alle Umgebungsvariablen sind in `backend/.env.example` dokumentiert.
 | `JWT_ACCESS_TOKEN_EXPIRES_HOURS` | Token-Gültigkeit | 24 |
 | `MFA_ISSUER_NAME` | TOTP Issuer | Astra |
 | `RATELIMIT_ENABLED` | Rate Limiting aktiv | true |
+| `REGISTRATION_ENABLED` | Selbstregistrierung erlauben | false |
+| `PASSWORD_RESET_TTL_MINUTES` | Gueltigkeit des Reset-Links | 60 |
+| `FRONTEND_URL` | Basis-URL fuer Links in Mails | http://localhost:3000 |
+| `MAIL_SERVER` / `MAIL_PORT` / `MAIL_USE_TLS` | SMTP-Server (leer = kein Versand, nur Log) | – / 587 / true |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_FROM` | SMTP-Zugang und Absender | – / – / astra@localhost |
 | `RATELIMIT_AUTH_PER_MINUTE` | Max Login-Versuche/Min | 20 |
 
 ### Reverse Proxy

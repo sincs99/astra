@@ -181,7 +181,12 @@ def _register_rate_limiting(app: Flask) -> None:
             return None
 
         # Nur Auth-Endpunkte limitieren
-        auth_paths = ["/api/auth/login"]
+        auth_paths = [
+            "/api/auth/login",
+            "/api/auth/register",
+            "/api/auth/password-reset/request",
+            "/api/auth/password-reset/confirm",
+        ]
         if request.path not in auth_paths:
             return None
 
