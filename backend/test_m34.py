@@ -57,6 +57,8 @@ with app.app_context():
     r = c.post("/api/auth/password-reset/request", json={"email": "neu@example.com"})
     check("bekannte Adresse -> 200 + Mail", r.status_code == 200 and len(mail.outbox) == 1)
     token = mail.outbox[0]["body"].split("token=")[1].split()[0]
+    check("Reset-Link zeigt auf Frontend-Route /password-reset/confirm",
+          "/password-reset/confirm?token=" in mail.outbox[0]["body"])
 
     r = c.post("/api/auth/password-reset/confirm", json={"token": "muell", "password": "neues-passwort"})
     check("ungueltiges Token -> 400", r.status_code == 400)

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { api, isAuthenticated, setAccessToken } from "../services/api";
+import { api, ApiError, isAuthenticated, setAccessToken } from "../services/api";
 import { inputStyle, labelStyle, btnPrimary, linkStyle } from "../components/ui";
 
 export function LoginPage() {
@@ -12,6 +12,8 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [unverified, setUnverified] = useState(false);
+  const [resent, setResent] = useState(false);
 
   // Bereits eingeloggt -> direkt zum Dashboard (nicht bei abgelaufener Sitzung)
   if (isAuthenticated() && !expired) return <Navigate to="/" replace />;
@@ -26,10 +28,13 @@ export function LoginPage() {
     try {
       setLoading(true);
       setError(null);
+      setUnverified(false);
+      setResent(false);
       const result = await api.login(login.trim(), password);
       setAccessToken(result.access_token);
       navigate("/");
     } catch (err) {
+      if (err instanceof ApiError && err.code === "email_not_verified") setUnverified(true);
       setError(err instanceof Error ? err.message : "Anmeldung fehlgeschlagen");
     } finally {
       setLoading(false);
@@ -68,6 +73,18 @@ export function LoginPage() {
           fontSize: 14,
         }}>
           {error}
+          {unverified && (
+            <div style={{ marginTop: 8 }}>
+              {resent ? "Wir haben dir eine neue Bestaetigungs-Mail geschickt." : (
+                <button type="button" style={{ ...linkStyle, background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}
+                  onClick={async () => {
+                    try { await api.resendVerification(login.trim()); setResent(true); } catch { /* neutral */ }
+                  }}>
+                  Bestaetigungs-Mail erneut senden
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 

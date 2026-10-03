@@ -13,6 +13,7 @@ import { SshKeysPage } from "../pages/SshKeysPage";
 import { RegisterPage } from "../pages/RegisterPage";
 import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "../pages/ResetPasswordPage";
+import { VerifyEmailPage } from "../pages/VerifyEmailPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { isAuthenticated } from "../services/api";
 
@@ -34,6 +35,7 @@ export function AppRouter() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/password-reset" element={<ForgotPasswordPage />} />
         <Route path="/password-reset/confirm" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/admin/agents" element={<ProtectedRoute><AdminAgentsPage /></ProtectedRoute>} />
         <Route path="/admin/agents/monitoring" element={<ProtectedRoute><AdminAgentsMonitoringPage /></ProtectedRoute>} />

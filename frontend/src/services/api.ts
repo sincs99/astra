@@ -65,6 +65,18 @@ export function getSimulatedUserId(): number {
 
 // ── Generischer Fetch-Wrapper ──────────────────────────
 
+/** Fehler der API mit HTTP-Status und optionalem Fehlercode (z.B. "email_not_verified"). */
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 async function request<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
@@ -92,10 +104,11 @@ async function request<T = unknown>(
         window.location.assign("/login?expired=1");
       }
     }
-    const error = await response.json().catch(() => ({}));
-    throw new Error(
-      (error as Record<string, string>).error ||
-        `Request failed: ${response.status}`
+    const error = (await response.json().catch(() => ({}))) as Record<string, string>;
+    throw new ApiError(
+      error.error || `Request failed: ${response.status}`,
+      response.status,
+      error.code,
     );
   }
 
@@ -130,6 +143,11 @@ export interface LoginResponse {
   user: User;
 }
 
+/** Bei aktiver E-Mail-Verifizierung gibt es kein Token, sondern nur den Hinweis zur Bestaetigung. */
+export type RegisterResponse =
+  | LoginResponse
+  | { verification_required: true; message: string; user: User };
+
 // ── Typen ──────────────────────────────────────────────
 
 export interface User {
@@ -137,6 +155,7 @@ export interface User {
   username: string;
   email: string;
   is_admin: boolean;
+  email_verified?: boolean;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -646,9 +665,22 @@ export interface PreflightResult {
 export const api = {
   // ── Auth ─────────────────────────────────────────────
   register: (username: string, email: string, password: string) =>
-    request<LoginResponse>("/auth/register", {
+    request<RegisterResponse>("/auth/register", {
       method: "POST",
       body: JSON.stringify({ username, email, password }),
+    }),
+
+  verifyEmail: (token: string) =>
+    request<{ message: string }>("/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+
+  /** `login` darf Benutzername oder E-Mail-Adresse sein. */
+  resendVerification: (login: string) =>
+    request<{ message: string }>("/auth/resend-verification", {
+      method: "POST",
+      body: JSON.stringify({ login }),
     }),
 
   requestPasswordReset: (email: string) =>

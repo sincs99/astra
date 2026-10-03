@@ -12,6 +12,8 @@ export function RegisterPage() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [disabled, setDisabled] = useState(false);
+  const [verifyPending, setVerifyPending] = useState(false);
+  const [resent, setResent] = useState(false);
   const [loading, setLoading] = useState(false);
 
   if (isAuthenticated()) return <Navigate to="/" replace />;
@@ -33,8 +35,13 @@ export function RegisterPage() {
       setLoading(true);
       setError(null);
       const result = await api.register(username.trim(), email.trim(), password);
-      setAccessToken(result.access_token);
-      navigate("/");
+      if ("access_token" in result) {
+        setAccessToken(result.access_token);
+        navigate("/");
+      } else {
+        // E-Mail-Verifizierung aktiv: erst nach Klick auf den Link in der Mail ist ein Login moeglich
+        setVerifyPending(true);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Registrierung fehlgeschlagen";
       // 403 kommt mit "Registrierung ist deaktiviert"; ein fehlender Endpunkt (404) bedeutet dasselbe
@@ -47,7 +54,24 @@ export function RegisterPage() {
 
   return (
     <AuthCard title="Konto erstellen">
-      {disabled ? (
+      {verifyPending ? (
+        <>
+          <AuthMessage kind="success">
+            Fast geschafft: Wir haben eine E-Mail an {email.trim()} geschickt. Bitte klicke auf den Link darin, um deine Adresse zu bestaetigen.
+          </AuthMessage>
+          {resent && <AuthMessage kind="success">Die E-Mail wurde erneut gesendet.</AuthMessage>}
+          <p style={{ textAlign: "center", fontSize: 14 }}>
+            Nichts erhalten?{" "}
+            <button type="button" style={{ ...linkStyle, background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}
+              onClick={async () => {
+                try { await api.resendVerification(email.trim()); setResent(true); } catch { /* neutral */ }
+              }}>
+              Erneut senden
+            </button>
+          </p>
+          <p style={{ textAlign: "center" }}><Link to="/login" style={linkStyle}>Zum Login</Link></p>
+        </>
+      ) : disabled ? (
         <>
           <AuthMessage kind="warning">Registrierung ist deaktiviert. Bitte wende dich an einen Administrator.</AuthMessage>
           <p style={{ textAlign: "center" }}><Link to="/login" style={linkStyle}>Zurueck zum Login</Link></p>
