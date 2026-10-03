@@ -219,6 +219,7 @@ Dann unter **Admin → Instances** eine Instanz anlegen: Blueprint Paper, Agent 
 | Backup (täglich per Cron) | `0 3 * * * cd /opt/astra && ./scripts/backup.sh >> /var/log/astra-backup.log 2>&1` |
 | Node-Credentials rotieren | Panel → Agent → *Credentials rotieren*, dann `install-wings.sh` erneut ausführen |
 | Billing-Tick manuell | `docker compose exec backend python cli.py billing-tick` (läuft sonst automatisch alle 5 Minuten im Container `billing`) |
+| Läuft der Billing-Tick? | `curl -s -H "Authorization: Bearer $TOKEN" https://panel.deinedomain.de/api/admin/billing/status` → `healthy` muss `true` sein, sobald es Bestellungen gibt. Auch im Preflight (`python cli.py preflight`, Check `billing_tick`) und im Smoke-Test. Schwelle: `BILLING_TICK_MAX_AGE_MINUTES` (Standard 15) |
 
 ---
 
@@ -249,9 +250,15 @@ Zahlungsereignisse samt Klartext-Grund liefert das Panel unter
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" "https://panel.deinedomain.de/api/admin/payment-events?status=mismatch"
-``` Abgelaufene
-Bestellungen sperrt der Billing-Tick, nach `BILLING_GRACE_DAYS` löscht er den Server; `BILLING_REMINDER_DAYS`
-Tage vorher geht eine Erinnerung per Mail (nur mit konfiguriertem `MAIL_SERVER`).
+```
+
+Abgelaufene Bestellungen sperrt der Billing-Tick, nach `BILLING_GRACE_DAYS` löscht er den Server;
+`BILLING_REMINDER_DAYS` Tage vorher geht eine Erinnerung per Mail (nur mit konfiguriertem `MAIL_SERVER`).
+Fällt der Container `billing` aus, passiert nichts davon mehr. Das Panel merkt das selbst: `GET /api/admin/billing/status`
+liefert `healthy=false`, sobald Bestellungen auf den Tick warten und der letzte Lauf älter als
+`BILLING_TICK_MAX_AGE_MINUTES` ist; der Preflight und `scripts/smoke-test.sh` prüfen dasselbe. Eine aktive
+Benachrichtigung gibt es nicht, daher den Smoke-Test regelmäßig laufen lassen oder einen externen Monitor
+(z.B. Uptime Kuma mit Keyword `"healthy": true`) auf den Endpunkt richten.
 
 Details zu Endpunkten, Status und Stripe-Einrichtung: `docs/orders-api.md`.
 
