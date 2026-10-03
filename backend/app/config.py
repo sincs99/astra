@@ -26,6 +26,24 @@ def _require_env(name: str, default: str | None = None) -> str:
     return value
 
 
+
+def _normalize_database_url(url: str) -> str:
+    """Erzwingt den psycopg2-Treiber fuer PostgreSQL-URLs.
+
+    Ab SQLAlchemy 2.1 ist der Standardtreiber fuer `postgresql://` psycopg (v3),
+    das nicht installiert ist. `postgresql://` und `postgres://` (Heroku-Stil)
+    werden deshalb auf `postgresql+psycopg2://` umgeschrieben; explizite Treiber
+    (`postgresql+psycopg://`, `postgresql+pg8000://`) bleiben unveraendert.
+    """
+    if not url:
+        return url
+    if url.startswith("postgres://"):
+        return "postgresql+psycopg2://" + url[len("postgres://"):]
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg2://" + url[len("postgresql://"):]
+    return url
+
+
 class Config:
     """Basis-Konfiguration fuer die Flask-App."""
 
@@ -37,7 +55,7 @@ class Config:
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret-key")
 
     # ── Datenbank ───────────────────────────────────────
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///astra.db")
+    SQLALCHEMY_DATABASE_URI = _normalize_database_url(os.getenv("DATABASE_URL", "sqlite:///astra.db"))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS: dict = {}
 
@@ -84,6 +102,32 @@ class Config:
     RATELIMIT_ENABLED = os.getenv("RATELIMIT_ENABLED", "true").lower() == "true"
     RATELIMIT_AUTH_PER_MINUTE = int(os.getenv("RATELIMIT_AUTH_PER_MINUTE", "20"))
 
+    # ── Admin-Guard (M35) ───────────────────────────────
+    # Nur fuer Tests abschaltbar; in Dev/Prod immer aktiv.
+    ADMIN_GUARD_ENABLED = True
+
+    # ── Accounts / Mail ─────────────────────────────────
+    REGISTRATION_ENABLED = os.getenv("REGISTRATION_ENABLED", "false").lower() == "true"
+    # M46: Tage zwischen Ablauf der Laufzeit (Suspend) und automatischer Loeschung der Instance
+    BILLING_GRACE_DAYS = max(int(os.getenv("BILLING_GRACE_DAYS", "7")), 0)
+    # M46: Erinnerungsmail so viele Tage vor Laufzeitende (0 = keine Erinnerung)
+    BILLING_REMINDER_DAYS = max(int(os.getenv("BILLING_REMINDER_DAYS", "3")), 0)
+    # M48: Zahlungsanbieter: "manual" (Admin bestaetigt Zahlungen) oder "stripe" (Checkout + Webhook)
+    PAYMENT_PROVIDER = os.getenv("PAYMENT_PROVIDER", "manual").strip().lower()
+    STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+    STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    # M38: Login erst nach bestaetigter E-Mail-Adresse (Registrierung sendet Verifizierungs-Link)
+    EMAIL_VERIFICATION_REQUIRED = os.getenv("EMAIL_VERIFICATION_REQUIRED", "false").lower() == "true"
+    EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "48"))
+    PASSWORD_RESET_TTL_MINUTES = int(os.getenv("PASSWORD_RESET_TTL_MINUTES", "60"))
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    MAIL_SERVER = os.getenv("MAIL_SERVER", "")
+    MAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
+    MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
+    MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
+    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
+    MAIL_FROM = os.getenv("MAIL_FROM", "astra@localhost")
+
     # ── Logging ─────────────────────────────────────────
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LOG_FORMAT = os.getenv(
@@ -117,6 +161,15 @@ class Config:
                     f"KRITISCH: {key} verwendet den unsicheren Default-Wert. "
                     f"Bitte einen sicheren Wert setzen!"
                 )
+
+        if cls.PAYMENT_PROVIDER not in ("manual", "stripe"):
+            issues.append(
+                f"KRITISCH: PAYMENT_PROVIDER '{cls.PAYMENT_PROVIDER}' ist unbekannt (erlaubt: manual, stripe)."
+            )
+        if cls.PAYMENT_PROVIDER == "stripe" and not (cls.STRIPE_SECRET_KEY and cls.STRIPE_WEBHOOK_SECRET):
+            issues.append(
+                "KRITISCH: PAYMENT_PROVIDER=stripe, aber STRIPE_SECRET_KEY und/oder STRIPE_WEBHOOK_SECRET fehlen."
+            )
 
         if cls.SQLALCHEMY_DATABASE_URI.startswith("sqlite"):
             issues.append(
@@ -172,6 +225,7 @@ class TestingConfig(Config):
     SECRET_KEY = "testing-secret-key"
     JWT_SECRET_KEY = "testing-jwt-secret-key"
     RATELIMIT_ENABLED = False
+    ADMIN_GUARD_ENABLED = False  # Legacy-Tests rufen /api/admin ohne Auth auf; test_m35 schaltet ihn ein
     WEBHOOK_MAX_RETRIES = 1
     WEBHOOK_RETRY_DELAYS = "0"
     WEBHOOK_REQUEST_TIMEOUT = 2

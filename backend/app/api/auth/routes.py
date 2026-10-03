@@ -1,6 +1,6 @@
 """Auth-API-Routen: Login, Logout, Current-User, API Keys, MFA."""
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from app.domain.auth.service import (
     authenticate_user,
     issue_access_token,
@@ -38,9 +38,16 @@ def login():
 
     if not user:
         _log_auth_event("auth:login_failed", None,
-                        f"Fehlgeschlagener Login-Versuch fuer '{login_field}'",
+                        f"Fehlgeschlagener Login-Versuch für '{login_field}'",
                         {"login": login_field})
-        return jsonify({"error": "Ungueltige Anmeldedaten"}), 401
+        return jsonify({"error": "Ungültige Anmeldedaten"}), 401
+
+    # M38: unbestaetigte E-Mail-Adresse
+    if current_app.config.get("EMAIL_VERIFICATION_REQUIRED", False) and user.email_verified_at is None:
+        return jsonify({
+            "error": "E-Mail-Adresse noch nicht bestätigt",
+            "code": "email_not_verified",
+        }), 403
 
     # MFA-Check
     if user.mfa_enabled:
@@ -55,8 +62,8 @@ def login():
         from app.domain.auth.mfa_service import verify_totp
         if not verify_totp(user, mfa_code):
             _log_auth_event("auth:login_failed", user.id,
-                            f"MFA-Verifikation fehlgeschlagen fuer {user.username}")
-            return jsonify({"error": "Ungueltiger MFA-Code"}), 401
+                            f"MFA-Verifikation fehlgeschlagen für {user.username}")
+            return jsonify({"error": "Ungültiger MFA-Code"}), 401
 
     token = issue_access_token(user)
     _log_auth_event("auth:login_success", user.id,
@@ -67,6 +74,104 @@ def login():
         "token_type": "Bearer",
         "user": user.to_dict(),
     })
+
+
+# ── Registrierung / Passwort-Reset ───────────────────────
+
+
+@auth_bp.route("/register", methods=["POST"])
+def register():
+    """Selbstregistrierung (nur wenn REGISTRATION_ENABLED=true)."""
+    from app.domain.accounts.service import AccountError, register_user
+
+    data = request.get_json() or {}
+    try:
+        user = register_user(data.get("username"), data.get("email"), data.get("password"))
+    except AccountError as e:
+        return jsonify({"error": e.message}), e.status_code
+
+    _log_auth_event("auth:register", user.id, f"Registrierung: {user.username}")
+    if current_app.config.get("EMAIL_VERIFICATION_REQUIRED", False):
+        return jsonify({
+            "verification_required": True,
+            "message": "Bitte bestätige deine E-Mail-Adresse über den Link in der Mail",
+            "user": user.to_dict(),
+        }), 201
+    return jsonify({
+        "access_token": issue_access_token(user),
+        "token_type": "Bearer",
+        "user": user.to_dict(),
+    }), 201
+
+
+@auth_bp.route("/verify-email", methods=["POST"])
+def verify_email_endpoint():
+    """Bestaetigt die E-Mail-Adresse mit dem Token aus der Verifizierungs-Mail."""
+    from app.domain.accounts.service import AccountError, verify_email
+
+    data = request.get_json() or {}
+    try:
+        user = verify_email(data.get("token"))
+    except AccountError as e:
+        return jsonify({"error": e.message}), e.status_code
+    _log_auth_event("auth:email_verified", user.id, f"E-Mail bestätigt: {user.username}")
+    return jsonify({"message": "E-Mail-Adresse bestätigt"})
+
+
+@auth_bp.route("/resend-verification", methods=["POST"])
+def resend_verification_endpoint():
+    """Sendet die Verifizierungs-Mail erneut. Antwortet immer gleich."""
+    from app.domain.accounts.service import resend_verification
+
+    data = request.get_json() or {}
+    resend_verification(data.get("email") or data.get("login"))
+    return jsonify({"message": "Falls die Adresse existiert und unbestätigt ist, wurde eine E-Mail versendet"})
+
+
+@auth_bp.route("/password-reset/request", methods=["POST"])
+def password_reset_request():
+    """Sendet einen Reset-Link. Antwortet immer gleich, damit keine Adressen preisgegeben werden."""
+    from app.domain.accounts.service import request_password_reset
+
+    data = request.get_json() or {}
+    request_password_reset(data.get("email"))
+    return jsonify({"message": "Falls die Adresse existiert, wurde eine E-Mail versendet"})
+
+
+@auth_bp.route("/password-reset/confirm", methods=["POST"])
+def password_reset_confirm():
+    """Setzt das Passwort mit einem Reset-Token neu."""
+    from app.domain.accounts.service import AccountError, confirm_password_reset
+
+    data = request.get_json() or {}
+    try:
+        user = confirm_password_reset(data.get("token"), data.get("password"))
+    except AccountError as e:
+        return jsonify({"error": e.message}), e.status_code
+
+    _log_auth_event("auth:password_reset", user.id, f"Passwort zurückgesetzt: {user.username}")
+    return jsonify({"message": "Passwort wurde geändert"})
+
+
+@auth_bp.route("/change-password", methods=["POST"])
+def change_password_endpoint():
+    """Aendert das Passwort des eingeloggten Nutzers. Body: {current_password, new_password}."""
+    from app.domain.accounts.service import AccountError, change_password
+
+    user, err = require_auth()
+    if err:
+        return err
+
+    data = request.get_json(silent=True) or {}
+    try:
+        change_password(user, data.get("current_password"), data.get("new_password"))
+    except AccountError as e:
+        _log_auth_event("auth:password_change_failed", user.id,
+                        f"Passwort-Änderung fehlgeschlagen: {user.username}")
+        return jsonify({"error": e.message}), e.status_code
+
+    _log_auth_event("auth:password_changed", user.id, f"Passwort geändert: {user.username}")
+    return jsonify({"message": "Passwort wurde geändert"})
 
 
 @auth_bp.route("/logout", methods=["POST"])
@@ -139,7 +244,7 @@ def delete_api_key_endpoint(key_id: int):
     from app.domain.auth.apikey_service import delete_api_key, ApiKeyError
     try:
         delete_api_key(key_id, user.id)
-        return jsonify({"message": "API Key geloescht"})
+        return jsonify({"message": "API Key gelöscht"})
     except ApiKeyError as e:
         return jsonify({"error": e.message}), e.status_code
 

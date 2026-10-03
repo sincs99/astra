@@ -35,6 +35,23 @@ def check(label, condition, detail=""):
 
 app = create_app("testing")
 
+# Diese Tests pruefen die Health-Klassifikation nach last_seen_at. Der Stub-Runner meldet jeden Daemon als erreichbar
+# und das gilt seit M41 als Lebenszeichen (setzt last_seen_at); hier sind die Daemons daher "nicht erreichbar".
+from app.domain.agents import reachability as _reach
+from app.infrastructure.runner.wings_http import WingsResponse as _WingsResponse
+
+
+class _UnreachableWings:
+    def __init__(self, timeout=None, debug=False):
+        pass
+
+    def get(self, agent, path, params=None):
+        return _WingsResponse(success=False, status_code=None, data=None, error="Wings nicht erreichbar")
+
+
+_reach.WingsHttpClient = _UnreachableWings
+app.config["_RUNNER_ADAPTER_NAME"] = "wings"
+
 _user_id = None
 _agent1_id = None
 _agent2_id = None

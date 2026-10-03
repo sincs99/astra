@@ -85,10 +85,17 @@ docker compose up
 
 ## Produktions-Deployment
 
+> Vollständige Schritt-für-Schritt-Anleitung inkl. Wings-Node, Firewall und Abnahme:
+> **`docs/deploy-runbook.md`**. Hier die Kurzfassung.
+
+Der Produktions-Stack (`docker-compose.prod.yml`) besteht aus Caddy (TLS via Let's Encrypt,
+einziger öffentlicher Eingang auf 80/443), Frontend (Nginx), Backend (Gunicorn), Worker
+(Job-Queue), PostgreSQL und Redis. Optional proxyt Caddy auch den Wings-Node (`NODE_DOMAIN`).
+
 ### 1. Umgebungsvariablen vorbereiten
 
 ```bash
-cp backend/.env.example .env
+cp .env.prod.example .env
 ```
 
 **Pflichtfelder für Produktion:**
@@ -111,17 +118,21 @@ python -c "import secrets; print(secrets.token_hex(32))"
 ### 2. Container starten
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d
+./scripts/deploy.sh --bootstrap     # erster Start inkl. Admin
+./scripts/deploy.sh                 # jedes Update
 ```
+
+Manuell entspricht das `docker compose up -d` (mit `COMPOSE_FILE=docker-compose.prod.yml` in der `.env`).
 
 ### 3. Migrationen und Bootstrap
 
 ```bash
-# Migrationen laufen automatisch bei AUTO_MIGRATE=true
+# Migrationen laufen automatisch bei AUTO_MIGRATE=true (python cli.py db-init:
+# frische DB -> Schema anlegen + stamp head, bestehende DB -> upgrade)
 # Oder manuell:
 docker compose exec backend ./entrypoint.sh migrate
 
-# Ersten Admin erstellen:
+# Ersten Admin erstellen (macht deploy.sh --bootstrap bereits):
 docker compose exec backend ./entrypoint.sh seed
 ```
 
@@ -129,6 +140,7 @@ docker compose exec backend ./entrypoint.sh seed
 
 ```bash
 docker compose exec backend python cli.py check-config
+./scripts/smoke-test.sh https://<PANEL_DOMAIN> admin '<passwort>'
 ```
 
 ---
@@ -150,9 +162,14 @@ Alle Umgebungsvariablen sind in `backend/.env.example` dokumentiert.
 
 | Variable | Beschreibung | Default |
 |----------|-------------|---------|
-| `RUNNER_ADAPTER` | "stub" oder "wings" | stub |
+| `RUNNER_ADAPTER` | "stub" oder "wings". Der Stub schließt Installation, Neuinstallation und Transfer **sofort** ab (Status ready), Wings meldet das Ergebnis asynchron über die Remote-API | stub |
 | `RUNNER_TIMEOUT_CONNECT` | Verbindungstimeout (Sek.) | 5 |
 | `RUNNER_TIMEOUT_READ` | Lese-Timeout (Sek.) | 30 |
+
+Wings ruft das Panel unter `BASE_URL` + `/api/remote/...` auf (Node-Token-Auth).
+`BASE_URL` muss deshalb vom Node aus erreichbar sein. Die `config.yml` fuer einen
+Node liefert `GET /api/admin/agents/{id}/configuration` bzw. der Button *config.yml*
+in der Agents-Ansicht. Details: `docs/wings-remote-api.md`.
 
 ### Auth / Sicherheit
 
@@ -161,6 +178,17 @@ Alle Umgebungsvariablen sind in `backend/.env.example` dokumentiert.
 | `JWT_ACCESS_TOKEN_EXPIRES_HOURS` | Token-Gültigkeit | 24 |
 | `MFA_ISSUER_NAME` | TOTP Issuer | Astra |
 | `RATELIMIT_ENABLED` | Rate Limiting aktiv | true |
+| `PAYMENT_PROVIDER` | Zahlungsweg: `manual` oder `stripe` (siehe orders-api.md) | manual |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Stripe-Zugang (nur Umgebung, nie ins Repository) | – |
+| `BILLING_REMINDER_DAYS` | Tage vor Laufzeitende für die Erinnerungsmail, 0 = aus (Billing-Tick) | 3 |
+| `BILLING_GRACE_DAYS` | Tage von überfälliger Zahlung bis zur Löschung der Instance (Billing-Tick) | 7 |
+| `REGISTRATION_ENABLED` | Selbstregistrierung erlauben | false |
+| `EMAIL_VERIFICATION_REQUIRED` | Login erst nach bestaetigter E-Mail (braucht funktionierendes SMTP) | false |
+| `EMAIL_VERIFICATION_TTL_HOURS` | Gueltigkeit des Bestaetigungs-Links | 48 |
+| `PASSWORD_RESET_TTL_MINUTES` | Gueltigkeit des Reset-Links | 60 |
+| `FRONTEND_URL` | Basis-URL fuer Links in Mails | http://localhost:3000 |
+| `MAIL_SERVER` / `MAIL_PORT` / `MAIL_USE_TLS` | SMTP-Server (leer = kein Versand, nur Log) | – / 587 / true |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_FROM` | SMTP-Zugang und Absender | – / – / astra@localhost |
 | `RATELIMIT_AUTH_PER_MINUTE` | Max Login-Versuche/Min | 20 |
 
 ### Reverse Proxy
@@ -448,7 +476,7 @@ readinessProbe:
 
 - Standard: 20 Login-Versuche pro Minute pro IP
 - Änderbar: `RATELIMIT_AUTH_PER_MINUTE`
-- In-Memory-Store, Reset bei Neustart
+- Zähler liegt in Redis (`REDIS_URL`), gilt also für alle Worker; ohne erreichbares Redis In-Memory pro Prozess
 
 ### WebSocket-Verbindungsprobleme hinter Proxy
 

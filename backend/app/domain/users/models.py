@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from app.extensions import db
 from datetime import datetime, timezone
+from app.utils.timeutil import iso_utc
 
 
 class User(db.Model):
@@ -19,6 +20,9 @@ class User(db.Model):
     mfa_secret = db.Column(db.String(64), nullable=True)  # TOTP Secret
     mfa_enabled = db.Column(db.Boolean, default=False)
     mfa_recovery_codes = db.Column(db.JSON, nullable=True)  # Liste von Recovery-Codes
+
+    # M38: E-Mail-Verifizierung (None = nicht bestaetigt)
+    email_verified_at = db.Column(db.DateTime, nullable=True)
 
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
@@ -45,8 +49,9 @@ class User(db.Model):
             "email": self.email,
             "is_admin": self.is_admin,
             "mfa_enabled": self.mfa_enabled or False,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "email_verified": self.email_verified_at is not None,
+            "created_at": iso_utc(self.created_at),
+            "updated_at": iso_utc(self.updated_at),
         }
 
     def __repr__(self):

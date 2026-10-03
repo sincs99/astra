@@ -7,6 +7,10 @@ import {
   type PowerSignal,
   type ResourceStats,
 } from "../services/api";
+import { hasRunningOrder, ORDER_END_NOTICE } from "../lib/orders";
+import { DeleteInstanceForm } from "../components/DeleteInstanceForm";
+import { SftpAccess } from "../components/SftpAccess";
+import { ConnectionAddress } from "../components/ConnectionAddress";
 import { ServerConsole } from "../components/ServerConsole";
 import { FileBrowser } from "../components/FileBrowser";
 import { BackupManager } from "../components/BackupManager";
@@ -29,6 +33,19 @@ export function InstanceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [orderNotice, setOrderNotice] = useState<string | null>(null);
+
+  // Gehört die Instance zu einer laufenden Bestellung, endet diese mit dem Löschen (ohne Erstattung)
+  const startDeleting = async () => {
+    setDeleting(true);
+    try {
+      const orders = await api.getMyOrders();
+      setOrderNotice(hasRunningOrder(orders, uuid) ? ORDER_END_NOTICE : null);
+    } catch {
+      setOrderNotice(null);
+    }
+  };
 
   // Variable editing
   const [varEdits, setVarEdits] = useState<Record<string, string>>({});
@@ -96,22 +113,7 @@ export function InstanceDetailPage() {
       toast.success(result.message);
       setTimeout(() => loadInstance(), 500);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler bei Power-Aktion");
-    } finally {
-      setActing(false);
-    }
-  };
-
-  const handleInstallCallback = async (successful: boolean) => {
-    if (!uuid) return;
-    try {
-      setActing(true);
-      setError(null);
-      const result = await api.reportInstallResult(uuid, successful);
-      toast.success(result.message);
-      await loadInstance();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler");
+      toast.error(err instanceof Error ? err.message : "Die Aktion konnte nicht ausgeführt werden");
     } finally {
       setActing(false);
     }
@@ -126,7 +128,7 @@ export function InstanceDetailPage() {
       toast.success(result.message);
       await loadInstance();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Reinstall fehlgeschlagen");
+      toast.error(err instanceof Error ? err.message : "Die Neuinstallation ist fehlgeschlagen");
     } finally {
       setActing(false);
     }
@@ -152,17 +154,17 @@ export function InstanceDetailPage() {
 
   if (loading) {
     return (
-      <PageLayout title="Instance" maxWidth={700}>
-        <LoadingState message="Instance wird geladen..." />
+      <PageLayout title="Server" maxWidth={700}>
+        <LoadingState message="Server wird geladen..." />
       </PageLayout>
     );
   }
 
   if (error && !instance) {
     return (
-      <PageLayout title="Instance" maxWidth={700}>
+      <PageLayout title="Server" maxWidth={700}>
         <ErrorState message={error} onRetry={loadInstance} />
-        <button onClick={() => navigate("/")} style={btnDefault}>Zurueck</button>
+        <button onClick={() => navigate("/")} style={btnDefault}>Zurück</button>
       </PageLayout>
     );
   }
@@ -179,7 +181,7 @@ export function InstanceDetailPage() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: -12, marginBottom: 16 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button onClick={() => navigate("/")} style={btnDefault}>Zurueck</button>
+          <button onClick={() => navigate("/")} style={btnDefault}>Zurück</button>
           <StatusBadge status={status} />
           {instance.container_state && (
             <StatusBadge status={instance.container_state} size="sm" />
@@ -188,7 +190,13 @@ export function InstanceDetailPage() {
       </div>
 
       {instance.description && (
-        <p style={{ color: "#888", marginTop: 4 }}>{instance.description}</p>
+        <p style={{ color: "#666", marginTop: 4 }}>{instance.description}</p>
+      )}
+
+      {instance.connection && (
+        <div style={{ marginBottom: 16 }}>
+          <ConnectionAddress connection={instance.connection} />
+        </div>
       )}
 
       {/* Suspension-Banner (M29) */}
@@ -196,50 +204,56 @@ export function InstanceDetailPage() {
         <div style={{
           padding: "12px 16px", marginBottom: 16,
           backgroundColor: "#fff3e0", border: "1px solid #ffcc80",
-          borderRadius: 8, color: "#e65100",
+          borderRadius: 8, color: "#bf360c",
         }}>
-          <strong>Instance gesperrt (suspendiert)</strong>
+          <strong>Dein Server ist gesperrt</strong>
           {instance.suspended_reason && (
             <span style={{ marginLeft: 8 }}>— {instance.suspended_reason}</span>
           )}
           <div style={{ fontSize: 12, marginTop: 4, color: "#bf360c" }}>
-            Operative Aktionen (Power, Dateien, Backups, Datenbanken, Routinen) sind blockiert.
-            Nur ein Administrator kann die Sperre aufheben.
+            Starten, Dateien, Backups, Datenbanken und Routinen sind bis zur Entsperrung nicht verfügbar.
+            Bitte kontaktiere den Support.
           </div>
         </div>
       )}
 
       {error && <ErrorState message={error} />}
 
+      <SftpAccess instance={instance} />
+
       {/* Power-Aktionen */}
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Power</h3>
+        <h3 style={{ marginTop: 0 }}>Steuerung</h3>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={() => handlePower("start")} disabled={acting} style={powerBtn("#5cb85c")}>▶ Start</button>
-          <button onClick={() => handlePower("stop")} disabled={acting} style={powerBtn("#f0ad4e")}>⏹ Stop</button>
-          <button onClick={() => handlePower("restart")} disabled={acting} style={powerBtn("#5bc0de")}>🔄 Restart</button>
-          <button onClick={() => handlePower("kill")} disabled={acting} style={powerBtn("#d9534f")}>✕ Kill</button>
+          <button onClick={() => handlePower("start")} disabled={acting} style={powerBtn("#2e7d32")}>▶ Starten</button>
+          <button onClick={() => handlePower("stop")} disabled={acting} style={powerBtn("#bf360c")}>⏹ Stoppen</button>
+          <button onClick={() => handlePower("restart")} disabled={acting} style={powerBtn("#1565c0")}>🔄 Neustarten</button>
+          <button
+            onClick={() => { if (confirm("Server sofort beenden? Nicht gespeicherte Daten können verloren gehen.")) handlePower("kill"); }}
+            disabled={acting}
+            title="Beendet den Server sofort. Nur nutzen, wenn Stoppen nicht funktioniert."
+            style={powerBtn("#c62828")}
+          >
+            ✕ Beenden erzwingen
+          </button>
         </div>
 
         {(status === "provisioning" || status === "reinstalling") && (
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #eee" }}>
-            <p style={{ fontSize: 13, color: "#888", margin: "0 0 8px" }}>
-              {status === "reinstalling" ? "⏳ Reinstallation läuft..." : "⏳ Installation läuft..."}
+            <p style={{ fontSize: 13, color: "#666", margin: "0 0 8px" }}>
+              {status === "reinstalling" ? "⏳ Der Server wird neu installiert…" : "⏳ Der Server wird eingerichtet…"}
             </p>
-            <p style={{ fontSize: 12, color: "#aaa", margin: "0 0 8px" }}>Simuliere Install-Callback:</p>
-            <button onClick={() => handleInstallCallback(true)} disabled={acting} style={{ ...btnDefault, marginRight: 8 }}>✅ Erfolgreich</button>
-            <button onClick={() => handleInstallCallback(false)} disabled={acting} style={btnDefault}>❌ Fehlgeschlagen</button>
           </div>
         )}
 
         {(status === "provision_failed" || status === "reinstall_failed") && (
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #eee" }}>
             <p style={{ fontSize: 13, color: "#d9534f", margin: "0 0 8px" }}>
-              {status === "reinstall_failed" ? "❌ Reinstallation fehlgeschlagen" : "❌ Installation fehlgeschlagen"}
+              {status === "reinstall_failed" ? "❌ Die Neuinstallation ist fehlgeschlagen." : "❌ Die Einrichtung ist fehlgeschlagen. Du kannst es erneut versuchen."}
             </p>
             {instance.role === "owner" && (
               <button onClick={handleReinstall} disabled={acting} style={powerBtn("#f0ad4e")}>
-                🔄 Reinstall
+                🔄 Neu installieren
               </button>
             )}
           </div>
@@ -249,7 +263,7 @@ export function InstanceDetailPage() {
       {/* Runtime Resources */}
       <div style={cardStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ margin: 0 }}>Runtime</h3>
+          <h3 style={{ margin: 0 }}>Live-Auslastung</h3>
           {resources && (
             <StatusBadge status={resources.container_status === "running" ? "running" : "stopped"} size="sm" />
           )}
@@ -269,9 +283,9 @@ export function InstanceDetailPage() {
             <ResourceBox label="Uptime" value={formatUptime(resources.uptime_seconds)} />
           </div>
         ) : (
-          <p style={{ color: "#888", marginTop: 8 }}>Runtime-Daten werden geladen...</p>
+          <p style={{ color: "#666", marginTop: 8 }}>Runtime-Daten werden geladen...</p>
         )}
-        <p style={{ fontSize: 11, color: "#aaa", marginBottom: 0, marginTop: 8 }}>
+        <p style={{ fontSize: 11, color: "#666", marginBottom: 0, marginTop: 8 }}>
           Auto-Refresh alle 5 Sekunden
         </p>
       </div>
@@ -292,8 +306,8 @@ export function InstanceDetailPage() {
                 <tr key={v.env_var} style={{ borderBottom: "1px solid #f0f0f0" }}>
                   <td style={{ padding: "8px", verticalAlign: "middle" }}>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{v.name}</div>
-                    {v.description && <div style={{ fontSize: 11, color: "#888" }}>{v.description}</div>}
-                    <code style={{ fontSize: 11, color: "#aaa" }}>{v.env_var}</code>
+                    {v.description && <div style={{ fontSize: 11, color: "#666" }}>{v.description}</div>}
+                    <code style={{ fontSize: 11, color: "#666" }}>{v.env_var}</code>
                   </td>
                   <td style={{ padding: "8px", verticalAlign: "middle" }}>
                     {v.user_editable ? (
@@ -323,13 +337,13 @@ export function InstanceDetailPage() {
 
       {/* Console */}
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Console</h3>
+        <h3 style={{ marginTop: 0 }}>Konsole</h3>
         <ServerConsole instanceUuid={instance.uuid} />
       </div>
 
       {/* Files */}
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Files</h3>
+        <h3 style={{ marginTop: 0 }}>Dateien</h3>
         <FileBrowser instanceUuid={instance.uuid} />
       </div>
 
@@ -342,14 +356,14 @@ export function InstanceDetailPage() {
       {/* Routines */}
       {instance.role === "owner" && (
         <div style={cardStyle}>
-          <h3 style={{ marginTop: 0 }}>Routines</h3>
+          <h3 style={{ marginTop: 0 }}>Routinen</h3>
           <RoutineManager instanceUuid={instance.uuid} />
         </div>
       )}
 
       {/* Collaborators */}
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Collaborators</h3>
+        <h3 style={{ marginTop: 0 }}>Mitbenutzer</h3>
         <CollaboratorManager
           instanceUuid={instance.uuid}
           isOwner={instance.role === "owner"}
@@ -358,9 +372,38 @@ export function InstanceDetailPage() {
 
       {/* Activity */}
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Activity</h3>
+        <h3 style={{ marginTop: 0 }}>Aktivität</h3>
         <ActivityLog instanceUuid={instance.uuid} />
       </div>
+
+      {/* Gefahrenzone: nur Owner */}
+      {instance.role === "owner" && (
+        <div style={{ ...cardStyle, borderColor: "#ef9a9a" }}>
+          <h3 style={{ marginTop: 0, color: "#c62828" }}>Server löschen</h3>
+          {instance.status === "suspended" ? (
+            <p style={{ margin: 0, fontSize: 13, color: "#666" }}>
+              Gesperrt, bitte Support kontaktieren.
+            </p>
+          ) : deleting ? (
+            <DeleteInstanceForm
+              name={instance.name}
+              status={instance.status}
+              notice={orderNotice}
+              idPrefix="detail-del"
+              onCancel={() => setDeleting(false)}
+              onDelete={async () => {
+                await api.deleteInstance(instance.uuid, instance.name);
+                // Toast auf dem Dashboard anzeigen (die Detailseite wird verlassen)
+                navigate("/", { state: { toast: `Server "${instance.name}" wurde gelöscht.` } });
+              }}
+            />
+          ) : (
+            <button type="button" onClick={startDeleting} style={{ ...btnDefault, color: "#c62828", borderColor: "#ef9a9a" }}>
+              Server löschen…
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Details */}
       <div style={cardStyle}>
@@ -409,9 +452,9 @@ function DetailRow({ label, value, mono }: { label: string; value: string; mono?
 function ResourceBox({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div style={{ padding: 12, backgroundColor: "#f8f8f8", borderRadius: 6, textAlign: "center" }}>
-      <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 16, fontWeight: 600 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#aaa" }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 11, color: "#666" }}>{sub}</div>}
     </div>
   );
 }

@@ -1,0 +1,76 @@
+{
+  "_comment": "Reduced Astra example egg (Paper), PTDL_v2 structure. Minecraft EULA must be accepted by the server owner (eula.txt).",
+  "meta": {
+    "version": "PTDL_v2",
+    "update_url": null
+  },
+  "exported_at": "2026-10-03T00:00:00+00:00",
+  "name": "Minecraft Paper",
+  "author": "astra@example.invalid",
+  "description": "Paper is a high performance Minecraft server fork of Spigot. Accept the Minecraft EULA by setting eula=true in eula.txt after the first start.",
+  "features": [
+    "eula",
+    "java_version",
+    "pid_limit"
+  ],
+  "docker_images": {
+    "Java 21": "ghcr.io/pterodactyl/yolks:java_21"
+  },
+  "file_denylist": [],
+  "startup": "java -Xms128M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true -jar {{SERVER_JARFILE}}",
+  "config": {
+    "files": "{\n    \"server.properties\": {\n        \"parser\": \"properties\",\n        \"find\": {\n            \"server-ip\": \"0.0.0.0\",\n            \"server-port\": \"{{server.build.default.port}}\",\n            \"query.port\": \"{{server.build.default.port}}\"\n        }\n    }\n}",
+    "startup": "{\n    \"done\": \")! For help, type \"\n}",
+    "logs": "{}",
+    "stop": "stop"
+  },
+  "scripts": {
+    "installation": {
+      "script": "#!/bin/bash\n# Paper Installation Script\n# Server Files: /mnt/server\napt update\napt install -y curl jq\n\nmkdir -p /mnt/server\ncd /mnt/server\n\nPROJECT=paper\n\nif [ -n \"${DL_PATH}\" ]; then\n    echo \"Using supplied download url: ${DL_PATH}\"\n    DOWNLOAD_URL=$(eval echo $(echo ${DL_PATH} | sed -e 's/{{/${/g' -e 's/}}/}/g'))\nelse\n    VER_EXISTS=$(curl -s https://api.papermc.io/v2/projects/${PROJECT} | jq -r --arg VERSION $MINECRAFT_VERSION '.versions[] | contains($VERSION)' | grep -m1 true)\n    LATEST_VERSION=$(curl -s https://api.papermc.io/v2/projects/${PROJECT} | jq -r '.versions' | jq -r '.[-1]')\n\n    if [ \"${VER_EXISTS}\" == \"true\" ]; then\n        echo \"Version is valid. Using version ${MINECRAFT_VERSION}\"\n    else\n        echo \"Specified version not found. Defaulting to the latest ${PROJECT} version\"\n        MINECRAFT_VERSION=${LATEST_VERSION}\n    fi\n\n    BUILD_EXISTS=$(curl -s https://api.papermc.io/v2/projects/${PROJECT}/versions/${MINECRAFT_VERSION} | jq -r --arg BUILD ${BUILD_NUMBER} '.builds[] | tostring | contains($BUILD)' | grep -m1 true)\n    LATEST_BUILD=$(curl -s https://api.papermc.io/v2/projects/${PROJECT}/versions/${MINECRAFT_VERSION} | jq -r '.builds' | jq -r '.[-1]')\n\n    if [ \"${BUILD_EXISTS}\" == \"true\" ]; then\n        echo \"Build is valid for version ${MINECRAFT_VERSION}. Using build ${BUILD_NUMBER}\"\n    else\n        echo \"Using the latest ${PROJECT} build for version ${MINECRAFT_VERSION}\"\n        BUILD_NUMBER=${LATEST_BUILD}\n    fi\n\n    JAR_NAME=${PROJECT}-${MINECRAFT_VERSION}-${BUILD_NUMBER}.jar\n    echo \"Version being downloaded\"\n    echo \"MC Version: ${MINECRAFT_VERSION}\"\n    echo \"Build: ${BUILD_NUMBER}\"\n    echo \"JAR Name of Build: ${JAR_NAME}\"\n    DOWNLOAD_URL=https://api.papermc.io/v2/projects/${PROJECT}/versions/${MINECRAFT_VERSION}/builds/${BUILD_NUMBER}/downloads/${JAR_NAME}\nfi\n\nif [ -f ${SERVER_JARFILE} ]; then\n    mv ${SERVER_JARFILE} ${SERVER_JARFILE}.old\nfi\n\necho \"Downloading ${DOWNLOAD_URL}\"\ncurl -o ${SERVER_JARFILE} ${DOWNLOAD_URL}\n\nif [ ! -f server.properties ]; then\n    echo \"Downloading MC server.properties\"\n    curl -o server.properties https://raw.githubusercontent.com/parkervcp/eggs/master/minecraft/java/server.properties\nfi\necho \"Install complete. Accept the Minecraft EULA by setting eula=true in eula.txt after the first start.\"\n",
+      "container": "ghcr.io/pterodactyl/installers:debian",
+      "entrypoint": "bash"
+    }
+  },
+  "variables": [
+    {
+      "name": "Minecraft Version",
+      "description": "The version of Minecraft to download. Leave at latest to get the newest version.",
+      "env_variable": "MINECRAFT_VERSION",
+      "default_value": "latest",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:20",
+      "field_type": "text"
+    },
+    {
+      "name": "Server Jar File",
+      "description": "The name of the server jarfile to run the server with.",
+      "env_variable": "SERVER_JARFILE",
+      "default_value": "server.jar",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|regex:/^([\\w\\d._-]+)(\\.jar)$/",
+      "field_type": "text"
+    },
+    {
+      "name": "Download Path",
+      "description": "A URL to use to download a server.jar rather than the default PaperMC build.",
+      "env_variable": "DL_PATH",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string",
+      "field_type": "text"
+    },
+    {
+      "name": "Build Number",
+      "description": "The Paper build number. Leave at latest to get the newest build.",
+      "env_variable": "BUILD_NUMBER",
+      "default_value": "latest",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:20",
+      "field_type": "text"
+    }
+  ]
+}

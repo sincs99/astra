@@ -3,8 +3,8 @@
  *
  * Erlaubt Benutzern, eigene SSH Public Keys zu verwalten:
  * - Auflisten aller Keys mit Fingerprint und Erstellungsdatum
- * - Neuen Key hinzufuegen (Name + Public Key)
- * - Key loeschen (mit Bestaetigung)
+ * - Neuen Key hinzufügen (Name + Public Key)
+ * - Key löschen (mit Bestätigung)
  */
 
 import { useEffect, useState } from "react";
@@ -23,6 +23,7 @@ import {
   thStyle,
   tdStyle,
 } from "../components/ui/styles";
+import { formatDateLong } from "../lib/dates";
 
 export function SshKeysPage() {
   const toast = useToast();
@@ -61,12 +62,12 @@ export function SshKeysPage() {
     setSubmitting(true);
     try {
       await api.createSshKey({ name: formName.trim(), public_key: formKey.trim() });
-      toast.success(`SSH-Key "${formName}" hinzugefuegt`);
+      toast.success(`SSH-Key "${formName}" hinzugefügt`);
       setFormName("");
       setFormKey("");
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Fehler beim Hinzufuegen");
+      toast.error(e instanceof Error ? e.message : "Fehler beim Hinzufügen");
     } finally {
       setSubmitting(false);
     }
@@ -75,19 +76,14 @@ export function SshKeysPage() {
   const handleDelete = async (key: SshKeyEntry) => {
     try {
       await api.deleteSshKey(key.id);
-      toast.success(`SSH-Key "${key.name}" geloescht`);
+      toast.success(`SSH-Key "${key.name}" gelöscht`);
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Fehler beim Loeschen");
+      toast.error(e instanceof Error ? e.message : "Fehler beim Löschen");
     }
   };
 
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString("de-CH", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+  const formatDate = formatDateLong;
 
   const truncateKey = (key: string) => {
     const parts = key.trim().split(/\s+/);
@@ -100,10 +96,10 @@ export function SshKeysPage() {
     <PageLayout title="SSH Keys">
       <Toast {...toast} />
 
-      {/* Neuen Key hinzufuegen */}
+      {/* Neuen Key hinzufügen */}
       <div style={{ ...cardStyle, marginBottom: 28 }}>
         <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700 }}>
-          Neuen SSH-Key hinzufuegen
+          Neuen SSH-Key hinzufügen
         </h2>
         <form onSubmit={handleAdd}>
           <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 2fr", marginBottom: 12 }}>
@@ -134,7 +130,7 @@ export function SshKeysPage() {
             disabled={submitting}
             style={{ ...btnPrimary, opacity: submitting ? 0.6 : 1, cursor: submitting ? "not-allowed" : "pointer" }}
           >
-            {submitting ? "Wird hinzugefuegt..." : "Key hinzufuegen"}
+            {submitting ? "Wird hinzugefügt..." : "Key hinzufügen"}
           </button>
         </form>
       </div>
@@ -145,7 +141,7 @@ export function SshKeysPage() {
       ) : error ? (
         <ErrorState message={error} onRetry={load} />
       ) : keys.length === 0 ? (
-        <EmptyState message="Keine SSH-Keys vorhanden. Fuege deinen ersten Key oben hinzu." />
+        <EmptyState message="Keine SSH-Keys vorhanden. Füge deinen ersten Key oben hinzu." />
       ) : (
         <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -173,8 +169,8 @@ export function SshKeysPage() {
                   </td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>
                     <ConfirmButton
-                      label="Loeschen"
-                      confirmMessage={`SSH-Key "${key.name}" wirklich loeschen?`}
+                      label="Löschen"
+                      confirmMessage={`SSH-Key "${key.name}" wirklich löschen?`}
                       onConfirm={() => handleDelete(key)}
                       danger
                       size="sm"
@@ -193,8 +189,8 @@ export function SshKeysPage() {
         backgroundColor: "#e3f2fd", borderRadius: 8,
         border: "1px solid #90caf9", fontSize: 13, color: "#1565c0",
       }}>
-        <strong>SFTP-Zugriff mit SSH Keys:</strong> Die hier verwalteten Keys werden fuer die
-        schluesselbasierte SFTP-Authentifizierung verwendet. Unterstuetzte Formate:{" "}
+        <strong>SFTP-Zugriff mit SSH Keys:</strong> Die hier verwalteten Keys werden für die
+        schlüsselbasierte SFTP-Authentifizierung verwendet. Unterstützte Formate:{" "}
         <code>ssh-ed25519</code>, <code>ssh-rsa</code>, <code>ecdsa-sha2-nistp256/384/521</code>.
         <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
           <li>Als <strong>Owner</strong> einer Instance: SFTP-Zugriff automatisch erlaubt.</li>

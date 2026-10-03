@@ -1,9 +1,13 @@
+import { UtilizationBar, utilizationColor, formatMB } from "../components/UtilizationBar";
+import { DaemonStatus } from "../components/DaemonStatus";
+import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { useEffect, useState, useMemo } from "react";
 import { api, type AgentMonitoringEntry, type FleetSummary } from "../services/api";
 import {
-  PageLayout, StatusBadge, LoadingState, EmptyState, ErrorState,
+  PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState,
   cardStyle, inputStyle, labelStyle, btnDefault, thStyle, tdStyle,
 } from "../components/ui";
+import { formatTimeAgo } from "../lib/dates";
 
 type HealthFilter = "" | "healthy" | "stale" | "degraded" | "unreachable";
 type SortKey = "name" | "last_seen_at" | "memory" | "disk" | "cpu" | "instances";
@@ -19,10 +23,12 @@ export function AdminAgentsMonitoringPage() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortAsc, setSortAsc] = useState(true);
 
-  const loadData = async () => {
+  const [autoRefresh, setAutoRefresh] = useAutoRefreshSetting("monitoring");
+
+  const loadData = async (silent = false) => {
     try {
-      setLoading(true);
-      setError(null);
+      if (!silent) setLoading(true);
+      if (!silent) setError(null);
       const [agentData, summaryData] = await Promise.all([
         api.getAgentsMonitoring({ health: healthFilter || undefined, search: search.trim() || undefined }),
         api.getFleetSummary(),
@@ -30,13 +36,16 @@ export function AdminAgentsMonitoringPage() {
       setAgents(agentData);
       setSummary(summaryData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      // Bei stillem Refresh vorhandene Daten nicht durch Fehler ersetzen
+      if (!silent) setError(err instanceof Error ? err.message : "Fehler beim Laden");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { loadData(); }, [healthFilter]);
+
+  useAutoRefresh(() => loadData(true), 15000, autoRefresh);
 
   useEffect(() => {
     const timer = setTimeout(() => { loadData(); }, 300);
@@ -74,8 +83,8 @@ export function AdminAgentsMonitoringPage() {
       {/* Filter & Suche */}
       <div style={{ ...cardStyle, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div>
-          <label style={labelStyle}>Status-Filter</label>
-          <select
+          <label htmlFor="fld-4" style={labelStyle}>Status-Filter</label>
+          <select id="fld-4"
             value={healthFilter}
             onChange={e => setHealthFilter(e.target.value as HealthFilter)}
             style={inputStyle}
@@ -88,8 +97,8 @@ export function AdminAgentsMonitoringPage() {
           </select>
         </div>
         <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Suche (Name / FQDN)</label>
-          <input
+          <label htmlFor="fld-5" style={labelStyle}>Suche (Name / FQDN)</label>
+          <input id="fld-5"
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -97,10 +106,11 @@ export function AdminAgentsMonitoringPage() {
             style={{ ...inputStyle, width: "100%" }}
           />
         </div>
-        <button onClick={loadData} style={{ ...btnDefault, alignSelf: "flex-end" }}>↻ Aktualisieren</button>
+        <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
+        <button onClick={() => loadData()} style={{ ...btnDefault, alignSelf: "flex-end" }}>↻ Aktualisieren</button>
       </div>
 
-      {error && <ErrorState message={error} onRetry={loadData} />}
+      {error && <ErrorState message={error} onRetry={() => loadData()} />}
 
       {/* Agent-Tabelle */}
       {loading ? (
@@ -125,7 +135,7 @@ export function AdminAgentsMonitoringPage() {
             </thead>
             <tbody>
               {sortedAgents.map(agent => (
-                <AgentRow key={agent.id} agent={agent} onRefresh={loadData} />
+                <AgentRow key={agent.id} agent={agent} onRefresh={() => loadData()} />
               ))}
             </tbody>
           </table>
@@ -176,9 +186,9 @@ function FleetSummaryCards({ summary }: { summary: FleetSummary }) {
 function SummaryCard({ label, value, detail, color }: { label: string; value: string | number; detail?: string; color?: string }) {
   return (
     <div style={{ ...cardStyle, textAlign: "center", padding: 14 }}>
-      <div style={{ fontSize: 12, color: "#888", textTransform: "uppercase", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 12, color: "#666", textTransform: "uppercase", fontWeight: 600 }}>{label}</div>
       <div style={{ fontSize: 28, fontWeight: 700, color: color || "#333", marginTop: 4 }}>{value}</div>
-      {detail && <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>{detail}</div>}
+      {detail && <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>{detail}</div>}
     </div>
   );
 }
@@ -195,17 +205,20 @@ function AgentRow({ agent, onRefresh }: { agent: AgentMonitoringEntry; onRefresh
       <td style={tdStyle}>
         <div>
           <strong>{agent.name}</strong>
-          <div style={{ fontSize: 11, color: "#888" }}>{agent.fqdn}</div>
+          <div style={{ fontSize: 11, color: "#666" }}>{agent.fqdn}</div>
         </div>
       </td>
       <td style={tdStyle}>
-        <StatusBadge status={agent.health_status} size="sm" />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+          <StatusBadge status={agent.health_status} size="sm" />
+          <DaemonStatus {...agent} />
+        </div>
       </td>
       <td style={tdStyle}>
         {agent.last_seen_at ? (
           <span title={agent.last_seen_at}>{formatTimeAgo(agent.last_seen_at)}</span>
         ) : (
-          <span style={{ color: "#999" }}>nie</span>
+          <span style={{ color: "#666" }}>nie</span>
         )}
       </td>
       <td style={{ ...tdStyle, textAlign: "center" }}>{agent.instance_count}</td>
@@ -220,9 +233,9 @@ function AgentRow({ agent, onRefresh }: { agent: AgentMonitoringEntry; onRefresh
       </td>
       <td style={{ ...tdStyle, fontSize: 12 }}>
         {ep.total > 0 ? (
-          <span>{ep.assigned}/{ep.total}{ep.locked > 0 && <span style={{ color: "#999" }}> (🔒{ep.locked})</span>}</span>
+          <span>{ep.assigned}/{ep.total}{ep.locked > 0 && <span style={{ color: "#666" }}> (🔒{ep.locked})</span>}</span>
         ) : (
-          <span style={{ color: "#999" }}>-</span>
+          <span style={{ color: "#666" }}>-</span>
         )}
       </td>
       <td style={{ ...tdStyle, textAlign: "center" }}>
@@ -239,7 +252,7 @@ function MaintenanceToggle({ agent, onRefresh }: { agent: AgentMonitoringEntry; 
 
   const handleToggle = async () => {
     const action = agent.maintenance_mode ? "deaktivieren" : "aktivieren";
-    if (!confirm(`Maintenance fuer "${agent.name}" ${action}?`)) return;
+    if (!confirm(`Maintenance für "${agent.name}" ${action}?`)) return;
     setToggling(true);
     try {
       if (agent.maintenance_mode) {
@@ -262,7 +275,7 @@ function MaintenanceToggle({ agent, onRefresh }: { agent: AgentMonitoringEntry; 
         <StatusBadge status="maintenance" size="sm" />
       )}
       {agent.maintenance_reason && (
-        <div style={{ fontSize: 10, color: "#888", marginTop: 2 }} title={agent.maintenance_reason}>
+        <div style={{ fontSize: 10, color: "#666", marginTop: 2 }} title={agent.maintenance_reason}>
           {agent.maintenance_reason.substring(0, 30)}
         </div>
       )}
@@ -283,47 +296,5 @@ function MaintenanceToggle({ agent, onRefresh }: { agent: AgentMonitoringEntry; 
 
 // ── Utilization Bar ──────────────────────────────────────
 
-function UtilizationBar({ used, total, percent, unit }: { used: number; total: number; percent: number; unit: string }) {
-  if (total <= 0) return <span style={{ color: "#999", fontSize: 12 }}>n/a</span>;
-  const color = utilizationColor(percent);
-  return (
-    <div style={{ minWidth: 100 }}>
-      <div style={{ height: 6, borderRadius: 3, backgroundColor: "#eee", overflow: "hidden" }}>
-        <div style={{ width: `${Math.min(percent, 100)}%`, height: "100%", backgroundColor: color, borderRadius: 3, transition: "width 0.3s" }} />
-      </div>
-      <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
-        {formatValue(used, unit)} / {formatValue(total, unit)} ({percent}%)
-      </div>
-    </div>
-  );
-}
-
 // ── Hilfsfunktionen ──────────────────────────────────────
 
-function utilizationColor(percent: number): string {
-  if (percent >= 90) return "#d32f2f";
-  if (percent >= 70) return "#f57c00";
-  if (percent >= 50) return "#fbc02d";
-  return "#4caf50";
-}
-
-function formatMB(mb: number): string {
-  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
-  return `${mb} MB`;
-}
-
-function formatValue(val: number, unit: string): string {
-  if (unit === "MB") return formatMB(val);
-  return `${val}${unit}`;
-}
-
-function formatTimeAgo(isoStr: string): string {
-  try {
-    const d = new Date(isoStr);
-    const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-    if (diff < 60) return "gerade eben";
-    if (diff < 3600) return `vor ${Math.floor(diff / 60)} Min.`;
-    if (diff < 86400) return `vor ${Math.floor(diff / 3600)} Std.`;
-    return `vor ${Math.floor(diff / 86400)} Tagen`;
-  } catch { return isoStr; }
-}

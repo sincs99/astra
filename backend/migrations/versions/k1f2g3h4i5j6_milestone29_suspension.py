@@ -26,24 +26,51 @@ def _column_exists(table, column):
 
 
 def upgrade():
-    with op.batch_alter_table("instances", schema=None) as batch_op:
-        if not _column_exists("instances", "suspended_reason"):
-            batch_op.add_column(sa.Column("suspended_reason", sa.String(500), nullable=True))
-        if not _column_exists("instances", "suspended_at"):
-            batch_op.add_column(sa.Column("suspended_at", sa.DateTime(), nullable=True))
-        if not _column_exists("instances", "suspended_by_user_id"):
-            batch_op.add_column(
+    # Spalten per ALTER TABLE ADD COLUMN (kein Batch-Neuaufbau: der scheitert auf SQLite an
+    # den unbenannten Alt-Constraints mit "Constraint must have a name").
+    # SQLite kann per ALTER keine FK-Constraints anlegen -> dort nur die Integer-Spalte.
+    bind = op.get_bind()
+    is_sqlite = bind.dialect.name == "sqlite"
+
+    if not _column_exists("instances", "suspended_reason"):
+        op.add_column("instances", sa.Column("suspended_reason", sa.String(500), nullable=True))
+    if not _column_exists("instances", "suspended_at"):
+        op.add_column("instances", sa.Column("suspended_at", sa.DateTime(), nullable=True))
+    if not _column_exists("instances", "suspended_by_user_id"):
+        if is_sqlite:
+            op.add_column("instances", sa.Column("suspended_by_user_id", sa.Integer(), nullable=True))
+        else:
+            op.add_column(
+                "instances",
                 sa.Column(
                     "suspended_by_user_id",
                     sa.Integer(),
-                    sa.ForeignKey("users.id"),
+                    sa.ForeignKey("users.id", name="fk_instances_suspended_by_user_id_users"),
                     nullable=True,
-                )
+                ),
             )
 
 
 def downgrade():
-    with op.batch_alter_table("instances", schema=None) as batch_op:
-        batch_op.drop_column("suspended_by_user_id")
-        batch_op.drop_column("suspended_at")
-        batch_op.drop_column("suspended_reason")
+    bind = op.get_bind()
+    if bind.dialect.name != "sqlite":
+        # FK-Name haengt davon ab, ob die Spalte per Migration (benannt) oder per
+        # db.create_all() (DB-Default-Name) entstanden ist.
+        for fk in sa_inspect(bind).get_foreign_keys("instances"):
+            if fk.get("constrained_columns") == ["suspended_by_user_id"] and fk.get("name"):
+                op.drop_constraint(fk["name"], "instances", type_="foreignkey")
+        op.drop_column("instances", "suspended_by_user_id")
+        op.drop_column("instances", "suspended_at")
+        op.drop_column("instances", "suspended_reason")
+    else:
+        naming = {
+            "ix": "ix_%(column_0_label)s",
+            "uq": "uq_%(table_name)s_%(column_0_name)s",
+            "ck": "ck_%(table_name)s_%(constraint_name)s",
+            "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+            "pk": "pk_%(table_name)s",
+        }
+        with op.batch_alter_table("instances", schema=None, naming_convention=naming) as batch_op:
+            batch_op.drop_column("suspended_by_user_id")
+            batch_op.drop_column("suspended_at")
+            batch_op.drop_column("suspended_reason")

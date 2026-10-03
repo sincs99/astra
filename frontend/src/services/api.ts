@@ -5,6 +5,11 @@
  * In Produktion:  VITE_API_BASE_URL oder /api (hinter Nginx)
  */
 
+import { friendlyApiMessage, NETWORK_ERROR_MESSAGE } from "../lib/errors";
+
+/** 401 bedeutet hier "falsches Passwort", nicht "Sitzung abgelaufen". */
+const CREDENTIAL_ENDPOINTS = ["/auth/login", "/auth/change-password"];
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 const TOKEN_KEY = "astra_access_token";
 
@@ -39,6 +44,9 @@ export function isAuthenticated(): boolean {
   return !!getAccessToken();
 }
 
+/** Muss zum Backend passen (MIN_PASSWORD_LENGTH in accounts/service.py). */
+export const MIN_PASSWORD_LENGTH = 8;
+
 export function logout() {
   setAccessToken(null);
 }
@@ -62,6 +70,18 @@ export function getSimulatedUserId(): number {
 
 // ── Generischer Fetch-Wrapper ──────────────────────────
 
+/** Fehler der API mit HTTP-Status und optionalem Fehlercode (z.B. "email_not_verified"). */
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 async function request<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
@@ -79,13 +99,27 @@ async function request<T = unknown>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, { ...options, headers });
+  let response: Response;
+  try {
+    response = await fetch(url, { ...options, headers });
+  } catch {
+    throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
+  }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(
-      (error as Record<string, string>).error ||
-        `Request failed: ${response.status}`
+    // Abgelaufene/ungueltige Session: Token verwerfen und zum Login.
+    // Ausgenommen: Endpunkte, die bei falschen Zugangsdaten selbst 401 liefern.
+    if (response.status === 401 && !CREDENTIAL_ENDPOINTS.includes(endpoint) && token) {
+      logout();
+      if (window.location.pathname !== "/login") {
+        window.location.assign("/login?expired=1");
+      }
+    }
+    const error = (await response.json().catch(() => ({}))) as Record<string, string>;
+    throw new ApiError(
+      friendlyApiMessage(response.status, error.error || `Request failed: ${response.status}`),
+      response.status,
+      error.code,
     );
   }
 
@@ -120,6 +154,141 @@ export interface LoginResponse {
   user: User;
 }
 
+/** Antwort von /auth/login bei aktivem MFA, solange noch kein Code mitgeschickt wurde. */
+export interface MfaRequiredResponse {
+  requires_mfa: true;
+  message: string;
+}
+
+export type LoginResult = LoginResponse | MfaRequiredResponse;
+
+export interface MfaSetupResult {
+  secret: string;
+  provisioning_uri: string;
+  message: string;
+}
+
+export interface MfaEnableResult {
+  mfa_enabled: boolean;
+  recovery_codes: string[];
+  message: string;
+}
+
+export interface ApiKeyEntry {
+  id: number;
+  user_id: number;
+  key_type: "account" | "application";
+  identifier: string;
+  memo: string | null;
+  allowed_ips: string[] | null;
+  permissions: string[] | null;
+  last_used_at: string | null;
+  expires_at: string | null;
+  created_at: string | null;
+}
+
+/** Nach dem Anlegen enthaelt die Antwort genau einmal den Klartext-Token. */
+export interface ApiKeyCreated extends ApiKeyEntry {
+  raw_token: string;
+}
+
+/** Bei aktiver E-Mail-Verifizierung gibt es kein Token, sondern nur den Hinweis zur Bestaetigung. */
+export type RegisterResponse =
+  | LoginResponse
+  | { verification_required: true; message: string; user: User };
+
+// ── Phase 4: Produkte & Bestellungen ───────────────────
+
+export interface ProductResources {
+  memory: number;
+  swap: number;
+  disk: number;
+  io: number;
+  cpu: number;
+}
+
+/** Oeffentliche Felder (GET /client/products, ohne Login); Admins bekommen zusaetzlich die internen Felder. */
+export interface Product {
+  id: number;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  currency: string;
+  billing_period_days: number;
+  resources: ProductResources;
+  /** Optional: Name des Blueprints, falls das Backend ihn im oeffentlichen Produkt mitliefert */
+  blueprint_name?: string | null;
+  /** Nur Admin-Antworten */
+  blueprint_id?: number;
+  is_active?: boolean;
+  max_instances_per_user?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+/** Body fuer POST/PATCH /admin/products: Ressourcen FLACH, nicht als `resources`-Objekt. */
+export interface ProductInput {
+  name: string;
+  description: string | null;
+  blueprint_id: number;
+  memory: number;
+  disk: number;
+  cpu: number;
+  swap: number;
+  io: number;
+  price_cents: number;
+  currency: string;
+  billing_period_days: number;
+  is_active: boolean;
+  max_instances_per_user: number | null;
+}
+
+export type OrderStatus =
+  | "pending_payment"
+  | "awaiting_provisioning"
+  | "active"
+  | "past_due"
+  | "cancelled"
+  | "expired";
+
+export interface OrderConnection {
+  host: string | null;
+  ip?: string;
+  port: number;
+  address: string;
+}
+
+/** Bestellungen werden ueber `uuid` angesprochen (nicht ueber die numerische id). */
+export interface Order {
+  id: number;
+  uuid: string;
+  status: OrderStatus;
+  product_id: number;
+  product_name: string | null;
+  instance_name: string;
+  instance_uuid: string | null;
+  instance_status: string | null;
+  connection: OrderConnection | null;
+  /** Schnappschuss zum Bestellzeitpunkt */
+  price_cents: number;
+  currency: string;
+  billing_period_days: number;
+  resources: Partial<ProductResources>;
+  payment_reference: string | null;
+  paid_at: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  /** Zeitpunkt der Sperre wegen ueberfaelliger Zahlung (UTC ohne Zeitzonen-Suffix) */
+  past_due_at?: string | null;
+  /** Geplante Loeschung: Ende der Karenzzeit bzw. Laufzeitende bei Kuendigung, sonst null */
+  scheduled_deletion_at?: string | null;
+  cancelled_at: string | null;
+  created_at: string | null;
+  /** Nur Admin-Antworten */
+  user_id?: number;
+  username?: string | null;
+}
+
 // ── Typen ──────────────────────────────────────────────
 
 export interface User {
@@ -127,15 +296,35 @@ export interface User {
   username: string;
   email: string;
   is_admin: boolean;
+  email_verified?: boolean;
+  mfa_enabled?: boolean;
   created_at: string | null;
   updated_at: string | null;
 }
 
 export interface Agent {
   id: number;
+  uuid: string | null;
   name: string;
   fqdn: string;
   is_active: boolean;
+  scheme: string;
+  behind_proxy: boolean;
+  daemon_connect: number;
+  daemon_listen: number;
+  daemon_sftp: number;
+  daemon_base: string;
+  upload_size: number;
+  memory_total: number;
+  disk_total: number;
+  cpu_total: number;
+  memory_overalloc: number;
+  disk_overalloc: number;
+  cpu_overalloc: number;
+  daemon_token_id: string | null;
+  has_daemon_credentials: boolean;
+  last_seen_at: string | null;
+  maintenance_mode: boolean;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -143,6 +332,46 @@ export interface Agent {
 export interface AgentCreate {
   name: string;
   fqdn: string;
+  scheme?: string;
+  behind_proxy?: boolean;
+  daemon_connect?: number;
+  daemon_listen?: number;
+  daemon_sftp?: number;
+  daemon_base?: string;
+  /** Kapazitaet (0 = kein Limit hinterlegt): Memory/Disk in MB, CPU in % (400 = 4 Kerne), Ueberallokation in % */
+  memory_total?: number;
+  disk_total?: number;
+  cpu_total?: number;
+  memory_overalloc?: number;
+  disk_overalloc?: number;
+  cpu_overalloc?: number;
+}
+
+export interface AgentUpdate {
+  name?: string;
+  fqdn?: string;
+  is_active?: boolean;
+  scheme?: string;
+  behind_proxy?: boolean;
+  daemon_connect?: number;
+  daemon_listen?: number;
+  daemon_sftp?: number;
+  daemon_base?: string;
+  upload_size?: number;
+  /** Kapazitaet (0 = kein Limit hinterlegt): Memory/Disk in MB, CPU in % (400 = 4 Kerne), Ueberallokation in % */
+  memory_total?: number;
+  disk_total?: number;
+  cpu_total?: number;
+  memory_overalloc?: number;
+  disk_overalloc?: number;
+  cpu_overalloc?: number;
+}
+
+/** Antwort von GET /admin/agents/{id}/configuration – Inhalt der Wings config.yml */
+export interface AgentConfiguration {
+  agent_id: number;
+  yaml: string;
+  config: Record<string, unknown>;
 }
 
 export interface BlueprintVariable {
@@ -154,6 +383,12 @@ export interface BlueprintVariable {
   user_editable: boolean;
 }
 
+/** Startup-Erkennung fuer Wings: Zeilen, bei denen der Server als "running" gilt. */
+export interface BlueprintStartupConfig {
+  done: string[];
+  strip_ansi?: boolean;
+}
+
 export interface Blueprint {
   id: number;
   name: string;
@@ -161,8 +396,14 @@ export interface Blueprint {
   docker_image: string | null;
   startup_command: string | null;
   install_script: string | null;
+  install_container: string | null;
+  install_entrypoint: string | null;
   variables: BlueprintVariable[];
   config_schema: Record<string, unknown> | null;
+  config_startup: BlueprintStartupConfig | null;
+  config_stop: string | null;
+  config_files: Record<string, unknown> | null;
+  file_denylist: string[];
   created_at: string | null;
   updated_at: string | null;
 }
@@ -173,7 +414,13 @@ export interface BlueprintCreate {
   docker_image?: string;
   startup_command?: string;
   install_script?: string;
+  install_container?: string;
+  install_entrypoint?: string;
   variables?: BlueprintVariable[];
+  config_startup?: BlueprintStartupConfig;
+  config_stop?: string;
+  config_files?: Record<string, unknown>;
+  file_denylist?: string[];
 }
 
 export interface BlueprintUpdate {
@@ -182,7 +429,13 @@ export interface BlueprintUpdate {
   docker_image?: string;
   startup_command?: string;
   install_script?: string;
+  install_container?: string;
+  install_entrypoint?: string;
   variables?: BlueprintVariable[];
+  config_startup?: BlueprintStartupConfig;
+  config_stop?: string;
+  config_files?: Record<string, unknown>;
+  file_denylist?: string[];
 }
 
 export interface Endpoint {
@@ -228,12 +481,26 @@ export interface Instance {
   created_at: string | null;
   updated_at: string | null;
   role?: "owner" | "collaborator" | "none";
+  /** Verbindungsadresse (FQDN des Agents + Port des primaeren Endpoints); null ohne Endpoint */
+  connection?: InstanceConnection | null;
+}
+
+export interface InstanceConnection {
+  /** FQDN des Agents; null falls kein Agent geladen */
+  host: string | null;
+  ip?: string;
+  port: number;
+  /** SFTP-Port des Agents (optional, falls das Backend ihn mitliefert) */
+  sftp_port?: number;
+  /** Fertige Adresse, z.B. "node1.example.com:25565" */
+  address: string;
 }
 
 export interface InstanceCreate {
   name: string;
   owner_id: number;
-  agent_id: number;
+  /** Weggelassen/null: Astra waehlt automatisch einen Agent mit freiem Endpoint und genug Kapazitaet (M42) */
+  agent_id?: number | null;
   blueprint_id: number;
   description?: string;
   endpoint_id?: number;
@@ -465,6 +732,10 @@ export interface AgentMonitoringEntry {
   utilization: UtilizationSummary;
   instance_count: number;
   endpoint_summary: EndpointSummary;
+  /** Optional: vom Backend, sobald der Daemon aktiv geprueft wird */
+  daemon_reachable?: boolean | null;
+  daemon_version?: string | null;
+  daemon_error?: string | null;
 }
 
 export interface FleetSummary {
@@ -564,11 +835,58 @@ export interface PreflightResult {
 
 export const api = {
   // ── Auth ─────────────────────────────────────────────
-  login: (login: string, password: string) =>
-    request<LoginResponse>("/auth/login", {
+  register: (username: string, email: string, password: string) =>
+    request<RegisterResponse>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ login, password }),
+      body: JSON.stringify({ username, email, password }),
     }),
+
+  verifyEmail: (token: string) =>
+    request<{ message: string }>("/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+
+  /** `login` darf Benutzername oder E-Mail-Adresse sein. */
+  resendVerification: (login: string) =>
+    request<{ message: string }>("/auth/resend-verification", {
+      method: "POST",
+      body: JSON.stringify({ login }),
+    }),
+
+  requestPasswordReset: (email: string) =>
+    request<{ message: string }>("/auth/password-reset/request", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  confirmPasswordReset: (token: string, password: string) =>
+    request<{ message: string }>("/auth/password-reset/confirm", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    }),
+
+  login: (login: string, password: string, mfaCode?: string) =>
+    request<LoginResult>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(mfaCode ? { login, password, mfa_code: mfaCode } : { login, password }),
+    }),
+
+  // ── Konto: Passwort, MFA, API-Keys ───────────────────
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ message: string }>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    }),
+  setupMfa: () => request<MfaSetupResult>("/auth/mfa/setup", { method: "POST" }),
+  verifyMfa: (code: string) =>
+    request<MfaEnableResult>("/auth/mfa/verify", { method: "POST", body: JSON.stringify({ code }) }),
+  disableMfa: () => request<{ message: string }>("/auth/mfa/disable", { method: "POST" }),
+  getApiKeys: () => request<ApiKeyEntry[]>("/auth/api-keys"),
+  createApiKey: (data: { key_type?: "account" | "application"; memo?: string; allowed_ips?: string[] }) =>
+    request<ApiKeyCreated>("/auth/api-keys", { method: "POST", body: JSON.stringify(data) }),
+  deleteApiKey: (id: number) =>
+    request<{ message: string }>(`/auth/api-keys/${id}`, { method: "DELETE" }),
 
   getCurrentUser: () => request<User>("/auth/me"),
 
@@ -582,6 +900,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  updateAgent: (agentId: number, data: AgentUpdate) =>
+    request<Agent>(`/admin/agents/${agentId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  // M33: Wings config.yml fuer den Node
+  getAgentConfiguration: (agentId: number) =>
+    request<AgentConfiguration>(`/admin/agents/${agentId}/configuration`),
+  // M33: Neue Node-Credentials (token_id + token) erzeugen
+  rotateAgentCredentials: (agentId: number) =>
+    request<{ message: string; agent: Agent }>(`/admin/agents/${agentId}/rotate-credentials`, {
+      method: "POST",
+    }),
 
   // ── Admin: Blueprints ────────────────────────────────
   getBlueprints: () => request<Blueprint[]>("/admin/blueprints"),
@@ -589,6 +920,12 @@ export const api = {
     request<Blueprint>("/admin/blueprints", {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+  /** Pterodactyl-Egg-JSON importieren (Body = das Egg selbst). */
+  importBlueprint: (egg: Record<string, unknown>) =>
+    request<Blueprint>("/admin/blueprints/import", {
+      method: "POST",
+      body: JSON.stringify(egg),
     }),
   updateBlueprint: (id: number, data: BlueprintUpdate) =>
     request<Blueprint>(`/admin/blueprints/${id}`, {
@@ -606,6 +943,13 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  /** Port-Bereich als Endpoints anlegen; bereits vorhandene ip:port werden uebersprungen. */
+  createEndpointsBulk: (agentId: number, data: { ip?: string; port_start: number; port_end: number }) =>
+    request<{ created: number; skipped: number; endpoints: Endpoint[] }>(
+      `/admin/agents/${agentId}/endpoints/bulk`,
+      { method: "POST", body: JSON.stringify(data) },
+    ),
+
   // ── Admin: Instances ─────────────────────────────────
   getInstances: () => request<Instance[]>("/admin/instances"),
   createInstance: (data: InstanceCreate) =>
@@ -613,6 +957,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  /** Backups einer Instance fuer Admins (Pruefung vor dem Transfer). */
+  getAdminInstanceBackups: (uuid: string) =>
+    request<{ backups: BackupEntry[]; successful_count: number; last_successful_backup_at: string | null }>(
+      `/admin/instances/${uuid}/backups`,
+    ),
   transferInstance: (uuid: string, targetAgentId: number) =>
     request<Instance>(`/admin/instances/${uuid}/transfer`, {
       method: "POST",
@@ -871,16 +1220,6 @@ export const api = {
   deleteDatabase: (uuid: string, dbId: number) =>
     request<{ message: string }>(`/client/instances/${uuid}/databases/${dbId}`, { method: "DELETE" }),
 
-  // ── Agent: Callbacks (fuer lokale Tests) ──────────────
-  reportInstallResult: (uuid: string, successful: boolean) =>
-    request<{ uuid: string; status: string; message: string }>(
-      `/agent/instances/${uuid}/install`,
-      {
-        method: "POST",
-        body: JSON.stringify({ successful }),
-      }
-    ),
-
   // ── Admin: Fleet Monitoring (M22) ─────────────────────
   getAgentsMonitoring: (params?: { health?: string; search?: string; stale_threshold?: number }) => {
     const p = new URLSearchParams();
@@ -928,6 +1267,59 @@ export const api = {
       `/admin/agents/${agentId}/maintenance`,
       { method: "DELETE" }
     ),
+
+  // ── Phase 4: Produkte (Admin) ────────────────────────
+  getAdminProducts: () => request<Product[]>("/admin/products"),
+  createProduct: (data: ProductInput) =>
+    request<Product>("/admin/products", { method: "POST", body: JSON.stringify(data) }),
+  updateProduct: (id: number, data: Partial<ProductInput>) =>
+    request<Product>(`/admin/products/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteProduct: (id: number) =>
+    request<{ message?: string }>(`/admin/products/${id}`, { method: "DELETE" }),
+
+  // ── Phase 4: Shop & Bestellungen (Kunde) ─────────────
+  /** Oeffentlich: nur aktive Pakete ohne interne Felder. */
+  getShopProducts: () => request<Product[]>("/client/products"),
+  /** `name` ist optional; ohne Name vergibt das Backend einen. */
+  createOrder: (productId: number, name?: string) =>
+    request<Order>("/client/orders", {
+      method: "POST",
+      body: JSON.stringify(name ? { product_id: productId, name } : { product_id: productId }),
+    }),
+  getMyOrders: () => request<Order[]>("/client/orders"),
+  /** Welcher Zahlungsweg aktiv ist: "manual" (Ueberweisung) oder "stripe" (online). */
+  getBillingInfo: () =>
+    request<{ payment_provider: "manual" | "stripe" | string; online_payment: boolean }>("/client/billing-info"),
+  /** Startet die Zahlung (Stripe Checkout). 409 "manual", solange kein Zahlungsanbieter konfiguriert ist. */
+  createCheckout: (uuid: string) =>
+    request<{ checkout_url: string }>(`/client/orders/${uuid}/checkout`, { method: "POST", body: JSON.stringify({}) }),
+  /** pending_payment: sofort storniert; active: zum Laufzeitende gekuendigt (cancel_at_period_end). */
+  cancelOrder: (uuid: string) =>
+    request<Order>(`/client/orders/${uuid}/cancel`, { method: "POST", body: JSON.stringify({}) }),
+
+  // ── Phase 4: Bestellungen (Admin) ────────────────────
+  getAdminOrders: (status?: OrderStatus | "") =>
+    request<Order[]>(`/admin/orders${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  /** Bei awaiting_provisioning erneut bereitstellen (Zahlung wird nicht doppelt verbucht). */
+  markOrderPaid: (uuid: string, paymentReference?: string) =>
+    request<Order>(`/admin/orders/${uuid}/mark-paid`, {
+      method: "POST",
+      body: JSON.stringify(paymentReference ? { payment_reference: paymentReference } : {}),
+    }),
+
+  // ── Instance loeschen (M43) ───────────────────────────
+  /** Owner: Body {confirm} muss dem Instance-Namen entsprechen. */
+  deleteInstance: (uuid: string, confirmName: string) =>
+    request<{ uuid: string; message: string }>(`/client/instances/${uuid}`, {
+      method: "DELETE",
+      body: JSON.stringify({ confirm: confirmName }),
+    }),
+  /** Admin: optional `force` bricht laufende Vorgaenge ab. */
+  adminDeleteInstance: (uuid: string, force = false) =>
+    request<{ uuid: string; message: string; runner_cleanup?: string; forced?: boolean }>(`/admin/instances/${uuid}`, {
+      method: "DELETE",
+      body: JSON.stringify(force ? { force: true } : {}),
+    }),
 
   // ── Admin: Suspension (M29) ───────────────────────────
   suspendInstance: (uuid: string, reason?: string) =>

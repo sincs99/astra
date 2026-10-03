@@ -171,11 +171,9 @@ def _register_security_headers(app: Flask) -> None:
 # ── Rate Limiting ───────────────────────────────────────
 
 
-_rate_limit_store: dict[str, list] = {}
-
-
 def _register_rate_limiting(app: Flask) -> None:
-    """Einfaches In-Memory Rate Limiting fuer Auth-Endpunkte."""
+    """Rate Limiting fuer Auth-Endpunkte (Redis, Fallback In-Memory)."""
+    from app.infrastructure import ratelimit
 
     @app.before_request
     def check_rate_limit():
@@ -183,31 +181,27 @@ def _register_rate_limiting(app: Flask) -> None:
             return None
 
         # Nur Auth-Endpunkte limitieren
-        auth_paths = ["/api/auth/login"]
+        auth_paths = [
+            "/api/auth/login",
+            "/api/auth/register",
+            "/api/auth/change-password",
+            "/api/auth/verify-email",
+            "/api/auth/resend-verification",
+            "/api/auth/password-reset/request",
+            "/api/auth/password-reset/confirm",
+        ]
         if request.path not in auth_paths:
             return None
 
         max_per_minute = app.config.get("RATELIMIT_AUTH_PER_MINUTE", 20)
         client_ip = request.remote_addr or "unknown"
         key = f"{client_ip}:{request.path}"
-        now = datetime.now(timezone.utc).timestamp()
-        window = 60.0  # 1 Minute
 
-        # Alte Eintraege bereinigen
-        if key in _rate_limit_store:
-            _rate_limit_store[key] = [
-                t for t in _rate_limit_store[key] if now - t < window
-            ]
-        else:
-            _rate_limit_store[key] = []
-
-        if len(_rate_limit_store[key]) >= max_per_minute:
+        if not ratelimit.allow(key, max_per_minute, app.config.get("REDIS_URL")):
             return jsonify({
                 "error": "Rate limit exceeded",
-                "retry_after": int(window),
+                "retry_after": ratelimit.WINDOW_SECONDS,
             }), 429
-
-        _rate_limit_store[key].append(now)
         return None
 
 
@@ -284,6 +278,8 @@ def _import_models() -> None:
     from app.domain.webhooks import models as _webhooks  # noqa: F401
     from app.domain.databases import models as _databases  # noqa: F401
     from app.domain.auth import models as _auth_models  # noqa: F401
+    from app.domain.ssh_keys import models as _ssh_keys  # noqa: F401
+    from app.domain.billing import models as _billing  # noqa: F401
     from app.infrastructure.jobs import models as _job_models  # noqa: F401
 
 
@@ -295,13 +291,17 @@ def _register_blueprints(app: Flask) -> None:
 
     from app.api.admin.routes import admin_bp
     from app.api.client.routes import client_bp
-    from app.api.agent.routes import agent_bp
     from app.api.auth.routes import auth_bp
+    from app.api.remote.routes import remote_bp
+    from app.api.payments.routes import payments_bp
 
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
     app.register_blueprint(client_bp, url_prefix="/api/client")
-    app.register_blueprint(agent_bp, url_prefix="/api/agent")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    # M33: Wings Remote-API (Node-Token-Auth, Pfade wie im Referenz-Panel)
+    app.register_blueprint(remote_bp, url_prefix="/api/remote")
+    # M48: Webhooks der Zahlungsanbieter (ohne Login, Signaturpruefung)
+    app.register_blueprint(payments_bp, url_prefix="/api/payments")
 
 
 # ── Ops-Endpunkte ──────────────────────────────────────
@@ -459,6 +459,7 @@ def bootstrap_admin(
         username=username,
         email=email,
         is_admin=True,
+        email_verified_at=datetime.now(timezone.utc),
     )
     admin.set_password(password)
     db.session.add(admin)

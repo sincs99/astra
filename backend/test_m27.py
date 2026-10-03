@@ -286,10 +286,9 @@ with app.app_context():
     e2e_uuid = resp.get_json()["uuid"]
 
     # Install-Callback
-    resp = client.post(f"/api/agent/instances/{e2e_uuid}/install", json={
-        "successful": True
-    })
-    check("E2E: Install-Callback -> 200", resp.status_code == 200)
+    from test_helpers import report_install
+    resp = report_install(client, e2e_uuid, True)
+    check("E2E: Install-Callback -> 204", resp.status_code == 204)
 
 
 # ================================================================

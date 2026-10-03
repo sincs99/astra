@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type RoutineEntry, ACTION_TYPES } from "../services/api";
+import { formatDateTime } from "../lib/dates";
 
 interface RoutineManagerProps {
   instanceUuid: string;
@@ -28,7 +29,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       const data = await api.getRoutines(instanceUuid);
       setRoutines(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
+      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
     } finally {
       setLoading(false);
     }
@@ -47,7 +48,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       setNewName("");
       showMsg("Routine erstellt");
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Fehler"); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
     finally { setActing(false); }
   };
 
@@ -58,7 +59,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       await api.deleteRoutine(instanceUuid, r.id);
       showMsg("Routine gelöscht");
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Fehler"); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
     finally { setActing(false); }
   };
 
@@ -67,7 +68,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       setError(null);
       await api.updateRoutine(instanceUuid, r.id, { is_active: !r.is_active });
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Fehler"); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
   };
 
   const handleExecute = async (r: RoutineEntry) => {
@@ -78,7 +79,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       const fail = result.results.filter((r) => !r.success).length;
       showMsg(`Routine ausgeführt: ${ok} OK, ${fail} Fehler`);
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Fehler"); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
     finally { setActing(false); }
   };
 
@@ -87,7 +88,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
     if (!routine) return;
     const nextSeq = routine.actions.length > 0 ? Math.max(...routine.actions.map((a) => a.sequence)) + 1 : 1;
     let payload: Record<string, unknown> | null = null;
-    try { payload = JSON.parse(aPayload); } catch { setError("Ungültiges JSON im Payload"); return; }
+    try { payload = JSON.parse(aPayload); } catch { setError("Die Nutzdaten (Payload) sind kein gültiges JSON."); return; }
     try {
       setActing(true); setError(null);
       await api.addRoutineAction(instanceUuid, routineId, {
@@ -96,7 +97,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       setAPayload("{}"); setADelay(0);
       showMsg("Action hinzugefügt");
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Fehler"); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
     finally { setActing(false); }
   };
 
@@ -106,7 +107,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       await api.deleteRoutineAction(instanceUuid, routineId, actionId);
       showMsg("Action gelöscht");
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Fehler"); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
     finally { setActing(false); }
   };
 
@@ -121,8 +122,8 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       {error && <div style={errS}>{error}</div>}
       {message && <div style={msgS}>{message}</div>}
 
-      {loading ? <p style={{ color: "#888" }}>Wird geladen...</p> : routines.length === 0 ? (
-        <p style={{ color: "#888", fontSize: 13 }}>Keine Routinen vorhanden.</p>
+      {loading ? <p style={{ color: "#666" }}>Wird geladen...</p> : routines.length === 0 ? (
+        <p style={{ color: "#666", fontSize: 13 }}>Keine Routinen vorhanden.</p>
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
           {routines.map((r) => (
@@ -130,11 +131,11 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <strong style={{ fontSize: 13 }}>{r.name}</strong>
-                  <span style={{ marginLeft: 8, fontSize: 11, color: r.is_active ? "#5cb85c" : "#999" }}>
+                  <span style={{ marginLeft: 8, fontSize: 11, color: r.is_active ? "#5cb85c" : "#666" }}>
                     {r.is_active ? "●aktiv" : "○inaktiv"}
                   </span>
                   {r.is_processing && <span style={{ marginLeft: 6, fontSize: 11, color: "#f0ad4e" }}>⏳running</span>}
-                  <span style={{ marginLeft: 8, fontSize: 10, color: "#aaa" }}>
+                  <span style={{ marginLeft: 8, fontSize: 10, color: "#666" }}>
                     {r.cron_minute} {r.cron_hour} {r.cron_day_month} {r.cron_month} {r.cron_day_week}
                   </span>
                 </div>
@@ -151,8 +152,8 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
               </div>
 
               {r.last_run_at && (
-                <div style={{ fontSize: 10, color: "#aaa", marginTop: 2 }}>
-                  Zuletzt: {new Date(r.last_run_at).toLocaleString("de-CH")}
+                <div style={{ fontSize: 10, color: "#666", marginTop: 2 }}>
+                  Zuletzt: {formatDateTime(r.last_run_at)}
                 </div>
               )}
 

@@ -1,6 +1,8 @@
 """Admin-API-Routen (inkl. M22 Fleet Monitoring)."""
 
-from flask import Blueprint, jsonify, request
+import ipaddress
+from datetime import datetime, timezone
+from flask import Blueprint, current_app, jsonify, request
 from app.extensions import db
 from app.domain.agents.models import Agent
 from app.domain.blueprints.models import Blueprint as BlueprintModel
@@ -12,8 +14,93 @@ from app.domain.instances.service import (
     transfer_instance, InstanceActionError,
     suspend_instance, unsuspend_instance,
 )
+from app.utils.timeutil import iso_utc
 
 admin_bp = Blueprint("admin", __name__)
+
+# Pfade ohne Admin-Pflicht (Liveness-Check)
+_PUBLIC_ADMIN_ENDPOINTS = {"admin.health"}
+
+
+@admin_bp.before_request
+def _admin_guard():
+    """Erzwingt Admin-Authentifizierung fuer den gesamten Admin-Blueprint (M35)."""
+    if not current_app.config.get("ADMIN_GUARD_ENABLED", True):
+        return None
+    if request.method == "OPTIONS" or request.endpoint in _PUBLIC_ADMIN_ENDPOINTS:
+        return None
+    from app.domain.auth.service import require_admin
+    _, err = require_admin()
+    return err
+
+# Wings-Verbindungsfelder, die ueber POST/PATCH /agents gepflegt werden duerfen (M33)
+_AGENT_CONNECTION_FIELDS = (
+    "scheme", "behind_proxy", "daemon_connect", "daemon_listen",
+    "daemon_sftp", "daemon_base", "upload_size",
+)
+_AGENT_CAPACITY_FIELDS = (
+    "memory_total", "disk_total", "cpu_total",
+    "memory_overalloc", "disk_overalloc", "cpu_overalloc",
+)
+
+
+def _require_admin_user():
+    """Gibt (user, None) oder (None, error_response) zurueck.
+
+    Schutz fuer Endpunkte, die Node-Secrets ausliefern oder aendern (M33).
+    Nutzt den zentralen Auth-Service (JWT, API-Key, Dev/Test-Fallback X-User-Id).
+    """
+    from app.domain.auth.service import require_admin
+
+    return require_admin()
+
+
+def _apply_agent_connection_fields(agent: Agent, data: dict) -> str | None:
+    """Uebernimmt Wings-Verbindungsfelder aus dem Request. Gibt Fehlertext oder None zurueck."""
+    if "scheme" in data:
+        scheme = str(data["scheme"] or "").lower()
+        if scheme not in ("http", "https"):
+            return "Field 'scheme' must be 'http' or 'https'"
+        agent.scheme = scheme
+    if "behind_proxy" in data:
+        agent.behind_proxy = bool(data["behind_proxy"])
+    for field in ("daemon_connect", "daemon_listen", "daemon_sftp"):
+        if field in data:
+            try:
+                port = int(data[field])
+            except (TypeError, ValueError):
+                return f"Field '{field}' must be an integer"
+            if not 1 <= port <= 65535:
+                return f"Field '{field}' must be between 1 and 65535"
+            setattr(agent, field, port)
+    if "upload_size" in data:
+        try:
+            size = int(data["upload_size"])
+        except (TypeError, ValueError):
+            return "Field 'upload_size' must be an integer"
+        if size < 1:
+            return "Field 'upload_size' must be positive"
+        agent.upload_size = size
+    if "daemon_base" in data:
+        base = str(data["daemon_base"] or "").strip()
+        if not base.startswith("/"):
+            return "Field 'daemon_base' must be an absolute path"
+        agent.daemon_base = base
+    # Kapazitaet (M22) und Ueberallokation – Ganzzahlen >= 0, 0 = kein Limit
+    for field in _AGENT_CAPACITY_FIELDS:
+        if field in data:
+            value = data[field]
+            if isinstance(value, bool) or not isinstance(value, int):
+                try:
+                    value = int(str(value))
+                except (TypeError, ValueError):
+                    return f"Field '{field}' must be an integer"
+            if value < 0:
+                return f"Field '{field}' must be >= 0"
+            if field.endswith("_overalloc") and value > 1000:
+                return f"Field '{field}' must be <= 1000"
+            setattr(agent, field, value)
+    return None
 
 
 # ── Health ──────────────────────────────────────────────
@@ -65,7 +152,7 @@ def agents_health():
             "name": a.name,
             "fqdn": a.fqdn,
             "is_active": a.is_active,
-            "last_seen_at": a.last_seen_at.isoformat() if a.last_seen_at else None,
+            "last_seen_at": iso_utc(a.last_seen_at),
             "is_stale": a.is_stale(),
             "instances_count": len(a.instances) if hasattr(a, "instances") else 0,
         })
@@ -110,6 +197,7 @@ def create_user():
         username=username,
         email=email,
         is_admin=data.get("is_admin", False),
+        email_verified_at=datetime.now(timezone.utc),  # vom Admin angelegt = bestaetigt
     )
     user.set_password(password)
     db.session.add(user)
@@ -143,13 +231,146 @@ def create_agent():
         return jsonify({"error": f"Agent with fqdn '{fqdn}' already exists"}), 409
 
     agent = Agent(name=name, fqdn=fqdn)
+    # M33: Node-Credentials fuer die Wings Remote-API
+    agent.generate_daemon_credentials()
+    err = _apply_agent_connection_fields(agent, data)
+    if err:
+        return jsonify({"error": err}), 400
+
     db.session.add(agent)
     db.session.commit()
 
     return jsonify(agent.to_dict()), 201
 
 
+@admin_bp.route("/agents/<int:agent_id>", methods=["PATCH"])
+def update_agent(agent_id: int):
+    """Aktualisiert Name, FQDN, Aktiv-Flag und Wings-Verbindungsfelder eines Agents (M33)."""
+    agent = db.session.get(Agent, agent_id)
+    if not agent:
+        return jsonify({"error": f"Agent mit ID {agent_id} nicht gefunden"}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Request body is required"}), 400
+
+    if "name" in data:
+        if not data["name"]:
+            return jsonify({"error": "Field 'name' must not be empty"}), 400
+        agent.name = data["name"]
+    if "fqdn" in data:
+        fqdn = data["fqdn"]
+        if not fqdn:
+            return jsonify({"error": "Field 'fqdn' must not be empty"}), 400
+        other = Agent.query.filter(Agent.fqdn == fqdn, Agent.id != agent.id).first()
+        if other:
+            return jsonify({"error": f"Agent with fqdn '{fqdn}' already exists"}), 409
+        agent.fqdn = fqdn
+    if "is_active" in data:
+        agent.is_active = bool(data["is_active"])
+
+    err = _apply_agent_connection_fields(agent, data)
+    if err:
+        return jsonify({"error": err}), 400
+
+    db.session.commit()
+    return jsonify(agent.to_dict())
+
+
+@admin_bp.route("/agents/<int:agent_id>/configuration", methods=["GET"])
+def agent_configuration(agent_id: int):
+    """Liefert die Wings config.yml fuer einen Agent (M33).
+
+    Enthaelt das Node-Secret – nur fuer Admins.
+    Antwort: {"agent_id", "yaml", "config"}
+    """
+    _, err = _require_admin_user()
+    if err:
+        return err
+
+    agent = db.session.get(Agent, agent_id)
+    if not agent:
+        return jsonify({"error": f"Agent mit ID {agent_id} nicht gefunden"}), 404
+
+    if not agent.has_daemon_credentials:
+        # Agents aus der Zeit vor M33 haben noch keine Credentials
+        agent.generate_daemon_credentials()
+        db.session.commit()
+    if not agent.uuid:
+        import uuid as _uuid
+        agent.uuid = str(_uuid.uuid4())
+        db.session.commit()
+
+    from flask import current_app
+    remote_url = current_app.config.get("BASE_URL", "http://localhost:5000")
+
+    return jsonify({
+        "agent_id": agent.id,
+        "yaml": agent.get_wings_configuration_yaml(remote_url),
+        "config": agent.get_wings_configuration(remote_url),
+    })
+
+
+@admin_bp.route("/agents/<int:agent_id>/rotate-credentials", methods=["POST"])
+def rotate_agent_credentials(agent_id: int):
+    """Erzeugt neue Node-Credentials (token_id + token). Danach config.yml neu ausrollen (M33)."""
+    user, err = _require_admin_user()
+    if err:
+        return err
+
+    agent = db.session.get(Agent, agent_id)
+    if not agent:
+        return jsonify({"error": f"Agent mit ID {agent_id} nicht gefunden"}), 404
+
+    agent.generate_daemon_credentials()
+    db.session.commit()
+
+    from app.domain.activity.service import log_event
+    try:
+        log_event(
+            "agent:credentials_rotated",
+            actor_id=user.id,
+            subject_id=agent.id,
+            subject_type="agent",
+            description=f"Node-Credentials fuer Agent '{agent.name}' neu erzeugt",
+        )
+    except Exception:  # pragma: no cover - best-effort
+        pass
+
+    return jsonify({
+        "message": "Credentials neu erzeugt. config.yml auf dem Node aktualisieren und Wings neu starten.",
+        "agent": agent.to_dict(),
+    })
+
+
 # ── Blueprints ──────────────────────────────────────────
+
+
+def _validate_blueprint_process_fields(data: dict) -> str | None:
+    """Validiert die Wings-Prozessfelder eines Blueprints (M33). Gibt Fehlertext oder None zurueck."""
+    if "config_startup" in data and data["config_startup"] is not None:
+        cfg = data["config_startup"]
+        if not isinstance(cfg, dict):
+            return "Field 'config_startup' must be an object like {\"done\": [\"...\"]}"
+        done = cfg.get("done")
+        if done is not None and not isinstance(done, (str, list)):
+            return "Field 'config_startup.done' must be a string or a list of strings"
+        if isinstance(done, list) and not all(isinstance(d, str) for d in done):
+            return "Field 'config_startup.done' must contain only strings"
+    if "config_stop" in data and data["config_stop"] is not None:
+        if not isinstance(data["config_stop"], str) or len(data["config_stop"]) > 64:
+            return "Field 'config_stop' must be a string (max 64 chars)"
+    if "config_files" in data and data["config_files"] is not None:
+        if not isinstance(data["config_files"], dict):
+            return "Field 'config_files' must be an object keyed by file name"
+    if "file_denylist" in data and data["file_denylist"] is not None:
+        fdl = data["file_denylist"]
+        if not isinstance(fdl, list) or not all(isinstance(f, str) for f in fdl):
+            return "Field 'file_denylist' must be a list of strings"
+    for field in ("install_container", "install_entrypoint"):
+        if field in data and data[field] is not None and not isinstance(data[field], str):
+            return f"Field '{field}' must be a string"
+    return None
 
 
 @admin_bp.route("/blueprints", methods=["GET"])
@@ -168,18 +389,43 @@ def create_blueprint():
     if not name:
         return jsonify({"error": "Field 'name' is required"}), 400
 
+    err = _validate_blueprint_process_fields(data)
+    if err:
+        return jsonify({"error": err}), 400
+
     blueprint = BlueprintModel(
         name=name,
         description=data.get("description"),
         docker_image=data.get("docker_image"),
         startup_command=data.get("startup_command"),
         install_script=data.get("install_script"),
+        install_container=data.get("install_container"),
+        install_entrypoint=data.get("install_entrypoint"),
         variables=data.get("variables", []),
         config_schema=data.get("config_schema"),
+        config_startup=data.get("config_startup"),
+        config_stop=data.get("config_stop"),
+        config_files=data.get("config_files"),
+        file_denylist=data.get("file_denylist"),
     )
     db.session.add(blueprint)
     db.session.commit()
 
+    return jsonify(blueprint.to_dict()), 201
+
+
+@admin_bp.route("/blueprints/import", methods=["POST"])
+def import_blueprint_endpoint():
+    """Importiert ein Pterodactyl/Pelican-Egg oder natives Blueprint-JSON ("format": "astra")."""
+    from app.domain.blueprints.egg_import import EggImportError, import_blueprint
+
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "JSON body required"}), 400
+    try:
+        blueprint = import_blueprint(data)
+    except EggImportError as exc:
+        return jsonify({"error": str(exc)}), 400
     return jsonify(blueprint.to_dict()), 201
 
 
@@ -193,7 +439,15 @@ def update_blueprint(blueprint_id: int):
     if not data:
         return jsonify({"error": "Request body is required"}), 400
 
-    updatable = ["name", "description", "docker_image", "startup_command", "install_script", "variables", "config_schema"]
+    err = _validate_blueprint_process_fields(data)
+    if err:
+        return jsonify({"error": err}), 400
+
+    updatable = [
+        "name", "description", "docker_image", "startup_command", "install_script",
+        "install_container", "install_entrypoint", "variables", "config_schema",
+        "config_startup", "config_stop", "config_files", "file_denylist",
+    ]
     for field in updatable:
         if field in data:
             setattr(blueprint, field, data[field])
@@ -211,9 +465,137 @@ def delete_blueprint(blueprint_id: int):
     if blueprint.instances:
         return jsonify({"error": "Blueprint wird noch von Instances verwendet"}), 409
 
+    from app.domain.billing.models import Product
+    if Product.query.filter_by(blueprint_id=blueprint.id).first():
+        return jsonify({"error": "Blueprint wird noch von Produkten verwendet"}), 409
+
     db.session.delete(blueprint)
     db.session.commit()
     return jsonify({"message": f"Blueprint '{blueprint.name}' gelöscht"})
+
+
+# ── Produkte und Bestellungen (M44) ─────────────────────
+
+
+def _billing_error(e):
+    return jsonify({"error": e.message}), e.status_code
+
+
+@admin_bp.route("/products", methods=["GET"])
+def list_products():
+    from app.domain.billing.models import Product
+    from sqlalchemy.orm import joinedload
+    products = Product.query.options(joinedload(Product.blueprint)).order_by(Product.price_cents, Product.id).all()
+    return jsonify([p.to_dict() for p in products])
+
+
+@admin_bp.route("/products", methods=["POST"])
+def create_product_route():
+    from app.domain.billing.service import BillingError, create_product
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body is required"}), 400
+    try:
+        return jsonify(create_product(data).to_dict()), 201
+    except BillingError as e:
+        return _billing_error(e)
+
+
+@admin_bp.route("/products/<int:product_id>", methods=["GET"])
+def get_product_route(product_id: int):
+    from app.domain.billing.models import Product
+    product = db.session.get(Product, product_id)
+    if not product:
+        return jsonify({"error": "Produkt nicht gefunden"}), 404
+    return jsonify(product.to_dict())
+
+
+@admin_bp.route("/products/<int:product_id>", methods=["PATCH"])
+def update_product_route(product_id: int):
+    from app.domain.billing.models import Product
+    from app.domain.billing.service import BillingError, update_product
+    product = db.session.get(Product, product_id)
+    if not product:
+        return jsonify({"error": "Produkt nicht gefunden"}), 404
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body is required"}), 400
+    try:
+        return jsonify(update_product(product, data).to_dict())
+    except BillingError as e:
+        return _billing_error(e)
+
+
+@admin_bp.route("/products/<int:product_id>", methods=["DELETE"])
+def delete_product_route(product_id: int):
+    from app.domain.billing.models import Product
+    from app.domain.billing.service import BillingError, delete_product
+    product = db.session.get(Product, product_id)
+    if not product:
+        return jsonify({"error": "Produkt nicht gefunden"}), 404
+    try:
+        delete_product(product)
+    except BillingError as e:
+        return _billing_error(e)
+    return jsonify({"message": "Produkt geloescht"})
+
+
+@admin_bp.route("/orders", methods=["GET"])
+def list_orders():
+    """Alle Bestellungen, optional gefiltert: ?status=...&user_id=..."""
+    from sqlalchemy.orm import joinedload
+    from app.domain.billing.models import Order, ALL_ORDER_STATUSES
+    query = Order.query.options(
+        joinedload(Order.user), joinedload(Order.instance).joinedload(Instance.agent),
+        joinedload(Order.instance).joinedload(Instance.primary_endpoint),
+    )
+    status = request.args.get("status")
+    if status:
+        if status not in ALL_ORDER_STATUSES:
+            return jsonify({"error": f"Unbekannter Status '{status}'"}), 400
+        query = query.filter(Order.status == status)
+    user_id = request.args.get("user_id", type=int)
+    if user_id is not None:
+        query = query.filter(Order.user_id == user_id)
+    orders = query.order_by(Order.created_at.desc(), Order.id.desc()).all()
+    return jsonify([o.to_dict(include_user=True) for o in orders])
+
+
+@admin_bp.route("/orders/<string:uuid>", methods=["GET"])
+def get_order_route(uuid: str):
+    from app.domain.billing.models import Order
+    order = Order.query.filter_by(uuid=uuid).first()
+    if not order:
+        return jsonify({"error": "Bestellung nicht gefunden"}), 404
+    return jsonify(order.to_dict(include_user=True))
+
+
+@admin_bp.route("/orders/<string:uuid>/mark-paid", methods=["POST"])
+def mark_order_paid_route(uuid: str):
+    """Bestellung als bezahlt markieren und Instance bereitstellen (manueller Zahlungsweg).
+
+    Body: {"payment_reference": "Ueberweisung 2026-10-03"} (bei der ersten Zahlung optional).
+    - pending_payment: erste Zahlung, Instance wird bereitgestellt
+    - awaiting_provisioning: Instance wird erneut bereitgestellt (Zahlung nicht doppelt verbucht)
+    - active / past_due: Verlaengerung um eine Laufzeit; `payment_reference` ist Pflicht (400) und
+      macht den Aufruf idempotent: dieselbe Referenz verlaengert nie zweimal
+    """
+    from app.domain.auth.service import get_current_user
+    from app.domain.billing.models import Order
+    from app.domain.billing.service import BillingError, mark_order_paid
+    order = Order.query.filter_by(uuid=uuid).first()
+    if not order:
+        return jsonify({"error": "Bestellung nicht gefunden"}), 404
+    data = request.get_json(silent=True) or {}
+    ref = data.get("payment_reference")
+    if ref is not None and not isinstance(ref, str):
+        return jsonify({"error": "Field 'payment_reference' must be a string"}), 400
+    actor = get_current_user()
+    try:
+        order = mark_order_paid(order, ref, actor.id if actor else None)
+    except BillingError as e:
+        return _billing_error(e)
+    return jsonify(order.to_dict(include_user=True))
 
 
 # ── Endpoints ───────────────────────────────────────────
@@ -259,12 +641,76 @@ def create_endpoint(agent_id: int):
     return jsonify(endpoint.to_dict()), 201
 
 
+MAX_BULK_ENDPOINTS = 1000
+
+
+def _instance_conn_load():
+    """Laedt Agent und primaeren Endpoint mit, damit `connection` keine Query pro Instanz ausloest."""
+    from sqlalchemy.orm import joinedload
+    return [joinedload(Instance.agent), joinedload(Instance.primary_endpoint)]
+
+
+@admin_bp.route("/agents/<int:agent_id>/endpoints/bulk", methods=["POST"])
+def create_endpoints_bulk(agent_id: int):
+    """Legt einen Port-Bereich als Endpoints an (M39).
+
+    Body: {"ip": "0.0.0.0", "port_start": 25565, "port_end": 25600}
+    Bereits vorhandene Kombinationen aus ip und port werden uebersprungen.
+    Antwort: {"created": n, "skipped": n, "endpoints": [<neu angelegte>]}
+    """
+    agent = db.session.get(Agent, agent_id)
+    if not agent:
+        return jsonify({"error": f"Agent mit ID {agent_id} nicht gefunden"}), 404
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body is required"}), 400
+
+    start, end = data.get("port_start"), data.get("port_end")
+    for label, value in (("port_start", start), ("port_end", end)):
+        if isinstance(value, bool) or not isinstance(value, int):
+            return jsonify({"error": f"Field '{label}' must be an integer"}), 400
+        if not 1 <= value <= 65535:
+            return jsonify({"error": f"Field '{label}' must be between 1 and 65535"}), 400
+    if start > end:
+        return jsonify({"error": "port_start must be <= port_end"}), 400
+    count = end - start + 1
+    if count > MAX_BULK_ENDPOINTS:
+        return jsonify({"error": f"Maximal {MAX_BULK_ENDPOINTS} Ports pro Aufruf (angefragt: {count})"}), 400
+
+    ip = data.get("ip", "0.0.0.0")
+    try:
+        ipaddress.ip_address(ip)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Field 'ip' must be a valid IPv4/IPv6 address"}), 400
+
+    existing = {
+        port for (port,) in db.session.query(Endpoint.port).filter(
+            Endpoint.agent_id == agent_id, Endpoint.ip == ip,
+            Endpoint.port >= start, Endpoint.port <= end,
+        )
+    }
+    new = [Endpoint(agent_id=agent_id, ip=ip, port=port)
+           for port in range(start, end + 1) if port not in existing]
+    db.session.add_all(new)
+    db.session.commit()
+
+    return jsonify({
+        "created": len(new),
+        "skipped": len(existing),
+        "endpoints": [e.to_dict() for e in new],
+    }), 201 if new else 200
+
+
 # ── Instances ───────────────────────────────────────────
 
 
 @admin_bp.route("/instances", methods=["GET"])
 def list_instances():
-    instances = Instance.query.order_by(Instance.created_at.desc()).all()
+    instances = (
+        Instance.query.options(*_instance_conn_load())
+        .order_by(Instance.created_at.desc()).all()
+    )
     return jsonify([i.to_dict() for i in instances])
 
 
@@ -278,7 +724,8 @@ def create_instance_route():
     if not data:
         return jsonify({"error": "Request body is required"}), 400
 
-    required = ["name", "owner_id", "agent_id", "blueprint_id"]
+    # agent_id ist optional: fehlt es oder ist null, platziert Astra automatisch (M42)
+    required = ["name", "owner_id", "blueprint_id"]
     missing = [f for f in required if f not in data or data[f] is None]
     if missing:
         return jsonify({"error": f"Required fields missing: {', '.join(missing)}"}), 400
@@ -287,7 +734,7 @@ def create_instance_route():
         instance = create_instance(
             name=data["name"],
             owner_id=data["owner_id"],
-            agent_id=data["agent_id"],
+            agent_id=data.get("agent_id"),
             blueprint_id=data["blueprint_id"],
             description=data.get("description"),
             endpoint_id=data.get("endpoint_id"),
@@ -304,6 +751,47 @@ def create_instance_route():
 
     except InstanceCreationError as e:
         return jsonify({"error": e.message}), e.status_code
+
+
+@admin_bp.route("/instances/<string:uuid>", methods=["DELETE"])
+def delete_instance_route(uuid: str):
+    """Loescht eine Instance samt abhaengiger Daten (M43).
+
+    Optionaler Body: {"force": true} erzwingt das Loeschen auch waehrend laufender
+    Vorgaenge (provisioning/reinstalling/restoring/transferring).
+    """
+    from app.domain.auth.service import get_current_user
+    from app.domain.instances.service import delete_instance
+
+    instance = Instance.query.filter_by(uuid=uuid).first()
+    if not instance:
+        return jsonify({"error": "Instance nicht gefunden"}), 404
+
+    data = request.get_json(silent=True) or {}
+    actor = get_current_user()
+    try:
+        result = delete_instance(instance, actor.id if actor else None, force=data.get("force") is True)
+    except InstanceActionError as e:
+        return jsonify({"error": e.message}), e.status_code
+    return jsonify({**result, "message": "Instance geloescht"})
+
+
+@admin_bp.route("/instances/<string:uuid>/backups", methods=["GET"])
+def list_instance_backups_admin(uuid: str):
+    """Backups einer Instance fuer Admins (z.B. Pruefung vor einem Transfer)."""
+    from app.domain.backups.service import list_backups
+    instance = Instance.query.filter_by(uuid=uuid).first()
+    if not instance:
+        return jsonify({"error": "Instance nicht gefunden"}), 404
+    from app.utils.timeutil import iso_utc
+    backups = list_backups(instance)
+    successful = [b for b in backups if b.is_successful]
+    times = [(b.completed_at or b.created_at) for b in successful if (b.completed_at or b.created_at)]
+    return jsonify({
+        "backups": [b.to_dict() for b in backups],
+        "successful_count": len(successful),
+        "last_successful_backup_at": iso_utc(max(times)) if times else None,
+    })
 
 
 @admin_bp.route("/instances/<string:uuid>/transfer", methods=["POST"])

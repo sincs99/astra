@@ -60,6 +60,9 @@ def create_websocket_token(
         "server_uuid": instance_uuid,
         "permissions": permissions,
         "user_id": user_id,
+        # Wings nutzt user_uuid fuer Activity-Events; Astra hat keine User-UUIDs,
+        # daher die User-ID als String (wird in /api/remote/activity aufgeloest).
+        "user_uuid": str(user_id),
         "unique_id": secrets.token_hex(16),
         "jti": jti,
         "iat": now,
@@ -69,7 +72,7 @@ def create_websocket_token(
 
     # Issuer und Audience hinzufuegen wenn Agent vorhanden
     if agent:
-        panel_url = current_app.config.get("PANEL_URL", "http://localhost:5000")
+        panel_url = current_app.config.get("PANEL_URL") or current_app.config.get("BASE_URL", "http://localhost:5000")
         payload["iss"] = panel_url
         payload["aud"] = agent.get_connection_url()
 

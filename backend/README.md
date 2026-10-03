@@ -28,6 +28,13 @@ python run.py
 
 Das Backend läuft dann auf `http://localhost:5000`.
 
+## Meldungen mit Umlauten
+
+API-Meldungen für Kunden (Auth, Client, Billing, Mails) werden mit echten Umlauten geschrieben („Ungültige Anmeldedaten“,
+nicht „Ungueltige Anmeldedaten“). `python tools/umlauts.py` prüft die Kundendateien auf ASCII-Schreibweisen,
+`python tools/umlauts.py --write` korrigiert sie; neue Wörter kommen in das Wörterbuch `WORDS`. `test_m50.py`
+schlägt bei einem Treffer fehl. Fehlercodes, Statuswerte und Ereignisnamen bleiben immer englisch/ASCII.
+
 ## Health-Checks
 
 | Route                | Beschreibung       |
@@ -35,7 +42,6 @@ Das Backend läuft dann auf `http://localhost:5000`.
 | `/health`            | Globaler Check     |
 | `/api/admin/health`  | Admin-Bereich      |
 | `/api/client/health` | Client-Bereich     |
-| `/api/agent/health`  | Agent-Bereich      |
 | `/api/auth/health`   | Auth-Bereich       |
 
 ## Projektstruktur
@@ -49,7 +55,7 @@ backend/
 │   ├── api/
 │   │   ├── admin/routes.py
 │   │   ├── client/routes.py
-│   │   ├── agent/routes.py
+│   │   ├── remote/routes.py   # Wings Remote-API (Node-Token)
 │   │   └── auth/routes.py
 │   └── domain/
 │       ├── users/models.py

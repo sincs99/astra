@@ -100,13 +100,17 @@ def list_my_instances():
         return err
 
     # Owner-Instances
-    owned = Instance.query.filter_by(owner_id=user_id).all()
+    from sqlalchemy.orm import joinedload
+    conn = (joinedload(Instance.agent), joinedload(Instance.primary_endpoint))
+    owned = Instance.query.options(*conn).filter_by(owner_id=user_id).all()
 
     # Collaborator-Instances
     from app.domain.collaborators.models import Collaborator
     collabs = Collaborator.query.filter_by(user_id=user_id).all()
     collab_ids = [c.instance_id for c in collabs]
-    shared = Instance.query.filter(Instance.id.in_(collab_ids)).all() if collab_ids else []
+    shared = (
+        Instance.query.options(*conn).filter(Instance.id.in_(collab_ids)).all() if collab_ids else []
+    )
 
     all_instances = owned + shared
     all_instances.sort(key=lambda i: i.created_at or "", reverse=True)
@@ -193,6 +197,165 @@ def reinstall_endpoint(uuid: str):
         return jsonify({"error": e.message}), e.status_code
 
 
+# ── Shop: Produkte und Bestellungen (M44) ──────────────
+
+@client_bp.route("/products", methods=["GET"])
+def list_shop_products():
+    """Oeffentliche Produktliste (nur aktive Pakete, ohne interne Felder)."""
+    from app.domain.billing.models import Product
+    from sqlalchemy.orm import joinedload
+    products = (Product.query.options(joinedload(Product.blueprint)).filter_by(is_active=True)
+                .order_by(Product.price_cents, Product.id).all())
+    return jsonify([p.to_public_dict() for p in products])
+
+
+def _current_db_user():
+    """Der eingeloggte Nutzer als User-Objekt oder (None, 401-Antwort)."""
+    from app.domain.users.models import User
+    user_id, err = _require_auth()
+    if err:
+        return None, err
+    user = db.session.get(User, user_id)
+    if not user:
+        return None, (jsonify({"error": "Authentifizierung erforderlich"}), 401)
+    return user, None
+
+
+@client_bp.route("/orders", methods=["GET"])
+def list_my_orders():
+    from sqlalchemy.orm import joinedload
+    from app.domain.billing.models import Order
+    user, err = _current_db_user()
+    if err:
+        return err
+    orders = (
+        Order.query.options(joinedload(Order.instance).joinedload(Instance.agent),
+                            joinedload(Order.instance).joinedload(Instance.primary_endpoint))
+        .filter_by(user_id=user.id).order_by(Order.created_at.desc(), Order.id.desc()).all()
+    )
+    return jsonify([o.to_dict() for o in orders])
+
+
+@client_bp.route("/orders/<uuid>", methods=["GET"])
+def get_my_order(uuid: str):
+    from app.domain.billing.models import Order
+    user, err = _current_db_user()
+    if err:
+        return err
+    order = Order.query.filter_by(uuid=uuid, user_id=user.id).first()
+    if not order:
+        return jsonify({"error": "Bestellung nicht gefunden"}), 404
+    return jsonify(order.to_dict())
+
+
+@client_bp.route("/orders", methods=["POST"])
+def create_my_order():
+    """Bestellt ein Paket. Body: {"product_id": 1, "name": "Mein Server" (optional)}.
+
+    Ressourcen und Preis kommen aus dem Produkt. Kostenlose Pakete werden sofort bereitgestellt,
+    alle anderen bleiben bis zur Zahlung `pending_payment`.
+    """
+    from flask import current_app
+    from app.domain.billing.service import BillingError, create_order
+    user, err = _current_db_user()
+    if err:
+        return err
+    if current_app.config.get("EMAIL_VERIFICATION_REQUIRED") and user.email_verified_at is None:
+        return jsonify({"error": "Bitte bestätige zuerst deine E-Mail-Adresse",
+                        "code": "email_not_verified"}), 403
+    data = request.get_json(silent=True) or {}
+    try:
+        order = create_order(user, data.get("product_id"), data.get("name"))
+    except BillingError as e:
+        return jsonify({"error": e.message}), e.status_code
+    return jsonify(order.to_dict()), 201
+
+
+@client_bp.route("/billing-info", methods=["GET"])
+def billing_info():
+    """Oeffentlich: welcher Zahlungsweg aktiv ist (fuer die Anzeige im Shop)."""
+    from flask import current_app
+    provider = str(current_app.config.get("PAYMENT_PROVIDER", "manual")).lower()
+    return jsonify({"payment_provider": provider, "online_payment": provider == "stripe"})
+
+
+@client_bp.route("/orders/<uuid>/checkout", methods=["POST"])
+def checkout_my_order(uuid: str):
+    """Startet die Online-Zahlung. Antwort: {"checkout_url": "..."}.
+
+    Erlaubt bei pending_payment (Erstzahlung) sowie active/past_due (Verlaengerung).
+    Fehler tragen einen `code`: 409 `manual` (PAYMENT_PROVIDER=manual, Hinweis auf die Ueberweisung),
+    409 `invalid_status`, 409 `nothing_to_pay`/`unsupported_currency`, 502 `provider_unavailable`/`provider_error`.
+    """
+    from app.domain.billing.models import ORDER_ACTIVE, ORDER_PAST_DUE, ORDER_PENDING_PAYMENT, Order
+    from app.domain.billing.payments import PaymentError, get_provider
+    user, err = _current_db_user()
+    if err:
+        return err
+    order = Order.query.filter_by(uuid=uuid, user_id=user.id).first()
+    if not order:
+        return jsonify({"error": "Bestellung nicht gefunden"}), 404
+    if order.status not in (ORDER_PENDING_PAYMENT, ORDER_ACTIVE, ORDER_PAST_DUE):
+        return jsonify({
+            "error": f"Bestellung im Status '{order.status}' kann nicht bezahlt werden",
+            "code": "invalid_status",
+        }), 409
+    try:
+        url = get_provider().create_checkout(order)
+    except PaymentError as e:
+        return jsonify(e.to_response()), e.status_code
+    return jsonify({"checkout_url": url})
+
+
+@client_bp.route("/orders/<uuid>/cancel", methods=["POST"])
+def cancel_my_order(uuid: str):
+    """Storniert eine offene Bestellung bzw. merkt eine aktive zum Laufzeitende zur Kuendigung vor."""
+    from app.domain.billing.models import Order
+    from app.domain.billing.service import BillingError, cancel_order
+    user, err = _current_db_user()
+    if err:
+        return err
+    order = Order.query.filter_by(uuid=uuid, user_id=user.id).first()
+    if not order:
+        return jsonify({"error": "Bestellung nicht gefunden"}), 404
+    try:
+        order = cancel_order(order, user.id)
+    except BillingError as e:
+        return jsonify({"error": e.message}), e.status_code
+    return jsonify(order.to_dict())
+
+
+# ── Loeschen (M43) ─────────────────────────────────────
+
+@client_bp.route("/instances/<uuid>", methods=["DELETE"])
+def delete_instance_endpoint(uuid: str):
+    """Loescht die Instance (nur Owner). Body: {"confirm": "<Name der Instance>"}.
+
+    Suspendierte Instances koennen nicht geloescht werden (Admin-Sperre).
+    """
+    from app.domain.instances.service import delete_instance
+
+    user_id, err = _require_auth()
+    if err:
+        return err
+    instance, err = _require_owner(uuid, user_id)
+    if err:
+        return err
+    _, err = _require_not_suspended(instance)
+    if err:
+        return err
+
+    data = request.get_json(silent=True) or {}
+    if data.get("confirm") != instance.name:
+        return jsonify({"error": "Bestätigung fehlt: 'confirm' muss dem Namen der Instance entsprechen"}), 400
+
+    try:
+        result = delete_instance(instance, user_id)
+    except InstanceActionError as e:
+        return jsonify({"error": e.message}), e.status_code
+    return jsonify({"uuid": result["uuid"], "message": "Instance gelöscht"})
+
+
 # ── Config-Update (M16) ────────────────────────────────
 
 @client_bp.route("/instances/<uuid>/build", methods=["PATCH"])
@@ -220,7 +383,7 @@ def update_build_config(uuid: str):
     changes = {k: v for k, v in data.items() if k in allowed}
 
     if not changes:
-        return jsonify({"error": "Keine gueltigen Felder angegeben"}), 400
+        return jsonify({"error": "Keine gültigen Felder angegeben"}), 400
 
     result = update_instance_config(instance, **changes)
 
@@ -772,7 +935,7 @@ def delete_database_endpoint(uuid: str, db_id: int):
     from app.domain.databases.service import delete_database, DatabaseError
     try:
         delete_database(instance, database)
-        return jsonify({"message": "Datenbank geloescht"})
+        return jsonify({"message": "Datenbank gelöscht"})
     except DatabaseError as e:
         return jsonify({"error": e.message}), e.status_code
 
@@ -1128,4 +1291,4 @@ def delete_ssh_key(key_id: int):
     except SshKeyError as e:
         return jsonify({"error": e.message}), e.status_code
 
-    return jsonify({"message": "SSH-Key geloescht"})
+    return jsonify({"message": "SSH-Key gelöscht"})

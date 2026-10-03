@@ -368,16 +368,11 @@ with app.app_context():
     inst.container_state = None
     db.session.commit()
 
-    # Gueltiger State → 200
-    resp = client.post(
-        f"/api/agent/instances/{_inst_uuid}/container/status",
-        json={"state": "running"},
-    )
+    from test_helpers import node_headers_for_instance, report_container_state
+
+    # Gueltiger State (Wings Remote-API) → 200
+    resp = report_container_state(client, _inst_uuid, "running")
     check("POST running -> 200", resp.status_code == 200)
-    data = resp.get_json()
-    check("Response container_state = running", data.get("container_state") == "running")
-    check("Response hat status-Feld", "status" in data)
-    check("Response hat message", "message" in data)
 
     # Bestaetigen: DB persistiert
     db.session.expire_all()
@@ -386,73 +381,43 @@ with app.app_context():
     check("DB: status bleibt unveraendert", inst.status == "stopped")
 
     # Weiterer gueltiger State
-    resp = client.post(
-        f"/api/agent/instances/{_inst_uuid}/container/status",
-        json={"state": "stopped"},
-    )
+    resp = report_container_state(client, _inst_uuid, "stopped")
     check("POST stopped -> 200", resp.status_code == 200)
-    check("Response container_state = stopped", resp.get_json().get("container_state") == "stopped")
+    db.session.expire_all()
+    inst = db.session.get(Instance, _inst_id)
+    check("DB: container_state = stopped", inst.container_state == "stopped")
 
     # Unbekannte Instance → 404
     resp = client.post(
-        "/api/agent/instances/non-existent-uuid/container/status",
-        json={"state": "running"},
+        "/api/remote/servers/non-existent-uuid/container/status",
+        json={"data": {"new_state": "running"}},
+        headers=node_headers_for_instance(_inst_uuid),
     )
     check("Unbekannte Instance -> 404", resp.status_code == 404)
 
-    # Fehlender Body → 400
-    resp = client.post(
-        f"/api/agent/instances/{_inst_uuid}/container/status",
-        content_type="application/json",
-    )
-    check("Fehlender Body -> 400", resp.status_code == 400)
-
-    # Fehlendes state-Feld → 400
-    resp = client.post(
-        f"/api/agent/instances/{_inst_uuid}/container/status",
-        json={"wrong_field": "running"},
-    )
-    check("Fehlendes state-Feld -> 400", resp.status_code == 400)
-
-    # Leerer String → 400
-    resp = client.post(
-        f"/api/agent/instances/{_inst_uuid}/container/status",
-        json={"state": ""},
-    )
-    check("Leerer state -> 400", resp.status_code == 400)
-
-    # Nicht-String state → 400
-    resp = client.post(
-        f"/api/agent/instances/{_inst_uuid}/container/status",
-        json={"state": 123},
-    )
-    check("Nicht-String state -> 400", resp.status_code == 400)
-
     # Ungueltiger State → 200 (wird ignoriert, kein Crash)
-    db.session.expire_all()
-    inst = db.session.get(Instance, _inst_id)
     inst.container_state = "running"
     db.session.commit()
-    resp = client.post(
-        f"/api/agent/instances/{_inst_uuid}/container/status",
-        json={"state": "totally_invalid"},
-    )
+    resp = report_container_state(client, _inst_uuid, "totally_invalid")
     check("Ungueltiger State -> 200", resp.status_code == 200)
     db.session.expire_all()
     inst = db.session.get(Instance, _inst_id)
     check("Ungueltiger State ignoriert", inst.container_state == "running")
 
+    # Nicht-String state wird ignoriert
+    resp = report_container_state(client, _inst_uuid, 123)
+    check("Nicht-String state -> 200, ignoriert", resp.status_code == 200)
+
     # Alle gueltigen States via Route testen
     for state in ["starting", "stopping", "offline"]:
+        inst = db.session.get(Instance, _inst_id)
         inst.container_state = None
         db.session.commit()
-        resp = client.post(
-            f"/api/agent/instances/{_inst_uuid}/container/status",
-            json={"state": state},
-        )
+        resp = report_container_state(client, _inst_uuid, state)
         check(f"Route: state '{state}' -> 200", resp.status_code == 200)
+        db.session.expire_all()
         check(f"Route: container_state = '{state}'",
-              resp.get_json().get("container_state") == state)
+              db.session.get(Instance, _inst_id).container_state == state)
 
 
 # ================================================================
@@ -567,8 +532,8 @@ with app.app_context():
 
     # Agent Health-Route funktioniert
     client = app.test_client()
-    resp = client.get("/api/agent/health")
-    check("Agent Health -> 200", resp.status_code == 200)
+    resp = client.get("/api/remote/servers")
+    check("Remote-API erreichbar (401 ohne Token)", resp.status_code == 401)
 
     # Runner-Protocol hat get_instance_resources
     check("RunnerProtocol hat get_instance_resources",

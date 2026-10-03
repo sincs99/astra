@@ -14,7 +14,7 @@ export function ErrorState({ message, onRetry }: ErrorStateProps) {
       <div style={{ fontWeight: 600, marginBottom: 4 }}>Fehler</div>
       <div style={{ fontSize: 14 }}>{message}</div>
       {onRetry && (
-        <button onClick={onRetry} style={{
+        <button type="button" onClick={onRetry} style={{
           marginTop: 8, padding: "6px 16px", borderRadius: 6,
           border: "1px solid #ef9a9a", backgroundColor: "#fff", color: "#c62828",
           cursor: "pointer", fontSize: 13, fontWeight: 600,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type BackupEntry } from "../services/api";
+import { formatDateTime } from "../lib/dates";
 
 interface BackupManagerProps {
   instanceUuid: string;
@@ -20,7 +21,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
       const data = await api.getBackups(instanceUuid);
       setBackups(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      setError(err instanceof Error ? err.message : "Backups konnten nicht geladen werden");
     } finally {
       setLoading(false);
     }
@@ -46,7 +47,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
       showMsg("Backup erstellt");
       await loadBackups();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
+      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
     } finally {
       setActing(false);
     }
@@ -61,7 +62,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
       showMsg(result.message);
       await loadBackups();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
+      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
     } finally {
       setActing(false);
     }
@@ -76,7 +77,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
       showMsg(result.message);
       await loadBackups();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
+      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
     } finally {
       setActing(false);
     }
@@ -104,9 +105,9 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
 
       {/* Backup-Liste */}
       {loading ? (
-        <p style={{ color: "#888" }}>Backups werden geladen...</p>
+        <p style={{ color: "#666" }}>Backups werden geladen...</p>
       ) : backups.length === 0 ? (
-        <p style={{ color: "#888" }}>Noch keine Backups vorhanden.</p>
+        <p style={{ color: "#666" }}>Noch keine Backups vorhanden.</p>
       ) : (
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
@@ -124,7 +125,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
                 <td style={tdS}>
                   {b.is_locked && "🔒 "}
                   {b.name}
-                  <div style={{ fontSize: 11, color: "#aaa" }}>
+                  <div style={{ fontSize: 11, color: "#666" }}>
                     {b.uuid.substring(0, 8)}…
                   </div>
                 </td>
@@ -137,9 +138,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
                   )}
                 </td>
                 <td style={tdS}>
-                  {b.created_at
-                    ? new Date(b.created_at).toLocaleString("de-CH")
-                    : "–"}
+                  {formatDateTime(b.created_at)}
                 </td>
                 <td style={tdS}>
                   <div style={{ display: "flex", gap: 4 }}>

@@ -273,8 +273,15 @@ with app.app_context():
     )
     from app.domain.instances.models import Instance
     from app.infrastructure.runner.stub_adapter import StubRunnerAdapter
+    from app.infrastructure.runner.protocol import RunnerResponse
 
-    set_runner(StubRunnerAdapter())
+    class AsyncStubRunner(StubRunnerAdapter):
+        """Wie Wings: create_instance nimmt den Auftrag an, das Ergebnis kommt spaeter per Callback."""
+
+        def create_instance(self, agent, instance):
+            return RunnerResponse(success=True, message="async angenommen")
+
+    set_runner(AsyncStubRunner())
     inst = db.session.get(Instance, _inst_id)
 
     # Normaler Reinstall
@@ -485,60 +492,51 @@ with app.app_context():
     inst.installed_at = None
     db.session.commit()
 
-    resp = client.post(
-        f"/api/agent/instances/{_inst_uuid}/install",
-        json={"successful": True},
-    )
-    check("Install ok -> 200", resp.status_code == 200)
-    data = resp.get_json()
-    check("Install ok: status None", data.get("status") is None)
+    from test_helpers import node_headers_for_instance, report_install
+
+    resp = report_install(client, _inst_uuid, True)
+    check("Install ok -> 204", resp.status_code == 204)
 
     db.session.expire_all()
     inst = db.session.get(Instance, _inst_id)
+    check("Install ok: Status None", inst.status is None)
     check("Install ok: installed_at gesetzt", inst.installed_at is not None)
 
     # Reinstall via Route
     inst.status = "reinstalling"
     db.session.commit()
 
-    resp = client.post(
-        f"/api/agent/instances/{_inst_uuid}/install",
-        json={"successful": True},
-    )
-    check("Reinstall ok -> 200", resp.status_code == 200)
-    check("Reinstall ok: status None", resp.get_json().get("status") is None)
+    resp = report_install(client, _inst_uuid, True)
+    check("Reinstall ok -> 204", resp.status_code == 204)
+    db.session.expire_all()
+    check("Reinstall ok: Status None", db.session.get(Instance, _inst_id).status is None)
 
     # Reinstall fail via Route
+    inst = db.session.get(Instance, _inst_id)
     inst.status = "reinstalling"
     db.session.commit()
 
-    resp = client.post(
-        f"/api/agent/instances/{_inst_uuid}/install",
-        json={"successful": False},
-    )
-    check("Reinstall fail -> 200", resp.status_code == 200)
-    check("Reinstall fail: reinstall_failed", resp.get_json().get("status") == "reinstall_failed")
+    resp = report_install(client, _inst_uuid, False)
+    check("Reinstall fail -> 204", resp.status_code == 204)
+    db.session.expire_all()
+    check("Reinstall fail: reinstall_failed",
+          db.session.get(Instance, _inst_id).status == "reinstall_failed")
 
     # Unbekannte Instance
     resp = client.post(
-        "/api/agent/instances/non-existent/install",
+        "/api/remote/servers/non-existent/install",
         json={"successful": True},
+        headers=node_headers_for_instance(_inst_uuid),
     )
     check("Unbekannte Instance -> 404", resp.status_code == 404)
 
-    # Fehlender Body
-    resp = client.post(
-        f"/api/agent/instances/{_inst_uuid}/install",
-        content_type="application/json",
-    )
-    check("Fehlender Body -> 400", resp.status_code == 400)
-
     # Fehlendes Feld
     resp = client.post(
-        f"/api/agent/instances/{_inst_uuid}/install",
+        f"/api/remote/servers/{_inst_uuid}/install",
         json={"wrong": True},
+        headers=node_headers_for_instance(_inst_uuid),
     )
-    check("Fehlendes Feld -> 400", resp.status_code == 400)
+    check("Fehlendes Feld -> 422", resp.status_code == 422)
 
 
 # ================================================================
@@ -550,8 +548,15 @@ with app.app_context():
     from app.domain.instances.models import Instance
     from app.domain.instances.service import set_runner
     from app.infrastructure.runner.stub_adapter import StubRunnerAdapter
+    from app.infrastructure.runner.protocol import RunnerResponse
 
-    set_runner(StubRunnerAdapter())
+    class AsyncStubRunner(StubRunnerAdapter):
+        """Wie Wings: create_instance nimmt den Auftrag an, das Ergebnis kommt spaeter per Callback."""
+
+        def create_instance(self, agent, instance):
+            return RunnerResponse(success=True, message="async angenommen")
+
+    set_runner(AsyncStubRunner())
     client = app.test_client()
     headers = {"X-User-Id": str(_user_id)}
 
@@ -703,8 +708,8 @@ with app.app_context():
 
     # Health
     client = app.test_client()
-    resp = client.get("/api/agent/health")
-    check("Agent Health -> 200", resp.status_code == 200)
+    resp = client.get("/api/remote/servers")
+    check("Remote-API erreichbar (401 ohne Token)", resp.status_code == 401)
 
     resp = client.get("/api/client/health")
     check("Client Health -> 200", resp.status_code == 200)

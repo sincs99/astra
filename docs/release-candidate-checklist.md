@@ -20,7 +20,7 @@ Die folgenden 12 Kernflows muessen vor einem Release funktionieren.
 - Endpoint wird zugewiesen
 
 ### 4. Install/Ready-Flow
-- POST /api/agent/instances/{uuid}/install mit successful=true
+- Install-Ergebnis meldet Wings per POST /api/remote/servers/{uuid}/install mit successful=true
 - Status wechselt zu ready (null)
 - installed_at wird gesetzt
 - Activity-Event wird geloggt

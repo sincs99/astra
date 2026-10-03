@@ -1,22 +1,39 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { api, type Instance, getSimulatedUserId } from "../services/api";
-import { PageLayout, StatusBadge, LoadingState, ErrorState, EmptyState, cardStyle } from "../components/ui";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { api, type Instance } from "../services/api";
+import { ConnectionAddress } from "../components/ConnectionAddress";
+import { OpenOrdersCard } from "../components/OpenOrdersCard";
+import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
+import { PageLayout, AutoRefreshToggle, Toast, useToast, StatusBadge, LoadingState, ErrorState, EmptyState, cardStyle, linkStyle } from "../components/ui";
 
 export function DashboardPage() {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const toast = useToast();
 
-  const load = async () => {
+  // Meldung von der vorherigen Seite (z.B. nach dem Löschen einer Instance), nur einmal anzeigen
+  useEffect(() => {
+    const message = (location.state as { toast?: string } | null)?.toast;
+    if (message) {
+      toast.success(message);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [autoRefresh, setAutoRefresh] = useAutoRefreshSetting("dashboard");
+
+  const load = async (silent = false) => {
     try {
-      setLoading(true);
-      setError(null);
+      if (!silent) { setLoading(true); setError(null); }
       const data = await api.getClientInstances();
       setInstances(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      if (!silent) setError(err instanceof Error ? err.message : "Fehler beim Laden");
     } finally {
       setLoading(false);
     }
@@ -24,22 +41,42 @@ export function DashboardPage() {
 
   useEffect(() => { load(); }, []);
 
-  const userId = getSimulatedUserId();
+  useAutoRefresh(() => load(true), 15000, autoRefresh);
+
+  const user = useCurrentUser();
 
   return (
     <PageLayout title="Dashboard" maxWidth={900}>
-      <p style={{ color: "#888", marginTop: -12, marginBottom: 24, fontSize: 14 }}>
-        Eingeloggt als User #{userId}
+      <Toast {...toast} />
+      <p style={{ color: "#666", marginTop: -12, marginBottom: 24, fontSize: 14 }}>
+        Eingeloggt als {user ? user.username : "…"}
       </p>
 
-      {error && <ErrorState message={error} onRetry={load} />}
+      {user?.is_admin && <OpenOrdersCard />}
 
-      <h2 style={{ fontSize: 18, marginBottom: 12 }}>Meine Instances</h2>
+      {error && <ErrorState message={error} onRetry={() => load()} />}
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+        <h2 style={{ fontSize: 18, margin: 0 }}>Meine Server</h2>
+        <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
+      </div>
 
       {loading ? (
         <LoadingState />
       ) : instances.length === 0 ? (
-        <EmptyState message="Keine Instances vorhanden. Erstelle eine ueber den Admin-Bereich." icon="📦" />
+        <div>
+          <EmptyState
+            message={user?.is_admin
+              ? "Keine Instances vorhanden. Erstelle eine über den Admin-Bereich."
+              : "Du hast noch keinen Server."}
+            icon="📦"
+          />
+          {!user?.is_admin && (
+            <p style={{ textAlign: "center" }}>
+              <Link to="/shop" style={linkStyle}>Zum Shop und Server bestellen</Link>
+            </p>
+          )}
+        </div>
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
           {instances.map((inst) => (
@@ -54,7 +91,7 @@ export function DashboardPage() {
                 <div>
                   <strong style={{ fontSize: 16 }}>{inst.name}</strong>
                   {inst.description && (
-                    <span style={{ color: "#888", marginLeft: 8, fontSize: 14 }}>
+                    <span style={{ color: "#666", marginLeft: 8, fontSize: 14 }}>
                       {inst.description}
                     </span>
                   )}
@@ -67,6 +104,11 @@ export function DashboardPage() {
                   {inst.memory} MB RAM &middot; {inst.disk} MB Disk &middot; {inst.cpu}% CPU
                 </span>
               </div>
+              {inst.connection && (
+                <div style={{ marginTop: 8 }}>
+                  <ConnectionAddress connection={inst.connection} compact />
+                </div>
+              )}
             </div>
           ))}
         </div>

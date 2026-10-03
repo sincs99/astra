@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { api, type Blueprint, type BlueprintVariable } from "../services/api";
+import { BlueprintImport } from "../components/BlueprintImport";
 import {
   PageLayout, LoadingState, EmptyState, ErrorState, ConfirmButton,
   Toast, useToast,
   cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, thStyle, tdStyle,
 } from "../components/ui";
+import { formatDateTime } from "../lib/dates";
 
 const EMPTY_VAR: BlueprintVariable = {
   name: "",
@@ -27,6 +29,10 @@ export function AdminBlueprintsPage() {
   const [dockerImage, setDockerImage] = useState("");
   const [startupCommand, setStartupCommand] = useState("");
   const [installScript, setInstallScript] = useState("");
+  const [installContainer, setInstallContainer] = useState("");
+  const [configStop, setConfigStop] = useState("");
+  const [startupDone, setStartupDone] = useState("");
+  const [fileDenylist, setFileDenylist] = useState("");
   const [variables, setVariables] = useState<BlueprintVariable[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -37,7 +43,15 @@ export function AdminBlueprintsPage() {
   const [editDockerImage, setEditDockerImage] = useState("");
   const [editStartupCommand, setEditStartupCommand] = useState("");
   const [editInstallScript, setEditInstallScript] = useState("");
+  const [editInstallContainer, setEditInstallContainer] = useState("");
+  const [editConfigStop, setEditConfigStop] = useState("");
+  const [editStartupDone, setEditStartupDone] = useState("");
+  const [editFileDenylist, setEditFileDenylist] = useState("");
   const [editSubmitting, setEditSubmitting] = useState(false);
+
+  // Wings-Prozessfelder (M33): Textzeilen <-> Listen
+  const toLines = (list: string[] | null | undefined) => (list ?? []).join("\n");
+  const fromLines = (text: string) => text.split("\n").map(l => l.trim()).filter(Boolean);
 
   const loadBlueprints = async () => {
     try {
@@ -87,10 +101,15 @@ export function AdminBlueprintsPage() {
         docker_image: dockerImage.trim() || undefined,
         startup_command: startupCommand.trim() || undefined,
         install_script: installScript.trim() || undefined,
+        install_container: installContainer.trim() || undefined,
+        config_stop: configStop.trim() || undefined,
+        config_startup: startupDone.trim() ? { done: fromLines(startupDone) } : undefined,
+        file_denylist: fileDenylist.trim() ? fromLines(fileDenylist) : undefined,
         variables,
       });
       setName(""); setDescription(""); setDockerImage("");
       setStartupCommand(""); setInstallScript(""); setVariables([]);
+      setInstallContainer(""); setConfigStop(""); setStartupDone(""); setFileDenylist("");
       toast.success("Blueprint erstellt.");
       await loadBlueprints();
     } catch (err) {
@@ -108,6 +127,10 @@ export function AdminBlueprintsPage() {
     setEditDockerImage(bp.docker_image ?? "");
     setEditStartupCommand(bp.startup_command ?? "");
     setEditInstallScript(bp.install_script ?? "");
+    setEditInstallContainer(bp.install_container ?? "");
+    setEditConfigStop(bp.config_stop ?? "");
+    setEditStartupDone(toLines(bp.config_startup?.done));
+    setEditFileDenylist(toLines(bp.file_denylist));
     setEditVars(bp.variables ? [...bp.variables] : []);
   };
 
@@ -120,6 +143,10 @@ export function AdminBlueprintsPage() {
         docker_image: editDockerImage.trim() || undefined,
         startup_command: editStartupCommand.trim() || undefined,
         install_script: editInstallScript.trim() || undefined,
+        install_container: editInstallContainer.trim() || undefined,
+        config_stop: editConfigStop.trim() || undefined,
+        config_startup: { done: fromLines(editStartupDone) },
+        file_denylist: fromLines(editFileDenylist),
         variables: editVars,
       });
       setEditingId(null);
@@ -146,6 +173,12 @@ export function AdminBlueprintsPage() {
   return (
     <PageLayout title="Blueprints">
       <Toast {...toast} />
+
+      {/* ── Import (Pterodactyl-Egg) ── */}
+      <BlueprintImport
+        onImported={(bp) => { toast.success(`Blueprint '${bp.name}' importiert.`); loadBlueprints(); }}
+        onError={() => { /* Fehler wird im Import-Formular angezeigt */ }}
+      />
 
       {/* ── Erstell-Formular ── */}
       <div style={cardStyle}>
@@ -177,6 +210,12 @@ export function AdminBlueprintsPage() {
               placeholder={"#!/bin/bash\ncurl -o server.jar ..."}
             />
           </Field>
+          <WingsProcessFields
+            installContainer={installContainer} onInstallContainer={setInstallContainer}
+            configStop={configStop} onConfigStop={setConfigStop}
+            startupDone={startupDone} onStartupDone={setStartupDone}
+            fileDenylist={fileDenylist} onFileDenylist={setFileDenylist}
+          />
 
           <VariableEditor
             vars={variables}
@@ -226,6 +265,12 @@ export function AdminBlueprintsPage() {
                     style={{ ...inputStyle, fontFamily: "monospace", fontSize: 12 }}
                   />
                 </Field>
+                <WingsProcessFields
+                  installContainer={editInstallContainer} onInstallContainer={setEditInstallContainer}
+                  configStop={editConfigStop} onConfigStop={setEditConfigStop}
+                  startupDone={editStartupDone} onStartupDone={setEditStartupDone}
+                  fileDenylist={editFileDenylist} onFileDenylist={setEditFileDenylist}
+                />
                 <VariableEditor
                   vars={editVars}
                   onAdd={() => addVar(editVars, setEditVars)}
@@ -249,7 +294,7 @@ export function AdminBlueprintsPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
                     <strong style={{ fontSize: 16 }}>{bp.name}</strong>
-                    <span style={{ marginLeft: 8, color: "#aaa", fontSize: 12 }}>#{bp.id}</span>
+                    <span style={{ marginLeft: 8, color: "#666", fontSize: 12 }}>#{bp.id}</span>
                     {bp.description && <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>{bp.description}</div>}
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
@@ -267,8 +312,15 @@ export function AdminBlueprintsPage() {
                 <div style={{ marginTop: 8, display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12, color: "#555" }}>
                   {bp.docker_image && <span><strong>Image:</strong> <code>{bp.docker_image}</code></span>}
                   {bp.startup_command && <span><strong>Startup:</strong> <code>{bp.startup_command}</code></span>}
+                  <span><strong>Stop:</strong> <code>{bp.config_stop || "stop"}</code></span>
+                  <span>
+                    <strong>Startup-Erkennung:</strong>{" "}
+                    {bp.config_startup?.done?.length
+                      ? <code>{bp.config_startup.done.join(" | ")}</code>
+                      : <span style={{ color: "#d32f2f" }}>fehlt – Server bleibt in Wings auf „starting“</span>}
+                  </span>
                   <span><strong>Variablen:</strong> {bp.variables?.length ?? 0}</span>
-                  <span style={{ color: "#aaa" }}>{bp.created_at ? new Date(bp.created_at).toLocaleString("de-CH") : "–"}</span>
+                  <span style={{ color: "#666" }}>{formatDateTime(bp.created_at)}</span>
                 </div>
 
                 {bp.variables && bp.variables.length > 0 && (
@@ -362,6 +414,66 @@ function VariableEditor({
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ── Wings-Prozessfelder (M33) ───────────────────────────
+
+function WingsProcessFields({
+  installContainer, onInstallContainer,
+  configStop, onConfigStop,
+  startupDone, onStartupDone,
+  fileDenylist, onFileDenylist,
+}: {
+  installContainer: string; onInstallContainer: (v: string) => void;
+  configStop: string; onConfigStop: (v: string) => void;
+  startupDone: string; onStartupDone: (v: string) => void;
+  fileDenylist: string; onFileDenylist: (v: string) => void;
+}) {
+  return (
+    <div style={{ border: "1px solid #e0e0e0", borderRadius: 6, padding: 10, marginTop: 8, backgroundColor: "#fafafa" }}>
+      <strong style={{ fontSize: 13 }}>Wings-Prozesskonfiguration</strong>
+      <div style={{ ...grid2, marginTop: 8 }}>
+        <Field label="Install-Container">
+          <input
+            type="text"
+            value={installContainer}
+            onChange={e => onInstallContainer(e.target.value)}
+            style={{ ...inputStyle, fontSize: 12 }}
+            placeholder="ghcr.io/pterodactyl/installers:debian"
+          />
+        </Field>
+        <Field label="Stop-Befehl (oder ^SIGTERM)">
+          <input
+            type="text"
+            value={configStop}
+            onChange={e => onConfigStop(e.target.value)}
+            style={{ ...inputStyle, fontSize: 12 }}
+            placeholder="stop"
+          />
+        </Field>
+      </div>
+      <div style={grid2}>
+        <Field label="Startup-Erkennung – Zeile(n), ab denen der Server läuft (eine pro Zeile)">
+          <textarea
+            value={startupDone}
+            onChange={e => onStartupDone(e.target.value)}
+            rows={2}
+            style={{ ...inputStyle, fontFamily: "monospace", fontSize: 12 }}
+            placeholder={")! For help, type "}
+          />
+        </Field>
+        <Field label="Datei-Denylist (eine pro Zeile)">
+          <textarea
+            value={fileDenylist}
+            onChange={e => onFileDenylist(e.target.value)}
+            rows={2}
+            style={{ ...inputStyle, fontFamily: "monospace", fontSize: 12 }}
+            placeholder={"*.jar"}
+          />
+        </Field>
+      </div>
     </div>
   );
 }

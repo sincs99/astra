@@ -142,7 +142,7 @@ def execute_routine(routine: Routine) -> dict:
     Die Routine wird als Job enqueued, Actions als Folge-Jobs.
     """
     if routine.is_processing:
-        raise RoutineError("Routine wird bereits ausgefuehrt", 409)
+        raise RoutineError("Routine wird bereits ausgeführt", 409)
 
     actions = Action.query.filter_by(routine_id=routine.id).order_by(Action.sequence).all()
     if not actions:
@@ -191,7 +191,7 @@ def execute_routine_sync(routine: Routine) -> dict:
     Wird intern vom Routine-Execute-Job-Handler verwendet.
     """
     if routine.is_processing:
-        raise RoutineError("Routine wird bereits ausgefuehrt", 409)
+        raise RoutineError("Routine wird bereits ausgeführt", 409)
 
     actions = Action.query.filter_by(routine_id=routine.id).order_by(Action.sequence).all()
     if not actions:

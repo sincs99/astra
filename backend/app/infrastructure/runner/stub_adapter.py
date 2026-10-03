@@ -99,7 +99,9 @@ class StubRunnerAdapter(RunnerProtocol):
 
     def create_instance(self, agent: Agent, instance: Instance) -> RunnerResponse:
         logger.info("[STUB] create_instance: agent=%s, instance=%s", agent.name, instance.uuid)
-        return RunnerResponse(success=True, message=f"Stub: Instance '{instance.name}' provisioniert")
+        # Stub: Installation ist sofort fertig (Wings meldet das Ergebnis asynchron ueber die Remote-API)
+        return RunnerResponse(success=True, message=f"Stub: Instance '{instance.name}' provisioniert",
+                              data={"completed": True})
 
     def delete_instance(self, agent: Agent, instance: Instance) -> RunnerResponse:
         logger.info("[STUB] delete_instance: agent=%s, instance=%s", agent.name, instance.uuid)
@@ -268,6 +270,7 @@ class StubRunnerAdapter(RunnerProtocol):
             success=True,
             message=f"Stub: Backup '{backup.name}' erstellt",
             data={
+                "completed": True,  # Stub: synchron fertig (Wings: asynchron via Remote-Callback)
                 "checksum": hashlib.sha256(backup.uuid.encode()).hexdigest()[:16],
                 "bytes": random.randint(10_000_000, 500_000_000),
             },
@@ -278,6 +281,7 @@ class StubRunnerAdapter(RunnerProtocol):
         return RunnerResponse(
             success=True,
             message=f"Stub: Backup '{backup.name}' wiederhergestellt",
+            data={"completed": True},
         )
 
     def delete_backup(self, agent: Agent, instance: Instance, backup: Backup) -> RunnerResponse:

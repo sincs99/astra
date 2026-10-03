@@ -99,10 +99,22 @@ def get_runner() -> RunnerProtocol:
 # ── Instance erstellen ──────────────────────────────────
 
 
+def _complete_if_runner_done(instance: Instance, response) -> None:
+    """Runner, der synchron fertig wird (Stub: `data["completed"] is True`), schliesst die Installation direkt ab.
+
+    Entspricht dem Install-Callback, den Wings spaeter ueber /api/remote schickt: Status wird ready,
+    `installed_at` gesetzt und das passende Event geloggt (Erstinstallation oder Reinstall).
+    Der Wings-Adapter liefert kein `completed`, dort bleibt es beim asynchronen Callback.
+    """
+    data = getattr(response, "data", None)
+    if isinstance(data, dict) and data.get("completed") is True:
+        handle_install_callback(instance, True)
+
+
 def create_instance(
     name: str,
     owner_id: int,
-    agent_id: int,
+    agent_id: int | None,
     blueprint_id: int,
     description: str | None = None,
     endpoint_id: int | None = None,
@@ -127,8 +139,19 @@ def create_instance(
     if not owner:
         raise InstanceCreationError(f"User mit ID {owner_id} nicht gefunden", 404)
 
-    # 2. Agent pruefen
-    agent = db.session.get(Agent, agent_id)
+    # 2. Agent pruefen (agent_id=None -> automatische Platzierung, M42)
+    if agent_id is None:
+        if endpoint_id is not None:
+            raise InstanceCreationError("endpoint_id setzt eine explizite agent_id voraus", 400)
+        from app.domain.agents.placement import pick_agent
+        agent = pick_agent(memory, disk, cpu)
+        if agent is None:
+            raise InstanceCreationError(
+                "Kein Agent mit freiem Endpoint und ausreichender Kapazität verfügbar", 409
+            )
+        agent_id = agent.id
+    else:
+        agent = db.session.get(Agent, agent_id)
     if not agent:
         raise InstanceCreationError(f"Agent mit ID {agent_id} nicht gefunden", 404)
     if not agent.is_active:
@@ -137,7 +160,7 @@ def create_instance(
     if agent.in_maintenance:
         raise InstanceCreationError(
             f"Agent '{agent.name}' befindet sich im Maintenance-Modus. "
-            f"Neue Deployments sind nicht moeglich.", 409
+            f"Neue Deployments sind nicht möglich.", 409
         )
 
     # 3. Blueprint pruefen
@@ -149,6 +172,13 @@ def create_instance(
 
     # 4. Endpoint finden oder pruefen
     endpoint = _resolve_endpoint(agent_id, endpoint_id)
+
+    # 5. Kapazitaet des Agents pruefen (M42); Zeilensperre serialisiert parallele Erstellungen (PostgreSQL)
+    from app.domain.agents.placement import capacity_problem
+    db.session.query(Agent).filter_by(id=agent_id).with_for_update().first()
+    problem = capacity_problem(agent, memory, disk, cpu)
+    if problem:
+        raise InstanceCreationError(problem, 409)
 
     # Image und startup_command vom Blueprint uebernehmen, falls nicht explizit gesetzt
     if not image and blueprint.docker_image:
@@ -204,6 +234,8 @@ def create_instance(
             from app.domain.activity.events import log_instance_event, INSTANCE_INSTALL_FAILED
             log_instance_event(INSTANCE_INSTALL_FAILED, instance.id,
                                description=f"Erstinstallation fehlgeschlagen: {response.message}")
+        else:
+            _complete_if_runner_done(instance, response)
 
     except Exception as e:
         logger.error("Runner create_instance Fehler: %s", str(e))
@@ -376,7 +408,7 @@ def reinstall_instance(instance: Instance) -> Instance:
     # Validierung: Darf nur bei existierender Instance
     if instance.status in (STATUS_PROVISIONING, STATUS_REINSTALLING):
         raise InstanceActionError(
-            f"Instance ist bereits im Status '{instance.status}' – Reinstall nicht moeglich", 409
+            f"Instance ist bereits im Status '{instance.status}' – Reinstall nicht möglich", 409
         )
 
     agent = db.session.get(Agent, instance.agent_id)
@@ -412,6 +444,8 @@ def reinstall_instance(instance: Instance) -> Instance:
             from app.domain.activity.events import INSTANCE_REINSTALL_FAILED
             log_instance_event(INSTANCE_REINSTALL_FAILED, instance.id,
                                description=f"Reinstall-Runner-Fehler: {response.message}")
+        else:
+            _complete_if_runner_done(instance, response)
 
     except Exception as e:
         logger.error("Runner reinstall Fehler: %s", str(e))
@@ -511,7 +545,7 @@ def is_instance_suspended(instance: Instance) -> bool:
     return instance.status == STATUS_SUSPENDED
 
 
-def suspend_instance(instance: Instance, admin_user_id: int, reason: str | None = None) -> Instance:
+def suspend_instance(instance: Instance, admin_user_id: int | None, reason: str | None = None) -> Instance:
     """Setzt eine Instance in den administrativen Suspension-Status.
 
     Idempotent: Wiederholtes Suspend auf bereits suspendierter Instance
@@ -526,8 +560,8 @@ def suspend_instance(instance: Instance, admin_user_id: int, reason: str | None 
     db.session.commit()
 
     logger.info(
-        "Instance %s (%s): suspendiert von User %d (Grund: %s)",
-        instance.name, instance.uuid, admin_user_id, reason or "–",
+        "Instance %s (%s): suspendiert von User %s (Grund: %s)",
+        instance.name, instance.uuid, admin_user_id if admin_user_id is not None else "System", reason or "–",
     )
 
     from app.domain.activity.events import log_instance_event, INSTANCE_SUSPENDED
@@ -541,7 +575,113 @@ def suspend_instance(instance: Instance, admin_user_id: int, reason: str | None 
     return instance
 
 
-def unsuspend_instance(instance: Instance, admin_user_id: int) -> Instance:
+# Status, in denen eine Instance nicht geloescht werden darf (laufende Vorgaenge), ausser mit force
+_DELETE_BLOCKING_STATUSES = (
+    STATUS_PROVISIONING, STATUS_REINSTALLING, STATUS_RESTORING, STATUS_TRANSFERRING,
+)
+
+
+def delete_instance(instance: Instance, actor_id: int | None = None, force: bool = False,
+                    order_reason: str = "instance_deleted") -> dict:
+    """Loescht eine Instance samt abhaengiger Daten und gibt ihre Endpoints frei (M43).
+
+    Ablauf:
+    1. Laufende Vorgaenge (provisioning/reinstalling/restoring/transferring) -> 409, ausser `force`
+    2. Runner-Aufraeumen best effort: Backups, Datenbanken und die Instance selbst auf dem Node.
+       Fehler werden geloggt und im Ergebnis gemeldet (`runner_cleanup`), das Panel loescht trotzdem
+    3. Endpoints freigeben, Backups/Datenbanken/Collaborators/Routines (inkl. Actions) entfernen
+    4. Instance loeschen, Activity-Event `instance:deleted` (Activity-Eintraege bleiben erhalten)
+
+    Rueckgabe: {"uuid", "name", "runner_cleanup": "ok"|"failed", "forced": bool}
+    """
+    if instance.status in _DELETE_BLOCKING_STATUSES and not force:
+        raise InstanceActionError(
+            f"Instance ist im Status '{instance.status}' – Löschen nicht möglich "
+            f"(Admin kann mit force erzwingen)", 409
+        )
+
+    from app.domain.backups.models import Backup
+    from app.domain.collaborators.models import Collaborator
+    from app.domain.databases.models import Database, DatabaseProvider
+    from app.domain.routines.models import Routine, Action
+
+    instance_id = instance.id
+    info = {"uuid": instance.uuid, "name": instance.name, "owner_id": instance.owner_id,
+            "agent_id": instance.agent_id}
+    runner_ok = True
+
+    agent = db.session.get(Agent, instance.agent_id)
+    runner = get_runner()
+
+    # ── Externe Aufraeumarbeiten (best effort) ──────────
+    if agent:
+        for backup in Backup.query.filter_by(instance_id=instance_id).all():
+            try:
+                runner.delete_backup(agent, instance, backup)
+            except Exception as e:
+                runner_ok = False
+                logger.warning("Instance-Loeschung: Backup %s nicht entfernt: %s", backup.uuid, e)
+        try:
+            response = runner.delete_instance(agent, instance)
+            if response is not None and getattr(response, "success", True) is False:
+                runner_ok = False
+                logger.warning("Instance-Loeschung: Runner meldet Fehler fuer %s: %s",
+                               instance.uuid, getattr(response, "message", ""))
+        except Exception as e:
+            runner_ok = False
+            logger.warning("Instance-Loeschung: Runner-Fehler fuer %s: %s", instance.uuid, e)
+    else:
+        runner_ok = False
+        logger.warning("Instance-Loeschung: Agent %s nicht gefunden", instance.agent_id)
+
+    for database in Database.query.filter_by(instance_id=instance_id).all():
+        try:
+            from app.infrastructure.database.adapter import get_db_adapter
+            provider = db.session.get(DatabaseProvider, database.provider_id)
+            get_db_adapter().drop_database(provider, database.db_name, database.username)
+        except Exception as e:
+            logger.warning("Instance-Loeschung: DB '%s' nicht entfernt: %s", database.db_name, e)
+
+    # ── Panel-Daten in einer Transaktion ────────────────
+    try:
+        instance.primary_endpoint_id = None
+        for endpoint in Endpoint.query.filter_by(instance_id=instance_id).all():
+            endpoint.instance_id = None
+        db.session.flush()
+
+        for routine in Routine.query.filter_by(instance_id=instance_id).all():
+            Action.query.filter_by(routine_id=routine.id).delete(synchronize_session=False)
+            db.session.delete(routine)
+        # Bestellungen von der Instance loesen (Fremdschluessel) und lebende beenden (M46)
+        from app.domain.billing.service import detach_orders_from_instance
+        expired_orders = detach_orders_from_instance(instance_id)
+        Backup.query.filter_by(instance_id=instance_id).delete(synchronize_session=False)
+        Database.query.filter_by(instance_id=instance_id).delete(synchronize_session=False)
+        Collaborator.query.filter_by(instance_id=instance_id).delete(synchronize_session=False)
+        db.session.delete(instance)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+    logger.info("Instance %s (%s) geloescht (runner_cleanup=%s, force=%s)",
+                info["name"], info["uuid"], "ok" if runner_ok else "failed", force)
+
+    from app.domain.billing.service import log_orders_expired
+    log_orders_expired(expired_orders, order_reason)
+
+    from app.domain.activity.events import log_instance_event, INSTANCE_DELETED
+    log_instance_event(
+        INSTANCE_DELETED, instance_id, actor_id,
+        f"Instance '{info['name']}' gelöscht",
+        {**info, "runner_cleanup": "ok" if runner_ok else "failed", "forced": force},
+    )
+
+    return {"uuid": info["uuid"], "name": info["name"],
+            "runner_cleanup": "ok" if runner_ok else "failed", "forced": force}
+
+
+def unsuspend_instance(instance: Instance, admin_user_id: int | None) -> Instance:
     """Hebt die Suspension einer Instance auf.
 
     Idempotent: Ist die Instance nicht suspendiert, passiert nichts.
@@ -561,8 +701,8 @@ def unsuspend_instance(instance: Instance, admin_user_id: int) -> Instance:
     db.session.commit()
 
     logger.info(
-        "Instance %s (%s): Suspension aufgehoben von User %d",
-        instance.name, instance.uuid, admin_user_id,
+        "Instance %s (%s): Suspension aufgehoben von User %s",
+        instance.name, instance.uuid, admin_user_id if admin_user_id is not None else "System",
     )
 
     from app.domain.activity.events import log_instance_event, INSTANCE_UNSUSPENDED
@@ -593,7 +733,7 @@ def _resolve_endpoint(agent_id: int, endpoint_id: int | None) -> Endpoint:
             )
         if endpoint.agent_id != agent_id:
             raise InstanceCreationError(
-                f"Endpoint {endpoint_id} gehoert nicht zu Agent {agent_id}", 400
+                f"Endpoint {endpoint_id} gehört nicht zu Agent {agent_id}", 400
             )
         if endpoint.instance_id is not None:
             raise InstanceCreationError(
@@ -614,7 +754,7 @@ def _resolve_endpoint(agent_id: int, endpoint_id: int | None) -> Endpoint:
 
     if not endpoint:
         raise InstanceCreationError(
-            f"Kein freier Endpoint auf Agent {agent_id} verfuegbar", 409
+            f"Kein freier Endpoint auf Agent {agent_id} verfügbar", 409
         )
 
     return endpoint
@@ -661,6 +801,13 @@ def transfer_instance(instance: Instance, target_agent_id: int) -> Instance:
         new_endpoint = _resolve_endpoint(target_agent_id, None)
     except InstanceCreationError as e:
         raise InstanceActionError(e.message, e.status_code)
+
+    # Kapazitaet auf dem Ziel-Agent (M42)
+    if target_agent_id != instance.agent_id:
+        from app.domain.agents.placement import capacity_problem
+        problem = capacity_problem(target_agent, instance.memory, instance.disk, instance.cpu)
+        if problem:
+            raise InstanceActionError(problem, 409)
 
     old_agent = db.session.get(Agent, instance.agent_id)
     old_endpoint_id = instance.primary_endpoint_id
@@ -714,6 +861,8 @@ def transfer_instance(instance: Instance, target_agent_id: int) -> Instance:
                 "instance.transfer.failed", instance.id,
                 description=f"Transfer fehlgeschlagen: {response.message}",
             )
+        else:
+            _complete_if_runner_done(instance, response)  # Stub: sofort fertig, Wings: Callback
 
     except Exception as e:
         logger.error("Transfer: Runner-Fehler: %s", str(e))

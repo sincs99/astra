@@ -4,6 +4,7 @@
 Verwendung:
     python cli.py bootstrap [--username admin] [--email admin@astra.local] [--password admin]
     python cli.py check-config
+    python cli.py db-init
     python cli.py db-status
     python cli.py worker [--poll-interval 1]
 """
@@ -34,6 +35,86 @@ def cmd_bootstrap(args):
         if result["created"]:
             print("[Bootstrap] WICHTIG: Passwort nach dem ersten Login aendern!")
         return 0 if result["created"] or "existiert" in result["message"] else 1
+
+
+def cmd_import_blueprint(args):
+    """Importiert ein Pterodactyl/Pelican-Egg (JSON/YAML) oder natives Blueprint-JSON."""
+    import json
+
+    from app import create_app
+    from app.extensions import db
+    from app.domain.blueprints.egg_import import EggImportError, import_blueprint
+
+    try:
+        with open(args.file, encoding="utf-8") as fh:
+            raw = fh.read()
+        if args.file.lower().endswith((".yaml", ".yml")):
+            import yaml
+            data = yaml.safe_load(raw)
+        else:
+            data = json.loads(raw)
+    except (OSError, ValueError) as exc:
+        print(f"[Import] Datei konnte nicht gelesen werden: {exc}")
+        return 1
+
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        try:
+            blueprint = import_blueprint(data)
+        except EggImportError as exc:
+            print(f"[Import] Fehler: {exc}")
+            return 1
+        print(f"[Import] Blueprint '{blueprint.name}' angelegt (ID {blueprint.id})")
+    return 0
+
+
+def cmd_db_init(args):
+    """Bringt die Datenbank idempotent auf den aktuellen Stand (fuer AUTO_MIGRATE/Entrypoint).
+
+    - Frische Datenbank (keine alembic_version-Tabelle): Schema per create_all() anlegen
+      und auf den Migrations-Head stampen. Die Migrationen setzen die Basistabellen voraus
+      und legen sie nicht selbst an.
+    - Bestehende Datenbank mit alembic_version: regulaeres `flask db upgrade`.
+    """
+    from sqlalchemy import inspect as sa_inspect
+    from flask_migrate import upgrade as fm_upgrade, stamp as fm_stamp
+
+    from app import create_app
+    from app.extensions import db
+
+    app = create_app()
+    with app.app_context():
+        tables = set(sa_inspect(db.engine).get_table_names())
+        if "alembic_version" in tables:
+            print("[DB] alembic_version vorhanden – fuehre Migrationen aus (flask db upgrade) ...")
+            fm_upgrade()
+        else:
+            if tables:
+                print(f"[DB] {len(tables)} Tabellen ohne Migrationsstand gefunden – ergaenze fehlende Tabellen und stampe Head.")
+            else:
+                print("[DB] Frische Datenbank – lege Schema an (create_all) und stampe Head.")
+            db.create_all()
+            fm_stamp()
+        from flask_migrate import current as fm_current
+        print("[DB] Stand:")
+        fm_current()
+    return 0
+
+
+def cmd_billing_tick(args):
+    """Setzt Laufzeiten durch (ueberfaellig -> suspendiert, Karenzzeit vorbei -> geloescht). Fuer Cron/Compose."""
+    import json
+
+    from app import create_app
+    from app.domain.billing.service import run_billing_tick
+
+    app = create_app()
+    with app.app_context():
+        summary = run_billing_tick()
+    print(json.dumps(summary, ensure_ascii=False))
+    # Exit-Code 1 bei Fehlern, damit Cron/Monitoring sie bemerkt (betroffene Bestellungen werden erneut versucht)
+    return 1 if summary["errors"] else 0
 
 
 def cmd_check_config(args):
@@ -157,8 +238,22 @@ def main():
     bp.add_argument("--password", default="admin", help="Admin-Passwort")
     bp.add_argument("--force", action="store_true", help="Bestehenden User zum Admin machen")
 
+    # ── import-blueprint ────────────────────────────────
+    ip = subparsers.add_parser(
+        "import-blueprint", help="Importiert ein Pterodactyl/Pelican-Egg als Blueprint"
+    )
+    ip.add_argument("file", help="Pfad zur Egg- oder Blueprint-Datei (.json, .yaml)")
+
+    # ── billing-tick (M46) ──────────────────────────────
+    subparsers.add_parser(
+        "billing-tick", help="Billing-Tick: Laufzeiten durchsetzen (idempotent, alle paar Minuten ausfuehren)"
+    )
+
     # ── check-config ────────────────────────────────────
     subparsers.add_parser("check-config", help="Prueft die Konfiguration")
+
+    # ── db-init ─────────────────────────────────────────
+    subparsers.add_parser("db-init", help="Datenbank anlegen/migrieren (idempotent, fuer AUTO_MIGRATE)")
 
     # ── db-status ───────────────────────────────────────
     subparsers.add_parser("db-status", help="Zeigt DB-Migrationsstatus")
@@ -187,7 +282,10 @@ def main():
 
     commands = {
         "bootstrap": cmd_bootstrap,
+        "import-blueprint": cmd_import_blueprint,
+        "billing-tick": cmd_billing_tick,
         "check-config": cmd_check_config,
+        "db-init": cmd_db_init,
         "db-status": cmd_db_status,
         "worker": cmd_worker,
         "version": cmd_version,

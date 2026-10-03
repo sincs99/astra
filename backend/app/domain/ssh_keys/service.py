@@ -80,7 +80,7 @@ def create_user_ssh_key(user_id: int, name: str, public_key: str) -> UserSshKey:
 
     logger.info("SSH-Key '%s' (Fingerprint: %s) fuer User %d erstellt", name, fingerprint, user_id)
 
-    _log_event("ssh_key:created", user_id, key.id, f"SSH-Key '{name}' hinzugefuegt", {"fingerprint": fingerprint})
+    _log_event("ssh_key:created", user_id, key.id, f"SSH-Key '{name}' hinzugefügt", {"fingerprint": fingerprint})
 
     return key
 
@@ -121,7 +121,7 @@ def delete_user_ssh_key(user_id: int, key_id: int) -> None:
     db.session.commit()
 
     logger.info("SSH-Key '%s' (Fingerprint: %s) geloescht", name, fingerprint)
-    _log_event("ssh_key:deleted", user_id, None, f"SSH-Key '{name}' geloescht", {"fingerprint": fingerprint})
+    _log_event("ssh_key:deleted", user_id, None, f"SSH-Key '{name}' gelöscht", {"fingerprint": fingerprint})
 
 
 # ── Intern ───────────────────────────────────────────────

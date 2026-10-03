@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import { TransferInstanceForm } from "../components/TransferInstanceForm";
+import { DeleteInstanceForm } from "../components/DeleteInstanceForm";
+import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
+import { Fragment, useEffect, useState } from "react";
 import {
   api,
   type Instance,
@@ -8,7 +11,7 @@ import {
   type Endpoint,
 } from "../services/api";
 import {
-  PageLayout, StatusBadge, LoadingState, EmptyState, ErrorState,
+  PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState,
   Toast, useToast, ConfirmButton,
   cardStyle, inputStyle, labelStyle, btnPrimary, thStyle, tdStyle,
 } from "../components/ui";
@@ -39,20 +42,13 @@ export function AdminInstancesPage() {
 
   // Transfer-State
   const [transferringUuid, setTransferringUuid] = useState<string | null>(null);
-  const [transferTargetAgent, setTransferTargetAgent] = useState<number | "">("");
+  const [deletingUuid, setDeletingUuid] = useState<string | null>(null);
 
-  const handleTransfer = async (uuid: string) => {
-    if (!transferTargetAgent) { setError("Bitte Ziel-Agent auswählen"); return; }
-    try {
-      setError(null);
-      await api.transferInstance(uuid, transferTargetAgent as number);
-      toast.success(`Transfer für Instance ${uuid.substring(0, 8)}… gestartet.`);
-      setTransferringUuid(null);
-      setTransferTargetAgent("");
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Transfer");
-    }
+  const handleTransfer = async (inst: Instance, targetAgentId: number) => {
+    await api.transferInstance(inst.uuid, targetAgentId);
+    toast.success(`Transfer für "${inst.name}" gestartet.`);
+    setTransferringUuid(null);
+    await loadAll();
   };
 
   const loadAll = async () => {
@@ -80,13 +76,17 @@ export function AdminInstancesPage() {
 
   useEffect(() => { loadAll(); }, []);
 
+  const [autoRefresh, setAutoRefresh] = useAutoRefreshSetting("instances");
+  // Nur die Instance-Liste still aktualisieren; Formulare und Stammdaten bleiben unberuehrt
+  useAutoRefresh(() => { api.getInstances().then(setInstances).catch(() => {}); }, 15000, autoRefresh);
+
   const freeEndpoints = endpoints.filter(
     ep => ep.agent_id === agentId && ep.instance_id === null && !ep.is_locked
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !ownerId || !agentId || !blueprintId) return;
+    if (!name.trim() || !ownerId || !blueprintId) return;
 
     try {
       setSubmitting(true);
@@ -95,7 +95,7 @@ export function AdminInstancesPage() {
         name: name.trim(),
         description: description.trim() || undefined,
         owner_id: ownerId as number,
-        agent_id: agentId as number,
+        agent_id: agentId ? (agentId as number) : null,
         blueprint_id: blueprintId as number,
         endpoint_id: endpointId ? (endpointId as number) : undefined,
         memory, swap, disk, io, cpu,
@@ -123,49 +123,55 @@ export function AdminInstancesPage() {
         <form onSubmit={handleSubmit}>
           <div style={grid2}>
             <div>
-              <label style={labelStyle}>Name *</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="z.B. MC-Server-1" required style={inputStyle} />
+              <label htmlFor="fld-8" style={labelStyle}>Name *</label>
+              <input id="fld-8" type="text" value={name} onChange={e => setName(e.target.value)} placeholder="z.B. MC-Server-1" required style={inputStyle} />
             </div>
             <div>
-              <label style={labelStyle}>Beschreibung</label>
-              <input type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional" style={inputStyle} />
+              <label htmlFor="fld-9" style={labelStyle}>Beschreibung</label>
+              <input id="fld-9" type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional" style={inputStyle} />
             </div>
           </div>
 
           <div style={{ ...grid3, marginTop: 12 }}>
             <div>
-              <label style={labelStyle}>Owner *</label>
-              <select value={ownerId} onChange={e => setOwnerId(e.target.value ? Number(e.target.value) : "")} required style={inputStyle}>
+              <label htmlFor="fld-10" style={labelStyle}>Owner *</label>
+              <select id="fld-10" value={ownerId} onChange={e => setOwnerId(e.target.value ? Number(e.target.value) : "")} required style={inputStyle}>
                 <option value="">– Wählen –</option>
                 {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
               </select>
             </div>
             <div>
-              <label style={labelStyle}>Agent *</label>
-              <select value={agentId} onChange={e => { setAgentId(e.target.value ? Number(e.target.value) : ""); setEndpointId(""); }} required style={inputStyle}>
-                <option value="">– Wählen –</option>
+              <label htmlFor="fld-11" style={labelStyle}>Agent</label>
+              <select id="fld-11" value={agentId} onChange={e => { setAgentId(e.target.value ? Number(e.target.value) : ""); setEndpointId(""); }} style={inputStyle}>
+                <option value="">Automatisch (nach Kapazität)</option>
                 {agents.map(a => <option key={a.id} value={a.id}>{a.name} ({a.fqdn})</option>)}
               </select>
             </div>
             <div>
-              <label style={labelStyle}>Blueprint *</label>
-              <select value={blueprintId} onChange={e => setBlueprintId(e.target.value ? Number(e.target.value) : "")} required style={inputStyle}>
+              <label htmlFor="fld-12" style={labelStyle}>Blueprint *</label>
+              <select id="fld-12" value={blueprintId} onChange={e => setBlueprintId(e.target.value ? Number(e.target.value) : "")} required style={inputStyle}>
                 <option value="">– Wählen –</option>
                 {blueprints.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
           </div>
 
-          <div style={{ marginTop: 12 }}>
-            <label style={labelStyle}>Endpoint (optional – sonst automatisch)</label>
-            <select value={endpointId} onChange={e => setEndpointId(e.target.value ? Number(e.target.value) : "")} style={inputStyle} disabled={!agentId}>
-              <option value="">– Automatisch zuweisen –</option>
-              {freeEndpoints.map(ep => <option key={ep.id} value={ep.id}>{ep.ip}:{ep.port}</option>)}
-            </select>
-            {agentId && freeEndpoints.length === 0 && (
-              <small style={{ color: "#d32f2f" }}>Keine freien Endpoints auf diesem Agent verfügbar.</small>
-            )}
-          </div>
+          {agentId ? (
+            <div style={{ marginTop: 12 }}>
+              <label htmlFor="fld-13" style={labelStyle}>Endpoint (optional – sonst automatisch)</label>
+              <select id="fld-13" value={endpointId} onChange={e => setEndpointId(e.target.value ? Number(e.target.value) : "")} style={inputStyle}>
+                <option value="">– Automatisch zuweisen –</option>
+                {freeEndpoints.map(ep => <option key={ep.id} value={ep.id}>{ep.ip}:{ep.port}</option>)}
+              </select>
+              {freeEndpoints.length === 0 && (
+                <small style={{ color: "#c62828" }}>Keine freien Endpoints auf diesem Agent verfügbar.</small>
+              )}
+            </div>
+          ) : (
+            <p style={{ margin: "12px 0 0", fontSize: 12, color: "#666" }}>
+              Astra wählt den Agent mit freiem Endpoint und genug Kapazität und weist den Endpoint automatisch zu.
+            </p>
+          )}
 
           <div style={{ ...grid5, marginTop: 12 }}>
             {[
@@ -176,8 +182,8 @@ export function AdminInstancesPage() {
               { label: "CPU (%)", value: cpu, set: setCpu, min: 1 },
             ].map(f => (
               <div key={f.label}>
-                <label style={labelStyle}>{f.label}</label>
-                <input type="number" value={f.value} onChange={e => f.set(Number(e.target.value))} min={f.min} max={f.max} style={inputStyle} />
+                <label htmlFor={`res-${f.label}`} style={labelStyle}>{f.label}</label>
+                <input id={`res-${f.label}`} type="number" value={f.value} onChange={e => f.set(Number(e.target.value))} min={f.min} max={f.max} style={inputStyle} />
               </div>
             ))}
           </div>
@@ -191,6 +197,9 @@ export function AdminInstancesPage() {
       </div>
 
       {/* ── Instance-Liste ── */}
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
+      </div>
       {loading ? (
         <LoadingState message="Instances werden geladen..." />
       ) : instances.length === 0 ? (
@@ -217,10 +226,11 @@ export function AdminInstancesPage() {
                 const ep = endpoints.find(e => e.id === inst.primary_endpoint_id);
                 const isTransferring = transferringUuid === inst.uuid;
                 return (
-                  <tr key={inst.id}>
+                  <Fragment key={inst.id}>
+                  <tr>
                     <td style={tdStyle}>
                       <strong>{inst.name}</strong>
-                      {inst.description && <div style={{ fontSize: 12, color: "#888" }}>{inst.description}</div>}
+                      {inst.description && <div style={{ fontSize: 12, color: "#666" }}>{inst.description}</div>}
                     </td>
                     <td style={tdStyle}>
                       <code style={{ fontSize: 11 }}>{inst.uuid.substring(0, 8)}…</code>
@@ -237,35 +247,9 @@ export function AdminInstancesPage() {
                       </small>
                     </td>
                     <td style={tdStyle}>
-                      {isTransferring ? (
-                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
-                          <select
-                            value={transferTargetAgent}
-                            onChange={e => setTransferTargetAgent(e.target.value ? Number(e.target.value) : "")}
-                            style={{ padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid #ccc" }}
-                          >
-                            <option value="">– Ziel-Agent –</option>
-                            {agents.filter(a => a.id !== inst.agent_id && a.is_active).map(a => (
-                              <option key={a.id} value={a.id}>{a.name}</option>
-                            ))}
-                          </select>
-                          <button
-                            onClick={() => handleTransfer(inst.uuid)}
-                            style={{ padding: "4px 10px", fontSize: 12, backgroundColor: "#4caf50", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}
-                          >
-                            ✓
-                          </button>
-                          <button
-                            onClick={() => { setTransferringUuid(null); setTransferTargetAgent(""); }}
-                            style={{ padding: "4px 8px", fontSize: 12, border: "1px solid #ccc", borderRadius: 4, cursor: "pointer", backgroundColor: "#fff" }}
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ) : (
                         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                           <button
-                            onClick={() => { setTransferringUuid(inst.uuid); setTransferTargetAgent(""); }}
+                            onClick={() => { setTransferringUuid(inst.uuid); setDeletingUuid(null); }}
                             style={{ padding: "4px 10px", fontSize: 12, border: "1px solid #ccc", borderRadius: 4, cursor: "pointer", backgroundColor: "#fff" }}
                             title="Instance transferieren"
                           >
@@ -295,10 +279,55 @@ export function AdminInstancesPage() {
                               }}
                             />
                           )}
+                          <button
+                            type="button"
+                            onClick={() => { setDeletingUuid(inst.uuid); setTransferringUuid(null); }}
+                            style={{ padding: "4px 10px", fontSize: 12, border: "1px solid #ef9a9a", borderRadius: 4, cursor: "pointer", backgroundColor: "#fff", color: "#c62828" }}
+                            title="Instance löschen"
+                          >
+                            🗑 Löschen
+                          </button>
                         </div>
-                      )}
                     </td>
                   </tr>
+                  {isTransferring && (
+                    <tr>
+                      <td colSpan={9} style={{ ...tdStyle, backgroundColor: "#fff8f8" }}>
+                        <TransferInstanceForm
+                          instanceUuid={inst.uuid}
+                          instanceName={inst.name}
+                          agents={agents.filter(a => a.id !== inst.agent_id && a.is_active)}
+                          idPrefix={`transfer-${inst.id}`}
+                          onCancel={() => setTransferringUuid(null)}
+                          onTransfer={(target) => handleTransfer(inst, target)}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                  {deletingUuid === inst.uuid && (
+                    <tr>
+                      <td colSpan={9} style={{ ...tdStyle, backgroundColor: "#fff8f8" }}>
+                        <DeleteInstanceForm
+                          name={inst.name}
+                          status={inst.status}
+                          allowForce
+                          idPrefix={`del-${inst.id}`}
+                          onCancel={() => setDeletingUuid(null)}
+                          onDelete={async (force) => {
+                            const result = await api.adminDeleteInstance(inst.uuid, force);
+                            if (result.runner_cleanup === "failed") {
+                              toast.warning(`Instanz "${inst.name}" gelöscht, Aufräumen auf dem Node fehlgeschlagen, bitte Wings prüfen.`);
+                            } else {
+                              toast.success(`"${inst.name}" gelöscht.`);
+                            }
+                            setDeletingUuid(null);
+                            await loadAll();
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>
