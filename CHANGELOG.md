@@ -39,6 +39,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M41 – Wings-Erreichbarkeit und Endpoint-Pflicht)
+- Fleet Monitoring (`GET /api/admin/agents/monitoring`, `/agents/{id}/monitoring`) liefert `daemon_reachable`, `daemon_version` und `daemon_error`, ermittelt per `GET /api/system` am Wings (Bearer `daemon_token`, Timeout 3 s, Ergebnis 30 s gecacht, Cache-Schluessel enthaelt URL und Token; mehrere Agents werden parallel geprueft). Mit dem Stub-Adapter immer `true`/`"stub"` (`backend/app/domain/agents/reachability.py`)
+- Preflight: neuer Check `agents_reachable`, warnt bei nicht erreichbaren aktiven Agents (Agents in Wartung und inaktive Agents werden nicht geprueft), blockiert nicht
+- Kein stiller Standard-Port mehr: Hat eine Instanz keinen primaeren Endpoint, setzt der Config-Builder `SERVER_PORT` und `allocations.default.port` auf `0` (wie `allocation->port ?? 0` im Referenz-Panel), `allocations.mappings` bleibt leer und es gibt eine Log-Warnung (vorher 25565)
+- Bestaetigt und getestet: `create_instance` bricht ohne freien (oder nur gesperrten) Endpoint mit 409 ab und speichert nichts
+- `backend/test_m41.py` (27 Tests)
+
 ### Fixed / Added (E-Mail-Links und Verifizierungs-Frontend)
 - Fix: Der Link in der Passwort-Reset-Mail zeigte auf `/reset-password`, die Frontend-Route heisst `/password-reset/confirm` (Link fuehrte auf die 404-Seite); Tests pruefen jetzt beide Mail-Links gegen die Frontend-Routen
 - `POST /api/auth/resend-verification` akzeptiert zusaetzlich `login` (Benutzername oder Adresse), Antwort bleibt neutral
