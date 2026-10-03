@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, setAccessToken } from "../services/api";
 import { inputStyle, labelStyle, btnPrimary } from "../components/ui";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const expired = searchParams.get("expired") === "1";
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +35,15 @@ export function LoginPage() {
   return (
     <div style={{ maxWidth: 400, margin: "clamp(24px, 10vh, 80px) auto", padding: 24 }}>
       <h1 style={{ textAlign: "center", marginBottom: 24 }}>Astra Login</h1>
+
+      {expired && !error && (
+        <div role="status" style={{
+          padding: "10px 14px", backgroundColor: "#fff3e0", color: "#e65100",
+          borderRadius: 6, marginBottom: 16, fontSize: 14,
+        }}>
+          Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.
+        </div>
+      )}
 
       {error && (
         <div role="alert" style={{
