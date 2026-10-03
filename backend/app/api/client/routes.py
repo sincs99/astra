@@ -271,6 +271,38 @@ def create_my_order():
     return jsonify(order.to_dict()), 201
 
 
+@client_bp.route("/billing-info", methods=["GET"])
+def billing_info():
+    """Oeffentlich: welcher Zahlungsweg aktiv ist (fuer die Anzeige im Shop)."""
+    from flask import current_app
+    provider = str(current_app.config.get("PAYMENT_PROVIDER", "manual")).lower()
+    return jsonify({"payment_provider": provider, "online_payment": provider == "stripe"})
+
+
+@client_bp.route("/orders/<uuid>/checkout", methods=["POST"])
+def checkout_my_order(uuid: str):
+    """Startet die Online-Zahlung. Antwort: {"checkout_url": "..."}.
+
+    Erlaubt bei pending_payment (Erstzahlung) sowie active/past_due (Verlaengerung).
+    Mit PAYMENT_PROVIDER=manual 409 mit Hinweis auf die Ueberweisung.
+    """
+    from app.domain.billing.models import ORDER_ACTIVE, ORDER_PAST_DUE, ORDER_PENDING_PAYMENT, Order
+    from app.domain.billing.payments import PaymentError, get_provider
+    user, err = _current_db_user()
+    if err:
+        return err
+    order = Order.query.filter_by(uuid=uuid, user_id=user.id).first()
+    if not order:
+        return jsonify({"error": "Bestellung nicht gefunden"}), 404
+    if order.status not in (ORDER_PENDING_PAYMENT, ORDER_ACTIVE, ORDER_PAST_DUE):
+        return jsonify({"error": f"Bestellung im Status '{order.status}' kann nicht bezahlt werden"}), 409
+    try:
+        url = get_provider().create_checkout(order)
+    except PaymentError as e:
+        return jsonify({"error": e.message}), e.status_code
+    return jsonify({"checkout_url": url})
+
+
 @client_bp.route("/orders/<uuid>/cancel", methods=["POST"])
 def cancel_my_order(uuid: str):
     """Storniert eine offene Bestellung bzw. merkt eine aktive zum Laufzeitende zur Kuendigung vor."""

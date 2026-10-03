@@ -176,3 +176,29 @@ class Order(db.Model):
 
     def __repr__(self):
         return f"<Order {self.uuid} {self.status}>"
+
+
+class PaymentEvent(db.Model):
+    """Eingegangene Ereignisse eines Zahlungsanbieters (Idempotenz und Nachvollziehbarkeit, M48)."""
+
+    __tablename__ = "payment_events"
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.String(255), unique=True, nullable=False)  # ID des Anbieters (Stripe: evt_...)
+    provider = db.Column(db.String(32), nullable=False)
+    event_type = db.Column(db.String(120), nullable=True)
+    order_uuid = db.Column(db.String(36), nullable=True, index=True)
+    # processed | ignored | unapplied (Geld da, Bestellung nicht mehr bezahlbar) | mismatch (Betrag/Waehrung weicht ab)
+    status = db.Column(db.String(32), nullable=False, default="received")
+    detail = db.Column(db.Text, nullable=True)
+    received_at = db.Column(db.DateTime, default=_now)
+    processed_at = db.Column(db.DateTime, nullable=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id, "event_id": self.event_id, "provider": self.provider,
+            "event_type": self.event_type, "order_uuid": self.order_uuid, "status": self.status,
+            "detail": self.detail,
+            "received_at": self.received_at.isoformat() if self.received_at else None,
+            "processed_at": self.processed_at.isoformat() if self.processed_at else None,
+        }

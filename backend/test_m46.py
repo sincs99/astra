@@ -348,7 +348,16 @@ check("nach Verlaengerung gibt es in der naechsten Periode wieder eine Erinnerun
 ork, ik = paid_order()
 c.post(f"/api/client/orders/{ork}/cancel", headers=U1)
 res = tick(order(ork)["end"] - D(days=1))
-check("gekuendigte Bestellung bekommt keine Erinnerung", len(mails_for(ork)) == 0)
+check("gekuendigte Bestellung: statt Erinnerung einmalig 'wird geloescht'-Hinweis",
+      len(mails_for(ork)) == 1 and "geloescht" in mails_for(ork)[0]["subject"] and "endet bald" not in mails_for(ork)[0]["subject"])
+with app.app_context():
+    ev = ActivityLog.query.filter(ActivityLog.event == "order:reminder").order_by(ActivityLog.id.desc()).first()
+check("Event order:reminder mit kind=deletion_notice", "deletion_notice" in str(ev.properties), str(ev.properties))
+tick(order(ork)["end"] - D(hours=2))
+check("Loeschhinweis nur einmal", len(mails_for(ork)) == 1)
+r = c.post(f"/api/admin/orders/{ork}/mark-paid", json={"payment_reference": "cancelled-but-paid"}, headers=AH)
+tick(order(ork)["end"] - D(hours=1))
+check("nach Verlaengerung gibt es zur neuen Laufzeit wieder einen Hinweis", len(mails_for(ork)) == 2, str(len(mails_for(ork))))
 # Erinnerung abschaltbar
 app.config["BILLING_REMINDER_DAYS"] = 0
 orz, iz2 = paid_order()
