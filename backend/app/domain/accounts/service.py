@@ -7,6 +7,7 @@ ersten erfolgreichen Verwendung ungueltig. Es ist keine Tabelle noetig.
 
 import hashlib
 import re
+from datetime import datetime, timezone
 
 from flask import current_app
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
@@ -17,6 +18,7 @@ from app.infrastructure.mail import send_mail
 
 MIN_PASSWORD_LENGTH = 8
 RESET_SALT = "astra-password-reset"
+VERIFY_SALT = "astra-email-verification"
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -59,7 +61,54 @@ def register_user(username: str, email: str, password: str) -> User:
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
+    if current_app.config.get("EMAIL_VERIFICATION_REQUIRED", False):
+        send_verification_email(user)
     return user
+
+
+def _verify_serializer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt=VERIFY_SALT)
+
+
+def send_verification_email(user: User) -> bool:
+    token = _verify_serializer().dumps({"uid": user.id, "email": user.email})
+    base = current_app.config.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+    hours = current_app.config.get("EMAIL_VERIFICATION_TTL_HOURS", 48)
+    return send_mail(
+        current_app,
+        user.email,
+        "Astra: E-Mail-Adresse bestaetigen",
+        f"Hallo {user.username},\n\n"
+        f"bitte bestaetige deine E-Mail-Adresse (gueltig {hours} Stunden):\n"
+        f"{base}/verify-email?token={token}\n\n"
+        f"Falls du dich nicht registriert hast, ignoriere diese Mail.\n",
+    )
+
+
+def verify_email(token: str) -> User:
+    max_age = current_app.config.get("EMAIL_VERIFICATION_TTL_HOURS", 48) * 3600
+    try:
+        data = _verify_serializer().loads(token or "", max_age=max_age)
+    except SignatureExpired:
+        raise AccountError("Bestaetigungs-Link ist abgelaufen", 400)
+    except BadSignature:
+        raise AccountError("Ungueltiger Bestaetigungs-Link", 400)
+    user = db.session.get(User, data.get("uid"))
+    if not user or user.email != data.get("email"):
+        raise AccountError("Ungueltiger Bestaetigungs-Link", 400)
+    if user.email_verified_at is None:
+        user.email_verified_at = datetime.now(timezone.utc)
+        db.session.commit()
+    return user
+
+
+def resend_verification(email: str) -> None:
+    """Sendet den Link erneut, falls Adresse existiert und unbestaetigt ist. Verraet nichts nach aussen."""
+    if not email:
+        return
+    user = User.query.filter(db.func.lower(User.email) == email.strip().lower()).first()
+    if user and user.email_verified_at is None:
+        send_verification_email(user)
 
 
 def request_password_reset(email: str) -> None:
@@ -99,5 +148,8 @@ def confirm_password_reset(token: str, new_password: str) -> User:
         raise AccountError("Ungueltiger oder bereits verwendeter Reset-Link", 400)
 
     user.set_password(new_password)
+    if user.email_verified_at is None:
+        # Wer den Reset-Link aus dem Postfach nutzt, hat die Adresse damit bestaetigt
+        user.email_verified_at = datetime.now(timezone.utc)
     db.session.commit()
     return user

@@ -35,7 +35,6 @@ Das Backend läuft dann auf `http://localhost:5000`.
 | `/health`            | Globaler Check     |
 | `/api/admin/health`  | Admin-Bereich      |
 | `/api/client/health` | Client-Bereich     |
-| `/api/agent/health`  | Agent-Bereich      |
 | `/api/auth/health`   | Auth-Bereich       |
 
 ## Projektstruktur
@@ -49,7 +48,7 @@ backend/
 │   ├── api/
 │   │   ├── admin/routes.py
 │   │   ├── client/routes.py
-│   │   ├── agent/routes.py
+│   │   ├── remote/routes.py   # Wings Remote-API (Node-Token)
 │   │   └── auth/routes.py
 │   └── domain/
 │       ├── users/models.py

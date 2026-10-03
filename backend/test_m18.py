@@ -514,7 +514,7 @@ with app.app_context():
     check("VALID_CONTAINER_STATES", len(VALID_CONTAINER_STATES) >= 5)
 
     client = app.test_client()
-    check("Agent Health -> 200", client.get("/api/agent/health").status_code == 200)
+    check("Remote-API erreichbar (401 ohne Token)", client.get("/api/remote/servers").status_code == 401)
     check("Client Health -> 200", client.get("/api/client/health").status_code == 200)
     check("Admin Health -> 200", client.get("/api/admin/health").status_code == 200)
     check("Auth Health -> 200", client.get("/api/auth/health").status_code == 200)

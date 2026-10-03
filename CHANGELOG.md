@@ -39,11 +39,29 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
-### Security (M36 – Agent-Guard)
+### Removed (M40 – Legacy /api/agent)
+- Der Blueprint `/api/agent` (`instances/{uuid}/install`, `instances/{uuid}/container/status`, `sftp-auth`, `health`) wurde komplett entfernt. Wings und alle Agents nutzen `/api/remote` mit Node-Token. Der Agent-Guard aus M36 samt `AGENT_GUARD_ENABLED` und `test_m36.py` entfaellt damit
+- Frontend: Dev-Knopf "Simuliere Install-Callback" und `api.reportInstallResult` entfernt (er lief seit M36 in einen 403)
+- Tests M15–M20, M27, M30, M33 nutzen jetzt die Remote-API ueber `backend/test_helpers.py` (`report_container_state`, `report_install`, `node_headers`); der Fingerprint-Pfad der Legacy-Route ist weiter ueber `authorize_ssh_key_access()` abgedeckt (M30 b)
+- `backend/test_m40.py` (11 Tests) stellt sicher, dass `/api/agent/*` 404 liefert und `/api/remote` Token verlangt
+
+### Security (M36 – Agent-Guard, durch M40 abgeloest)
 - `/api/agent/*` verlangt jetzt den Node-Token (`Authorization: Bearer {token_id}.{token}`, gleiche Pruefung wie `/api/remote`). Ausnahme: `GET /api/agent/health`
 - Ein Agent darf nur Instanzen seines eigenen Nodes melden (`install`, `container/status` -> 403, `sftp-auth` -> `allowed: false, reason: instance_not_on_node`)
 - Schalter `AGENT_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus
 - `backend/test_m36.py` (17 Tests)
+
+### Added (M39 – Endpoint-Bulk und Verbindungsadresse)
+- `POST /api/admin/agents/{id}/endpoints/bulk` – Body `{ip, port_start, port_end}` legt einen Port-Bereich an, ueberspringt vorhandene (`ip` + `port` je Agent). Antwort `{created, skipped, endpoints}` (nur neu angelegte), 201 bei neuen Endpoints, sonst 200. Grenzen: 1..65535, `port_start <= port_end`, max. 1000 Ports pro Aufruf, `ip` muss gueltig sein
+- `Instance.to_dict()` liefert `connection`: `{host, ip, port, address}` (`host` = FQDN des Agents, `address` = `host:port`), `null` ohne primaeren Endpoint. Admin- und Client-Listen laden Agent und Endpoint per Join mit, keine Query pro Instanz
+- `backend/test_m39.py` (27 Tests)
+
+### Added (M38 – E-Mail-Verifizierung)
+- `EMAIL_VERIFICATION_REQUIRED` (Standard `false`): Registrierung sendet einen Bestaetigungs-Link (`EMAIL_VERIFICATION_TTL_HOURS`, Standard 48), Login ist erst nach Bestaetigung moeglich (403, `code: email_not_verified`)
+- `POST /api/auth/verify-email` und `POST /api/auth/resend-verification` (antwortet immer gleich); Token ist an die Adresse gebunden
+- Neue Spalte `users.email_verified_at` (Migration `m3h4i5j6k7l8`): bestehende Nutzer werden mit `created_at` als bestaetigt markiert, vom Admin angelegte Nutzer und der Bootstrap-Admin ebenfalls; ein erfolgreicher Passwort-Reset bestaetigt die Adresse
+- `User.to_dict()` liefert `email_verified`
+- `backend/test_m38.py` (22 Tests)
 
 ### Added (M37 – Egg-Import)
 - `backend/app/domain/blueprints/egg_import.py`: `convert_egg()` wandelt Pterodactyl-Eggs (PTDL_v1/v2) und Pelican-Eggs (PLCN_v1..v3) in Blueprint-Felder um (JSON-String-Configs, `docker_images`, `startup_commands`, `env_variable` -> `env_var`, `^C` -> `^SIGINT`); Platzhalter bleiben unveraendert
@@ -59,7 +77,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `FRONTEND_URL` fuer den Link in der Reset-Mail
 - Neue Auth-Pfade unterliegen dem Rate Limiting
 - `backend/test_m34.py` (18 Tests)
-- Noch offen: E-Mail-Verifizierung bei Registrierung, Frontend-Seiten (Registrieren, Passwort vergessen)
+- Noch offen: Frontend-Seiten (Registrieren, Passwort vergessen, E-Mail bestaetigen)
 
 ### Changed
 - Rate Limiting fuer `/api/auth/login` nutzt jetzt Redis (geteilter Zaehler ueber alle Gunicorn-Worker), mit In-Memory-Fallback wenn Redis nicht erreichbar ist (`backend/app/infrastructure/ratelimit.py`)

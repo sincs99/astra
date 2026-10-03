@@ -1,6 +1,6 @@
 """Auth-API-Routen: Login, Logout, Current-User, API Keys, MFA."""
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from app.domain.auth.service import (
     authenticate_user,
     issue_access_token,
@@ -41,6 +41,13 @@ def login():
                         f"Fehlgeschlagener Login-Versuch fuer '{login_field}'",
                         {"login": login_field})
         return jsonify({"error": "Ungueltige Anmeldedaten"}), 401
+
+    # M38: unbestaetigte E-Mail-Adresse
+    if current_app.config.get("EMAIL_VERIFICATION_REQUIRED", False) and user.email_verified_at is None:
+        return jsonify({
+            "error": "E-Mail-Adresse noch nicht bestaetigt",
+            "code": "email_not_verified",
+        }), 403
 
     # MFA-Check
     if user.mfa_enabled:
@@ -84,11 +91,41 @@ def register():
         return jsonify({"error": e.message}), e.status_code
 
     _log_auth_event("auth:register", user.id, f"Registrierung: {user.username}")
+    if current_app.config.get("EMAIL_VERIFICATION_REQUIRED", False):
+        return jsonify({
+            "verification_required": True,
+            "message": "Bitte bestaetige deine E-Mail-Adresse ueber den Link in der Mail",
+            "user": user.to_dict(),
+        }), 201
     return jsonify({
         "access_token": issue_access_token(user),
         "token_type": "Bearer",
         "user": user.to_dict(),
     }), 201
+
+
+@auth_bp.route("/verify-email", methods=["POST"])
+def verify_email_endpoint():
+    """Bestaetigt die E-Mail-Adresse mit dem Token aus der Verifizierungs-Mail."""
+    from app.domain.accounts.service import AccountError, verify_email
+
+    data = request.get_json() or {}
+    try:
+        user = verify_email(data.get("token"))
+    except AccountError as e:
+        return jsonify({"error": e.message}), e.status_code
+    _log_auth_event("auth:email_verified", user.id, f"E-Mail bestaetigt: {user.username}")
+    return jsonify({"message": "E-Mail-Adresse bestaetigt"})
+
+
+@auth_bp.route("/resend-verification", methods=["POST"])
+def resend_verification_endpoint():
+    """Sendet die Verifizierungs-Mail erneut. Antwortet immer gleich."""
+    from app.domain.accounts.service import resend_verification
+
+    data = request.get_json() or {}
+    resend_verification(data.get("email"))
+    return jsonify({"message": "Falls die Adresse existiert und unbestaetigt ist, wurde eine E-Mail versendet"})
 
 
 @auth_bp.route("/password-reset/request", methods=["POST"])

@@ -102,21 +102,6 @@ export function InstanceDetailPage() {
     }
   };
 
-  const handleInstallCallback = async (successful: boolean) => {
-    if (!uuid) return;
-    try {
-      setActing(true);
-      setError(null);
-      const result = await api.reportInstallResult(uuid, successful);
-      toast.success(result.message);
-      await loadInstance();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler");
-    } finally {
-      setActing(false);
-    }
-  };
-
   const handleReinstall = async () => {
     if (!uuid) return;
     try {
@@ -226,9 +211,6 @@ export function InstanceDetailPage() {
             <p style={{ fontSize: 13, color: "#888", margin: "0 0 8px" }}>
               {status === "reinstalling" ? "⏳ Reinstallation läuft..." : "⏳ Installation läuft..."}
             </p>
-            <p style={{ fontSize: 12, color: "#aaa", margin: "0 0 8px" }}>Simuliere Install-Callback:</p>
-            <button onClick={() => handleInstallCallback(true)} disabled={acting} style={{ ...btnDefault, marginRight: 8 }}>✅ Erfolgreich</button>
-            <button onClick={() => handleInstallCallback(false)} disabled={acting} style={btnDefault}>❌ Fehlgeschlagen</button>
           </div>
         )}
 
