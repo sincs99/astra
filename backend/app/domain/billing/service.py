@@ -141,7 +141,7 @@ def update_product(product: Product, data: dict) -> Product:
 
 def delete_product(product: Product) -> None:
     if Order.query.filter_by(product_id=product.id).first():
-        raise BillingError("Produkt hat Bestellungen und kann nicht geloescht werden – bitte deaktivieren", 409)
+        raise BillingError("Produkt hat Bestellungen und kann nicht gelöscht werden – bitte deaktivieren", 409)
     db.session.delete(product)
     db.session.commit()
 
@@ -282,7 +282,7 @@ def renew_order(order: Order, payment_reference: str | None, actor_id: int | Non
     now = _utc_naive(now) or _now()
     if not payment_reference:
         raise BillingError(
-            "Fuer eine Verlaengerung ist 'payment_reference' erforderlich (verhindert doppeltes Verbuchen)", 400
+            "Für eine Verlängerung ist 'payment_reference' erforderlich (verhindert doppeltes Verbuchen)", 400
         )
     refs = list(order.payment_references or [])
     if payment_reference in refs:
@@ -290,7 +290,7 @@ def renew_order(order: Order, payment_reference: str | None, actor_id: int | Non
 
     instance = db.session.get(Instance, order.instance_id) if order.instance_id else None
     if instance is None:
-        raise BillingError("Die Instance dieser Bestellung existiert nicht mehr – keine Verlaengerung moeglich", 409)
+        raise BillingError("Die Instance dieser Bestellung existiert nicht mehr – keine Verlängerung möglich", 409)
 
     was_past_due = order.status == ORDER_PAST_DUE
     base = max(now, order.current_period_end or now)
@@ -309,7 +309,7 @@ def renew_order(order: Order, payment_reference: str | None, actor_id: int | Non
         _best_effort(sync_instance, instance)
         lifted = True
 
-    _log("order:renewed", order, actor_id, "Bestellung verlaengert",
+    _log("order:renewed", order, actor_id, "Bestellung verlängert",
          {"payment_reference": payment_reference, "was_past_due": was_past_due, "unsuspended": lifted,
           "current_period_end": iso_utc(order.current_period_end)})
     return order
@@ -335,7 +335,7 @@ def cancel_order(order: Order, actor_id: int | None = None) -> Order:
             order.cancel_at_period_end = True
             order.cancelled_at = _now()
             db.session.commit()
-            _log("order:cancelled", order, actor_id, "Kuendigung zum Laufzeitende vorgemerkt")
+            _log("order:cancelled", order, actor_id, "Kündigung zum Laufzeitende vorgemerkt")
     elif order.status == ORDER_AWAITING_PROVISIONING:
         raise BillingError("Bezahlte Bestellung wird noch bereitgestellt – bitte den Support kontaktieren", 409)
     else:
@@ -405,8 +405,8 @@ def _expire_order(order: Order, instance: Instance | None, reason: str) -> None:
         log_orders_expired([order.id], reason)
     _mail_order(
         order, "Astra: Dein Server wurde beendet",
-        f"Hallo,\n\ndein Server '{order.instance_name}' wurde beendet und geloescht "
-        f"({'Kuendigung zum Laufzeitende' if reason == 'cancelled_at_period_end' else 'Zahlung nicht eingegangen'}).\n"
+        f"Hallo,\n\ndein Server '{order.instance_name}' wurde beendet und gelöscht "
+        f"({'Kündigung zum Laufzeitende' if reason == 'cancelled_at_period_end' else 'Zahlung nicht eingegangen'}).\n"
         f"Bestellung: {order.uuid}\n",
     )
 
@@ -433,14 +433,14 @@ def _suspend_for_payment(order: Order, instance: Instance, now: datetime) -> boo
         _best_effort(sync_instance, instance)
         _best_effort(send_power_action, instance, "kill")
 
-    _log("order:past_due", order, None, "Bestellung ueberfaellig, Instance suspendiert",
+    _log("order:past_due", order, None, "Bestellung überfällig, Instance suspendiert",
          {"suspended": newly_suspended, "current_period_end": iso_utc(order.current_period_end)})
     from flask import current_app
     days = current_app.config.get("BILLING_GRACE_DAYS", 7)
     _mail_order(
-        order, "Astra: Zahlung ueberfaellig – dein Server wurde gesperrt",
+        order, "Astra: Zahlung überfällig – dein Server wurde gesperrt",
         f"Hallo,\n\ndie Laufzeit deines Servers '{order.instance_name}' ist abgelaufen, der Server wurde gesperrt.\n"
-        f"Bitte begleiche die Zahlung innerhalb von {days} Tagen, sonst wird er geloescht.\n"
+        f"Bitte begleiche die Zahlung innerhalb von {days} Tagen, sonst wird er gelöscht.\n"
         f"Bestellung: {order.uuid}\n",
     )
     return True
@@ -466,21 +466,21 @@ def _remind_if_due(order: Order, end: datetime, now: datetime, reminder: timedel
     order.reminded_for_period_end = end
     db.session.commit()  # erst markieren: bei einem Fehler danach lieber keine Mail als jeden Tick eine
     _log("order:reminder", order, None,
-         "Loeschhinweis vor Laufzeitende verschickt" if cancelled else "Erinnerung vor Laufzeitende verschickt",
+         "Löschhinweis vor Laufzeitende verschickt" if cancelled else "Erinnerung vor Laufzeitende verschickt",
          {"current_period_end": iso_utc(end), "kind": "deletion_notice" if cancelled else "expiry_reminder"})
     if cancelled:
         _mail_order(
-            order, "Astra: Dein Server wird bald geloescht",
-            f"Hallo,\n\nwegen deiner Kuendigung wird dein Server '{order.instance_name}' am "
-            f"{end:%d.%m.%Y %H:%M} UTC geloescht. Sichere vorher deine Dateien.\n"
+            order, "Astra: Dein Server wird bald gelöscht",
+            f"Hallo,\n\nwegen deiner Kündigung wird dein Server '{order.instance_name}' am "
+            f"{end:%d.%m.%Y %H:%M} UTC gelöscht. Sichere vorher deine Dateien.\n"
             f"Bestellung: {order.uuid}\n",
         )
     else:
         _mail_order(
             order, "Astra: Die Laufzeit deines Servers endet bald",
             f"Hallo,\n\ndie Laufzeit deines Servers '{order.instance_name}' endet am {end:%d.%m.%Y %H:%M} UTC.\n"
-            f"Bitte veranlasse rechtzeitig die Zahlung ({order.price_cents / 100:.2f} {order.currency} fuer "
-            f"{order.billing_period_days} Tage), sonst wird der Server gesperrt und nach der Karenzzeit geloescht.\n"
+            f"Bitte veranlasse rechtzeitig die Zahlung ({order.price_cents / 100:.2f} {order.currency} für "
+            f"{order.billing_period_days} Tage), sonst wird der Server gesperrt und nach der Karenzzeit gelöscht.\n"
             f"Bestellung: {order.uuid}\n",
         )
     return True
@@ -628,7 +628,7 @@ def _apply_payment_event(ev) -> tuple[str, str | None]:
         return "ignored", f"Bestellung nicht gefunden (order_uuid={ev.order_uuid})"
 
     if ev.amount_cents != order.price_cents or (ev.currency or "").upper() != order.currency.upper():
-        detail = (f"Betrag/Waehrung weichen ab: gezahlt {ev.amount_cents} {ev.currency}, "
+        detail = (f"Betrag/Währung weichen ab: gezahlt {ev.amount_cents} {ev.currency}, "
                   f"erwartet {order.price_cents} {order.currency}")
         logger.error("Zahlung %s fuer Bestellung %s nicht verbucht: %s", ev.payment_reference, order.uuid, detail)
         _log("order:payment_unapplied", order, None, "Zahlung nicht verbucht: " + detail,

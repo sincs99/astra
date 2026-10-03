@@ -45,6 +45,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Changed (M50 – Umlaute in Kundenmeldungen)
+- Meldungen, die Kunden sehen (Auth, Client, Billing und die Services dahinter, inklusive Mails), tragen jetzt echte Umlaute: "Ungültige Anmeldedaten", "Instance gelöscht", "Bitte bezahle per Überweisung", Mailbetreffe wie "Astra: Zahlung überfällig – dein Server wurde gesperrt" (79 Texte in 12 Dateien). **Keine Änderung an Fehlercodes (`code`), Statuswerten oder Ereignisnamen.** Admin-Routen sowie Docstrings, Kommentare und Log-Ausgaben bleiben unverändert
+- Neues Werkzeug `backend/tools/umlauts.py` mit festem Wörterbuch ganzer Wörter (Wörter wie "neue", "zuerst", "aktuell", "Blueprint", "queue" bleiben unberührt): `python tools/umlauts.py` zeigt noch vorhandene ASCII-Schreibweisen, `--write` korrigiert sie. Es arbeitet über den Syntaxbaum und fasst nur Meldungstexte an
+- Die clientseitige Korrektur im Frontend (`lib/umlauts.ts`) wird dadurch für diese Meldungen zum No-op und kann bleiben
+- Mails mit Umlauten werden per SMTP korrekt als UTF-8 kodiert (Betreff und Text, geprüft)
+- `backend/test_m50.py` (34 Tests): Werkzeug, 19 echte API-Antworten und Mails ohne ASCII-Umlautersatz, Prüfung aller Kundendateien auf Wörterbuchtreffer, SMTP-Kodierung; schlägt bei einer zurückgedrehten Meldung fehl. `test_m46.py` und `test_m48.py` an die neuen Schreibweisen angepasst
+
 ### Docs (Phase-4-Abschluss)
 - `docs/orders-api.md`: Meilenstein-Uebersicht, Abschnitte "Webhook-Signatur" (Header, HMAC-Schema, Proxy-Hinweis, Secret-Rotation, Selbsttest) und "Fehlersuche (Stripe)", Endpunkttabelle aktualisiert
 - `docs/phase4-plan.md`: Umsetzungsstand je Schritt (M42 bis M49), Ausgangslage mit Status, Abweichungen vom Datenmodell, offene Punkte vor einem Betrieb mit Geld

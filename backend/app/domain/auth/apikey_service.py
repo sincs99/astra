@@ -115,7 +115,7 @@ def delete_api_key(key_id: int, user_id: int) -> None:
         log_event(
             event="auth:api_key_deleted",
             actor_id=user_id,
-            description=f"API Key '{identifier}' geloescht",
+            description=f"API Key '{identifier}' gelöscht",
             properties={"identifier": identifier},
         )
     except Exception:

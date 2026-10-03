@@ -50,7 +50,7 @@ def register_user(username: str, email: str, password: str) -> User:
     username = username.strip()
     email = email.strip().lower()
     if not _EMAIL_RE.match(email):
-        raise AccountError("Ungueltige E-Mail-Adresse")
+        raise AccountError("Ungültige E-Mail-Adresse")
     _check_password(password)
     if User.query.filter_by(username=username).first():
         raise AccountError("Benutzername bereits vergeben", 409)
@@ -77,9 +77,9 @@ def send_verification_email(user: User) -> bool:
     return send_mail(
         current_app,
         user.email,
-        "Astra: E-Mail-Adresse bestaetigen",
+        "Astra: E-Mail-Adresse bestätigen",
         f"Hallo {user.username},\n\n"
-        f"bitte bestaetige deine E-Mail-Adresse (gueltig {hours} Stunden):\n"
+        f"bitte bestätige deine E-Mail-Adresse (gültig {hours} Stunden):\n"
         f"{base}/verify-email?token={token}\n\n"
         f"Falls du dich nicht registriert hast, ignoriere diese Mail.\n",
     )
@@ -90,12 +90,12 @@ def verify_email(token: str) -> User:
     try:
         data = _verify_serializer().loads(token or "", max_age=max_age)
     except SignatureExpired:
-        raise AccountError("Bestaetigungs-Link ist abgelaufen", 400)
+        raise AccountError("Bestätigungs-Link ist abgelaufen", 400)
     except BadSignature:
-        raise AccountError("Ungueltiger Bestaetigungs-Link", 400)
+        raise AccountError("Ungültiger Bestätigungs-Link", 400)
     user = db.session.get(User, data.get("uid"))
     if not user or user.email != data.get("email"):
-        raise AccountError("Ungueltiger Bestaetigungs-Link", 400)
+        raise AccountError("Ungültiger Bestätigungs-Link", 400)
     if user.email_verified_at is None:
         user.email_verified_at = datetime.now(timezone.utc)
         db.session.commit()
@@ -139,10 +139,10 @@ def request_password_reset(email: str) -> None:
     send_mail(
         current_app,
         user.email,
-        "Astra: Passwort zuruecksetzen",
+        "Astra: Passwort zurücksetzen",
         f"Hallo {user.username},\n\n"
-        f"ueber diesen Link kannst du dein Passwort zuruecksetzen "
-        f"(gueltig {minutes} Minuten):\n{link}\n\n"
+        f"über diesen Link kannst du dein Passwort zurücksetzen "
+        f"(gültig {minutes} Minuten):\n{link}\n\n"
         f"Falls du das nicht angefordert hast, ignoriere diese Mail.\n",
     )
 
@@ -155,11 +155,11 @@ def confirm_password_reset(token: str, new_password: str) -> User:
     except SignatureExpired:
         raise AccountError("Reset-Link ist abgelaufen", 400)
     except BadSignature:
-        raise AccountError("Ungueltiger Reset-Link", 400)
+        raise AccountError("Ungültiger Reset-Link", 400)
 
     user = db.session.get(User, data.get("uid"))
     if not user or data.get("fp") != _fingerprint(user):
-        raise AccountError("Ungueltiger oder bereits verwendeter Reset-Link", 400)
+        raise AccountError("Ungültiger oder bereits verwendeter Reset-Link", 400)
 
     user.set_password(new_password)
     if user.email_verified_at is None:

@@ -46,22 +46,22 @@ def validate_and_parse(public_key: str) -> tuple[str, str]:
 
     parts = public_key.strip().split()
     if len(parts) < 2:
-        raise SshKeyValidationError("Ungueltiges Key-Format: Typ und Key-Body erwartet")
+        raise SshKeyValidationError("Ungültiges Key-Format: Typ und Key-Body erwartet")
 
     key_type = parts[0]
     key_body_b64 = parts[1]
 
     if key_type not in SUPPORTED_KEY_TYPES:
         raise SshKeyValidationError(
-            f"Nicht unterstuetzter Key-Typ '{key_type}'. "
-            f"Unterstuetzt: {', '.join(sorted(SUPPORTED_KEY_TYPES))}"
+            f"Nicht unterstützter Key-Typ '{key_type}'. "
+            f"Unterstützt: {', '.join(sorted(SUPPORTED_KEY_TYPES))}"
         )
 
     # Base64-Body decodieren und strukturell pruefen
     try:
         key_bytes = base64.b64decode(key_body_b64, validate=True)
     except Exception:
-        raise SshKeyValidationError("Key-Body ist kein gueltiges Base64")
+        raise SshKeyValidationError("Key-Body ist kein gültiges Base64")
 
     if len(key_bytes) < 4:
         raise SshKeyValidationError("Key-Body ist zu kurz")
@@ -72,7 +72,7 @@ def validate_and_parse(public_key: str) -> tuple[str, str]:
     except SshKeyValidationError:
         raise
     except Exception:
-        raise SshKeyValidationError("Key-Body hat ungueltiges Binaerformat")
+        raise SshKeyValidationError("Key-Body hat ungültiges Binärformat")
 
     fingerprint = _compute_fingerprint(key_bytes)
     return key_type, fingerprint
@@ -105,7 +105,7 @@ def _verify_key_type_in_body(expected_type: str, key_bytes: bytes) -> None:
     actual_type = token.decode("ascii", errors="replace")
     if actual_type != expected_type:
         raise SshKeyValidationError(
-            f"Key-Header '{expected_type}' stimmt nicht mit Key-Typ im Body '{actual_type}' ueberein"
+            f"Key-Header '{expected_type}' stimmt nicht mit Key-Typ im Body '{actual_type}' überein"
         )
 
 
