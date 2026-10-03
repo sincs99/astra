@@ -105,7 +105,8 @@ with app.app_context():
 r = c.get("/api/admin/instances", headers=H)
 by = {i["name"]: i for i in r.json}
 check("connection gesetzt", by["mit"]["connection"] == {
-    "host": "node1.example.com", "ip": "0.0.0.0", "port": 25565, "address": "node1.example.com:25565"}, str(by["mit"]["connection"]))
+    "host": "node1.example.com", "ip": "0.0.0.0", "port": 25565, "sftp_port": 2022,
+    "address": "node1.example.com:25565"}, str(by["mit"]["connection"]))
 check("ohne Endpoint -> null", by["ohne"]["connection"] is None)
 oh = {"X-User-Id": str(owner_id)}
 r = c.get("/api/client/instances", headers=oh)
@@ -113,6 +114,13 @@ by = {i["name"]: i for i in r.json}
 check("Client-Liste: connection", by["mit"]["connection"]["address"] == "node1.example.com:25565" and by["ohne"]["connection"] is None, r.get_data(as_text=True)[:200])
 r = c.get(f"/api/client/instances/{uuid1}", headers=oh)
 check("Client-Detail: connection", r.status_code == 200 and r.json["connection"]["port"] == 25565)
+check("Client-Detail: sftp_port fuer Nicht-Admin", r.json["connection"]["sftp_port"] == 2022)
+with app.app_context():
+    a = db.session.get(Agent, agent_id)
+    a.daemon_sftp = 2222
+    db.session.commit()
+r = c.get(f"/api/client/instances/{uuid1}", headers=oh)
+check("sftp_port folgt dem Agent (2222)", r.json["connection"]["sftp_port"] == 2222)
 
 print("Keine Query pro Instanz in Listen")
 with app.app_context():

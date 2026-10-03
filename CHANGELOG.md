@@ -42,6 +42,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (Account und SFTP-Port)
+- `POST /api/auth/change-password` – `{current_password, new_password}` fuer eingeloggte Nutzer; 401 bei falschem aktuellem Passwort (und ohne Login), gleiche Regeln wie bei der Registrierung (mind. 8 Zeichen), neues Passwort muss sich unterscheiden, Activity-Events `auth:password_changed` / `auth:password_change_failed`, offene Reset-Links werden ungueltig, Rate Limiting aktiv. Bereits ausgestellte JWTs bleiben bis zum Ablauf gueltig
+- `instance.connection` enthaelt jetzt `sftp_port` (Port des Agents), damit auch Nicht-Admins die SFTP-Zugangsdaten anzeigen koennen
+- Tests in `test_m34.py` (30) und `test_m39.py` (29)
+
 ### Added (M41 – Wings-Erreichbarkeit und Endpoint-Pflicht)
 - Fleet Monitoring (`GET /api/admin/agents/monitoring`, `/agents/{id}/monitoring`) liefert `daemon_reachable`, `daemon_version` und `daemon_error`, ermittelt per `GET /api/system` am Wings (Bearer `daemon_token`, Timeout 3 s, Ergebnis 30 s gecacht, Cache-Schluessel enthaelt URL und Token; mehrere Agents werden parallel geprueft). Mit dem Stub-Adapter immer `true`/`"stub"` (`backend/app/domain/agents/reachability.py`)
 - Preflight: neuer Check `agents_reachable`, warnt bei nicht erreichbaren aktiven Agents (Agents in Wartung und inaktive Agents werden nicht geprueft), blockiert nicht
