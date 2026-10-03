@@ -1,7 +1,8 @@
+import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { useEffect, useState } from "react";
 import { api, type JobEntry, type JobSummary } from "../services/api";
 import {
-  PageLayout, StatusBadge, LoadingState, EmptyState, ErrorState,
+  PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState,
   cardStyle, inputStyle, labelStyle, btnDefault, thStyle, tdStyle,
 } from "../components/ui";
 
@@ -18,10 +19,12 @@ export function AdminJobsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
   const [typeFilter, setTypeFilter] = useState("");
 
-  const loadData = async () => {
+  const [autoRefresh, setAutoRefresh] = useAutoRefreshSetting("jobs");
+
+  const loadData = async (silent = false) => {
     try {
-      setLoading(true);
-      setError(null);
+      if (!silent) setLoading(true);
+      if (!silent) setError(null);
       const [jobData, summaryData] = await Promise.all([
         api.getJobs({ status: statusFilter || undefined, type: typeFilter || undefined, page, per_page: 50 }),
         api.getJobsSummary(),
@@ -31,13 +34,16 @@ export function AdminJobsPage() {
       setPages(jobData.pages);
       setSummary(summaryData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      // Bei stillem Refresh vorhandene Daten nicht durch Fehler ersetzen
+      if (!silent) setError(err instanceof Error ? err.message : "Fehler beim Laden");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { loadData(); }, [statusFilter, typeFilter, page]);
+
+  useAutoRefresh(() => loadData(true), 15000, autoRefresh);
 
   return (
     <PageLayout title="Background Jobs">
@@ -76,7 +82,8 @@ export function AdminJobsPage() {
             ))}
           </select>
         </div>
-        <button onClick={loadData} style={{ ...btnDefault, alignSelf: "flex-end" }}>
+        <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
+        <button onClick={() => loadData()} style={{ ...btnDefault, alignSelf: "flex-end" }}>
           ↻ Aktualisieren
         </button>
         <span style={{ fontSize: 13, color: "#888", alignSelf: "flex-end" }}>
@@ -84,7 +91,7 @@ export function AdminJobsPage() {
         </span>
       </div>
 
-      {error && <ErrorState message={error} onRetry={loadData} />}
+      {error && <ErrorState message={error} onRetry={() => loadData()} />}
 
       {loading ? (
         <LoadingState message="Jobs werden geladen..." />
