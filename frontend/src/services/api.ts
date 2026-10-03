@@ -550,6 +550,9 @@ export interface AgentMonitoringEntry {
   utilization: UtilizationSummary;
   instance_count: number;
   endpoint_summary: EndpointSummary;
+  /** Optional: vom Backend, sobald der Daemon aktiv geprueft wird */
+  daemon_reachable?: boolean | null;
+  daemon_version?: string | null;
 }
 
 export interface FleetSummary {

@@ -15,6 +15,8 @@ import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "../pages/ResetPasswordPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { isAuthenticated } from "../services/api";
+import { useCurrentUser } from "../hooks/useCurrentUser";
+import { LoadingState } from "../components/ui";
 
 /**
  * Schuetzt Routen: Leitet zu /login um wenn nicht eingeloggt.
@@ -23,6 +25,17 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
   }
+  return <>{children}</>;
+}
+
+/**
+ * Nur fuer Administratoren; Kunden werden zum Dashboard umgeleitet.
+ * (Die eigentliche Absicherung passiert im Backend, das hier ist nur UX.)
+ */
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const user = useCurrentUser();
+  if (!user) return <LoadingState />;
+  if (!user.is_admin) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -35,13 +48,13 @@ export function AppRouter() {
         <Route path="/password-reset" element={<ForgotPasswordPage />} />
         <Route path="/password-reset/confirm" element={<ResetPasswordPage />} />
         <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-        <Route path="/admin/agents" element={<ProtectedRoute><AdminAgentsPage /></ProtectedRoute>} />
-        <Route path="/admin/agents/monitoring" element={<ProtectedRoute><AdminAgentsMonitoringPage /></ProtectedRoute>} />
-        <Route path="/admin/blueprints" element={<ProtectedRoute><AdminBlueprintsPage /></ProtectedRoute>} />
-        <Route path="/admin/instances" element={<ProtectedRoute><AdminInstancesPage /></ProtectedRoute>} />
-        <Route path="/admin/webhooks" element={<ProtectedRoute><AdminWebhooksPage /></ProtectedRoute>} />
-        <Route path="/admin/jobs" element={<ProtectedRoute><AdminJobsPage /></ProtectedRoute>} />
-        <Route path="/admin/system" element={<ProtectedRoute><AdminSystemPage /></ProtectedRoute>} />
+        <Route path="/admin/agents" element={<ProtectedRoute><AdminRoute><AdminAgentsPage /></AdminRoute></ProtectedRoute>} />
+        <Route path="/admin/agents/monitoring" element={<ProtectedRoute><AdminRoute><AdminAgentsMonitoringPage /></AdminRoute></ProtectedRoute>} />
+        <Route path="/admin/blueprints" element={<ProtectedRoute><AdminRoute><AdminBlueprintsPage /></AdminRoute></ProtectedRoute>} />
+        <Route path="/admin/instances" element={<ProtectedRoute><AdminRoute><AdminInstancesPage /></AdminRoute></ProtectedRoute>} />
+        <Route path="/admin/webhooks" element={<ProtectedRoute><AdminRoute><AdminWebhooksPage /></AdminRoute></ProtectedRoute>} />
+        <Route path="/admin/jobs" element={<ProtectedRoute><AdminRoute><AdminJobsPage /></AdminRoute></ProtectedRoute>} />
+        <Route path="/admin/system" element={<ProtectedRoute><AdminRoute><AdminSystemPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/instances/:uuid" element={<ProtectedRoute><InstanceDetailPage /></ProtectedRoute>} />
         <Route path="/account/ssh-keys" element={<ProtectedRoute><SshKeysPage /></ProtectedRoute>} />
         <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />

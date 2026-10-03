@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { api, type Agent, type Endpoint } from "../services/api";
+import { api, type Agent, type AgentMonitoringEntry, type Endpoint } from "../services/api";
+import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { parsePortRange } from "../lib/portRange";
 import { EMPTY_AGENT_FORM, agentToForm, toAgentPayload, type AgentFormValues } from "../lib/agentForm";
 import {
-  PageLayout, StatusBadge, LoadingState, EmptyState, ErrorState, ConfirmButton,
+  PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState, ConfirmButton,
   Toast, useToast,
   cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, thStyle, tdStyle,
 } from "../components/ui";
@@ -12,6 +13,8 @@ export function AdminAgentsPage() {
   const toast = useToast();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
+  const [health, setHealth] = useState<Record<number, AgentMonitoringEntry>>({});
+  const [autoRefresh, setAutoRefresh] = useAutoRefreshSetting("agents");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +53,19 @@ export function AdminAgentsPage() {
     }
   };
 
-  useEffect(() => { loadAll(); }, []);
+  // Health-Status ist Zusatzinfo: Fehler hier duerfen die Seite nicht blockieren
+  const loadHealth = async () => {
+    try {
+      const entries = await api.getAgentsMonitoring();
+      setHealth(Object.fromEntries(entries.map(e => [e.id, e])));
+    } catch {
+      setHealth({});
+    }
+  };
+
+  useEffect(() => { loadAll(); loadHealth(); }, []);
+
+  useAutoRefresh(loadHealth, 15000, autoRefresh);
 
   const handleAgentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -278,6 +293,10 @@ export function AdminAgentsPage() {
         </div>
       )}
 
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
+      </div>
+
       {/* Agent-Liste mit Endpoints */}
       {loading ? (
         <LoadingState message="Agents werden geladen..." />
@@ -294,6 +313,21 @@ export function AdminAgentsPage() {
                   {agent.scheme}://{agent.fqdn}:{agent.daemon_connect}
                 </span>
                 <StatusBadge status={agent.is_active ? "active" : "inactive"} size="sm" />
+                {health[agent.id] && (
+                  <>
+                    <StatusBadge status={health[agent.id].health_status} size="sm" />
+                    {health[agent.id].daemon_reachable !== undefined && health[agent.id].daemon_reachable !== null && (
+                      <StatusBadge
+                        status={health[agent.id].daemon_reachable ? "ok" : "unreachable"}
+                        label={health[agent.id].daemon_reachable ? "Wings erreichbar" : "Wings nicht erreichbar"}
+                        size="sm"
+                      />
+                    )}
+                    {health[agent.id].daemon_version && (
+                      <span style={{ color: "#666", fontSize: 12 }}>Wings {health[agent.id].daemon_version}</span>
+                    )}
+                  </>
+                )}
                 <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
                   <button type="button" onClick={() => startEdit(agent)} style={btnDefault}>✏️ Bearbeiten</button>
                   <button onClick={() => openConfig(agent)} style={btnDefault}>📄 config.yml</button>
