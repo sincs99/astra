@@ -102,7 +102,7 @@ def get_runner() -> RunnerProtocol:
 def create_instance(
     name: str,
     owner_id: int,
-    agent_id: int,
+    agent_id: int | None,
     blueprint_id: int,
     description: str | None = None,
     endpoint_id: int | None = None,
@@ -127,8 +127,19 @@ def create_instance(
     if not owner:
         raise InstanceCreationError(f"User mit ID {owner_id} nicht gefunden", 404)
 
-    # 2. Agent pruefen
-    agent = db.session.get(Agent, agent_id)
+    # 2. Agent pruefen (agent_id=None -> automatische Platzierung, M42)
+    if agent_id is None:
+        if endpoint_id is not None:
+            raise InstanceCreationError("endpoint_id setzt eine explizite agent_id voraus", 400)
+        from app.domain.agents.placement import pick_agent
+        agent = pick_agent(memory, disk, cpu)
+        if agent is None:
+            raise InstanceCreationError(
+                "Kein Agent mit freiem Endpoint und ausreichender Kapazitaet verfuegbar", 409
+            )
+        agent_id = agent.id
+    else:
+        agent = db.session.get(Agent, agent_id)
     if not agent:
         raise InstanceCreationError(f"Agent mit ID {agent_id} nicht gefunden", 404)
     if not agent.is_active:
@@ -149,6 +160,13 @@ def create_instance(
 
     # 4. Endpoint finden oder pruefen
     endpoint = _resolve_endpoint(agent_id, endpoint_id)
+
+    # 5. Kapazitaet des Agents pruefen (M42); Zeilensperre serialisiert parallele Erstellungen (PostgreSQL)
+    from app.domain.agents.placement import capacity_problem
+    db.session.query(Agent).filter_by(id=agent_id).with_for_update().first()
+    problem = capacity_problem(agent, memory, disk, cpu)
+    if problem:
+        raise InstanceCreationError(problem, 409)
 
     # Image und startup_command vom Blueprint uebernehmen, falls nicht explizit gesetzt
     if not image and blueprint.docker_image:
@@ -661,6 +679,13 @@ def transfer_instance(instance: Instance, target_agent_id: int) -> Instance:
         new_endpoint = _resolve_endpoint(target_agent_id, None)
     except InstanceCreationError as e:
         raise InstanceActionError(e.message, e.status_code)
+
+    # Kapazitaet auf dem Ziel-Agent (M42)
+    if target_agent_id != instance.agent_id:
+        from app.domain.agents.placement import capacity_problem
+        problem = capacity_problem(target_agent, instance.memory, instance.disk, instance.cpu)
+        if problem:
+            raise InstanceActionError(problem, 409)
 
     old_agent = db.session.get(Agent, instance.agent_id)
     old_endpoint_id = instance.primary_endpoint_id

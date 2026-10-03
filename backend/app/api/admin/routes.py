@@ -577,7 +577,8 @@ def create_instance_route():
     if not data:
         return jsonify({"error": "Request body is required"}), 400
 
-    required = ["name", "owner_id", "agent_id", "blueprint_id"]
+    # agent_id ist optional: fehlt es oder ist null, platziert Astra automatisch (M42)
+    required = ["name", "owner_id", "blueprint_id"]
     missing = [f for f in required if f not in data or data[f] is None]
     if missing:
         return jsonify({"error": f"Required fields missing: {', '.join(missing)}"}), 400
@@ -586,7 +587,7 @@ def create_instance_route():
         instance = create_instance(
             name=data["name"],
             owner_id=data["owner_id"],
-            agent_id=data["agent_id"],
+            agent_id=data.get("agent_id"),
             blueprint_id=data["blueprint_id"],
             description=data.get("description"),
             endpoint_id=data.get("endpoint_id"),
