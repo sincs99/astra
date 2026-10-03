@@ -5,11 +5,39 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Phase 2 – Produktions-Deployment)
+- `docker-compose.prod.yml`: Caddy als TLS-Terminierung (Let's Encrypt, einziger oeffentlicher Eingang 80/443),
+  Worker-Container fuer die Redis-Job-Queue, Healthchecks fuer Backend/Redis, Redis mit Passwort und AOF,
+  gemeinsamer Backend-Env-Block (`x-backend-env`), kein direktes Port-Mapping fuer Frontend/Backend mehr
+- `deploy/Caddyfile` + `deploy/node.caddy.template`: optionaler Reverse Proxy fuer den Wings-Node auf
+  demselben Host (`NODE_DOMAIN` -> `host.docker.internal:8080`, Websockets inklusive)
+- `.env.prod.example` im Root (Domains, Secrets, Admin, Mail, Queue), `COMPOSE_FILE` vorbelegt
+- `scripts/deploy.sh` (Build, Start, Warten auf Readiness, `--bootstrap`, `--status`),
+  `scripts/install-wings.sh` (Docker + Wings + config.yml aus dem Panel + systemd, `--pelican`),
+  `scripts/smoke-test.sh` (Health, TLS, Admin-Guard, Remote-API-Auth je Agent)
+- `docs/deploy-runbook.md`: Runbook fuer Panel + Wings auf einem Server, Abnahme-Checkliste, Umzug
+
+### Changed
+- `frontend/nginx.conf`: `X-Forwarded-Proto` wird vom vorgelagerten Proxy durchgereicht (statt `$scheme`),
+  damit das Backend hinter Caddy `https` erkennt; Backend nutzt `PROXY_FIX_X_FOR/X_PROTO=2`
+
 ### Security (M35 – Admin-Guard)
 - Der gesamte `/api/admin`-Blueprint verlangt jetzt einen angemeldeten Admin (`before_request`, JWT, API-Key oder in Dev/Test `X-User-Id`). Ausnahme: `GET /api/admin/health`. Ohne Login 401, ohne Admin-Recht 403
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
-- Weiterhin offen: `/api/agent/*` (Legacy-Callbacks, durch `/api/remote` ersetzt)
+
+### Security (M36 – Agent-Guard)
+- `/api/agent/*` verlangt jetzt den Node-Token (`Authorization: Bearer {token_id}.{token}`, gleiche Pruefung wie `/api/remote`). Ausnahme: `GET /api/agent/health`
+- Ein Agent darf nur Instanzen seines eigenen Nodes melden (`install`, `container/status` -> 403, `sftp-auth` -> `allowed: false, reason: instance_not_on_node`)
+- Schalter `AGENT_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus
+- `backend/test_m36.py` (17 Tests)
+
+### Added (M37 – Egg-Import)
+- `backend/app/domain/blueprints/egg_import.py`: `convert_egg()` wandelt Pterodactyl-Eggs (PTDL_v1/v2) und Pelican-Eggs (PLCN_v1..v3) in Blueprint-Felder um (JSON-String-Configs, `docker_images`, `startup_commands`, `env_variable` -> `env_var`, `^C` -> `^SIGINT`); Platzhalter bleiben unveraendert
+- `POST /api/admin/blueprints/import` – Egg oder natives Blueprint-JSON (`"format": "astra"`) -> 201 mit Blueprint, 400 bei ungueltigen Daten
+- CLI: `python cli.py import-blueprint <datei.json|yaml>`
+- `blueprints/minecraft-paper.json` – reduziertes Beispiel-Egg (Paper, Java 21). Die Minecraft-EULA wird nicht automatisch akzeptiert
+- `backend/test_m37.py` (35 Tests)
 
 ### Added (Self-Service Teil 1)
 - `POST /api/auth/register` – Selbstregistrierung, standardmaessig AUS (`REGISTRATION_ENABLED=true` zum Aktivieren), neue Nutzer sind nie Admin

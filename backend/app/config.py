@@ -87,6 +87,8 @@ class Config:
     # ── Admin-Guard (M35) ───────────────────────────────
     # Nur fuer Tests abschaltbar; in Dev/Prod immer aktiv.
     ADMIN_GUARD_ENABLED = True
+    # M36: Node-Token-Pflicht fuer /api/agent (nur fuer Tests abschaltbar)
+    AGENT_GUARD_ENABLED = True
 
     # ── Accounts / Mail ─────────────────────────────────
     REGISTRATION_ENABLED = os.getenv("REGISTRATION_ENABLED", "false").lower() == "true"
@@ -187,6 +189,7 @@ class TestingConfig(Config):
     SECRET_KEY = "testing-secret-key"
     JWT_SECRET_KEY = "testing-jwt-secret-key"
     RATELIMIT_ENABLED = False
+    AGENT_GUARD_ENABLED = False  # Legacy-Tests rufen /api/agent ohne Token auf; test_m36 schaltet ihn ein
     ADMIN_GUARD_ENABLED = False  # Legacy-Tests rufen /api/admin ohne Auth auf; test_m35 schaltet ihn ein
     WEBHOOK_MAX_RETRIES = 1
     WEBHOOK_RETRY_DELAYS = "0"

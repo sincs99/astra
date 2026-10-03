@@ -85,3 +85,9 @@ logs/
 *.temp
 .env.local
 .env.*.local
+
+# Deploy: generierte Caddy-Sites (aus NODE_DOMAIN erzeugt)
+deploy/sites/*.caddy
+
+# Lokale Backups
+backups/

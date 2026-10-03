@@ -11,7 +11,8 @@ Aktuelle Version: siehe [CHANGELOG.md](CHANGELOG.md).
 | `backend/` | Flask-API, Migrationen, Tests (`test_m*.py`), siehe [backend/README.md](backend/README.md) |
 | `frontend/` | React/TypeScript-Oberfläche (Vite), siehe [frontend/README.md](frontend/README.md) |
 | `docs/` | Betrieb, Scope, Release-Planung, bekannte Einschränkungen |
-| `scripts/` | `backup.sh` und `restore.sh` |
+| `scripts/` | `deploy.sh`, `install-wings.sh`, `smoke-test.sh`, `backup.sh`, `restore.sh` |
+| `deploy/` | Caddy-Konfiguration für den Produktions-Stack |
 | `reference/` | Original-Pterodactyl-Panel (nur lesen) |
 
 ## Schnellstart (Entwicklung)
@@ -33,8 +34,10 @@ Ohne Docker: Anleitung in [backend/README.md](backend/README.md) und [frontend/R
 
 ## Produktion
 
-`docker-compose.prod.yml` ist das Compose-File für den Produktivbetrieb. Ablauf, Backups und Wiederherstellung stehen in:
+`docker-compose.prod.yml` ist das Compose-File für den Produktivbetrieb: Caddy (TLS automatisch), Frontend, Backend, Worker, PostgreSQL, Redis. Start mit `cp .env.prod.example .env`, Werte setzen, `./scripts/deploy.sh --bootstrap`. Ablauf, Backups und Wiederherstellung stehen in:
 
+- [docs/deploy-runbook.md](docs/deploy-runbook.md) – Schritt für Schritt: Server, Panel, Wings-Node, erster Gameserver
+- [docs/wings-remote-api.md](docs/wings-remote-api.md) – Anbindung des Wings-Daemons
 - [docs/operations.md](docs/operations.md)
 - [docs/upgrade-guide.md](docs/upgrade-guide.md)
 - [docs/pilot-rollout-plan.md](docs/pilot-rollout-plan.md)

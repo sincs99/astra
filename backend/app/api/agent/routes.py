@@ -1,6 +1,6 @@
 """Agent-API-Routen – Callbacks von Agents."""
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request
 from app.extensions import db
 from app.domain.instances.models import Instance
 from app.domain.agents.models import Agent
@@ -12,6 +12,29 @@ from app.domain.ssh_keys.auth_service import (
 )
 
 agent_bp = Blueprint("agent", __name__)
+
+
+@agent_bp.before_request
+def _agent_guard():
+    """Node-Token-Pflicht fuer alle Agent-Routen (M36), Ausnahme: /health.
+
+    Gleiche Authentifizierung wie die Wings Remote-API:
+    Authorization: Bearer {daemon_token_id}.{daemon_token}
+    """
+    if not current_app.config.get("AGENT_GUARD_ENABLED", True):
+        return None
+    if request.method == "OPTIONS" or request.endpoint == "agent.health":
+        return None
+    from app.api.remote.auth import authenticate_agent_request
+    return authenticate_agent_request()
+
+
+def _forbidden_for_agent(instance: Instance):
+    """Ein authentifizierter Agent darf nur Instanzen seines eigenen Nodes melden."""
+    agent = g.get("agent")
+    if agent is not None and instance.agent_id != agent.id:
+        return jsonify({"error": "Instance gehoert nicht zu diesem Agent"}), 403
+    return None
 
 
 def _touch_agent_for_instance(instance: Instance) -> None:
@@ -38,6 +61,9 @@ def install_callback(uuid: str):
     instance = Instance.query.filter_by(uuid=uuid).first()
     if not instance:
         return jsonify({"error": f"Instance mit UUID '{uuid}' nicht gefunden"}), 404
+    denied = _forbidden_for_agent(instance)
+    if denied:
+        return denied
 
     data = request.get_json()
     if not data or "successful" not in data:
@@ -61,6 +87,9 @@ def container_status(uuid: str):
     instance = Instance.query.filter_by(uuid=uuid).first()
     if not instance:
         return jsonify({"error": f"Instance mit UUID '{uuid}' nicht gefunden"}), 404
+    denied = _forbidden_for_agent(instance)
+    if denied:
+        return denied
 
     data = request.get_json()
     if not data or "state" not in data:
@@ -112,6 +141,12 @@ def sftp_auth():
 
     if not public_key and not fingerprint:
         return jsonify({"error": "Either 'public_key' or 'fingerprint' is required"}), 400
+
+    agent = g.get("agent")
+    if agent is not None:
+        target = Instance.query.filter_by(uuid=instance_uuid).first()
+        if target is not None and target.agent_id != agent.id:
+            return jsonify({"allowed": False, "reason": "instance_not_on_node"})
 
     result = authorize_ssh_key_access(
         instance_uuid=instance_uuid,
