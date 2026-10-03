@@ -179,6 +179,8 @@ in der Agents-Ansicht. Details: `docs/wings-remote-api.md`.
 | `MFA_ISSUER_NAME` | TOTP Issuer | Astra |
 | `RATELIMIT_ENABLED` | Rate Limiting aktiv | true |
 | `REGISTRATION_ENABLED` | Selbstregistrierung erlauben | false |
+| `EMAIL_VERIFICATION_REQUIRED` | Login erst nach bestaetigter E-Mail (braucht funktionierendes SMTP) | false |
+| `EMAIL_VERIFICATION_TTL_HOURS` | Gueltigkeit des Bestaetigungs-Links | 48 |
 | `PASSWORD_RESET_TTL_MINUTES` | Gueltigkeit des Reset-Links | 60 |
 | `FRONTEND_URL` | Basis-URL fuer Links in Mails | http://localhost:3000 |
 | `MAIL_SERVER` / `MAIL_PORT` / `MAIL_USE_TLS` | SMTP-Server (leer = kein Versand, nur Log) | – / 587 / true |

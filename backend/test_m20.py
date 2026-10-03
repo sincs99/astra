@@ -132,10 +132,8 @@ with app.app_context():
     db.session.commit()
 
     client = app.test_client()
-    resp = client.post(
-        f"/api/agent/instances/{_inst_uuid}/container/status",
-        json={"state": "running"},
-    )
+    from test_helpers import report_container_state
+    resp = report_container_state(client, _inst_uuid, "running")
     check("Container-Status -> 200", resp.status_code == 200)
 
     db.session.expire_all()
@@ -309,7 +307,7 @@ with app.app_context():
     check("VALID_CONTAINER_STATES", len(VALID_CONTAINER_STATES) >= 5)
 
     client = app.test_client()
-    check("Agent Health -> 200", client.get("/api/agent/health").status_code == 200)
+    check("Remote-API erreichbar (401 ohne Token)", client.get("/api/remote/servers").status_code == 401)
     check("Client Health -> 200", client.get("/api/client/health").status_code == 200)
     check("Auth Health -> 200", client.get("/api/auth/health").status_code == 200)
 

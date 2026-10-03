@@ -67,6 +67,20 @@ class Instance(db.Model):
         "Endpoint", foreign_keys=[primary_endpoint_id], lazy=True
     )
 
+    def connection_info(self) -> dict | None:
+        """Verbindungsadresse fuer Spieler (M39). None ohne primaeren Endpoint."""
+        ep = self.primary_endpoint
+        if ep is None:
+            return None
+        agent = self.agent
+        host = agent.fqdn if agent is not None else None
+        return {
+            "host": host,
+            "ip": ep.ip,
+            "port": ep.port,
+            "address": f"{host or ep.ip}:{ep.port}",
+        }
+
     def to_dict(self) -> dict:
         return {
             "id": self.id,
@@ -77,6 +91,7 @@ class Instance(db.Model):
             "agent_id": self.agent_id,
             "blueprint_id": self.blueprint_id,
             "primary_endpoint_id": self.primary_endpoint_id,
+            "connection": self.connection_info(),
             "status": self.status,
             "container_state": self.container_state,
             "installed_at": self.installed_at.isoformat() if self.installed_at else None,

@@ -96,61 +96,19 @@ sondern `POST /api/remote/sftp/auth` mit Node-Token-Auth und dem Wings-Format
 Der Public-Key-Pfad ruft intern `authorize_ssh_key_access()` auf, die Regeln dieses
 Dokuments gelten also unveraendert. Siehe `docs/wings-remote-api.md`.
 
-## Agent-API-Endpunkt
+## Legacy-Endpunkt entfernt
 
-```
-POST /agent/sftp-auth
-```
+Der frueher Astra-interne Endpunkt `POST /api/agent/sftp-auth` (mit `username`, `instance_uuid`,
+`public_key`/`fingerprint`) wurde mit M40 entfernt. Wings nutzt ausschliesslich `POST /api/remote/sftp/auth`
+(siehe oben und `docs/wings-remote-api.md`). Die Pruefregeln dieses Dokuments gelten dort unveraendert,
+`authorize_ssh_key_access()` akzeptiert weiterhin `public_key` oder `fingerprint`.
 
-**Request-Body:**
-
-```json
-{
-  "username":      "johndoe",
-  "instance_uuid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "public_key":    "ssh-ed25519 AAAA..."
-}
-```
-
-**Erfolgreiche Antwort:**
-
-```json
-{
-  "allowed":       true,
-  "username":      "johndoe",
-  "instance_uuid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "permissions":   ["file.read", "file.update", "file.sftp", ...]
-}
-```
-
-**Abgelehnte Antwort:**
-
-```json
-{
-  "allowed": false,
-  "reason":  "instance_suspended"
-}
-```
-
-### Mögliche `reason`-Werte
-
-| Wert | Bedeutung |
-|---|---|
-| `ok` | Zugriff erlaubt (nur bei `allowed: true`) |
-| `user_unknown` | Benutzername nicht gefunden |
-| `instance_not_found` | Instance-UUID nicht vorhanden |
-| `key_unknown` | Key/Fingerprint dem Benutzer nicht bekannt |
-| `permission_denied` | Collaborator hat keine `file.sftp`-Berechtigung |
-| `instance_suspended` | Instance ist administrativ gesperrt |
-| `malformed_request` | Request-Body unvollständig |
-
----
 
 ## Passwort- vs. Key-Authentifizierung
 
 M30 implementiert ausschliesslich **Public-Key-Authentifizierung**. Passwortbasierter SFTP-Login ist nicht Teil dieser Implementierung. Die Auth-Typen sind klar getrennt:
 
-- Key-Auth → `POST /agent/sftp-auth` mit `public_key` oder `fingerprint`
+- Key-Auth → `POST /api/remote/sftp/auth` mit `type: public_key`
 - Passwort-Auth → nicht implementiert
 
 ---

@@ -372,110 +372,72 @@ with app.app_context():
 
 
 # ================================================================
-# c) Agent-/SFTP-API (POST /agent/sftp-auth)
+# c) Remote-SFTP-API (POST /api/remote/sftp/auth, Wings-Format)
 # ================================================================
 
-print("\n=== c) Agent-/SFTP-API ===")
+print("\n=== c) Remote-SFTP-API ===")
 
-# Gueltige Anfrage mit Public Key -> allowed=True
-resp = client.post(
-    "/api/agent/sftp-auth",
-    content_type="application/json",
-    data=json.dumps({
-        "username": "m30-owner",
-        "instance_uuid": _inst_uuid,
-        "public_key": KEY_OWNER,
-    }),
-)
-check("POST /agent/sftp-auth gueltig (Owner) -> 200", resp.status_code == 200)
+
+def sftp_auth(body):
+    """POST /api/remote/sftp/auth mit Node-Token der Instance (Wings-Format)."""
+    with app.app_context():
+        return client.post(
+            "/api/remote/sftp/auth",
+            json=body,
+            headers=node_headers_for_instance(_inst_uuid),
+        )
+
+
+def sftp_pubkey(username, uuid, key):
+    return sftp_auth({"type": "public_key", "username": f"{username}.{uuid}", "password": key})
+
+
+from test_helpers import node_headers_for_instance, report_container_state
+
+# Gueltige Anfrage mit Public Key -> 200
+resp = sftp_pubkey("m30-owner", _inst_uuid, KEY_OWNER)
+check("POST /remote/sftp/auth gueltig (Owner) -> 200", resp.status_code == 200)
 body = json.loads(resp.data)
-check("Response: allowed=true", body.get("allowed") is True)
-check("Response: username vorhanden", body.get("username") == "m30-owner")
-check("Response: instance_uuid vorhanden", body.get("instance_uuid") == _inst_uuid)
-check("Response: permissions liste", isinstance(body.get("permissions"), list))
-
-# Gueltige Anfrage mit Fingerprint
-resp = client.post(
-    "/api/agent/sftp-auth",
-    content_type="application/json",
-    data=json.dumps({
-        "username": "m30-owner",
-        "instance_uuid": _inst_uuid,
-        "fingerprint": _owner_fingerprint,
-    }),
-)
-check("POST /agent/sftp-auth mit Fingerprint -> 200 allowed", resp.status_code == 200 and json.loads(resp.data).get("allowed"))
+check("Response: server = instance uuid", body.get("server") == _inst_uuid)
+check("Response: user vorhanden", bool(body.get("user")))
+check("Response: permissions liste", isinstance(body.get("permissions"), list) and body["permissions"])
 
 # Collaborator mit file.sftp
-resp = client.post(
-    "/api/agent/sftp-auth",
-    content_type="application/json",
-    data=json.dumps({
-        "username": "m30-collab",
-        "instance_uuid": _inst_uuid,
-        "public_key": KEY_COLLAB,
-    }),
-)
-check("POST /agent/sftp-auth Collaborator -> 200 allowed", resp.status_code == 200 and json.loads(resp.data).get("allowed"))
+resp = sftp_pubkey("m30-collab", _inst_uuid, KEY_COLLAB)
+check("POST /remote/sftp/auth Collaborator -> 200", resp.status_code == 200)
 
-# Unbekannter User -> 200 allowed=false
-resp = client.post(
-    "/api/agent/sftp-auth",
-    content_type="application/json",
-    data=json.dumps({
-        "username": "fantasie-user",
-        "instance_uuid": _inst_uuid,
-        "public_key": KEY_OWNER,
-    }),
-)
-check("POST /agent/sftp-auth unbekannter User -> 200", resp.status_code == 200)
-body = json.loads(resp.data)
-check("Unbekannter User: allowed=false", body.get("allowed") is False)
-check("Unbekannter User: reason vorhanden", "reason" in body)
+# Unbekannter User -> 403
+resp = sftp_pubkey("fantasie-user", _inst_uuid, KEY_OWNER)
+check("POST /remote/sftp/auth unbekannter User -> 403", resp.status_code == 403)
 
-# Unbekannter Key -> allowed=false
-resp = client.post(
-    "/api/agent/sftp-auth",
-    content_type="application/json",
-    data=json.dumps({
-        "username": "m30-owner",
-        "instance_uuid": _inst_uuid,
-        "public_key": KEY_STRANGER,
-    }),
-)
-check("POST /agent/sftp-auth unbekannter Key -> allowed=false", not json.loads(resp.data).get("allowed"))
+# Unbekannter Key -> 403
+resp = sftp_pubkey("m30-owner", _inst_uuid, KEY_STRANGER)
+check("POST /remote/sftp/auth unbekannter Key -> 403", resp.status_code == 403)
+
+# Fremder Key eines anderen Users -> 403
+resp = sftp_pubkey("m30-owner", _inst_uuid, KEY_COLLAB)
+check("POST /remote/sftp/auth Key eines anderen Users -> 403", resp.status_code == 403)
 
 # Fehlender username -> 400
-resp = client.post(
-    "/api/agent/sftp-auth",
-    content_type="application/json",
-    data=json.dumps({"instance_uuid": _inst_uuid, "public_key": KEY_OWNER}),
-)
-check("POST /agent/sftp-auth ohne username -> 400", resp.status_code == 400)
+resp = sftp_auth({"type": "public_key", "password": KEY_OWNER})
+check("POST /remote/sftp/auth ohne username -> 400", resp.status_code == 400)
 
-# Fehlende instance_uuid -> 400
-resp = client.post(
-    "/api/agent/sftp-auth",
-    content_type="application/json",
-    data=json.dumps({"username": "m30-owner", "public_key": KEY_OWNER}),
-)
-check("POST /agent/sftp-auth ohne instance_uuid -> 400", resp.status_code == 400)
+# Username ohne Server-Kennung -> 400
+resp = sftp_auth({"type": "public_key", "username": "m30-owner", "password": KEY_OWNER})
+check("POST /remote/sftp/auth ohne Server-Kennung -> 400", resp.status_code == 400)
 
-# Ohne public_key und fingerprint -> 400
-resp = client.post(
-    "/api/agent/sftp-auth",
-    content_type="application/json",
-    data=json.dumps({"username": "m30-owner", "instance_uuid": _inst_uuid}),
-)
-check("POST /agent/sftp-auth ohne key/fingerprint -> 400", resp.status_code == 400)
-
-# Kein JSON Body -> 400
-resp = client.post("/api/agent/sftp-auth", content_type="text/plain", data="hello")
-check("POST /agent/sftp-auth ohne JSON -> 400", resp.status_code == 400)
+# Ohne Key/Passwort -> 400
+resp = sftp_auth({"type": "public_key", "username": f"m30-owner.{_inst_uuid}"})
+check("POST /remote/sftp/auth ohne Key -> 400", resp.status_code == 400)
 
 # Leerer JSON Body -> 400
-resp = client.post("/api/agent/sftp-auth", content_type="application/json", data="{}")
-check("POST /agent/sftp-auth leerer JSON -> 400", resp.status_code == 400)
+resp = sftp_auth({})
+check("POST /remote/sftp/auth leerer JSON -> 400", resp.status_code == 400)
+
+# Ohne Node-Token -> 401
+resp = client.post("/api/remote/sftp/auth", json={"type": "public_key",
+                   "username": f"m30-owner.{_inst_uuid}", "password": KEY_OWNER})
+check("POST /remote/sftp/auth ohne Node-Token -> 401", resp.status_code == 401)
 
 
 # ================================================================
@@ -484,46 +446,23 @@ check("POST /agent/sftp-auth leerer JSON -> 400", resp.status_code == 400)
 
 print("\n=== d) Security / Serialization ===")
 
-# Kein public_key_raw im Response bei allowed=True
-resp = client.post(
-    "/api/agent/sftp-auth",
-    content_type="application/json",
-    data=json.dumps({
-        "username": "m30-owner",
-        "instance_uuid": _inst_uuid,
-        "public_key": KEY_OWNER,
-    }),
-)
+# Keine Secrets im Response bei Erfolg
+resp = sftp_pubkey("m30-owner", _inst_uuid, KEY_OWNER)
 body = json.loads(resp.data)
-check("Response bei allowed=True hat kein 'public_key'-Feld", "public_key" not in body)
-check("Response bei allowed=True hat kein 'password_hash'-Feld", "password_hash" not in body)
-check("Response bei allowed=True hat kein 'mfa_secret'-Feld", "mfa_secret" not in body)
+check("Response bei Erfolg hat kein 'public_key'-Feld", "public_key" not in body)
+check("Response bei Erfolg hat kein 'password_hash'-Feld", "password_hash" not in body)
+check("Response bei Erfolg hat kein 'mfa_secret'-Feld", "mfa_secret" not in body)
 
-# Kein public_key im Deny-Response
-resp = client.post(
-    "/api/agent/sftp-auth",
-    content_type="application/json",
-    data=json.dumps({
-        "username": "m30-owner",
-        "instance_uuid": _inst_uuid,
-        "public_key": KEY_STRANGER,
-    }),
-)
+# Kein Key / interne Details im Deny-Response
+resp = sftp_pubkey("m30-owner", _inst_uuid, KEY_STRANGER)
 body = json.loads(resp.data)
-check("Deny-Response hat kein 'public_key'-Feld", "public_key" not in body)
+check("Deny-Response enthaelt den Key nicht", KEY_STRANGER not in resp.get_data(as_text=True))
 check("Deny-Response hat kein 'user_id'-Feld (kein internes Leaken)", "user_id" not in body)
 
-# Response enthaelt keine internen Stack-Traces oder Exception-Details
-resp = client.post(
-    "/api/agent/sftp-auth",
-    content_type="application/json",
-    data=json.dumps({
-        "username": "m30-owner",
-        "instance_uuid": "ungueltig-kein-uuid",
-        "public_key": KEY_OWNER,
-    }),
-)
+# Keine Stack-Traces oder Exception-Details
+resp = sftp_pubkey("m30-owner", "ungueltig-kein-uuid", KEY_OWNER)
 body = json.loads(resp.data)
+check("Ungueltige UUID -> 403", resp.status_code == 403)
 check("Ungueltige UUID: kein traceback im Response", "traceback" not in str(body).lower())
 check("Ungueltige UUID: kein 'exception' im Response", "exception" not in str(body).lower())
 
@@ -634,18 +573,8 @@ resp = client.post(
 check("M29 POST /admin/instances/.../suspend -> 200", resp.status_code == 200)
 
 # Suspendierte Instance blockiert SFTP
-resp = client.post(
-    "/api/agent/sftp-auth",
-    content_type="application/json",
-    data=json.dumps({
-        "username": "m30-owner",
-        "instance_uuid": _inst_uuid,
-        "public_key": KEY_OWNER,
-    }),
-)
-body = json.loads(resp.data)
-check("M29-Guard: Suspendierte Instance blockiert SFTP", not body.get("allowed"))
-check("M29-Guard: reason=instance_suspended", body.get("reason") == "instance_suspended")
+resp = sftp_pubkey("m30-owner", _inst_uuid, KEY_OWNER)
+check("M29-Guard: Suspendierte Instance blockiert SFTP", resp.status_code == 403)
 
 # Unsuspend wieder
 resp = client.post(
@@ -654,16 +583,10 @@ resp = client.post(
 )
 check("M29 POST /admin/instances/.../unsuspend -> 200", resp.status_code == 200)
 
-# Agent-Callbacks (M13) noch intakt
-resp = client.get("/api/agent/health")
-check("M13 GET /agent/health -> 200", resp.status_code == 200)
-
-resp = client.post(
-    f"/api/agent/instances/{_inst_uuid}/container/status",
-    content_type="application/json",
-    data=json.dumps({"state": "running"}),
-)
-check("M13 POST /agent/instances/.../container/status -> 200", resp.status_code == 200)
+# Agent-Callbacks (M13) noch intakt (Wings Remote-API)
+with app.app_context():
+    resp = report_container_state(client, _inst_uuid, "running")
+check("M13 POST /remote/servers/.../container/status -> 200", resp.status_code == 200)
 
 # Client-File-Endpunkte noch zugaenglich (nicht durch M30 gebrochen)
 resp = client.get(
