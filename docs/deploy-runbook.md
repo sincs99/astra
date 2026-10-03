@@ -242,7 +242,14 @@ Online-Zahlung per Stripe:
 
 Betrieb: Bestellungen mit Status `mismatch` oder Activity-Events `order:payment_unapplied` bedeuten,
 dass Geld eingegangen ist, aber nichts freigeschaltet wurde (Betrag oder Währung passten nicht, oder die
-Bestellung war schon storniert). Diese Fälle im Stripe-Dashboard prüfen und ggf. erstatten. Abgelaufene
+Bestellung war schon storniert). Diese Fälle im Stripe-Dashboard prüfen und ggf. erstatten. Die
+Zahlungsereignisse samt Klartext-Grund liefert das Panel unter
+`GET /api/admin/payment-events?status=mismatch` bzw. `?status=unapplied` (Admin-Login, Filter auch
+`order_uuid` und `limit`):
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" "https://panel.deinedomain.de/api/admin/payment-events?status=mismatch"
+``` Abgelaufene
 Bestellungen sperrt der Billing-Tick, nach `BILLING_GRACE_DAYS` löscht er den Server; `BILLING_REMINDER_DAYS`
 Tage vorher geht eine Erinnerung per Mail (nur mit konfiguriertem `MAIL_SERVER`).
 

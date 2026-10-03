@@ -183,7 +183,7 @@ header = f"t={t},v1={sig}"          # als Header "Stripe-Signature" senden
 | Webhook 500 | Stripe wiederholt automatisch. Backend-Log prüfen (`Stripe-Webhook: Verarbeitung fehlgeschlagen`), das Ereignis bleibt in `payment_events` mit Status `received` und wird bei der Wiederholung erneut versucht |
 | Kunde hat bezahlt, Bestellung bleibt `pending_payment` | Webhook noch nicht angekommen oder fehlgeschlagen. Stripe-Dashboard → Webhooks → Zustellungen prüfen, ggf. „Erneut senden“ |
 | Bestellung `awaiting_provisioning` | Bezahlt, aber kein Node mit Platz/Endpoint. Kapazität schaffen; der Tick stellt sie beim nächsten Lauf bereit (oder `mark-paid` erneut aufrufen, verbucht nicht doppelt) |
-| `payment_events.status = mismatch` | Betrag oder Währung weichen von der Bestellung ab. Es wurde **nichts freigeschaltet**. Prüfen, ob eine Zahlung im Dashboard erstattet oder die Bestellung manuell bearbeitet werden muss |
+| `payment_events.status = mismatch` (sichtbar über `GET /api/admin/payment-events?status=mismatch`) | Betrag oder Währung weichen von der Bestellung ab. Es wurde **nichts freigeschaltet**. Prüfen, ob eine Zahlung im Dashboard erstattet oder die Bestellung manuell bearbeitet werden muss |
 | `payment_events.status = unapplied` / Event `order:payment_unapplied` | Geld ist eingegangen, die Bestellung war schon storniert oder beendet. **Erstattung im Stripe-Dashboard** veranlassen (Astra erstattet nie automatisch) |
 | `502 provider_unavailable` beim Checkout | Stripe nicht erreichbar oder Schlüssel ungültig; Backend-Log prüfen |
 
@@ -210,6 +210,7 @@ header = f"t={t},v1={sig}"          # als Header "Stripe-Signature" senden
 | `POST /api/payments/stripe` | Stripe | Webhook (Signatur statt Login) |
 | `GET/POST /api/admin/products`, `GET/PATCH/DELETE /{id}` | Admin | Pakete verwalten |
 | `GET /api/admin/orders?status=&user_id=`, `/{uuid}` | Admin | alle Bestellungen |
+| `GET /api/admin/payment-events?status=&order_uuid=&limit=` | Admin | Zahlungsereignisse des Anbieters (nur lesen, neueste zuerst, `limit` 1 bis 500); `mismatch` und `unapplied` brauchen Aufmerksamkeit |
 | `POST /api/admin/orders/{uuid}/mark-paid` | Admin | `{payment_reference?}` Zahlung bestätigen und Instance bereitstellen; auf `active`/`past_due` ist die Referenz Pflicht (Verlängerung) |
 
 Activity- und Webhook-Events: `order:created`, `order:paid`, `order:provision_failed`, `order:cancelled`,

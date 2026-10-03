@@ -561,6 +561,36 @@ def list_orders():
     return jsonify([o.to_dict(include_user=True) for o in orders])
 
 
+@admin_bp.route("/payment-events", methods=["GET"])
+def list_payment_events():
+    """Zahlungsereignisse des Anbieters (nur lesen), neueste zuerst.
+
+    Filter: ?status=processed|ignored|unapplied|mismatch|received, ?order_uuid=..., ?limit=1..500 (Standard 100).
+    `mismatch` (Betrag/Waehrung weicht ab) und `unapplied` (Zahlung fuer beendete Bestellung) brauchen
+    Aufmerksamkeit: Erstattung im Zahlungsanbieter pruefen. `received` heisst: Verarbeitung abgebrochen,
+    der Anbieter wiederholt die Zustellung.
+    """
+    from app.domain.billing.models import PaymentEvent
+    query = PaymentEvent.query
+    status = request.args.get("status")
+    if status:
+        if status not in ("processed", "ignored", "unapplied", "mismatch", "received"):
+            return jsonify({"error": f"Unbekannter Status '{status}'"}), 400
+        query = query.filter(PaymentEvent.status == status)
+    order_uuid = request.args.get("order_uuid")
+    if order_uuid:
+        query = query.filter(PaymentEvent.order_uuid == order_uuid)
+    raw_limit = request.args.get("limit", "100")
+    try:
+        limit = int(raw_limit)
+    except ValueError:
+        limit = 0
+    if not 1 <= limit <= 500:
+        return jsonify({"error": "Parameter 'limit' muss eine Zahl zwischen 1 und 500 sein"}), 400
+    events = query.order_by(PaymentEvent.received_at.desc(), PaymentEvent.id.desc()).limit(limit).all()
+    return jsonify([e.to_dict() for e in events])
+
+
 @admin_bp.route("/orders/<string:uuid>", methods=["GET"])
 def get_order_route(uuid: str):
     from app.domain.billing.models import Order
