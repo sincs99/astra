@@ -4,6 +4,7 @@ import uuid as _uuid
 import secrets
 from app.extensions import db
 from datetime import datetime, timezone
+from app.utils.timeutil import iso_utc
 
 
 class Webhook(db.Model):
@@ -37,8 +38,8 @@ class Webhook(db.Model):
             "events": self.events or [],
             "secret_token": self.secret_token,
             "is_active": self.is_active,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": iso_utc(self.created_at),
+            "updated_at": iso_utc(self.updated_at),
         }
 
     def __repr__(self):
@@ -71,7 +72,7 @@ class WebhookDelivery(db.Model):
             "success": self.success,
             "status_code": self.status_code,
             "error": self.error,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": iso_utc(self.created_at),
         }
 
     def __repr__(self):

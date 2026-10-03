@@ -4,6 +4,7 @@ import secrets
 import hashlib
 from app.extensions import db
 from datetime import datetime, timezone
+from app.utils.timeutil import iso_utc
 
 
 class ApiKey(db.Model):
@@ -45,10 +46,10 @@ class ApiKey(db.Model):
             "memo": self.memo,
             "allowed_ips": self.allowed_ips,
             "permissions": self.permissions,
-            "last_used_at": self.last_used_at.isoformat() if self.last_used_at else None,
-            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "last_used_at": iso_utc(self.last_used_at),
+            "expires_at": iso_utc(self.expires_at),
+            "created_at": iso_utc(self.created_at),
+            "updated_at": iso_utc(self.updated_at),
         }
 
     @staticmethod

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from app.domain.agents.models import Agent
 from app.domain.endpoints.models import Endpoint
+from app.utils.timeutil import iso_utc
 
 
 # ── Konfigurierbare Schwellwerte ────────────────────────
@@ -60,7 +61,7 @@ def get_agent_monitoring(
         # Maintenance (M25)
         "maintenance_mode": bool(agent.maintenance_mode),
         "maintenance_reason": agent.maintenance_reason,
-        "maintenance_started_at": agent.maintenance_started_at.isoformat() if agent.maintenance_started_at else None,
+        "maintenance_started_at": iso_utc(agent.maintenance_started_at),
         "available_for_deployment": agent.is_available_for_deployment(),
 
         # Kapazitaet

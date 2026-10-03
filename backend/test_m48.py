@@ -117,7 +117,8 @@ print("Manual (Standard)")
 check("Standard-Anbieter ist manual", app.config["PAYMENT_PROVIDER"] == "manual")
 o_manual = new_order()
 r = c.post(f"/api/client/orders/{o_manual}/checkout", headers=U1)
-check("Checkout mit manual -> 409 mit Ueberweisungs-Hinweis", r.status_code == 409 and "Ueberweisung" in r.json["error"], r.get_data(as_text=True))
+check("Checkout mit manual -> 409 mit Ueberweisungs-Hinweis und code=manual",
+      r.status_code == 409 and "Ueberweisung" in r.json["error"] and r.json["code"] == "manual", r.get_data(as_text=True))
 check("billing-info: manual, kein Online-Zahlen", c.get("/api/client/billing-info").json == {"payment_provider": "manual", "online_payment": False})
 r = webhook(event_body(o_manual))
 check("Webhook mit manual -> 404", r.status_code == 404)
@@ -144,20 +145,29 @@ check("fremde Bestellung -> 404", c.post(f"/api/client/orders/{o1}/checkout", he
 check("unbekannte Bestellung -> 404", c.post("/api/client/orders/gibts-nicht/checkout", headers=U1).status_code == 404)
 with mock.patch.object(stripe.checkout.Session, "create", side_effect=stripe.APIConnectionError("netz weg")):
     r = c.post(f"/api/client/orders/{o1}/checkout", headers=U1)
-check("Stripe nicht erreichbar -> 502 ohne Interna", r.status_code == 502 and "netz weg" not in r.get_data(as_text=True))
+check("Stripe nicht erreichbar -> 502 ohne Interna, code=provider_unavailable",
+      r.status_code == 502 and "netz weg" not in r.get_data(as_text=True) and r.json["code"] == "provider_unavailable")
 with mock.patch.object(stripe.checkout.Session, "create", return_value=mock.Mock(url=None)):
-    check("Antwort ohne URL -> 502", c.post(f"/api/client/orders/{o1}/checkout", headers=U1).status_code == 502)
+    r = c.post(f"/api/client/orders/{o1}/checkout", headers=U1)
+    check("Antwort ohne URL -> 502, code=provider_error", r.status_code == 502 and r.json["code"] == "provider_error")
+for bad_url in ("http://checkout.stripe.test/x", "javascript:alert(1)", "//evil.example/x", ""):
+    with mock.patch.object(stripe.checkout.Session, "create", return_value=mock.Mock(url=bad_url)):
+        r = c.post(f"/api/client/orders/{o1}/checkout", headers=U1)
+    check(f"nur https-URLs werden weitergereicht ({bad_url or 'leer'!r} -> 502)", r.status_code == 502 and "checkout_url" not in r.json)
 o_cancel = new_order()
 c.post(f"/api/client/orders/{o_cancel}/cancel", headers=U1)
-check("stornierte Bestellung -> 409", c.post(f"/api/client/orders/{o_cancel}/checkout", headers=U1).status_code == 409)
+r = c.post(f"/api/client/orders/{o_cancel}/checkout", headers=U1)
+check("stornierte Bestellung -> 409 code=invalid_status", r.status_code == 409 and r.json["code"] == "invalid_status")
 r = c.post("/api/admin/products", json={"name": "Yen", "blueprint_id": ids["bp"], "memory": 256, "disk": 500, "cpu": 50,
                                          "price_cents": 500, "currency": "JPY"}, headers=AH)
 o_jpy = new_order(product=r.json["id"])
-check("Waehrung ohne Nachkommastellen -> 409", c.post(f"/api/client/orders/{o_jpy}/checkout", headers=U1).status_code == 409)
+r = c.post(f"/api/client/orders/{o_jpy}/checkout", headers=U1)
+check("Waehrung ohne Nachkommastellen -> 409 code=unsupported_currency", r.status_code == 409 and r.json["code"] == "unsupported_currency")
 r = c.post("/api/admin/products", json={"name": "Gratis", "blueprint_id": ids["bp"], "memory": 256, "disk": 500, "cpu": 50,
                                          "price_cents": 0, "max_instances_per_user": 2}, headers=AH)
 o_free = new_order(product=r.json["id"])
-check("Gratis-Bestellung -> 409 (nichts zu zahlen)", c.post(f"/api/client/orders/{o_free}/checkout", headers=U1).status_code == 409)
+r = c.post(f"/api/client/orders/{o_free}/checkout", headers=U1)
+check("Gratis-Bestellung -> 409 code=nothing_to_pay", r.status_code == 409 and r.json["code"] == "nothing_to_pay")
 
 print("Stripe: Webhook-Signatur")
 body = event_body(o1)

@@ -22,6 +22,7 @@ Prozess-Konfiguration fuer Wings (M33, Format wie Pterodactyl/Pelican-Eggs):
 
 from app.extensions import db
 from datetime import datetime, timezone
+from app.utils.timeutil import iso_utc
 
 DEFAULT_INSTALL_CONTAINER = "ghcr.io/pterodactyl/installers:debian"
 DEFAULT_INSTALL_ENTRYPOINT = "bash"
@@ -117,8 +118,8 @@ class Blueprint(db.Model):
             "config_stop": self.config_stop,
             "config_files": self.config_files,
             "file_denylist": self.file_denylist or [],
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": iso_utc(self.created_at),
+            "updated_at": iso_utc(self.updated_at),
         }
 
     def __repr__(self):

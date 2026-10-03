@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from app.extensions import db
 from datetime import datetime, timezone
+from app.utils.timeutil import iso_utc
 
 
 class User(db.Model):
@@ -49,8 +50,8 @@ class User(db.Model):
             "is_admin": self.is_admin,
             "mfa_enabled": self.mfa_enabled or False,
             "email_verified": self.email_verified_at is not None,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": iso_utc(self.created_at),
+            "updated_at": iso_utc(self.updated_at),
         }
 
     def __repr__(self):

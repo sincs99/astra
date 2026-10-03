@@ -24,6 +24,7 @@ from app.domain.instances.service import get_runner, set_runner
 from app.domain.users.models import User
 from app.infrastructure import mail
 from app.infrastructure.runner.stub_adapter import StubRunnerAdapter
+from app.utils.timeutil import iso_utc
 from test_helpers import report_install
 
 passed = 0
@@ -158,7 +159,7 @@ check("past_due_at bleibt der erste Zeitpunkt", order(o1)["past_due_at"] == now1
 with app.app_context():
     od = Order.query.filter_by(uuid=o1).first().to_dict()
 check("API zeigt scheduled_deletion_at = past_due_at + Karenz",
-      od["scheduled_deletion_at"] == (now1 + D(days=GRACE)).isoformat(), str(od["scheduled_deletion_at"]))
+      od["scheduled_deletion_at"] == iso_utc(now1 + D(days=GRACE)), str(od["scheduled_deletion_at"]))
 
 print("Karenzzeit")
 res = tick(now1 + D(days=GRACE) - D(minutes=1))
@@ -220,7 +221,7 @@ tick(order(o4)["end"] - D(hours=1))
 check("vor Laufzeitende: Server laeuft weiter", instance(i4) is not None and order(o4)["status"] == "active")
 with app.app_context():
     od = Order.query.filter_by(uuid=o4).first().to_dict()
-check("scheduled_deletion_at = Laufzeitende", od["scheduled_deletion_at"] == order(o4)["end"].isoformat())
+check("scheduled_deletion_at = Laufzeitende", od["scheduled_deletion_at"] == iso_utc(order(o4)["end"]))
 res = tick(order(o4)["end"] + D(minutes=1))
 check("nach Laufzeitende: direkt expired (kein past_due)", res["expired"] == 1 and res["past_due"] == 0 and instance(i4) is None, str(res))
 check("Bestellung expired", order(o4)["status"] == "expired")

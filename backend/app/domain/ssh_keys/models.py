@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 
 from app.extensions import db
+from app.utils.timeutil import iso_utc
 
 
 class UserSshKey(db.Model):
@@ -33,5 +34,5 @@ class UserSshKey(db.Model):
             "name": self.name,
             "fingerprint": self.fingerprint,
             "public_key": self.public_key,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": iso_utc(self.created_at),
         }

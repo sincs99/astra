@@ -2,6 +2,7 @@
 
 from app.extensions import db
 from datetime import datetime, timezone
+from app.utils.timeutil import iso_utc
 
 
 class ActivityLog(db.Model):
@@ -35,7 +36,7 @@ class ActivityLog(db.Model):
             "description": self.description,
             "properties": self.properties,
             "ip_address": self.ip_address,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": iso_utc(self.created_at),
         }
 
     def __repr__(self):

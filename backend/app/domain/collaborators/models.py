@@ -2,6 +2,7 @@
 
 from app.extensions import db
 from datetime import datetime, timezone
+from app.utils.timeutil import iso_utc
 
 
 class Collaborator(db.Model):
@@ -30,8 +31,8 @@ class Collaborator(db.Model):
             "user_id": self.user_id,
             "instance_id": self.instance_id,
             "permissions": self.permissions,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": iso_utc(self.created_at),
+            "updated_at": iso_utc(self.updated_at),
         }
 
     def __repr__(self):

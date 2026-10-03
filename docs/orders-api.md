@@ -74,6 +74,13 @@ Wird eine Instance direkt gelöscht (Admin oder Kunde), setzt Astra die verknüp
 `expired`. Ein bereits bezahlter Rest der Laufzeit wird nicht erstattet. Die Bestellung zeigt
 `scheduled_deletion_at`, wann der Server gelöscht wird (Ende der Karenzzeit bzw. Laufzeitende bei Kündigung).
 
+## Zeitstempel (M49)
+
+Alle Zeitstempel der API sind UTC mit Zeitzonen-Suffix, z. B. `2026-10-03T12:00:00+00:00`. Browser lesen
+Strings ohne Suffix sonst als Ortszeit. Intern liefert die Datenbank naive UTC-Werte, `iso_utc()`
+(`app/utils/timeutil.py`) hängt den Suffix an. Neue `to_dict()`-Methoden müssen `iso_utc(...)` statt
+`.isoformat()` verwenden; `test_m49.py` ruft alle GET-Routen auf und schlägt bei einem Zeitstempel ohne Suffix fehl.
+
 ## Zahlungsanbieter (M48)
 
 `PAYMENT_PROVIDER` wählt den Zahlungsweg:
@@ -88,7 +95,9 @@ Wird eine Instance direkt gelöscht (Admin oder Kunde), setzt Astra die verknüp
 
 ### Ablauf mit Stripe
 
-1. Kunde ruft `POST /api/client/orders/{uuid}/checkout` auf und bekommt `{"checkout_url"}`. Erlaubt bei
+1. Kunde ruft `POST /api/client/orders/{uuid}/checkout` auf und bekommt `{"checkout_url"}` (nur `https://`).
+   Fehler tragen einen stabilen `code`: 409 `manual` (Zahlungsweg ist die Überweisung), 409 `invalid_status`,
+   409 `nothing_to_pay`, 409 `unsupported_currency`, 502 `provider_unavailable` / `provider_error`. Erlaubt bei
    `pending_payment` (Erstzahlung) sowie `active`/`past_due` (Verlängerung). Jeder Aufruf erzeugt eine neue
    Checkout-Session; jede bezahlte Session verlängert um eine Laufzeit (Vorauszahlung möglich).
 2. Nach dem Bezahlen schickt Stripe `checkout.session.completed` an `POST /api/payments/stripe`. Astra
