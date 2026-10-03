@@ -105,7 +105,7 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
     list.includes(perm) ? list.filter((p) => p !== perm) : [...list, perm];
 
   if (!isOwner) {
-    return <p style={{ color: "#888", fontSize: 13 }}>Nur der Owner kann Collaborators verwalten.</p>;
+    return <p style={{ color: "#666", fontSize: 13 }}>Nur der Owner kann Collaborators verwalten.</p>;
   }
 
   return (
@@ -143,9 +143,9 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
 
       {/* Liste */}
       {loading ? (
-        <p style={{ color: "#888" }}>Wird geladen...</p>
+        <p style={{ color: "#666" }}>Wird geladen...</p>
       ) : collaborators.length === 0 ? (
-        <p style={{ color: "#888", fontSize: 13 }}>Keine Collaborators vorhanden.</p>
+        <p style={{ color: "#666", fontSize: 13 }}>Keine Collaborators vorhanden.</p>
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
           {collaborators.map((c) => {

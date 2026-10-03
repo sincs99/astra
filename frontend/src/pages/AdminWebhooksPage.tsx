@@ -208,7 +208,7 @@ export function AdminWebhooksPage() {
                 placeholder="Wird automatisch generiert"
                 style={{ ...inputStyle, width: "100%" }}
               />
-              <small style={{ color: "#888", fontSize: 11 }}>Leer lassen für automatische Generierung</small>
+              <small style={{ color: "#666", fontSize: 11 }}>Leer lassen für automatische Generierung</small>
             </div>
             <div>
               <label style={labelStyle}>Status</label>

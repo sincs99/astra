@@ -128,7 +128,7 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
           <div id="mobile-menu" style={{ paddingBottom: 12, maxHeight: "calc(100vh - 48px)", overflowY: "auto" }}>
             {groups.map((group) => (
               <div key={group} style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, color: "#999", padding: "4px 10px" }}>
+                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, color: "#666", padding: "4px 10px" }}>
                   {group}
                 </div>
                 {NAV_ITEMS.filter((i) => i.group === group).map((item) => (

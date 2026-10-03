@@ -7,7 +7,7 @@ interface EmptyStateProps {
 
 export function EmptyState({ message = "Keine Daten vorhanden.", icon = "📭" }: EmptyStateProps) {
   return (
-    <div style={{ padding: 32, textAlign: "center", color: "#999" }}>
+    <div style={{ padding: 32, textAlign: "center", color: "#666" }}>
       <div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div>
       <div style={{ fontSize: 14 }}>{message}</div>
     </div>

@@ -2,12 +2,6 @@ import { useRef, useState } from "react";
 import { api, type Blueprint } from "../services/api";
 import { cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, ErrorState } from "./ui";
 
-/**
- * Feature-Flag: der Endpunkt POST /api/admin/blueprints/import wird vom Backend-Team
- * gebaut. Scharf schalten mit VITE_BLUEPRINT_IMPORT_ENABLED=true (Build-Zeit).
- */
-export const BLUEPRINT_IMPORT_ENABLED = import.meta.env.VITE_BLUEPRINT_IMPORT_ENABLED === "true";
-
 const MAX_EGG_BYTES = 1024 * 1024;
 
 interface EggPreview {
@@ -59,8 +53,6 @@ export function BlueprintImport({ onImported, onError }: BlueprintImportProps) {
   const [parsed, setParsed] = useState<ReturnType<typeof parseEgg> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
-
-  if (!BLUEPRINT_IMPORT_ENABLED) return null;
 
   const reset = () => {
     setText("");

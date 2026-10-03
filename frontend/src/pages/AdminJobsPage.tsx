@@ -52,19 +52,19 @@ export function AdminJobsPage() {
       {summary && (
         <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
           <MiniCard label="Gesamt" value={summary.total} />
-          <MiniCard label="Pending" value={summary.by_status.pending || 0} color="#1976d2" />
-          <MiniCard label="Running" value={summary.by_status.running || 0} color="#f57c00" />
-          <MiniCard label="Completed" value={summary.by_status.completed || 0} color="#4caf50" />
-          <MiniCard label="Failed" value={summary.by_status.failed || 0} color="#d32f2f" />
-          <MiniCard label="Retrying" value={summary.by_status.retrying || 0} color="#9c27b0" />
+          <MiniCard label="Pending" value={summary.by_status?.pending || 0} color="#1565c0" />
+          <MiniCard label="Running" value={summary.by_status?.running || 0} color="#e65100" />
+          <MiniCard label="Completed" value={summary.by_status?.completed || 0} color="#2e7d32" />
+          <MiniCard label="Failed" value={summary.by_status?.failed || 0} color="#c62828" />
+          <MiniCard label="Retrying" value={summary.by_status?.retrying || 0} color="#9c27b0" />
         </div>
       )}
 
       {/* Filter */}
       <div style={{ ...cardStyle, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div>
-          <label style={labelStyle}>Status</label>
-          <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value as StatusFilter); setPage(1); }} style={inputStyle}>
+          <label htmlFor="fld-6" style={labelStyle}>Status</label>
+          <select id="fld-6" value={statusFilter} onChange={e => { setStatusFilter(e.target.value as StatusFilter); setPage(1); }} style={inputStyle}>
             <option value="">Alle</option>
             <option value="pending">Pending</option>
             <option value="running">Running</option>
@@ -74,11 +74,11 @@ export function AdminJobsPage() {
           </select>
         </div>
         <div>
-          <label style={labelStyle}>Typ</label>
-          <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }} style={inputStyle}>
+          <label htmlFor="fld-7" style={labelStyle}>Typ</label>
+          <select id="fld-7" value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }} style={inputStyle}>
             <option value="">Alle</option>
-            {summary && Object.keys(summary.by_type).map(t => (
-              <option key={t} value={t}>{t} ({summary.by_type[t]})</option>
+            {summary && Object.keys(summary.by_type ?? {}).map(t => (
+              <option key={t} value={t}>{t} ({summary.by_type?.[t]})</option>
             ))}
           </select>
         </div>
@@ -86,7 +86,7 @@ export function AdminJobsPage() {
         <button onClick={() => loadData()} style={{ ...btnDefault, alignSelf: "flex-end" }}>
           ↻ Aktualisieren
         </button>
-        <span style={{ fontSize: 13, color: "#888", alignSelf: "flex-end" }}>
+        <span style={{ fontSize: 13, color: "#666", alignSelf: "flex-end" }}>
           {total} Jobs total, Seite {page}/{pages || 1}
         </span>
       </div>
@@ -131,11 +131,11 @@ export function AdminJobsPage() {
                           {job.error.substring(0, 80)}{job.error.length > 80 ? "..." : ""}
                         </span>
                       ) : job.result ? (
-                        <span style={{ color: "#4caf50" }} title={job.result}>
+                        <span style={{ color: "#2e7d32" }} title={job.result}>
                           {job.result.substring(0, 80)}{job.result.length > 80 ? "..." : ""}
                         </span>
                       ) : (
-                        <span style={{ color: "#999" }}>-</span>
+                        <span style={{ color: "#666" }}>-</span>
                       )}
                     </td>
                   </tr>
@@ -160,7 +160,7 @@ export function AdminJobsPage() {
 function MiniCard({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
     <div style={{ ...cardStyle, textAlign: "center", padding: "10px 18px", minWidth: 80 }}>
-      <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase", fontWeight: 600 }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 700, color: color || "#333" }}>{value}</div>
     </div>
   );

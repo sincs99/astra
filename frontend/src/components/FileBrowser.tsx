@@ -232,9 +232,9 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
         {/* Dateiliste */}
         <div>
           {loading ? (
-            <p style={{ color: "#888", fontSize: 13 }}>Wird geladen...</p>
+            <p style={{ color: "#666", fontSize: 13 }}>Wird geladen...</p>
           ) : entries.length === 0 ? (
-            <p style={{ color: "#888", fontSize: 13 }}>Verzeichnis leer</p>
+            <p style={{ color: "#666", fontSize: 13 }}>Verzeichnis leer</p>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
@@ -266,7 +266,7 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
                       {entry.is_directory ? "📁 " : "📄 "}
                       {entry.name}
                     </td>
-                    <td style={{ padding: 6, color: "#888", fontSize: 12 }}>
+                    <td style={{ padding: 6, color: "#666", fontSize: 12 }}>
                       {entry.is_file ? formatSize(entry.size) : "–"}
                     </td>
                     <td style={{ padding: 6 }}>
@@ -345,7 +345,7 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
                   style={{
                     ...smBtn,
                     backgroundColor: editContent !== fileContent ? "#4caf50" : "#e0e0e0",
-                    color: editContent !== fileContent ? "#fff" : "#888",
+                    color: editContent !== fileContent ? "#fff" : "#666",
                     cursor: editContent !== fileContent ? "pointer" : "default",
                   }}
                 >

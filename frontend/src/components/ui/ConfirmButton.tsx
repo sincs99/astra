@@ -40,6 +40,7 @@ export function ConfirmButton({
 
   return (
     <button
+      type="button"
       onClick={handleClick}
       disabled={disabled || busy}
       style={{

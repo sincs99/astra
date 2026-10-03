@@ -121,8 +121,8 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       {error && <div style={errS}>{error}</div>}
       {message && <div style={msgS}>{message}</div>}
 
-      {loading ? <p style={{ color: "#888" }}>Wird geladen...</p> : routines.length === 0 ? (
-        <p style={{ color: "#888", fontSize: 13 }}>Keine Routinen vorhanden.</p>
+      {loading ? <p style={{ color: "#666" }}>Wird geladen...</p> : routines.length === 0 ? (
+        <p style={{ color: "#666", fontSize: 13 }}>Keine Routinen vorhanden.</p>
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
           {routines.map((r) => (
@@ -130,11 +130,11 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <strong style={{ fontSize: 13 }}>{r.name}</strong>
-                  <span style={{ marginLeft: 8, fontSize: 11, color: r.is_active ? "#5cb85c" : "#999" }}>
+                  <span style={{ marginLeft: 8, fontSize: 11, color: r.is_active ? "#5cb85c" : "#666" }}>
                     {r.is_active ? "●aktiv" : "○inaktiv"}
                   </span>
                   {r.is_processing && <span style={{ marginLeft: 6, fontSize: 11, color: "#f0ad4e" }}>⏳running</span>}
-                  <span style={{ marginLeft: 8, fontSize: 10, color: "#aaa" }}>
+                  <span style={{ marginLeft: 8, fontSize: 10, color: "#666" }}>
                     {r.cron_minute} {r.cron_hour} {r.cron_day_month} {r.cron_month} {r.cron_day_week}
                   </span>
                 </div>
@@ -151,7 +151,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
               </div>
 
               {r.last_run_at && (
-                <div style={{ fontSize: 10, color: "#aaa", marginTop: 2 }}>
+                <div style={{ fontSize: 10, color: "#666", marginTop: 2 }}>
                   Zuletzt: {new Date(r.last_run_at).toLocaleString("de-CH")}
                 </div>
               )}
