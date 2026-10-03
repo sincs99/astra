@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 # ── Astra Version (semantisch) ──────────────────────────
 # Dies ist die EINZIGE Stelle, an der die Version gepflegt wird.
-VERSION = "0.32.0-rc"
+VERSION = "0.33.0-rc"
 
 # ── Release-Phase ────────────────────────────────────────
 # Mögliche Werte: "development", "rc", "pilot", "stable"

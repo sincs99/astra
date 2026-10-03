@@ -1,7 +1,7 @@
 ﻿"""Tests fuer Meilenstein 32 – Pilotbetrieb & v1.0-Rollout.
 
 Deckt ab:
-a) Version korrekt aktualisiert auf 0.32.0-rc
+a) Version korrekt aktualisiert auf 0.33.0-rc
 b) RELEASE_PHASE vorhanden und korrekt
 c) get_version_info() enthaelt release_phase
 d) /ops/info liefert release_phase
@@ -79,8 +79,8 @@ print("\n=== a) Version ===")
 
 from app.version import VERSION, RELEASE_PHASE, get_version_info
 
-check("VERSION ist 0.32.0-rc", VERSION == "0.32.0-rc", f"got: {VERSION}")
-check("VERSION beginnt mit 0.32", VERSION.startswith("0.32"), f"got: {VERSION}")
+check("VERSION ist 0.33.0-rc", VERSION == "0.33.0-rc", f"got: {VERSION}")
+check("VERSION beginnt mit 0.33", VERSION.startswith("0.33"), f"got: {VERSION}")
 
 
 # ── b) RELEASE_PHASE ────────────────────────────────────
@@ -121,7 +121,7 @@ with app.app_context():
     check("/ops/info release_phase == 'pilot'", data.get("release_phase") == "pilot",
           f"got: {data.get('release_phase')}")
     check("/ops/info hat 'version'", "version" in data)
-    check("/ops/info version == 0.32.0-rc", data.get("version") == "0.32.0-rc",
+    check("/ops/info version == 0.33.0-rc", data.get("version") == "0.33.0-rc",
           f"got: {data.get('version')}")
     check("/ops/info hat 'service'", data.get("service") == "astra-backend")
 
@@ -139,7 +139,7 @@ with app.app_context():
           f"keys: {list(data.keys())}")
     check("/admin/system/version release_phase == 'pilot'",
           data.get("release_phase") == "pilot", f"got: {data.get('release_phase')}")
-    check("/admin/system/version version korrekt", data.get("version") == "0.32.0-rc",
+    check("/admin/system/version version korrekt", data.get("version") == "0.33.0-rc",
           f"got: {data.get('version')}")
 
 

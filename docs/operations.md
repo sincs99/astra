@@ -154,6 +154,11 @@ Alle Umgebungsvariablen sind in `backend/.env.example` dokumentiert.
 | `RUNNER_TIMEOUT_CONNECT` | Verbindungstimeout (Sek.) | 5 |
 | `RUNNER_TIMEOUT_READ` | Lese-Timeout (Sek.) | 30 |
 
+Wings ruft das Panel unter `BASE_URL` + `/api/remote/...` auf (Node-Token-Auth).
+`BASE_URL` muss deshalb vom Node aus erreichbar sein. Die `config.yml` fuer einen
+Node liefert `GET /api/admin/agents/{id}/configuration` bzw. der Button *config.yml*
+in der Agents-Ansicht. Details: `docs/wings-remote-api.md`.
+
 ### Auth / Sicherheit
 
 | Variable | Beschreibung | Default |

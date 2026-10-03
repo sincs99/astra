@@ -4,7 +4,7 @@ Sendet echte HTTP-Requests an einen Wings-Runner.
 Implementiert:
 - Instance-Lifecycle: create, sync, power, delete
 - Dateisystem: list, read, write, delete, create_directory, rename
-- Backups: noch Stubs
+- Backups: create/restore/delete (Abschluss asynchron ueber die Remote-API)
 """
 
 from __future__ import annotations
@@ -340,13 +340,19 @@ class WingsRunnerAdapter(RunnerProtocol):
         )
 
         if response.success:
-            # Wings kann optionale Daten zurueckgeben (checksum, bytes)
+            # Echtes Wings antwortet 202 Accepted ohne Daten – Checksum/Groesse kommen
+            # spaeter per POST /api/remote/backups/{uuid} (Remote-API, M33).
+            # Liefert der Runner bereits eine Checksum (z.B. kompatible Daemons/Mocks),
+            # gilt das Backup sofort als abgeschlossen.
             data = response.data or {}
+            checksum = data.get("checksum")
+            accepted_async = response.status_code == 202
             return RunnerResponse(
                 success=True,
                 message=f"Wings: Backup '{backup.name}' erstellt",
                 data={
-                    "checksum": data.get("checksum"),
+                    "completed": bool(checksum) and not accepted_async,
+                    "checksum": checksum,
                     "bytes": data.get("size", data.get("bytes", 0)),
                 },
             )
@@ -378,9 +384,12 @@ class WingsRunnerAdapter(RunnerProtocol):
         )
 
         if response.success:
+            # 202 Accepted = Wings arbeitet asynchron, Abschluss kommt per
+            # POST /api/remote/backups/{uuid}/restore (Remote-API, M33).
             return RunnerResponse(
                 success=True,
                 message=f"Wings: Backup '{backup.name}' wiederhergestellt",
+                data={"completed": response.status_code != 202},
             )
         else:
             return RunnerResponse(

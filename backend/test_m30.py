@@ -379,7 +379,7 @@ print("\n=== c) Agent-/SFTP-API ===")
 
 # Gueltige Anfrage mit Public Key -> allowed=True
 resp = client.post(
-    "/agent/sftp-auth",
+    "/api/agent/sftp-auth",
     content_type="application/json",
     data=json.dumps({
         "username": "m30-owner",
@@ -396,7 +396,7 @@ check("Response: permissions liste", isinstance(body.get("permissions"), list))
 
 # Gueltige Anfrage mit Fingerprint
 resp = client.post(
-    "/agent/sftp-auth",
+    "/api/agent/sftp-auth",
     content_type="application/json",
     data=json.dumps({
         "username": "m30-owner",
@@ -408,7 +408,7 @@ check("POST /agent/sftp-auth mit Fingerprint -> 200 allowed", resp.status_code =
 
 # Collaborator mit file.sftp
 resp = client.post(
-    "/agent/sftp-auth",
+    "/api/agent/sftp-auth",
     content_type="application/json",
     data=json.dumps({
         "username": "m30-collab",
@@ -420,7 +420,7 @@ check("POST /agent/sftp-auth Collaborator -> 200 allowed", resp.status_code == 2
 
 # Unbekannter User -> 200 allowed=false
 resp = client.post(
-    "/agent/sftp-auth",
+    "/api/agent/sftp-auth",
     content_type="application/json",
     data=json.dumps({
         "username": "fantasie-user",
@@ -435,7 +435,7 @@ check("Unbekannter User: reason vorhanden", "reason" in body)
 
 # Unbekannter Key -> allowed=false
 resp = client.post(
-    "/agent/sftp-auth",
+    "/api/agent/sftp-auth",
     content_type="application/json",
     data=json.dumps({
         "username": "m30-owner",
@@ -447,7 +447,7 @@ check("POST /agent/sftp-auth unbekannter Key -> allowed=false", not json.loads(r
 
 # Fehlender username -> 400
 resp = client.post(
-    "/agent/sftp-auth",
+    "/api/agent/sftp-auth",
     content_type="application/json",
     data=json.dumps({"instance_uuid": _inst_uuid, "public_key": KEY_OWNER}),
 )
@@ -455,7 +455,7 @@ check("POST /agent/sftp-auth ohne username -> 400", resp.status_code == 400)
 
 # Fehlende instance_uuid -> 400
 resp = client.post(
-    "/agent/sftp-auth",
+    "/api/agent/sftp-auth",
     content_type="application/json",
     data=json.dumps({"username": "m30-owner", "public_key": KEY_OWNER}),
 )
@@ -463,18 +463,18 @@ check("POST /agent/sftp-auth ohne instance_uuid -> 400", resp.status_code == 400
 
 # Ohne public_key und fingerprint -> 400
 resp = client.post(
-    "/agent/sftp-auth",
+    "/api/agent/sftp-auth",
     content_type="application/json",
     data=json.dumps({"username": "m30-owner", "instance_uuid": _inst_uuid}),
 )
 check("POST /agent/sftp-auth ohne key/fingerprint -> 400", resp.status_code == 400)
 
 # Kein JSON Body -> 400
-resp = client.post("/agent/sftp-auth", content_type="text/plain", data="hello")
+resp = client.post("/api/agent/sftp-auth", content_type="text/plain", data="hello")
 check("POST /agent/sftp-auth ohne JSON -> 400", resp.status_code == 400)
 
 # Leerer JSON Body -> 400
-resp = client.post("/agent/sftp-auth", content_type="application/json", data="{}")
+resp = client.post("/api/agent/sftp-auth", content_type="application/json", data="{}")
 check("POST /agent/sftp-auth leerer JSON -> 400", resp.status_code == 400)
 
 
@@ -486,7 +486,7 @@ print("\n=== d) Security / Serialization ===")
 
 # Kein public_key_raw im Response bei allowed=True
 resp = client.post(
-    "/agent/sftp-auth",
+    "/api/agent/sftp-auth",
     content_type="application/json",
     data=json.dumps({
         "username": "m30-owner",
@@ -501,7 +501,7 @@ check("Response bei allowed=True hat kein 'mfa_secret'-Feld", "mfa_secret" not i
 
 # Kein public_key im Deny-Response
 resp = client.post(
-    "/agent/sftp-auth",
+    "/api/agent/sftp-auth",
     content_type="application/json",
     data=json.dumps({
         "username": "m30-owner",
@@ -515,7 +515,7 @@ check("Deny-Response hat kein 'user_id'-Feld (kein internes Leaken)", "user_id" 
 
 # Response enthaelt keine internen Stack-Traces oder Exception-Details
 resp = client.post(
-    "/agent/sftp-auth",
+    "/api/agent/sftp-auth",
     content_type="application/json",
     data=json.dumps({
         "username": "m30-owner",
@@ -558,7 +558,7 @@ with app.app_context():
     check("SSH_KEY_AUTH_FAILED  in WEBHOOK_EVENTS", SSH_KEY_AUTH_FAILED in WEBHOOK_EVENTS)
 
     # Auth-Event wird nach erfolgreichem Auth-Call angelegt
-    from app.domain.activity.models import Activity
+    from app.domain.activity.models import ActivityLog as Activity
     count_before = Activity.query.filter_by(event="ssh_key:auth_success").count()
 
     from app.domain.ssh_keys.auth_service import authorize_ssh_key_access
@@ -635,7 +635,7 @@ check("M29 POST /admin/instances/.../suspend -> 200", resp.status_code == 200)
 
 # Suspendierte Instance blockiert SFTP
 resp = client.post(
-    "/agent/sftp-auth",
+    "/api/agent/sftp-auth",
     content_type="application/json",
     data=json.dumps({
         "username": "m30-owner",
@@ -655,11 +655,11 @@ resp = client.post(
 check("M29 POST /admin/instances/.../unsuspend -> 200", resp.status_code == 200)
 
 # Agent-Callbacks (M13) noch intakt
-resp = client.get("/agent/health")
+resp = client.get("/api/agent/health")
 check("M13 GET /agent/health -> 200", resp.status_code == 200)
 
 resp = client.post(
-    f"/agent/instances/{_inst_uuid}/container/status",
+    f"/api/agent/instances/{_inst_uuid}/container/status",
     content_type="application/json",
     data=json.dumps({"state": "running"}),
 )
