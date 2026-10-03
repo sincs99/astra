@@ -7,6 +7,7 @@ import {
   type PowerSignal,
   type ResourceStats,
 } from "../services/api";
+import { SftpAccess } from "../components/SftpAccess";
 import { ConnectionAddress } from "../components/ConnectionAddress";
 import { ServerConsole } from "../components/ServerConsole";
 import { FileBrowser } from "../components/FileBrowser";
@@ -202,6 +203,8 @@ export function InstanceDetailPage() {
       )}
 
       {error && <ErrorState message={error} />}
+
+      <SftpAccess instance={instance} />
 
       {/* Power-Aktionen */}
       <div style={cardStyle}>

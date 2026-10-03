@@ -98,6 +98,8 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `redis` zu `backend/requirements.txt` hinzugefuegt
 
 ### Added (Frontend)
+- Instance-Detail: Box "SFTP-Zugang" (Host, Port, Benutzername `<user>.<uuid[:8]>` mit Kopier-Buttons, Hinweis auf Panel-Passwort/SSH-Key). Port aus `connection.sftp_port`, fuer Admins sonst aus der Agent-Liste
+- Endpoint-Formular: Port-Bereich (`25565-25600`) ueber `POST /admin/agents/{id}/endpoints/bulk`, Ergebnis-Toast "n angelegt, m uebersprungen"; Einzelport wie bisher (`lib/portRange.ts`)
 - Blueprint-Import-UI (`BlueprintImport`) auf der Blueprint-Admin-Seite: Egg-JSON per Datei oder Textarea, Vorschau, Aufruf `POST /api/admin/blueprints/import` (Feature-Flag entfernt, immer sichtbar)
 - Verbindungsadresse (`ConnectionAddress`) mit Kopier-Button auf Dashboard und Instance-Detail; erscheint, sobald die Instance-Antwort ein Feld `connection` {host, port, address} liefert
 - Agents: Bearbeiten-Formular (`PATCH /admin/agents/{id}`) und getrennte Felder Connect-Port (Panel -> Wings, z.B. 443 hinter Caddy) und Listen-Port (Wings lokal, z.B. 8080) im Erstellen- und Bearbeiten-Formular; Port-Validierung 1-65535
@@ -111,6 +113,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `LoginPage`: gemeinsame UI-Styles, Label-Verknuepfung, `autocomplete`, `role="alert"`
 
 ### Changed (Frontend)
+- Frontend-Tests mit Vitest (`npm test`, 29 Tests): Egg-Parser, Agent-Formular-Validierung, `useAutoRefresh`, API-Client (Bearer-Token, 401-Handling, Reset-Payload); Logik dafuer nach `src/lib/` ausgelagert
 - Barrierefreiheit (axe-core, WCAG 2 A/AA, 13 Seiten ohne Verstoesse): Kontraste bei Grautexten, Status-Badges und Kennzahlen, Labels fuer Selects/Inputs auf Agents-, Instances-, Jobs- und Monitoring-Seite
 - Responsive Layout: dynamisches Padding, horizontal scrollbare Tabellen, `FileBrowser`-Grid bricht auf schmalen Screens um
 

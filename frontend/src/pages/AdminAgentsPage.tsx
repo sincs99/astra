@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { api, type Agent, type AgentUpdate, type Endpoint } from "../services/api";
+import { api, type Agent, type Endpoint } from "../services/api";
+import { parsePortRange } from "../lib/portRange";
+import { EMPTY_AGENT_FORM, agentToForm, toAgentPayload, type AgentFormValues } from "../lib/agentForm";
 import {
   PageLayout, StatusBadge, LoadingState, EmptyState, ErrorState, ConfirmButton,
   Toast, useToast,
@@ -102,16 +104,23 @@ export function AdminAgentsPage() {
 
   const handleEndpointSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!epAgentId || !epPort) return;
+    if (!epAgentId) return;
+    const range = parsePortRange(epPort);
+    if (typeof range === "string") { toast.error(range); return; }
+    const ip = epIp.trim() || "0.0.0.0";
     try {
       setEpSubmitting(true);
       setError(null);
-      await api.createEndpoint(epAgentId as number, {
-        ip: epIp.trim() || "0.0.0.0",
-        port: Number(epPort),
-      });
+      if (range.start === range.end) {
+        await api.createEndpoint(epAgentId as number, { ip, port: range.start });
+        toast.success("Endpoint erstellt.");
+      } else {
+        const result = await api.createEndpointsBulk(epAgentId as number, {
+          ip, port_start: range.start, port_end: range.end,
+        });
+        toast.success(`${result.created} angelegt, ${result.skipped} übersprungen.`);
+      }
       setEpPort("");
-      toast.success("Endpoint erstellt.");
       await loadAll();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Fehler beim Erstellen");
@@ -206,22 +215,25 @@ export function AdminAgentsPage() {
             />
           </div>
           <div>
-            <label htmlFor="fld-3" style={labelStyle}>Port *</label>
+            <label htmlFor="fld-3" style={labelStyle}>Port oder Bereich *</label>
             <input id="fld-3"
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={epPort}
               onChange={e => setEpPort(e.target.value)}
-              placeholder="25565"
+              placeholder="25565 oder 25565-25600"
               required
-              min={1}
-              max={65535}
-              style={{ ...inputStyle, width: 100 }}
+              aria-describedby="ep-range-hint"
+              style={{ ...inputStyle, width: 190 }}
             />
           </div>
           <button type="submit" disabled={epSubmitting} style={{ ...btnPrimary, opacity: epSubmitting ? 0.6 : 1 }}>
-            {epSubmitting ? "…" : "Endpoint erstellen"}
+            {epSubmitting ? "…" : "Endpoint(s) erstellen"}
           </button>
         </form>
+        <p id="ep-range-hint" style={{ color: "#666", fontSize: 12, margin: "8px 0 0" }}>
+          Ein Bereich wie <code>25565-25600</code> legt alle Ports auf einmal an (max. 1000); vorhandene werden übersprungen.
+        </p>
       </div>
 
       {/* Agent bearbeiten */}
@@ -338,68 +350,6 @@ export function AdminAgentsPage() {
 
 
 // ── Agent-Formular (Erstellen & Bearbeiten) ─────────────
-
-interface AgentFormValues {
-  name: string;
-  fqdn: string;
-  scheme: string;
-  behindProxy: boolean;
-  /** Port, ueber den das Panel Wings erreicht (z.B. 443 hinter Caddy) */
-  connect: string;
-  /** Port, auf dem Wings lokal lauscht (z.B. 8080) */
-  listen: string;
-  sftp: string;
-  base: string;
-  uploadSize: string;
-  isActive: boolean;
-  /** Solange false, folgt der Connect-Port automatisch dem Listen-Port */
-  connectTouched: boolean;
-}
-
-const EMPTY_AGENT_FORM: AgentFormValues = {
-  name: "", fqdn: "", scheme: "https", behindProxy: false,
-  connect: "8080", listen: "8080", sftp: "2022",
-  base: "/var/lib/pterodactyl/volumes", uploadSize: "100",
-  isActive: true, connectTouched: false,
-};
-
-function agentToForm(a: Agent): AgentFormValues {
-  return {
-    name: a.name, fqdn: a.fqdn, scheme: a.scheme, behindProxy: a.behind_proxy,
-    connect: String(a.daemon_connect), listen: String(a.daemon_listen), sftp: String(a.daemon_sftp),
-    base: a.daemon_base, uploadSize: String(a.upload_size), isActive: a.is_active,
-    connectTouched: true,
-  };
-}
-
-function validPort(value: string): number | null {
-  const n = Number(value);
-  return Number.isInteger(n) && n >= 1 && n <= 65535 ? n : null;
-}
-
-/** Liefert den API-Payload oder eine Fehlermeldung (string). */
-function toAgentPayload(v: AgentFormValues): AgentUpdate | string {
-  if (!v.name.trim() || !v.fqdn.trim()) return "Name und FQDN sind erforderlich.";
-  const connect = validPort(v.connect);
-  const listen = validPort(v.listen);
-  const sftp = validPort(v.sftp);
-  if (connect === null) return "Connect-Port muss zwischen 1 und 65535 liegen.";
-  if (listen === null) return "Listen-Port muss zwischen 1 und 65535 liegen.";
-  if (sftp === null) return "SFTP-Port muss zwischen 1 und 65535 liegen.";
-  const upload = Number(v.uploadSize);
-  return {
-    name: v.name.trim(),
-    fqdn: v.fqdn.trim(),
-    scheme: v.scheme,
-    behind_proxy: v.behindProxy,
-    daemon_connect: connect,
-    daemon_listen: listen,
-    daemon_sftp: sftp,
-    daemon_base: v.base.trim() || "/var/lib/pterodactyl/volumes",
-    upload_size: Number.isFinite(upload) && upload > 0 ? upload : 100,
-    is_active: v.isActive,
-  };
-}
 
 interface AgentFormFieldsProps {
   values: AgentFormValues;

@@ -59,3 +59,12 @@ frontend/
 ├── tsconfig.json
 └── vite.config.ts
 ```
+
+## Tests
+
+```bash
+cd frontend
+npm test
+```
+
+Vitest (jsdom, @testing-library/react). Tests liegen neben dem Code (`*.test.ts`).
