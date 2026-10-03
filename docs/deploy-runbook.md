@@ -161,42 +161,25 @@ Im Panel unter **Admin → Fleet Monitoring** muss `node1` jetzt `healthy` sein.
 
 ## 7. Blueprint und erster Server
 
-Blueprint (Vorlage) anlegen unter **Admin → Blueprints**. Für Minecraft Paper:
-
-| Feld | Wert |
-|---|---|
-| Name | Minecraft Paper |
-| Docker-Image | `ghcr.io/pterodactyl/yolks:java_21` |
-| Startup-Befehl | `java -Xms128M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true -jar {{SERVER_JARFILE}}` |
-| Install-Container | `ghcr.io/pterodactyl/installers:debian` |
-| Stop-Befehl | `stop` |
-| Startup-Erkennung | `)! For help, type ` |
-| Variable | Name `Server Jar`, ENV `SERVER_JARFILE`, Standard `server.jar` |
-| Variable | Name `Minecraft Version`, ENV `MINECRAFT_VERSION`, Standard `latest` |
-| Variable | Name `Build`, ENV `BUILD_NUMBER`, Standard `latest` |
-| Install-Script | siehe unten |
-
-Install-Script (Paper-Download, entspricht dem offiziellen Egg):
+Blueprints (Server-Vorlagen) kommen am schnellsten per Egg-Import. Im Repo liegt ein fertiges
+Paper-Egg (`blueprints/minecraft-paper.json`, Pterodactyl-Format PTDL_v2):
 
 ```bash
-#!/bin/bash
-apt update && apt install -y curl jq
-cd /mnt/server
-PROJECT=paper
-if [ -z "$MINECRAFT_VERSION" ] || [ "$MINECRAFT_VERSION" = "latest" ]; then
-  MINECRAFT_VERSION=$(curl -s https://api.papermc.io/v2/projects/$PROJECT | jq -r '.versions[-1]')
-fi
-if [ -z "$BUILD_NUMBER" ] || [ "$BUILD_NUMBER" = "latest" ]; then
-  BUILD_NUMBER=$(curl -s https://api.papermc.io/v2/projects/$PROJECT/versions/$MINECRAFT_VERSION | jq -r '.builds[-1]')
-fi
-JAR_NAME=$PROJECT-$MINECRAFT_VERSION-$BUILD_NUMBER.jar
-curl -o "${SERVER_JARFILE:-server.jar}" "https://api.papermc.io/v2/projects/$PROJECT/versions/$MINECRAFT_VERSION/builds/$BUILD_NUMBER/downloads/$JAR_NAME"
-echo "eula=true" > eula.txt
-[ -f server.properties ] || curl -o server.properties https://raw.githubusercontent.com/parkervcp/eggs/master/minecraft/java/server.properties
-echo "Installation abgeschlossen"
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  --data @blueprints/minecraft-paper.json \
+  https://panel.deinedomain.de/api/admin/blueprints/import
 ```
 
-Sobald der Egg-Import (`POST /api/admin/blueprints/import`, in Arbeit) auf dem Branch ist, geht das in einem Schritt mit `blueprints/minecraft-paper.json`.
+Alternativ im Panel unter **Admin → Blueprints → Import** das JSON einfügen, oder jedes andere
+Egg aus [pterodactyl/eggs](https://github.com/pterodactyl/eggs) bzw. [pelican-eggs](https://github.com/pelican-eggs)
+auf demselben Weg importieren. Image, Startup, Install-Script, Startup-Erkennung, Stop-Befehl,
+Variablen und `server.properties`-Platzhalter werden übernommen.
+
+Wer den Blueprint von Hand anlegen will, braucht mindestens: Docker-Image
+`ghcr.io/pterodactyl/yolks:java_21`, Startup-Befehl mit `{{SERVER_JARFILE}}`, Install-Container
+`ghcr.io/pterodactyl/installers:debian`, Stop-Befehl `stop`, Startup-Erkennung `)! For help, type `
+und ein Install-Script, das die Paper-Jar nach `/mnt/server` lädt und `eula=true` schreibt.
+Details zu den Feldern: `docs/wings-remote-api.md`.
 
 Dann unter **Admin → Instances** eine Instanz anlegen: Blueprint Paper, Agent node1, 2048 MB RAM, 5120 MB Disk, Endpoint 25565. Ablauf, den du beobachten kannst:
 
