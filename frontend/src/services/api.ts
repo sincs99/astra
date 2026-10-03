@@ -216,6 +216,8 @@ export interface Product {
   currency: string;
   billing_period_days: number;
   resources: ProductResources;
+  /** Optional: Name des Blueprints, falls das Backend ihn im oeffentlichen Produkt mitliefert */
+  blueprint_name?: string | null;
   /** Nur Admin-Antworten */
   blueprint_id?: number;
   is_active?: boolean;

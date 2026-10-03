@@ -7,7 +7,8 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { linkStyle, btnDefault } from "./styles";
-import { logout } from "../../services/api";
+import { isAuthenticated, logout } from "../../services/api";
+import { loginUrl } from "../../lib/redirect";
 import { useCurrentUser, resetCurrentUserCache } from "../../hooks/useCurrentUser";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 
@@ -72,6 +73,31 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
     resetCurrentUserCache();
     navigate("/login");
   };
+
+  // Ausgeloggt (z.B. oeffentlicher Shop): schlanke Leiste ohne Konto-Navigation
+  if (!isAuthenticated()) {
+    return (
+      <div style={{ minHeight: "100vh", backgroundColor: "#fafafa" }}>
+        <nav aria-label="Hauptnavigation" style={{
+          backgroundColor: "#fff", borderBottom: "1px solid #e0e0e0",
+          padding: "0 clamp(12px, 4vw, 24px)", position: "sticky", top: 0, zIndex: 100,
+        }}>
+          <div style={{ maxWidth, margin: "0 auto", display: "flex", alignItems: "center", gap: 16, height: 48 }}>
+            <Link to="/shop" style={{ ...linkStyle, fontWeight: 700, fontSize: 16 }}>Astra</Link>
+            <div style={{ flex: 1 }} />
+            <Link to={loginUrl(currentPath)} style={linkStyle}>Anmelden</Link>
+            <Link to={`/register?redirect=${encodeURIComponent(currentPath)}`} style={{ ...btnDefault, textDecoration: "none", padding: "4px 12px", fontSize: 13 }}>
+              Registrieren
+            </Link>
+          </div>
+        </nav>
+        <main style={{ maxWidth, margin: "0 auto", padding: "16px clamp(12px, 4vw, 24px)", overflowX: "auto" }}>
+          <h1 style={{ marginTop: 0, marginBottom: 20, fontSize: 24, fontWeight: 700 }}>{title}</h1>
+          {children}
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#fafafa" }}>

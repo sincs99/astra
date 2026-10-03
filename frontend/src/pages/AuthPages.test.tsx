@@ -12,6 +12,7 @@ function mount(path: string) {
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/" element={<div>Dashboard</div>} />
+        <Route path="/shop" element={<div>Shop</div>} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/password-reset/confirm" element={<ResetPasswordPage />} />
@@ -56,6 +57,29 @@ describe("LoginPage", () => {
     expect(await screen.findByText("Dashboard")).toBeTruthy();
     expect(login).toHaveBeenLastCalledWith("alice", "geheim123", "123456");
     expect(getAccessToken()).toBe("mfa-tok");
+  });
+
+  it("fuehrt nach dem Login zum angegebenen internen Ziel zurueck", async () => {
+    vi.spyOn(api, "login").mockResolvedValue({ access_token: "tok", token_type: "Bearer", user: {} } as never);
+    mount("/login?redirect=%2Fshop");
+    type("Username oder Email", "alice");
+    type("Passwort", "geheim123");
+    submit("Anmelden");
+    expect(await screen.findByText("Shop")).toBeTruthy();
+  });
+
+  it("gibt das Rueckkehrziel an den Registrier-Link weiter", () => {
+    mount("/login?redirect=%2Fshop");
+    expect(screen.getByRole("link", { name: "Konto erstellen" }).getAttribute("href")).toBe("/register?redirect=%2Fshop");
+  });
+
+  it("ignoriert externe Weiterleitungsziele (Open Redirect)", async () => {
+    vi.spyOn(api, "login").mockResolvedValue({ access_token: "tok", token_type: "Bearer", user: {} } as never);
+    mount("/login?redirect=https%3A%2F%2Fevil.example");
+    type("Username oder Email", "alice");
+    type("Passwort", "geheim123");
+    submit("Anmelden");
+    expect(await screen.findByText("Dashboard")).toBeTruthy();
   });
 
   it("verlangt beide Felder", async () => {
@@ -105,6 +129,14 @@ describe("RegisterPage", () => {
     submit("Konto erstellen");
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/stimmen nicht ueberein/));
     expect(register).not.toHaveBeenCalled();
+  });
+
+  it("leitet nach der Registrierung zum angegebenen Ziel weiter", async () => {
+    vi.spyOn(api, "register").mockResolvedValue({ access_token: "neu", token_type: "Bearer", user: {} } as never);
+    mount("/register?redirect=%2Fshop");
+    fill();
+    submit("Konto erstellen");
+    expect(await screen.findByText("Shop")).toBeTruthy();
   });
 
   it("loggt nach erfolgreicher Registrierung direkt ein", async () => {

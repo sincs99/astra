@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type Order, type Product } from "../services/api";
+import { isAuthenticated } from "../services/api";
+import { loginUrl } from "../lib/redirect";
 import { formatPrice } from "../lib/money";
 import {
   PageLayout, LoadingState, ErrorState, EmptyState, Toast, useToast,
@@ -16,6 +18,7 @@ export function ShopPage() {
   const [ordering, setOrdering] = useState<number | null>(null);
   const [serverName, setServerName] = useState("");
   const [busy, setBusy] = useState(false);
+  const loggedIn = isAuthenticated();
   const [placed, setPlaced] = useState<Order | null>(null);
 
   const load = async () => {
@@ -75,6 +78,7 @@ export function ShopPage() {
           {products.map((p) => (
             <article key={p.id} style={{ ...cardStyle, marginBottom: 0, display: "flex", flexDirection: "column" }} aria-labelledby={`product-${p.id}`}>
               <h2 id={`product-${p.id}`} style={{ margin: "0 0 4px", fontSize: 18 }}>{p.name}</h2>
+              {p.blueprint_name && <div style={{ fontSize: 12, color: "#666" }}>{p.blueprint_name}</div>}
               {p.description && <p style={{ fontSize: 13, color: "#444" }}>{p.description}</p>}
               <div style={{ fontSize: 22, fontWeight: 700, margin: "8px 0" }}>
                 {formatPrice(p.price_cents, p.currency, p.billing_period_days)}
@@ -98,6 +102,11 @@ export function ShopPage() {
                       <button type="button" onClick={() => setOrdering(null)} disabled={busy} style={btnDefault}>Abbrechen</button>
                     </div>
                   </form>
+                ) : !loggedIn ? (
+                  <Link to={loginUrl("/shop")} aria-label={`${p.name} bestellen (Anmeldung erforderlich)`}
+                    style={{ ...btnPrimary, display: "block", textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}>
+                    Anmelden und bestellen
+                  </Link>
                 ) : (
                   <button type="button" onClick={() => startOrder(p.id)} style={{ ...btnPrimary, width: "100%" }}
                     aria-label={`${p.name} bestellen`}>

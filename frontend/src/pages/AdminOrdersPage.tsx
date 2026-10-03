@@ -41,6 +41,8 @@ export function AdminOrdersPage() {
 
   useEffect(() => { load(); }, [status]);
 
+  const waiting = orders.filter((o) => o.status === "awaiting_provisioning").length;
+
   const markPaid = async (order: Order, paymentReference?: string) => {
     try {
       setBusy(true);
@@ -79,6 +81,13 @@ export function AdminOrdersPage() {
         </div>
       </div>
 
+      {waiting > 0 && (
+        <div role="status" style={{ padding: "10px 14px", marginBottom: 16, backgroundColor: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, color: "#8d6e00", fontSize: 14 }}>
+          <strong>{waiting} bezahlte Bestellung{waiting === 1 ? "" : "en"} wartet auf Bereitstellung.</strong>{" "}
+          Schaffe Platz (Endpoints, Kapazität) und wähle „Erneut bereitstellen“.
+        </div>
+      )}
+
       {error && <ErrorState message={error} onRetry={load} />}
       {loading ? (
         <LoadingState message="Bestellungen werden geladen..." />
@@ -101,7 +110,7 @@ export function AdminOrdersPage() {
             </thead>
             <tbody>
               {orders.map((o) => (
-                <tr key={o.uuid}>
+                <tr key={o.uuid} style={o.status === "awaiting_provisioning" ? { backgroundColor: "#fff8e1" } : undefined}>
                   <td style={tdStyle}>{o.id}</td>
                   <td style={tdStyle}>{o.username ?? `User #${o.user_id}`}</td>
                   <td style={tdStyle}>
