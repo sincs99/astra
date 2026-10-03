@@ -46,6 +46,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (Admin: Zahlungsereignisse ansehen)
+- `GET /api/admin/payment-events` (nur lesen, Admin-Guard): Zahlungsereignisse des Anbieters, neueste zuerst; Filter `status` (`processed`, `ignored`, `unapplied`, `mismatch`, `received`), `order_uuid`, `limit` (1 bis 500, Standard 100; ungueltige Werte ergeben 400). Damit lassen sich `mismatch` (Betrag/Waehrung weicht ab) und `unapplied` (Zahlung fuer beendete Bestellung, Erstattung pruefen) ohne Datenbankzugriff finden. Tests in `test_m48.py` (83), Doku in `docs/orders-api.md`
+
 ### Added (M52 – Automatische Bereitstellung wartender Bestellungen)
 - Der Billing-Tick stellt bezahlte Bestellungen ohne Instance (`awaiting_provisioning`) automatisch bereit, sobald ein Node Platz hat (aelteste Zahlung zuerst; eine zu grosse Bestellung blockiert kleinere nicht). Erfolgreiche Bereitstellung: Status `active`, Event `order:provisioned`, Mail "Astra: Dein Server ist bereit" mit Verbindungsadresse; erfolglose Versuche sind still (kein Event und keine Mail pro Tick). Tick-Zusammenfassung enthaelt `provisioned`, `checked` zaehlt wartende Bestellungen mit
 - **Die Laufzeit beginnt mit der Bereitstellung statt mit der Zahlung** (`fulfill_order(now=...)`): wer auf einen freien Node warten muss, verliert keine Zeit. Zahlungsreferenz und `paid_at` bleiben unveraendert, die Zahlung wird nie doppelt verbucht; die manuelle Bereitstellung per `mark-paid` funktioniert weiter. Gilt auch fuer Stripe-Zahlungen ohne Platz
