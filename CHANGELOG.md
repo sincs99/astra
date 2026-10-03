@@ -42,6 +42,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M42 – Kapazitaetspruefung und Platzierung)
+- `backend/app/domain/agents/placement.py`: `capacity_problem()`, `used_resources()` und `pick_agent(memory, disk, cpu)` (aktiv, nicht in Wartung, freier Endpoint, genug freie effektive Kapazitaet inkl. Overalloc; Auswahl nach geringster Auslastung nach der Platzierung, Gleichstand: weniger Instanzen, kleinere ID)
+- `create_instance` bricht mit 409 ab, wenn RAM, Disk oder CPU des gewaehlten Agents nicht reichen (Meldung nennt Dimension und freien Rest); Agents mit `*_total = 0` gelten je Dimension als ohne Limit. Zeilensperre auf dem Agent serialisiert parallele Erstellungen auf PostgreSQL
+- `POST /api/admin/instances`: `agent_id` ist optional, fehlt es oder ist `null`, platziert Astra automatisch (409 ohne passenden Agent, `endpoint_id` ohne `agent_id` -> 400)
+- Transfer prueft die Kapazitaet des Ziel-Agents (409)
+- `backend/test_m42.py` (23 Tests)
+
 ### Added (Account und SFTP-Port)
 - `POST /api/auth/change-password` – `{current_password, new_password}` fuer eingeloggte Nutzer; 401 bei falschem aktuellem Passwort (und ohne Login), gleiche Regeln wie bei der Registrierung (mind. 8 Zeichen), neues Passwort muss sich unterscheiden, Activity-Events `auth:password_changed` / `auth:password_change_failed`, offene Reset-Links werden ungueltig, Rate Limiting aktiv. Bereits ausgestellte JWTs bleiben bis zum Ablauf gueltig
 - `instance.connection` enthaelt jetzt `sftp_port` (Port des Agents), damit auch Nicht-Admins die SFTP-Zugangsdaten anzeigen koennen
