@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type Instance, getSimulatedUserId } from "../services/api";
-import { PageLayout, StatusBadge, LoadingState, ErrorState, EmptyState, cardStyle } from "../components/ui";
+import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
+import { PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, ErrorState, EmptyState, cardStyle } from "../components/ui";
 
 export function DashboardPage() {
   const [instances, setInstances] = useState<Instance[]>([]);
@@ -9,20 +10,23 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const load = async () => {
+  const [autoRefresh, setAutoRefresh] = useAutoRefreshSetting("dashboard");
+
+  const load = async (silent = false) => {
     try {
-      setLoading(true);
-      setError(null);
+      if (!silent) { setLoading(true); setError(null); }
       const data = await api.getClientInstances();
       setInstances(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      if (!silent) setError(err instanceof Error ? err.message : "Fehler beim Laden");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { load(); }, []);
+
+  useAutoRefresh(() => load(true), 15000, autoRefresh);
 
   const userId = getSimulatedUserId();
 
@@ -32,9 +36,12 @@ export function DashboardPage() {
         Eingeloggt als User #{userId}
       </p>
 
-      {error && <ErrorState message={error} onRetry={load} />}
+      {error && <ErrorState message={error} onRetry={() => load()} />}
 
-      <h2 style={{ fontSize: 18, marginBottom: 12 }}>Meine Instances</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+        <h2 style={{ fontSize: 18, margin: 0 }}>Meine Instances</h2>
+        <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
+      </div>
 
       {loading ? (
         <LoadingState />

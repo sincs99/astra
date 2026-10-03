@@ -59,12 +59,12 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
         <div style={{
           maxWidth, margin: "0 auto",
           display: "flex", alignItems: "center", gap: 24,
-          height: 48, overflowX: "auto",
+          height: 48,
         }}>
-          <Link to="/" style={{ ...linkStyle, fontWeight: 700, fontSize: 16, marginRight: 8 }}>
+          <Link to="/" style={{ ...linkStyle, fontWeight: 700, fontSize: 16, marginRight: 8, flexShrink: 0 }}>
             Astra
           </Link>
-          <div style={{ display: "flex", gap: 4, fontSize: 13, flex: 1 }}>
+          <div style={{ display: "flex", gap: 4, fontSize: 13, flex: 1, minWidth: 0, overflowX: "auto" }}>
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.href}

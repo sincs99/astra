@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { api, setAccessToken } from "../services/api";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { api, isAuthenticated, setAccessToken } from "../services/api";
 import { inputStyle, labelStyle, btnPrimary } from "../components/ui";
 
 export function LoginPage() {
@@ -11,6 +11,9 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Bereits eingeloggt -> direkt zum Dashboard (nicht bei abgelaufener Sitzung)
+  if (isAuthenticated() && !expired) return <Navigate to="/" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

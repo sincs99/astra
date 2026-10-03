@@ -8,9 +8,10 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 ### Added (Frontend)
 - `PageLayout`: SPA-Navigation per `react-router` (kein Seiten-Reload), `aria-current`, Abmelden-Button
 - `FileBrowser`: Upload von Textdateien (max. 1 MB, Workaround ueber Write-Endpoint) und "Neue Datei"
-- Auto-Refresh (15s, abschaltbar, nur bei sichtbarem Tab) fuer Jobs-Dashboard und Fleet Monitoring (`hooks/useAutoRefresh.ts`, `AutoRefreshToggle`)
+- Auto-Refresh (15s, abschaltbar, nur bei sichtbarem Tab) fuer Jobs-Dashboard, Fleet Monitoring, Dashboard und Admin-Instances (`hooks/useAutoRefresh.ts`, `AutoRefreshToggle`)
 - 401-Handling: abgelaufene Sitzung leitet zu `/login?expired=1` mit Hinweis um
 - `ErrorBoundary` gegen weisse Seite bei Render-Fehlern, `NotFoundPage` als Catch-all-Route
+- Navigation: Link-Leiste scrollt separat, Abmelden-Button bleibt auf schmalen Screens sichtbar; Login leitet eingeloggte Nutzer zum Dashboard
 - `LoginPage`: gemeinsame UI-Styles, Label-Verknuepfung, `autocomplete`, `role="alert"`
 
 ### Changed (Frontend)

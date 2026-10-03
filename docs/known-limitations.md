@@ -28,7 +28,7 @@
 - Responsive Design ist grundlegend (Tabellen scrollen horizontal), aber nicht vollstaendig Mobile-optimiert.
 - File-Upload nur fuer Textdateien bis 1 MB (kein Multipart-Endpoint im Backend).
 - Nicht alle Admin-Seiten verwenden bereits die neuen `PageLayout`/`StatusBadge`-Komponenten (schrittweise Migration).
-- Keine Echtzeit-Updates via WebSocket fuer Admin-Ansichten; Jobs und Fleet Monitoring pollen alle 15s (abschaltbar), andere Seiten nur manuell.
+- Keine Echtzeit-Updates via WebSocket fuer Admin-Ansichten; Jobs, Fleet Monitoring, Dashboard und Admin-Instances pollen alle 15s (abschaltbar), andere Seiten nur manuell.
 
 ### Monitoring / Observability
 - Fleet Monitoring basiert auf DB-Werten, nicht auf Live-Metriken.
