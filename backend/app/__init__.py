@@ -184,6 +184,7 @@ def _register_rate_limiting(app: Flask) -> None:
         auth_paths = [
             "/api/auth/login",
             "/api/auth/register",
+            "/api/auth/change-password",
             "/api/auth/verify-email",
             "/api/auth/resend-verification",
             "/api/auth/password-reset/request",

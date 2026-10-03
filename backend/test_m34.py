@@ -81,5 +81,35 @@ with app.app_context():
     r = c.post("/api/auth/password-reset/confirm", json={"token": t2, "password": "nochmal-neu-1"})
     check("abgelaufenes Token -> 400", r.status_code == 400)
 
+print("Passwort aendern (eingeloggt)")
+app.config["PASSWORD_RESET_TTL_MINUTES"] = 60
+tok = c.post("/api/auth/login", json={"login": "neu", "password": "neues-passwort"}).json["access_token"]
+H = {"Authorization": f"Bearer {tok}"}
+url = "/api/auth/change-password"
+check("ohne Login -> 401", c.post(url, json={"current_password": "x", "new_password": "yyyyyyyy"}).status_code == 401)
+r = c.post(url, json={"current_password": "falsch", "new_password": "ganz-neu-123"}, headers=H)
+check("falsches aktuelles Passwort -> 401", r.status_code == 401, r.get_data(as_text=True))
+r = c.post(url, json={"current_password": "neues-passwort", "new_password": "kurz"}, headers=H)
+check("zu kurzes neues Passwort -> 400", r.status_code == 400)
+r = c.post(url, json={"current_password": "neues-passwort", "new_password": "neues-passwort"}, headers=H)
+check("gleiches Passwort -> 400", r.status_code == 400)
+r = c.post(url, json={"new_password": "ganz-neu-123"}, headers=H)
+check("aktuelles Passwort fehlt -> 401", r.status_code == 401)
+r = c.post(url, json={"current_password": "neues-passwort", "new_password": "ganz-neu-123"}, headers=H)
+check("Aenderung erfolgreich -> 200", r.status_code == 200, r.get_data(as_text=True))
+check("Login mit neuem Passwort", c.post("/api/auth/login", json={"login": "neu", "password": "ganz-neu-123"}).status_code == 200)
+check("altes Passwort ungueltig", c.post("/api/auth/login", json={"login": "neu", "password": "neues-passwort"}).status_code == 401)
+with app.app_context():
+    from app.domain.activity.models import ActivityLog
+    events = [e.event for e in ActivityLog.query.all()]
+check("Activity: auth:password_changed", "auth:password_changed" in events, str(events[-5:]))
+check("Activity: auth:password_change_failed", "auth:password_change_failed" in events)
+mail.outbox.clear()
+c.post("/api/auth/password-reset/request", json={"email": "neu@example.com"})
+old_reset = mail.outbox[0]["body"].split("token=")[1].split()[0]
+r = c.post(url, json={"current_password": "ganz-neu-123", "new_password": "nochmal-anders-9"}, headers=H)
+r = c.post("/api/auth/password-reset/confirm", json={"token": old_reset, "password": "reset-versuch-1"})
+check("offener Reset-Link nach Passwortwechsel ungueltig", r.status_code == 400)
+
 print(f"\n{passed} OK, {failed} FAIL")
 sys.exit(1 if failed else 0)
