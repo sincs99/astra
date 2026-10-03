@@ -1,3 +1,4 @@
+import { TransferInstanceForm } from "../components/TransferInstanceForm";
 import { DeleteInstanceForm } from "../components/DeleteInstanceForm";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { Fragment, useEffect, useState } from "react";
@@ -42,20 +43,12 @@ export function AdminInstancesPage() {
   // Transfer-State
   const [transferringUuid, setTransferringUuid] = useState<string | null>(null);
   const [deletingUuid, setDeletingUuid] = useState<string | null>(null);
-  const [transferTargetAgent, setTransferTargetAgent] = useState<number | "">("");
 
-  const handleTransfer = async (uuid: string) => {
-    if (!transferTargetAgent) { setError("Bitte Ziel-Agent auswählen"); return; }
-    try {
-      setError(null);
-      await api.transferInstance(uuid, transferTargetAgent as number);
-      toast.success(`Transfer für Instance ${uuid.substring(0, 8)}… gestartet.`);
-      setTransferringUuid(null);
-      setTransferTargetAgent("");
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Transfer");
-    }
+  const handleTransfer = async (inst: Instance, targetAgentId: number) => {
+    await api.transferInstance(inst.uuid, targetAgentId);
+    toast.success(`Transfer für "${inst.name}" gestartet.`);
+    setTransferringUuid(null);
+    await loadAll();
   };
 
   const loadAll = async () => {
@@ -254,35 +247,9 @@ export function AdminInstancesPage() {
                       </small>
                     </td>
                     <td style={tdStyle}>
-                      {isTransferring ? (
-                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
-                          <select
-                            value={transferTargetAgent}
-                            onChange={e => setTransferTargetAgent(e.target.value ? Number(e.target.value) : "")}
-                            style={{ padding: "4px 6px", fontSize: 12, borderRadius: 4, border: "1px solid #ccc" }}
-                          >
-                            <option value="">– Ziel-Agent –</option>
-                            {agents.filter(a => a.id !== inst.agent_id && a.is_active).map(a => (
-                              <option key={a.id} value={a.id}>{a.name}</option>
-                            ))}
-                          </select>
-                          <button
-                            onClick={() => handleTransfer(inst.uuid)}
-                            style={{ padding: "4px 10px", fontSize: 12, backgroundColor: "#4caf50", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}
-                          >
-                            ✓
-                          </button>
-                          <button
-                            onClick={() => { setTransferringUuid(null); setTransferTargetAgent(""); }}
-                            style={{ padding: "4px 8px", fontSize: 12, border: "1px solid #ccc", borderRadius: 4, cursor: "pointer", backgroundColor: "#fff" }}
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ) : (
                         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                           <button
-                            onClick={() => { setTransferringUuid(inst.uuid); setTransferTargetAgent(""); }}
+                            onClick={() => { setTransferringUuid(inst.uuid); setDeletingUuid(null); }}
                             style={{ padding: "4px 10px", fontSize: 12, border: "1px solid #ccc", borderRadius: 4, cursor: "pointer", backgroundColor: "#fff" }}
                             title="Instance transferieren"
                           >
@@ -314,16 +281,29 @@ export function AdminInstancesPage() {
                           )}
                           <button
                             type="button"
-                            onClick={() => setDeletingUuid(inst.uuid)}
+                            onClick={() => { setDeletingUuid(inst.uuid); setTransferringUuid(null); }}
                             style={{ padding: "4px 10px", fontSize: 12, border: "1px solid #ef9a9a", borderRadius: 4, cursor: "pointer", backgroundColor: "#fff", color: "#c62828" }}
                             title="Instance löschen"
                           >
                             🗑 Löschen
                           </button>
                         </div>
-                      )}
                     </td>
                   </tr>
+                  {isTransferring && (
+                    <tr>
+                      <td colSpan={9} style={{ ...tdStyle, backgroundColor: "#fff8f8" }}>
+                        <TransferInstanceForm
+                          instanceUuid={inst.uuid}
+                          instanceName={inst.name}
+                          agents={agents.filter(a => a.id !== inst.agent_id && a.is_active)}
+                          idPrefix={`transfer-${inst.id}`}
+                          onCancel={() => setTransferringUuid(null)}
+                          onTransfer={(target) => handleTransfer(inst, target)}
+                        />
+                      </td>
+                    </tr>
+                  )}
                   {deletingUuid === inst.uuid && (
                     <tr>
                       <td colSpan={9} style={{ ...tdStyle, backgroundColor: "#fff8f8" }}>

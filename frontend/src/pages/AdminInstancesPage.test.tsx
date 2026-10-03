@@ -85,3 +85,29 @@ describe("AdminInstancesPage Loeschen", () => {
     expect(await screen.findByText('"Alt" gelöscht.')).toBeTruthy();
   });
 });
+
+describe("AdminInstancesPage Transfer", () => {
+  const inst = { id: 1, uuid: "u-1", name: "Alt", status: "ready", owner_id: 3, agent_id: 7, blueprint_id: 2,
+    primary_endpoint_id: null, memory: 512, disk: 1024, cpu: 100 };
+
+  it("oeffnet statt des alten Schnell-Transfers den Sicherheitsdialog und startet erst nach allen Bestaetigungen", async () => {
+    (api.getInstances as ReturnType<typeof vi.fn>).mockResolvedValue([inst]);
+    (api.getAgents as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 7, name: "N1", fqdn: "a", is_active: true }, { id: 8, name: "N2", fqdn: "b", is_active: true }, { id: 9, name: "N3", fqdn: "c", is_active: false },
+    ]);
+    vi.spyOn(api, "getBackups").mockResolvedValue([{ id: 1, is_successful: true, completed_at: "2026-10-01T10:00:00" }] as never);
+    const transfer = vi.spyOn(api, "transferInstance").mockResolvedValue({} as never);
+    render(<MemoryRouter><AdminInstancesPage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: /Transfer/ }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/Serverdaten NICHT übertragen/);
+    const options = Array.from((screen.getByLabelText("Ziel-Agent") as HTMLSelectElement).options).map((o) => o.textContent);
+    expect(options).toEqual(["– Ziel-Agent wählen –", "N2"]); // weder aktueller noch inaktiver Agent
+    fireEvent.change(screen.getByLabelText("Ziel-Agent"), { target: { value: "8" } });
+    fireEvent.click(screen.getByLabelText("Ich habe ein aktuelles Backup"));
+    fireEvent.change(screen.getByLabelText(/Zur Bestätigung den Namen/), { target: { value: "Alt" } });
+    await screen.findByText(/Letztes erfolgreiches Backup/);
+    fireEvent.click(screen.getByRole("button", { name: "Transfer starten" }));
+    await waitFor(() => expect(transfer).toHaveBeenCalledWith("u-1", 8));
+    expect(await screen.findByText(/Transfer für "Alt" gestartet/)).toBeTruthy();
+  });
+});
