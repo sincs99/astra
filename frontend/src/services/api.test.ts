@@ -64,6 +64,19 @@ describe("api.request", () => {
     await expect(api.getAgents()).rejects.toThrow("nicht erreichbar");
   });
 
+  it("sendet beim Loeschen den Namen als Bestaetigung bzw. force als Admin", async () => {
+    const fetchMock = mockFetch(200, { uuid: "u", message: "ok" });
+    await api.deleteInstance("u1", "Mein Server");
+    expect(fetchMock.mock.calls[0][0]).toContain("/client/instances/u1");
+    expect(fetchMock.mock.calls[0][1].method).toBe("DELETE");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ confirm: "Mein Server" });
+    await api.adminDeleteInstance("u1", true);
+    expect(fetchMock.mock.calls[1][0]).toContain("/admin/instances/u1");
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ force: true });
+    await api.adminDeleteInstance("u1");
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({});
+  });
+
   it("sendet beim Passwort-Reset das Feld 'password'", async () => {
     const fetchMock = mockFetch(200, { message: "ok" });
     await api.confirmPasswordReset("t", "geheim123");

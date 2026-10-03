@@ -7,6 +7,7 @@ import {
   type PowerSignal,
   type ResourceStats,
 } from "../services/api";
+import { DeleteInstanceForm } from "../components/DeleteInstanceForm";
 import { SftpAccess } from "../components/SftpAccess";
 import { ConnectionAddress } from "../components/ConnectionAddress";
 import { ServerConsole } from "../components/ServerConsole";
@@ -31,6 +32,7 @@ export function InstanceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Variable editing
   const [varEdits, setVarEdits] = useState<Record<string, string>>({});
@@ -353,6 +355,33 @@ export function InstanceDetailPage() {
         <h3 style={{ marginTop: 0 }}>Activity</h3>
         <ActivityLog instanceUuid={instance.uuid} />
       </div>
+
+      {/* Gefahrenzone: nur Owner */}
+      {instance.role === "owner" && (
+        <div style={{ ...cardStyle, borderColor: "#ef9a9a" }}>
+          <h3 style={{ marginTop: 0, color: "#c62828" }}>Instance löschen</h3>
+          {instance.status === "suspended" ? (
+            <p style={{ margin: 0, fontSize: 13, color: "#666" }}>
+              Gesperrte Instances kann nur ein Administrator löschen.
+            </p>
+          ) : deleting ? (
+            <DeleteInstanceForm
+              name={instance.name}
+              status={instance.status}
+              idPrefix="detail-del"
+              onCancel={() => setDeleting(false)}
+              onDelete={async () => {
+                await api.deleteInstance(instance.uuid, instance.name);
+                navigate("/");
+              }}
+            />
+          ) : (
+            <button type="button" onClick={() => setDeleting(true)} style={{ ...btnDefault, color: "#c62828", borderColor: "#ef9a9a" }}>
+              Instance löschen…
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Details */}
       <div style={cardStyle}>

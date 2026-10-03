@@ -1171,6 +1171,20 @@ export const api = {
       { method: "DELETE" }
     ),
 
+  // ── Instance loeschen (M43) ───────────────────────────
+  /** Owner: Body {confirm} muss dem Instance-Namen entsprechen. */
+  deleteInstance: (uuid: string, confirmName: string) =>
+    request<{ uuid: string; message: string }>(`/client/instances/${uuid}`, {
+      method: "DELETE",
+      body: JSON.stringify({ confirm: confirmName }),
+    }),
+  /** Admin: optional `force` bricht laufende Vorgaenge ab. */
+  adminDeleteInstance: (uuid: string, force = false) =>
+    request<{ uuid: string; message: string; runner_cleanup?: string; forced?: boolean }>(`/admin/instances/${uuid}`, {
+      method: "DELETE",
+      body: JSON.stringify(force ? { force: true } : {}),
+    }),
+
   // ── Admin: Suspension (M29) ───────────────────────────
   suspendInstance: (uuid: string, reason?: string) =>
     request<{ message: string; instance: Instance }>(`/admin/instances/${uuid}/suspend`, {
