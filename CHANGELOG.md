@@ -6,6 +6,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added (Phase 2 – Produktions-Deployment)
+- GitHub Actions `.github/workflows/backend.yml`: alle Testskripte plus Migrations-Roundtrip auf SQLite bei Push/PR
 - `POST /api/client/orders/{uuid}/checkout`: 409-Antworten tragen `code` (`manual`, `invalid_status`), `PaymentError.code`
 - `docker-compose.prod.yml`: Container `billing` fuehrt `cli.py billing-tick` alle `BILLING_TICK_INTERVAL` Sekunden (Standard 300) aus; `BILLING_GRACE_DAYS` in `.env.prod.example`
 - `POST/PATCH /api/admin/agents`: Kapazitaetsfelder `memory_total`, `disk_total`, `cpu_total` und `*_overalloc` pflegbar (Ganzzahl >= 0, 0 = kein Limit)
