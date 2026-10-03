@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Blueprint, type BlueprintVariable } from "../services/api";
+import { BlueprintImport } from "../components/BlueprintImport";
 import {
   PageLayout, LoadingState, EmptyState, ErrorState, ConfirmButton,
   Toast, useToast,
@@ -171,6 +172,12 @@ export function AdminBlueprintsPage() {
   return (
     <PageLayout title="Blueprints">
       <Toast {...toast} />
+
+      {/* ── Import (Feature-Flag VITE_BLUEPRINT_IMPORT_ENABLED) ── */}
+      <BlueprintImport
+        onImported={(bp) => { toast.success(`Blueprint '${bp.name}' importiert.`); loadBlueprints(); }}
+        onError={() => { /* Fehler wird im Import-Formular angezeigt */ }}
+      />
 
       {/* ── Erstell-Formular ── */}
       <div style={cardStyle}>

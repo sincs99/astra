@@ -693,6 +693,12 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  /** Pterodactyl-Egg-JSON importieren (Body = das Egg selbst). */
+  importBlueprint: (egg: Record<string, unknown>) =>
+    request<Blueprint>("/admin/blueprints/import", {
+      method: "POST",
+      body: JSON.stringify(egg),
+    }),
   updateBlueprint: (id: number, data: BlueprintUpdate) =>
     request<Blueprint>(`/admin/blueprints/${id}`, {
       method: "PATCH",
