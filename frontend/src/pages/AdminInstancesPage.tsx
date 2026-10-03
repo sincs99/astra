@@ -1,5 +1,6 @@
+import { DeleteInstanceForm } from "../components/DeleteInstanceForm";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   api,
   type Instance,
@@ -40,6 +41,7 @@ export function AdminInstancesPage() {
 
   // Transfer-State
   const [transferringUuid, setTransferringUuid] = useState<string | null>(null);
+  const [deletingUuid, setDeletingUuid] = useState<string | null>(null);
   const [transferTargetAgent, setTransferTargetAgent] = useState<number | "">("");
 
   const handleTransfer = async (uuid: string) => {
@@ -231,7 +233,8 @@ export function AdminInstancesPage() {
                 const ep = endpoints.find(e => e.id === inst.primary_endpoint_id);
                 const isTransferring = transferringUuid === inst.uuid;
                 return (
-                  <tr key={inst.id}>
+                  <Fragment key={inst.id}>
+                  <tr>
                     <td style={tdStyle}>
                       <strong>{inst.name}</strong>
                       {inst.description && <div style={{ fontSize: 12, color: "#666" }}>{inst.description}</div>}
@@ -309,10 +312,42 @@ export function AdminInstancesPage() {
                               }}
                             />
                           )}
+                          <button
+                            type="button"
+                            onClick={() => setDeletingUuid(inst.uuid)}
+                            style={{ padding: "4px 10px", fontSize: 12, border: "1px solid #ef9a9a", borderRadius: 4, cursor: "pointer", backgroundColor: "#fff", color: "#c62828" }}
+                            title="Instance löschen"
+                          >
+                            🗑 Löschen
+                          </button>
                         </div>
                       )}
                     </td>
                   </tr>
+                  {deletingUuid === inst.uuid && (
+                    <tr>
+                      <td colSpan={9} style={{ ...tdStyle, backgroundColor: "#fff8f8" }}>
+                        <DeleteInstanceForm
+                          name={inst.name}
+                          status={inst.status}
+                          allowForce
+                          idPrefix={`del-${inst.id}`}
+                          onCancel={() => setDeletingUuid(null)}
+                          onDelete={async (force) => {
+                            const result = await api.adminDeleteInstance(inst.uuid, force);
+                            toast.success(
+                              result.runner_cleanup === "failed"
+                                ? `"${inst.name}" gelöscht – Aufräumen auf dem Node ist fehlgeschlagen.`
+                                : `"${inst.name}" gelöscht.`,
+                            );
+                            setDeletingUuid(null);
+                            await loadAll();
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>

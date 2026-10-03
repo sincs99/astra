@@ -126,6 +126,8 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `redis` zu `backend/requirements.txt` hinzugefuegt
 
 ### Added (Frontend)
+- Instance loeschen (M43): Owner auf der Detailseite ("Instance loeschen", `DELETE /client/instances/{uuid}` mit Namensbestaetigung; gesperrte Instances nur durch Admins), Admin in der Instance-Liste (`DELETE /admin/instances/{uuid}`, "Erzwingen" bei laufenden Vorgaengen, Hinweis wenn das Aufraeumen auf dem Node fehlschlug). Bestaetigung erst nach exakter Eingabe des Namens (`DeleteInstanceForm`)
+- Agent-Formular (Erstellen/Bearbeiten): Kapazitaet Memory/Disk/CPU gesamt und Ueberallokation je Dimension (0 = kein Limit), Validierung 0..1000 % fuer Ueberallokation
 - Instance-Erstellung mit automatischer Platzierung (M42): Agent-Auswahl "Automatisch (nach Kapazitaet)" als Standard (`agent_id: null`), Endpoint-Feld nur bei gewaehltem Agent, 409-Text der Platzierung wird angezeigt
 - Kapazitaet je Agent auf der Agents-Seite: Memory/Disk/CPU "belegt von effektiv" mit Balken (gemeinsame Komponente `UtilizationBar`, "kein Limit" bei Gesamtwert 0, Progressbar-Semantik)
 - Wings-Status (`DaemonStatus`) auf Fleet Monitoring und Agents-Seite: Badge "Wings erreichbar"/"nicht erreichbar" (Fehler als Tooltip) und Version aus `daemon_reachable`/`daemon_version`/`daemon_error`

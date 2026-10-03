@@ -223,6 +223,12 @@ export interface Agent {
   daemon_sftp: number;
   daemon_base: string;
   upload_size: number;
+  memory_total: number;
+  disk_total: number;
+  cpu_total: number;
+  memory_overalloc: number;
+  disk_overalloc: number;
+  cpu_overalloc: number;
   daemon_token_id: string | null;
   has_daemon_credentials: boolean;
   last_seen_at: string | null;
@@ -240,6 +246,13 @@ export interface AgentCreate {
   daemon_listen?: number;
   daemon_sftp?: number;
   daemon_base?: string;
+  /** Kapazitaet (0 = kein Limit hinterlegt): Memory/Disk in MB, CPU in % (400 = 4 Kerne), Ueberallokation in % */
+  memory_total?: number;
+  disk_total?: number;
+  cpu_total?: number;
+  memory_overalloc?: number;
+  disk_overalloc?: number;
+  cpu_overalloc?: number;
 }
 
 export interface AgentUpdate {
@@ -253,6 +266,13 @@ export interface AgentUpdate {
   daemon_sftp?: number;
   daemon_base?: string;
   upload_size?: number;
+  /** Kapazitaet (0 = kein Limit hinterlegt): Memory/Disk in MB, CPU in % (400 = 4 Kerne), Ueberallokation in % */
+  memory_total?: number;
+  disk_total?: number;
+  cpu_total?: number;
+  memory_overalloc?: number;
+  disk_overalloc?: number;
+  cpu_overalloc?: number;
 }
 
 /** Antwort von GET /admin/agents/{id}/configuration – Inhalt der Wings config.yml */
@@ -1150,6 +1170,20 @@ export const api = {
       `/admin/agents/${agentId}/maintenance`,
       { method: "DELETE" }
     ),
+
+  // ── Instance loeschen (M43) ───────────────────────────
+  /** Owner: Body {confirm} muss dem Instance-Namen entsprechen. */
+  deleteInstance: (uuid: string, confirmName: string) =>
+    request<{ uuid: string; message: string }>(`/client/instances/${uuid}`, {
+      method: "DELETE",
+      body: JSON.stringify({ confirm: confirmName }),
+    }),
+  /** Admin: optional `force` bricht laufende Vorgaenge ab. */
+  adminDeleteInstance: (uuid: string, force = false) =>
+    request<{ uuid: string; message: string; runner_cleanup?: string; forced?: boolean }>(`/admin/instances/${uuid}`, {
+      method: "DELETE",
+      body: JSON.stringify(force ? { force: true } : {}),
+    }),
 
   // ── Admin: Suspension (M29) ───────────────────────────
   suspendInstance: (uuid: string, reason?: string) =>
