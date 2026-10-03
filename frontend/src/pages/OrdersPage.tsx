@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api, type Order } from "../services/api";
 import { formatDate } from "../lib/dates";
 import { formatPrice } from "../lib/money";
+import { OrderNotice } from "../components/OrderNotice";
 import { ConnectionAddress } from "../components/ConnectionAddress";
 import {
   PageLayout, StatusBadge, LoadingState, ErrorState, EmptyState, ConfirmButton, Toast, useToast,
@@ -100,9 +101,7 @@ export function OrdersPage() {
                   <td style={tdStyle}><StatusBadge status={o.status} size="sm" /></td>
                   <td style={tdStyle}>
                     {formatDate(o.current_period_end)}
-                    {o.cancel_at_period_end && o.status !== "cancelled" && (
-                      <div style={{ fontSize: 12, color: "#bf360c" }}>gekündigt zum Laufzeitende</div>
-                    )}
+                    <OrderNotice order={o} />
                   </td>
                   <td style={tdStyle}>
                     <div>{o.instance_name}</div>
