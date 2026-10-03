@@ -103,10 +103,13 @@ def verify_email(token: str) -> User:
 
 
 def resend_verification(email: str) -> None:
-    """Sendet den Link erneut, falls Adresse existiert und unbestaetigt ist. Verraet nichts nach aussen."""
+    """Sendet den Link erneut (Adresse oder Benutzername), falls Konto existiert und unbestaetigt ist. Verraet nichts nach aussen."""
     if not email:
         return
-    user = User.query.filter(db.func.lower(User.email) == email.strip().lower()).first()
+    login = email.strip().lower()
+    user = User.query.filter(
+        db.or_(db.func.lower(User.email) == login, db.func.lower(User.username) == login)
+    ).first()
     if user and user.email_verified_at is None:
         send_verification_email(user)
 
@@ -120,7 +123,7 @@ def request_password_reset(email: str) -> None:
         return
     token = _serializer().dumps({"uid": user.id, "fp": _fingerprint(user)})
     base = current_app.config.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
-    link = f"{base}/reset-password?token={token}"
+    link = f"{base}/password-reset/confirm?token={token}"
     minutes = current_app.config.get("PASSWORD_RESET_TTL_MINUTES", 60)
     send_mail(
         current_app,

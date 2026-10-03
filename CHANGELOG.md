@@ -39,6 +39,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Fixed / Added (E-Mail-Links und Verifizierungs-Frontend)
+- Fix: Der Link in der Passwort-Reset-Mail zeigte auf `/reset-password`, die Frontend-Route heisst `/password-reset/confirm` (Link fuehrte auf die 404-Seite); Tests pruefen jetzt beide Mail-Links gegen die Frontend-Routen
+- `POST /api/auth/resend-verification` akzeptiert zusaetzlich `login` (Benutzername oder Adresse), Antwort bleibt neutral
+- Frontend: neue Seite `/verify-email` (Ziel des Mail-Links), Registrierung zeigt bei aktiver Verifizierung den Hinweis "E-Mail bestaetigen" mit "Erneut senden", Login zeigt bei `email_not_verified` einen Hinweis mit Knopf zum erneuten Senden; `ApiError` traegt HTTP-Status und Fehlercode
+
 ### Removed (M40 – Legacy /api/agent)
 - Der Blueprint `/api/agent` (`instances/{uuid}/install`, `instances/{uuid}/container/status`, `sftp-auth`, `health`) wurde komplett entfernt. Wings und alle Agents nutzen `/api/remote` mit Node-Token. Der Agent-Guard aus M36 samt `AGENT_GUARD_ENABLED` und `test_m36.py` entfaellt damit
 - Frontend: Dev-Knopf "Simuliere Install-Callback" und `api.reportInstallResult` entfernt (er lief seit M36 in einen 403)
@@ -77,7 +82,6 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `FRONTEND_URL` fuer den Link in der Reset-Mail
 - Neue Auth-Pfade unterliegen dem Rate Limiting
 - `backend/test_m34.py` (18 Tests)
-- Noch offen: Frontend-Seiten (Registrieren, Passwort vergessen, E-Mail bestaetigen)
 
 ### Changed
 - Rate Limiting fuer `/api/auth/login` nutzt jetzt Redis (geteilter Zaehler ueber alle Gunicorn-Worker), mit In-Memory-Fallback wenn Redis nicht erreichbar ist (`backend/app/infrastructure/ratelimit.py`)
