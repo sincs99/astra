@@ -171,7 +171,7 @@ export function OrdersPage() {
       );
     }
     if (o.status === "awaiting_provisioning") {
-      return <span style={{ fontSize: 12, color: "#666" }}>Bezahlt, wird bereitgestellt</span>;
+      return <span style={{ fontSize: 12, color: "#666" }}>Bezahlt. Dein Server wird automatisch bereitgestellt, sobald Platz frei ist.</span>;
     }
     return "–";
   };

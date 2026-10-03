@@ -62,7 +62,7 @@ export function ShopPage() {
           {placed.status === "active"
             ? "Dein Server wurde bereitgestellt."
             : placed.status === "awaiting_provisioning"
-              ? "Dein Server wird bereitgestellt, sobald Platz frei ist."
+              ? "Dein Server wird automatisch bereitgestellt, sobald Platz frei ist."
               : "Dein Server wird nach Zahlungseingang freigeschaltet."}{" "}
           <Link to="/orders" style={linkStyle}>Zu meinen Bestellungen</Link>
         </div>
