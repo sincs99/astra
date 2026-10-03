@@ -56,6 +56,7 @@ SSH_KEY_DELETED = "ssh_key:deleted"
 
 # M29: Suspension-Events
 INSTANCE_SUSPENDED = "instance:suspended"
+INSTANCE_DELETED = "instance:deleted"
 INSTANCE_UNSUSPENDED = "instance:unsuspended"
 
 # M30: SFTP-/SSH-Key-Auth-Events

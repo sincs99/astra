@@ -559,6 +559,105 @@ def suspend_instance(instance: Instance, admin_user_id: int, reason: str | None 
     return instance
 
 
+# Status, in denen eine Instance nicht geloescht werden darf (laufende Vorgaenge), ausser mit force
+_DELETE_BLOCKING_STATUSES = (
+    STATUS_PROVISIONING, STATUS_REINSTALLING, STATUS_RESTORING, STATUS_TRANSFERRING,
+)
+
+
+def delete_instance(instance: Instance, actor_id: int | None = None, force: bool = False) -> dict:
+    """Loescht eine Instance samt abhaengiger Daten und gibt ihre Endpoints frei (M43).
+
+    Ablauf:
+    1. Laufende Vorgaenge (provisioning/reinstalling/restoring/transferring) -> 409, ausser `force`
+    2. Runner-Aufraeumen best effort: Backups, Datenbanken und die Instance selbst auf dem Node.
+       Fehler werden geloggt und im Ergebnis gemeldet (`runner_cleanup`), das Panel loescht trotzdem
+    3. Endpoints freigeben, Backups/Datenbanken/Collaborators/Routines (inkl. Actions) entfernen
+    4. Instance loeschen, Activity-Event `instance:deleted` (Activity-Eintraege bleiben erhalten)
+
+    Rueckgabe: {"uuid", "name", "runner_cleanup": "ok"|"failed", "forced": bool}
+    """
+    if instance.status in _DELETE_BLOCKING_STATUSES and not force:
+        raise InstanceActionError(
+            f"Instance ist im Status '{instance.status}' – Loeschen nicht moeglich "
+            f"(Admin kann mit force erzwingen)", 409
+        )
+
+    from app.domain.backups.models import Backup
+    from app.domain.collaborators.models import Collaborator
+    from app.domain.databases.models import Database, DatabaseProvider
+    from app.domain.routines.models import Routine, Action
+
+    instance_id = instance.id
+    info = {"uuid": instance.uuid, "name": instance.name, "owner_id": instance.owner_id,
+            "agent_id": instance.agent_id}
+    runner_ok = True
+
+    agent = db.session.get(Agent, instance.agent_id)
+    runner = get_runner()
+
+    # ── Externe Aufraeumarbeiten (best effort) ──────────
+    if agent:
+        for backup in Backup.query.filter_by(instance_id=instance_id).all():
+            try:
+                runner.delete_backup(agent, instance, backup)
+            except Exception as e:
+                runner_ok = False
+                logger.warning("Instance-Loeschung: Backup %s nicht entfernt: %s", backup.uuid, e)
+        try:
+            response = runner.delete_instance(agent, instance)
+            if response is not None and getattr(response, "success", True) is False:
+                runner_ok = False
+                logger.warning("Instance-Loeschung: Runner meldet Fehler fuer %s: %s",
+                               instance.uuid, getattr(response, "message", ""))
+        except Exception as e:
+            runner_ok = False
+            logger.warning("Instance-Loeschung: Runner-Fehler fuer %s: %s", instance.uuid, e)
+    else:
+        runner_ok = False
+        logger.warning("Instance-Loeschung: Agent %s nicht gefunden", instance.agent_id)
+
+    for database in Database.query.filter_by(instance_id=instance_id).all():
+        try:
+            from app.infrastructure.database.adapter import get_db_adapter
+            provider = db.session.get(DatabaseProvider, database.provider_id)
+            get_db_adapter().drop_database(provider, database.db_name, database.username)
+        except Exception as e:
+            logger.warning("Instance-Loeschung: DB '%s' nicht entfernt: %s", database.db_name, e)
+
+    # ── Panel-Daten in einer Transaktion ────────────────
+    try:
+        instance.primary_endpoint_id = None
+        for endpoint in Endpoint.query.filter_by(instance_id=instance_id).all():
+            endpoint.instance_id = None
+        db.session.flush()
+
+        for routine in Routine.query.filter_by(instance_id=instance_id).all():
+            Action.query.filter_by(routine_id=routine.id).delete(synchronize_session=False)
+            db.session.delete(routine)
+        Backup.query.filter_by(instance_id=instance_id).delete(synchronize_session=False)
+        Database.query.filter_by(instance_id=instance_id).delete(synchronize_session=False)
+        Collaborator.query.filter_by(instance_id=instance_id).delete(synchronize_session=False)
+        db.session.delete(instance)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+    logger.info("Instance %s (%s) geloescht (runner_cleanup=%s, force=%s)",
+                info["name"], info["uuid"], "ok" if runner_ok else "failed", force)
+
+    from app.domain.activity.events import log_instance_event, INSTANCE_DELETED
+    log_instance_event(
+        INSTANCE_DELETED, instance_id, actor_id,
+        f"Instance '{info['name']}' geloescht",
+        {**info, "runner_cleanup": "ok" if runner_ok else "failed", "forced": force},
+    )
+
+    return {"uuid": info["uuid"], "name": info["name"],
+            "runner_cleanup": "ok" if runner_ok else "failed", "forced": force}
+
+
 def unsuspend_instance(instance: Instance, admin_user_id: int) -> Instance:
     """Hebt die Suspension einer Instance auf.
 

@@ -197,6 +197,37 @@ def reinstall_endpoint(uuid: str):
         return jsonify({"error": e.message}), e.status_code
 
 
+# ── Loeschen (M43) ─────────────────────────────────────
+
+@client_bp.route("/instances/<uuid>", methods=["DELETE"])
+def delete_instance_endpoint(uuid: str):
+    """Loescht die Instance (nur Owner). Body: {"confirm": "<Name der Instance>"}.
+
+    Suspendierte Instances koennen nicht geloescht werden (Admin-Sperre).
+    """
+    from app.domain.instances.service import delete_instance
+
+    user_id, err = _require_auth()
+    if err:
+        return err
+    instance, err = _require_owner(uuid, user_id)
+    if err:
+        return err
+    _, err = _require_not_suspended(instance)
+    if err:
+        return err
+
+    data = request.get_json(silent=True) or {}
+    if data.get("confirm") != instance.name:
+        return jsonify({"error": "Bestaetigung fehlt: 'confirm' muss dem Namen der Instance entsprechen"}), 400
+
+    try:
+        result = delete_instance(instance, user_id)
+    except InstanceActionError as e:
+        return jsonify({"error": e.message}), e.status_code
+    return jsonify({"uuid": result["uuid"], "message": "Instance geloescht"})
+
+
 # ── Config-Update (M16) ────────────────────────────────
 
 @client_bp.route("/instances/<uuid>/build", methods=["PATCH"])

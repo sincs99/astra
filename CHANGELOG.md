@@ -42,6 +42,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M43 – Instance loeschen)
+- `delete_instance(instance, actor_id, force)` im Instance-Service: Runner-Aufraeumen best effort (Backups, Datenbanken, Instance auf dem Node; Fehler werden geloggt und als `runner_cleanup: "failed"` gemeldet, das Panel loescht trotzdem), Endpoints werden freigegeben (Zeilen bleiben), Backups/Datenbanken/Collaborators/Routines inkl. Actions werden entfernt, Activity-Eintraege bleiben erhalten
+- Laufende Vorgaenge (`provisioning`, `reinstalling`, `restoring`, `transferring`) -> 409, ausser Admin mit `force: true`
+- `DELETE /api/admin/instances/{uuid}` (Admin-Guard, optional `{"force": true}`) und `DELETE /api/client/instances/{uuid}` (nur Owner, Body `{"confirm": "<Name>"}` case-sensitiv, suspendierte Instances -> 409, Collaborators und Fremde -> 404, `force` fuer Owner nicht moeglich)
+- Neues Activity-/Webhook-Event `instance:deleted` (mit Name, UUID, Owner, Agent, `runner_cleanup`, `forced`)
+- `backend/test_m43.py` (40 Tests)
+
 ### Added (M42 – Kapazitaetspruefung und Platzierung)
 - `backend/app/domain/agents/placement.py`: `capacity_problem()`, `used_resources()` und `pick_agent(memory, disk, cpu)` (aktiv, nicht in Wartung, freier Endpoint, genug freie effektive Kapazitaet inkl. Overalloc; Auswahl nach geringster Auslastung nach der Platzierung, Gleichstand: weniger Instanzen, kleinere ID)
 - `create_instance` bricht mit 409 ab, wenn RAM, Disk oder CPU des gewaehlten Agents nicht reichen (Meldung nennt Dimension und freien Rest); Agents mit `*_total = 0` gelten je Dimension als ohne Limit. Zeilensperre auf dem Agent serialisiert parallele Erstellungen auf PostgreSQL
