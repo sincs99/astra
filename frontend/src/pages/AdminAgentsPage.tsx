@@ -85,6 +85,12 @@ export function AdminAgentsPage() {
         daemon_listen: payload.daemon_listen,
         daemon_sftp: payload.daemon_sftp,
         daemon_base: payload.daemon_base,
+        memory_total: payload.memory_total,
+        disk_total: payload.disk_total,
+        cpu_total: payload.cpu_total,
+        memory_overalloc: payload.memory_overalloc,
+        disk_overalloc: payload.disk_overalloc,
+        cpu_overalloc: payload.cpu_overalloc,
       });
       setForm({ ...EMPTY_AGENT_FORM });
       toast.success("Agent erstellt. Node-Credentials wurden erzeugt – config.yml abrufen.");
@@ -459,6 +465,38 @@ function AgentFormFields({ values, onChange, idPrefix, showActive }: AgentFormFi
           </div>
         )}
       </div>
+      <fieldset style={{ border: "1px solid #e0e0e0", borderRadius: 6, marginTop: 12, padding: "8px 12px" }}>
+        <legend style={{ fontSize: 13, fontWeight: 600, color: "#555", padding: "0 4px" }}>Kapazität (0 = kein Limit)</legend>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          {([
+            ["memory", "Memory gesamt (MB)", "memoryTotal"],
+            ["disk", "Disk gesamt (MB)", "diskTotal"],
+            ["cpu", "CPU gesamt (%)", "cpuTotal"],
+          ] as const).map(([key, label, field]) => (
+            <div key={key}>
+              <label htmlFor={id(`${key}-total`)} style={labelStyle}>{label}</label>
+              <input id={id(`${key}-total`)} type="number" min={0} value={values[field]}
+                onChange={e => set(field, e.target.value)} style={{ ...inputStyle, width: 150 }} />
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
+          {([
+            ["memory", "Memory-Überallokation (%)", "memoryOveralloc"],
+            ["disk", "Disk-Überallokation (%)", "diskOveralloc"],
+            ["cpu", "CPU-Überallokation (%)", "cpuOveralloc"],
+          ] as const).map(([key, label, field]) => (
+            <div key={key}>
+              <label htmlFor={id(`${key}-over`)} style={labelStyle}>{label}</label>
+              <input id={id(`${key}-over`)} type="number" min={0} max={1000} value={values[field]}
+                onChange={e => set(field, e.target.value)} style={{ ...inputStyle, width: 190 }} />
+            </div>
+          ))}
+        </div>
+        <small style={{ color: "#666", fontSize: 12 }}>
+          Effektive Kapazität = Gesamt × (1 + Überallokation). Bei 0 wird der Agent bei der automatischen Platzierung nicht nach dieser Dimension begrenzt.
+        </small>
+      </fieldset>
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
           <input type="checkbox" checked={values.behindProxy} onChange={e => set("behindProxy", e.target.checked)} />

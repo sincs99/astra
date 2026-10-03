@@ -28,6 +28,23 @@ describe("toAgentPayload", () => {
     expect(toAgentPayload({ ...valid, sftp: "x" })).toMatch(/SFTP-Port/);
   });
 
+  it("uebernimmt Kapazitaet und Ueberallokation, 0 bedeutet kein Limit", () => {
+    expect(toAgentPayload(valid)).toMatchObject({
+      memory_total: 0, disk_total: 0, cpu_total: 0, memory_overalloc: 0, disk_overalloc: 0, cpu_overalloc: 0,
+    });
+    expect(toAgentPayload({ ...valid, memoryTotal: "16384", diskTotal: "500000", cpuTotal: "800", memoryOveralloc: "50", cpuOveralloc: "100" }))
+      .toMatchObject({ memory_total: 16384, disk_total: 500000, cpu_total: 800, memory_overalloc: 50, cpu_overalloc: 100 });
+  });
+
+  it("lehnt ungueltige Kapazitaetswerte mit Meldung ab", () => {
+    expect(toAgentPayload({ ...valid, memoryTotal: "-1" })).toMatch(/Memory gesamt/);
+    expect(toAgentPayload({ ...valid, diskTotal: "1.5" })).toMatch(/Disk gesamt/);
+    expect(toAgentPayload({ ...valid, cpuTotal: "x" })).toMatch(/CPU gesamt/);
+    expect(toAgentPayload({ ...valid, memoryOveralloc: "1001" })).toMatch(/Memory-Ueberallokation/);
+    expect(toAgentPayload({ ...valid, diskOveralloc: "-5" })).toMatch(/Disk-Ueberallokation/);
+    expect(toAgentPayload({ ...valid, cpuOveralloc: "abc" })).toMatch(/CPU-Ueberallokation/);
+  });
+
   it("nutzt Defaults fuer leeres Datenverzeichnis und ungueltige Upload-Groesse", () => {
     const payload = toAgentPayload({ ...valid, base: "  ", uploadSize: "-5" });
     expect(payload).toMatchObject({ daemon_base: "/var/lib/pterodactyl/volumes", upload_size: 100 });
@@ -39,9 +56,11 @@ describe("agentToForm", () => {
     const agent = {
       name: "N", fqdn: "f", scheme: "http", behind_proxy: true, daemon_connect: 443, daemon_listen: 8080,
       daemon_sftp: 2022, daemon_base: "/v", upload_size: 50, is_active: false,
+      memory_total: 8192, disk_total: 100000, cpu_total: 400, memory_overalloc: 20, disk_overalloc: 0, cpu_overalloc: 50,
     } as Agent;
     expect(agentToForm(agent)).toMatchObject({
       connect: "443", listen: "8080", uploadSize: "50", isActive: false, behindProxy: true, connectTouched: true,
+      memoryTotal: "8192", diskTotal: "100000", cpuTotal: "400", memoryOveralloc: "20", cpuOveralloc: "50",
     });
   });
 });
