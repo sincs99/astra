@@ -92,6 +92,9 @@ class Config:
 
     # ── Accounts / Mail ─────────────────────────────────
     REGISTRATION_ENABLED = os.getenv("REGISTRATION_ENABLED", "false").lower() == "true"
+    # M38: Login erst nach bestaetigter E-Mail-Adresse (Registrierung sendet Verifizierungs-Link)
+    EMAIL_VERIFICATION_REQUIRED = os.getenv("EMAIL_VERIFICATION_REQUIRED", "false").lower() == "true"
+    EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "48"))
     PASSWORD_RESET_TTL_MINUTES = int(os.getenv("PASSWORD_RESET_TTL_MINUTES", "60"))
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
     MAIL_SERVER = os.getenv("MAIL_SERVER", "")

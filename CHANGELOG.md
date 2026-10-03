@@ -16,6 +16,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `AGENT_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus
 - `backend/test_m36.py` (17 Tests)
 
+### Added (M38 – E-Mail-Verifizierung)
+- `EMAIL_VERIFICATION_REQUIRED` (Standard `false`): Registrierung sendet einen Bestaetigungs-Link (`EMAIL_VERIFICATION_TTL_HOURS`, Standard 48), Login ist erst nach Bestaetigung moeglich (403, `code: email_not_verified`)
+- `POST /api/auth/verify-email` und `POST /api/auth/resend-verification` (antwortet immer gleich); Token ist an die Adresse gebunden
+- Neue Spalte `users.email_verified_at` (Migration `m3h4i5j6k7l8`): bestehende Nutzer werden mit `created_at` als bestaetigt markiert, vom Admin angelegte Nutzer und der Bootstrap-Admin ebenfalls; ein erfolgreicher Passwort-Reset bestaetigt die Adresse
+- `User.to_dict()` liefert `email_verified`
+- `backend/test_m38.py` (22 Tests)
+
 ### Added (M37 – Egg-Import)
 - `backend/app/domain/blueprints/egg_import.py`: `convert_egg()` wandelt Pterodactyl-Eggs (PTDL_v1/v2) und Pelican-Eggs (PLCN_v1..v3) in Blueprint-Felder um (JSON-String-Configs, `docker_images`, `startup_commands`, `env_variable` -> `env_var`, `^C` -> `^SIGINT`); Platzhalter bleiben unveraendert
 - `POST /api/admin/blueprints/import` – Egg oder natives Blueprint-JSON (`"format": "astra"`) -> 201 mit Blueprint, 400 bei ungueltigen Daten
@@ -30,7 +37,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `FRONTEND_URL` fuer den Link in der Reset-Mail
 - Neue Auth-Pfade unterliegen dem Rate Limiting
 - `backend/test_m34.py` (18 Tests)
-- Noch offen: E-Mail-Verifizierung bei Registrierung, Frontend-Seiten (Registrieren, Passwort vergessen)
+- Noch offen: Frontend-Seiten (Registrieren, Passwort vergessen, E-Mail bestaetigen)
 
 ### Changed
 - Rate Limiting fuer `/api/auth/login` nutzt jetzt Redis (geteilter Zaehler ueber alle Gunicorn-Worker), mit In-Memory-Fallback wenn Redis nicht erreichbar ist (`backend/app/infrastructure/ratelimit.py`)

@@ -1,5 +1,6 @@
 """Admin-API-Routen (inkl. M22 Fleet Monitoring)."""
 
+from datetime import datetime, timezone
 from flask import Blueprint, current_app, jsonify, request
 from app.extensions import db
 from app.domain.agents.models import Agent
@@ -176,6 +177,7 @@ def create_user():
         username=username,
         email=email,
         is_admin=data.get("is_admin", False),
+        email_verified_at=datetime.now(timezone.utc),  # vom Admin angelegt = bestaetigt
     )
     user.set_password(password)
     db.session.add(user)

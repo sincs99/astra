@@ -184,6 +184,8 @@ def _register_rate_limiting(app: Flask) -> None:
         auth_paths = [
             "/api/auth/login",
             "/api/auth/register",
+            "/api/auth/verify-email",
+            "/api/auth/resend-verification",
             "/api/auth/password-reset/request",
             "/api/auth/password-reset/confirm",
         ]
@@ -453,6 +455,7 @@ def bootstrap_admin(
         username=username,
         email=email,
         is_admin=True,
+        email_verified_at=datetime.now(timezone.utc),
     )
     admin.set_password(password)
     db.session.add(admin)

@@ -20,6 +20,9 @@ class User(db.Model):
     mfa_enabled = db.Column(db.Boolean, default=False)
     mfa_recovery_codes = db.Column(db.JSON, nullable=True)  # Liste von Recovery-Codes
 
+    # M38: E-Mail-Verifizierung (None = nicht bestaetigt)
+    email_verified_at = db.Column(db.DateTime, nullable=True)
+
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -45,6 +48,7 @@ class User(db.Model):
             "email": self.email,
             "is_admin": self.is_admin,
             "mfa_enabled": self.mfa_enabled or False,
+            "email_verified": self.email_verified_at is not None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
