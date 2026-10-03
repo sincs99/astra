@@ -572,9 +572,11 @@ def get_order_route(uuid: str):
 def mark_order_paid_route(uuid: str):
     """Bestellung als bezahlt markieren und Instance bereitstellen (manueller Zahlungsweg).
 
-    Body (optional): {"payment_reference": "Ueberweisung 2026-10-03"}.
-    Idempotent: eine bereits aktive Bestellung bleibt unveraendert. Eine bezahlte Bestellung
-    ohne Instance (awaiting_provisioning) wird erneut bereitgestellt.
+    Body: {"payment_reference": "Ueberweisung 2026-10-03"} (bei der ersten Zahlung optional).
+    - pending_payment: erste Zahlung, Instance wird bereitgestellt
+    - awaiting_provisioning: Instance wird erneut bereitgestellt (Zahlung nicht doppelt verbucht)
+    - active / past_due: Verlaengerung um eine Laufzeit; `payment_reference` ist Pflicht (400) und
+      macht den Aufruf idempotent: dieselbe Referenz verlaengert nie zweimal
     """
     from app.domain.auth.service import get_current_user
     from app.domain.billing.models import Order

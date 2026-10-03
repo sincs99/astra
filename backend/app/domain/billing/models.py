@@ -6,7 +6,7 @@ aenderungen bestehende Bestellungen nicht veraendern.
 """
 
 import uuid as _uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from app.extensions import db
 
@@ -29,7 +29,8 @@ ORDER_COUNTING_STATUSES = (
 
 
 def _now():
-    return datetime.now(timezone.utc)
+    """Naive UTC (die DateTime-Spalten sind ohne Zeitzone; vermeidet Serverzeitzonen-Effekte)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Product(db.Model):
@@ -109,10 +110,14 @@ class Order(db.Model):
     billing_period_days = db.Column(db.Integer, nullable=False)
     snapshot = db.Column(db.JSON, nullable=False)  # {product_name, blueprint_id, memory, swap, disk, io, cpu}
 
-    payment_reference = db.Column(db.String(191), nullable=True)
+    payment_reference = db.Column(db.String(191), nullable=True)  # zuletzt verbuchte Zahlung
+    # Alle verbuchten Zahlungsreferenzen: macht Verlaengerungen idempotent (kein doppeltes Verbuchen)
+    payment_references = db.Column(db.JSON, nullable=True, default=list)
     paid_at = db.Column(db.DateTime, nullable=True)
     current_period_end = db.Column(db.DateTime, nullable=True)
     cancel_at_period_end = db.Column(db.Boolean, nullable=False, default=False)
+    # Seit wann die Bestellung ueberfaellig ist (Beginn der Karenzzeit, M46)
+    past_due_at = db.Column(db.DateTime, nullable=True)
     cancelled_at = db.Column(db.DateTime, nullable=True)
 
     created_at = db.Column(db.DateTime, default=_now)
@@ -122,8 +127,22 @@ class Order(db.Model):
     product = db.relationship("Product", lazy=True)
     instance = db.relationship("Instance", lazy=True)
 
+    def scheduled_deletion_at(self):
+        """Zeitpunkt, zu dem der Server geloescht wird (None, wenn nichts ansteht)."""
+        if self.status == ORDER_ACTIVE and self.cancel_at_period_end:
+            return self.current_period_end
+        if self.status == ORDER_PAST_DUE:
+            if self.cancel_at_period_end:
+                return self.current_period_end
+            if self.past_due_at:
+                from flask import current_app
+                days = current_app.config.get("BILLING_GRACE_DAYS", 7)
+                return self.past_due_at + timedelta(days=days)
+        return None
+
     def to_dict(self, include_user: bool = False) -> dict:
         inst = self.instance
+        deletion = self.scheduled_deletion_at()
         d = {
             "id": self.id,
             "uuid": self.uuid,
@@ -142,6 +161,8 @@ class Order(db.Model):
             "paid_at": self.paid_at.isoformat() if self.paid_at else None,
             "current_period_end": self.current_period_end.isoformat() if self.current_period_end else None,
             "cancel_at_period_end": bool(self.cancel_at_period_end),
+            "past_due_at": self.past_due_at.isoformat() if self.past_due_at else None,
+            "scheduled_deletion_at": deletion.isoformat() if deletion else None,
             "cancelled_at": self.cancelled_at.isoformat() if self.cancelled_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
