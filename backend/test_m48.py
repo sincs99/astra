@@ -118,6 +118,7 @@ check("Standard-Anbieter ist manual", app.config["PAYMENT_PROVIDER"] == "manual"
 o_manual = new_order()
 r = c.post(f"/api/client/orders/{o_manual}/checkout", headers=U1)
 check("Checkout mit manual -> 409 mit Ueberweisungs-Hinweis", r.status_code == 409 and "Ueberweisung" in r.json["error"], r.get_data(as_text=True))
+check("Checkout mit manual -> code 'manual' fuer das Frontend", r.json.get("code") == "manual", r.get_data(as_text=True))
 check("billing-info: manual, kein Online-Zahlen", c.get("/api/client/billing-info").json == {"payment_provider": "manual", "online_payment": False})
 r = webhook(event_body(o_manual))
 check("Webhook mit manual -> 404", r.status_code == 404)
@@ -149,7 +150,9 @@ with mock.patch.object(stripe.checkout.Session, "create", return_value=mock.Mock
     check("Antwort ohne URL -> 502", c.post(f"/api/client/orders/{o1}/checkout", headers=U1).status_code == 502)
 o_cancel = new_order()
 c.post(f"/api/client/orders/{o_cancel}/cancel", headers=U1)
-check("stornierte Bestellung -> 409", c.post(f"/api/client/orders/{o_cancel}/checkout", headers=U1).status_code == 409)
+r_cancel = c.post(f"/api/client/orders/{o_cancel}/checkout", headers=U1)
+check("stornierte Bestellung -> 409", r_cancel.status_code == 409)
+check("stornierte Bestellung -> code 'invalid_status'", r_cancel.json.get("code") == "invalid_status", r_cancel.get_data(as_text=True))
 r = c.post("/api/admin/products", json={"name": "Yen", "blueprint_id": ids["bp"], "memory": 256, "disk": 500, "cpu": 50,
                                          "price_cents": 500, "currency": "JPY"}, headers=AH)
 o_jpy = new_order(product=r.json["id"])
