@@ -91,7 +91,7 @@ export function AdminInstancesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !ownerId || !agentId || !blueprintId) return;
+    if (!name.trim() || !ownerId || !blueprintId) return;
 
     try {
       setSubmitting(true);
@@ -100,7 +100,7 @@ export function AdminInstancesPage() {
         name: name.trim(),
         description: description.trim() || undefined,
         owner_id: ownerId as number,
-        agent_id: agentId as number,
+        agent_id: agentId ? (agentId as number) : null,
         blueprint_id: blueprintId as number,
         endpoint_id: endpointId ? (endpointId as number) : undefined,
         memory, swap, disk, io, cpu,
@@ -146,9 +146,9 @@ export function AdminInstancesPage() {
               </select>
             </div>
             <div>
-              <label htmlFor="fld-11" style={labelStyle}>Agent *</label>
-              <select id="fld-11" value={agentId} onChange={e => { setAgentId(e.target.value ? Number(e.target.value) : ""); setEndpointId(""); }} required style={inputStyle}>
-                <option value="">– Wählen –</option>
+              <label htmlFor="fld-11" style={labelStyle}>Agent</label>
+              <select id="fld-11" value={agentId} onChange={e => { setAgentId(e.target.value ? Number(e.target.value) : ""); setEndpointId(""); }} style={inputStyle}>
+                <option value="">Automatisch (nach Kapazität)</option>
                 {agents.map(a => <option key={a.id} value={a.id}>{a.name} ({a.fqdn})</option>)}
               </select>
             </div>
@@ -161,16 +161,22 @@ export function AdminInstancesPage() {
             </div>
           </div>
 
-          <div style={{ marginTop: 12 }}>
-            <label htmlFor="fld-13" style={labelStyle}>Endpoint (optional – sonst automatisch)</label>
-            <select id="fld-13" value={endpointId} onChange={e => setEndpointId(e.target.value ? Number(e.target.value) : "")} style={inputStyle} disabled={!agentId}>
-              <option value="">– Automatisch zuweisen –</option>
-              {freeEndpoints.map(ep => <option key={ep.id} value={ep.id}>{ep.ip}:{ep.port}</option>)}
-            </select>
-            {agentId && freeEndpoints.length === 0 && (
-              <small style={{ color: "#d32f2f" }}>Keine freien Endpoints auf diesem Agent verfügbar.</small>
-            )}
-          </div>
+          {agentId ? (
+            <div style={{ marginTop: 12 }}>
+              <label htmlFor="fld-13" style={labelStyle}>Endpoint (optional – sonst automatisch)</label>
+              <select id="fld-13" value={endpointId} onChange={e => setEndpointId(e.target.value ? Number(e.target.value) : "")} style={inputStyle}>
+                <option value="">– Automatisch zuweisen –</option>
+                {freeEndpoints.map(ep => <option key={ep.id} value={ep.id}>{ep.ip}:{ep.port}</option>)}
+              </select>
+              {freeEndpoints.length === 0 && (
+                <small style={{ color: "#c62828" }}>Keine freien Endpoints auf diesem Agent verfügbar.</small>
+              )}
+            </div>
+          ) : (
+            <p style={{ margin: "12px 0 0", fontSize: 12, color: "#666" }}>
+              Astra wählt den Agent mit freiem Endpoint und genug Kapazität und weist den Endpoint automatisch zu.
+            </p>
+          )}
 
           <div style={{ ...grid5, marginTop: 12 }}>
             {[
