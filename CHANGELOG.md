@@ -11,7 +11,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `backend/app/infrastructure/mail.py` – SMTP-Versand (`MAIL_SERVER`, `MAIL_PORT`, `MAIL_USE_TLS`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`), ohne `MAIL_SERVER` nur Logging
 - `FRONTEND_URL` fuer den Link in der Reset-Mail
 - Neue Auth-Pfade unterliegen dem Rate Limiting
-- `backend/test_m33.py` (18 Tests)
+- `backend/test_m34.py` (18 Tests)
 - Noch offen: E-Mail-Verifizierung bei Registrierung, Frontend-Seiten (Registrieren, Passwort vergessen)
 
 ### Changed

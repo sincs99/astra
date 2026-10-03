@@ -1,4 +1,4 @@
-"""Tests fuer Selbstregistrierung und Passwort-Reset."""
+"""M34 – Tests fuer Selbstregistrierung und Passwort-Reset."""
 
 import sys
 import os
