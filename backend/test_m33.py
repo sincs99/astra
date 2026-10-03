@@ -8,7 +8,7 @@ d) SFTP-Auth im Wings-Format (Passwort, Public Key, Collaborator-Mapping, Suspen
 e) Activity-Ingestion
 f) Backup-/Restore-Callbacks (asynchroner Abschluss)
 g) Admin: Credentials beim Anlegen, config.yml-Export, Rotation, PATCH, Blueprint-Felder, Admin-Schutz
-h) Regression: /api/agent-Endpunkte und Stub-Backups funktionieren weiter
+h) Regression: Legacy /api/agent ist entfernt, Stub-Backups funktionieren weiter
 """
 
 import sys
@@ -819,13 +819,7 @@ check("Blueprint-Liste enthaelt Wings-Felder", all("config_stop" in b for b in r
 print("\n=== h) Regression ===")
 
 resp = client.get("/api/agent/health")
-check("Alter Agent-Endpunkt /api/agent/health weiterhin ok", resp.status_code == 200)
-
-resp = client.post(f"/api/agent/instances/{_inst_uuid}/container/status", json={"state": "running"})
-check("Alter Container-Status-Endpunkt weiterhin ok", resp.status_code == 200)
-
-resp = client.post("/api/agent/sftp-auth", json={"username": "m33-owner", "instance_uuid": _inst_uuid, "public_key": KEY_OWNER})
-check("Alter /api/agent/sftp-auth weiterhin ok", resp.status_code == 200 and resp.get_json()["allowed"] is True)
+check("Legacy /api/agent ist entfernt (M40) -> 404", resp.status_code == 404)
 
 resp = client.get("/api/admin/agents")
 check("GET /api/admin/agents ohne daemon_token", all("daemon_token" not in a for a in resp.get_json()))

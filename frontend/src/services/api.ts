@@ -980,16 +980,6 @@ export const api = {
   deleteDatabase: (uuid: string, dbId: number) =>
     request<{ message: string }>(`/client/instances/${uuid}/databases/${dbId}`, { method: "DELETE" }),
 
-  // ── Agent: Callbacks (fuer lokale Tests) ──────────────
-  reportInstallResult: (uuid: string, successful: boolean) =>
-    request<{ uuid: string; status: string; message: string }>(
-      `/agent/instances/${uuid}/install`,
-      {
-        method: "POST",
-        body: JSON.stringify({ successful }),
-      }
-    ),
-
   // ── Admin: Fleet Monitoring (M22) ─────────────────────
   getAgentsMonitoring: (params?: { health?: string; search?: string; stale_threshold?: number }) => {
     const p = new URLSearchParams();

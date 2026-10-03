@@ -325,9 +325,9 @@ print("\n== Agent-Routen unberuehrt ==")
 with app.app_context():
     client = app.test_client()
 
-    # Agent Health ohne Auth
-    resp = client.get("/api/agent/health")
-    check("Agent Health ohne Auth -> 200", resp.status_code == 200)
+    # Remote-API verlangt Node-Token statt User-Auth
+    resp = client.get("/api/remote/servers")
+    check("Remote-API ohne Token -> 401", resp.status_code == 401)
 
     # Agent Install-Callback ohne User-Auth (agent-auth bleibt eigene Logik)
     from app.domain.instances.models import Instance
@@ -360,12 +360,10 @@ with app.app_context():
     inst.primary_endpoint_id = ep.id
     db.session.commit()
 
-    # Container-Status Callback ohne User-Auth
-    resp = client.post(
-        f"/api/agent/instances/{inst.uuid}/container/status",
-        json={"state": "running"},
-    )
-    check("Agent container_status ohne Auth -> 200", resp.status_code == 200)
+    # Container-Status Callback mit Node-Token, ohne User-Auth
+    from test_helpers import report_container_state
+    resp = report_container_state(client, inst.uuid, "running")
+    check("Agent container_status ohne User-Auth -> 200", resp.status_code == 200)
 
 
 # ================================================================

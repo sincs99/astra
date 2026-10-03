@@ -26,7 +26,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
-### Security (M36 – Agent-Guard)
+### Removed (M40 – Legacy /api/agent)
+- Der Blueprint `/api/agent` (`instances/{uuid}/install`, `instances/{uuid}/container/status`, `sftp-auth`, `health`) wurde komplett entfernt. Wings und alle Agents nutzen `/api/remote` mit Node-Token. Der Agent-Guard aus M36 samt `AGENT_GUARD_ENABLED` und `test_m36.py` entfaellt damit
+- Frontend: Dev-Knopf "Simuliere Install-Callback" und `api.reportInstallResult` entfernt (er lief seit M36 in einen 403)
+- Tests M15–M20, M27, M30, M33 nutzen jetzt die Remote-API ueber `backend/test_helpers.py` (`report_container_state`, `report_install`, `node_headers`); der Fingerprint-Pfad der Legacy-Route ist weiter ueber `authorize_ssh_key_access()` abgedeckt (M30 b)
+- `backend/test_m40.py` (11 Tests) stellt sicher, dass `/api/agent/*` 404 liefert und `/api/remote` Token verlangt
+
+### Security (M36 – Agent-Guard, durch M40 abgeloest)
 - `/api/agent/*` verlangt jetzt den Node-Token (`Authorization: Bearer {token_id}.{token}`, gleiche Pruefung wie `/api/remote`). Ausnahme: `GET /api/agent/health`
 - Ein Agent darf nur Instanzen seines eigenen Nodes melden (`install`, `container/status` -> 403, `sftp-auth` -> `allowed: false, reason: instance_not_on_node`)
 - Schalter `AGENT_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus

@@ -277,6 +277,7 @@ def _import_models() -> None:
     from app.domain.webhooks import models as _webhooks  # noqa: F401
     from app.domain.databases import models as _databases  # noqa: F401
     from app.domain.auth import models as _auth_models  # noqa: F401
+    from app.domain.ssh_keys import models as _ssh_keys  # noqa: F401
     from app.infrastructure.jobs import models as _job_models  # noqa: F401
 
 
@@ -288,13 +289,11 @@ def _register_blueprints(app: Flask) -> None:
 
     from app.api.admin.routes import admin_bp
     from app.api.client.routes import client_bp
-    from app.api.agent.routes import agent_bp
     from app.api.auth.routes import auth_bp
     from app.api.remote.routes import remote_bp
 
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
     app.register_blueprint(client_bp, url_prefix="/api/client")
-    app.register_blueprint(agent_bp, url_prefix="/api/agent")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     # M33: Wings Remote-API (Node-Token-Auth, Pfade wie im Referenz-Panel)
     app.register_blueprint(remote_bp, url_prefix="/api/remote")

@@ -42,6 +42,6 @@
 - SSL/TLS-Terminierung wird von externem Reverse Proxy erwartet.
 
 ### Sicherheit
-- `/api/admin` (Admin-Guard, M35) und `/api/agent` (Node-Token, M36) sind geschuetzt. Die Legacy-Routen unter `/api/agent` werden von Wings nicht benutzt (Wings nutzt `/api/remote`) und koennen langfristig entfallen.
+- `/api/admin` ist durch einen Admin-Guard geschuetzt (M35), Agents sprechen nur noch ueber `/api/remote` mit Node-Token. Die Legacy-Routen unter `/api/agent` wurden mit M40 entfernt.
 - Rate Limiting nutzt Redis (`REDIS_URL`); ist Redis nicht erreichbar, faellt es auf einen In-Memory-Zaehler pro Prozess zurueck.
 - CSRF-Schutz ist ueber SameSite Cookies + JWT geloest, kein dedizierter CSRF-Token.
