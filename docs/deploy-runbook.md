@@ -90,7 +90,7 @@ ADMIN_PASSWORD=<starkes Passwort, nach dem ersten Login ändern>
 ./scripts/deploy.sh --bootstrap
 ```
 
-Das Skript baut die Images, startet Caddy, Postgres, Redis, Backend, Worker und Frontend, wartet bis die Migrationen durch sind und legt den Admin an. Caddy holt beim ersten Aufruf das Let's-Encrypt-Zertifikat, das dauert bis zu einer Minute.
+Das Skript baut die Images, startet Caddy, Postgres, Redis, Backend, Worker, Billing-Tick und Frontend, wartet bis die Migrationen durch sind und legt den Admin an. Caddy holt beim ersten Aufruf das Let's-Encrypt-Zertifikat, das dauert bis zu einer Minute.
 
 Prüfen:
 
@@ -218,6 +218,7 @@ Dann unter **Admin → Instances** eine Instanz anlegen: Blueprint Paper, Agent 
 | Logs | `docker compose logs -f backend` / `journalctl -u wings -f` |
 | Backup (täglich per Cron) | `0 3 * * * cd /opt/astra && ./scripts/backup.sh >> /var/log/astra-backup.log 2>&1` |
 | Node-Credentials rotieren | Panel → Agent → *Credentials rotieren*, dann `install-wings.sh` erneut ausführen |
+| Billing-Tick manuell | `docker compose exec backend python cli.py billing-tick` (läuft sonst automatisch alle 5 Minuten im Container `billing`) |
 
 ---
 

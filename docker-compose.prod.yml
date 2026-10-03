@@ -43,6 +43,7 @@ x-backend-env: &backend-env
   MAIL_USERNAME: ${MAIL_USERNAME:-}
   MAIL_PASSWORD: ${MAIL_PASSWORD:-}
   MAIL_FROM: ${MAIL_FROM:-astra@${PANEL_DOMAIN}}
+  BILLING_GRACE_DAYS: ${BILLING_GRACE_DAYS:-7}
   LOG_LEVEL: ${LOG_LEVEL:-WARNING}
 
 services:
@@ -137,6 +138,20 @@ services:
       redis:
         condition: service_healthy
     command: ["python", "cli.py", "worker", "--poll-interval", "1"]
+
+  # ── Billing-Tick (Ablauf -> Sperre -> Loeschung, Verlaengerung) ──
+  billing:
+    image: astra-backend:local
+    restart: always
+    environment:
+      <<: *backend-env
+      AUTO_MIGRATE: "false"
+      BILLING_GRACE_DAYS: ${BILLING_GRACE_DAYS:-7}
+    depends_on:
+      backend:
+        condition: service_started
+    # Alle 5 Minuten; Fehler einer Bestellung blockieren die anderen nicht (Exit 1 nur als Signal im Log)
+    command: ["sh", "-c", "while true; do python cli.py billing-tick || echo '[billing] Tick mit Fehlern beendet'; sleep ${BILLING_TICK_INTERVAL:-300}; done"]
 
   # ── Frontend (Nginx: SPA + /api-Proxy zum Backend) ─────
   frontend:

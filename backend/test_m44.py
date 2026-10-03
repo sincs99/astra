@@ -161,8 +161,10 @@ with app.app_context():
     check("Agent automatisch gewaehlt, Endpoint belegt", inst.agent_id == ids["agent"] and inst.primary_endpoint_id is not None)
     check("Laufzeit = paid_at + 30 Tage", (o.current_period_end - o.paid_at).days == 30)
     n_instances = Instance.query.count()
+r = c.post(f"/api/admin/orders/{oid}/mark-paid", json={"payment_reference": "Ueberweisung 1"}, headers=AH)
+check("zweites mark-paid mit gleicher Referenz ist idempotent (200, aktiv)", r.status_code == 200 and r.json["status"] == "active")
 r = c.post(f"/api/admin/orders/{oid}/mark-paid", headers=AH)
-check("zweites mark-paid ist idempotent (200, aktiv)", r.status_code == 200 and r.json["status"] == "active")
+check("mark-paid auf aktive Bestellung ohne Referenz -> 400 (Verlaengerung braucht sie)", r.status_code == 400)
 with app.app_context():
     check("keine zweite Instance", Instance.query.count() == n_instances)
     check("Activity order:paid genau einmal", ActivityLog.query.filter_by(event="order:paid", subject_id=Order.query.filter_by(uuid=oid).first().id).count() == 1)
