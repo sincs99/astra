@@ -171,11 +171,9 @@ def _register_security_headers(app: Flask) -> None:
 # ── Rate Limiting ───────────────────────────────────────
 
 
-_rate_limit_store: dict[str, list] = {}
-
-
 def _register_rate_limiting(app: Flask) -> None:
-    """Einfaches In-Memory Rate Limiting fuer Auth-Endpunkte."""
+    """Rate Limiting fuer Auth-Endpunkte (Redis, Fallback In-Memory)."""
+    from app.infrastructure import ratelimit
 
     @app.before_request
     def check_rate_limit():
@@ -190,24 +188,12 @@ def _register_rate_limiting(app: Flask) -> None:
         max_per_minute = app.config.get("RATELIMIT_AUTH_PER_MINUTE", 20)
         client_ip = request.remote_addr or "unknown"
         key = f"{client_ip}:{request.path}"
-        now = datetime.now(timezone.utc).timestamp()
-        window = 60.0  # 1 Minute
 
-        # Alte Eintraege bereinigen
-        if key in _rate_limit_store:
-            _rate_limit_store[key] = [
-                t for t in _rate_limit_store[key] if now - t < window
-            ]
-        else:
-            _rate_limit_store[key] = []
-
-        if len(_rate_limit_store[key]) >= max_per_minute:
+        if not ratelimit.allow(key, max_per_minute, app.config.get("REDIS_URL")):
             return jsonify({
                 "error": "Rate limit exceeded",
-                "retry_after": int(window),
+                "retry_after": ratelimit.WINDOW_SECONDS,
             }), 429
-
-        _rate_limit_store[key].append(now)
         return None
 
 

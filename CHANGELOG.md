@@ -3,6 +3,12 @@
 Alle relevanten Aenderungen an Astra werden hier dokumentiert.
 Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Changed
+- Rate Limiting fuer `/api/auth/login` nutzt jetzt Redis (geteilter Zaehler ueber alle Gunicorn-Worker), mit In-Memory-Fallback wenn Redis nicht erreichbar ist (`backend/app/infrastructure/ratelimit.py`)
+- `redis` zu `backend/requirements.txt` hinzugefuegt
+
 ## [0.32.0-rc] - 2026-03-16
 
 ### Added (M32 – Pilotbetrieb & v1.0-Rollout)
