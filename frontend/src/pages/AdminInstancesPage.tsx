@@ -1,3 +1,4 @@
+import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { useEffect, useState } from "react";
 import {
   api,
@@ -8,7 +9,7 @@ import {
   type Endpoint,
 } from "../services/api";
 import {
-  PageLayout, StatusBadge, LoadingState, EmptyState, ErrorState,
+  PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState,
   Toast, useToast, ConfirmButton,
   cardStyle, inputStyle, labelStyle, btnPrimary, thStyle, tdStyle,
 } from "../components/ui";
@@ -79,6 +80,10 @@ export function AdminInstancesPage() {
   };
 
   useEffect(() => { loadAll(); }, []);
+
+  const [autoRefresh, setAutoRefresh] = useAutoRefreshSetting("instances");
+  // Nur die Instance-Liste still aktualisieren; Formulare und Stammdaten bleiben unberuehrt
+  useAutoRefresh(() => { api.getInstances().then(setInstances).catch(() => {}); }, 15000, autoRefresh);
 
   const freeEndpoints = endpoints.filter(
     ep => ep.agent_id === agentId && ep.instance_id === null && !ep.is_locked
@@ -191,6 +196,9 @@ export function AdminInstancesPage() {
       </div>
 
       {/* ── Instance-Liste ── */}
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
+      </div>
       {loading ? (
         <LoadingState message="Instances werden geladen..." />
       ) : instances.length === 0 ? (

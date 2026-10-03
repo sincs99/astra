@@ -3,6 +3,39 @@
 Alle relevanten Aenderungen an Astra werden hier dokumentiert.
 Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Security (M35 – Admin-Guard)
+- Der gesamte `/api/admin`-Blueprint verlangt jetzt einen angemeldeten Admin (`before_request`, JWT, API-Key oder in Dev/Test `X-User-Id`). Ausnahme: `GET /api/admin/health`. Ohne Login 401, ohne Admin-Recht 403
+- Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
+- `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
+- Weiterhin offen: `/api/agent/*` (Legacy-Callbacks, durch `/api/remote` ersetzt)
+
+### Added (Self-Service Teil 1)
+- `POST /api/auth/register` – Selbstregistrierung, standardmaessig AUS (`REGISTRATION_ENABLED=true` zum Aktivieren), neue Nutzer sind nie Admin
+- `POST /api/auth/password-reset/request` und `/confirm` – Reset per signiertem, zeitlich begrenztem Einmal-Link (`PASSWORD_RESET_TTL_MINUTES`, Standard 60), antwortet unabhaengig von der Adresse gleich
+- `backend/app/infrastructure/mail.py` – SMTP-Versand (`MAIL_SERVER`, `MAIL_PORT`, `MAIL_USE_TLS`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`), ohne `MAIL_SERVER` nur Logging
+- `FRONTEND_URL` fuer den Link in der Reset-Mail
+- Neue Auth-Pfade unterliegen dem Rate Limiting
+- `backend/test_m34.py` (18 Tests)
+- Noch offen: E-Mail-Verifizierung bei Registrierung, Frontend-Seiten (Registrieren, Passwort vergessen)
+
+### Changed
+- Rate Limiting fuer `/api/auth/login` nutzt jetzt Redis (geteilter Zaehler ueber alle Gunicorn-Worker), mit In-Memory-Fallback wenn Redis nicht erreichbar ist (`backend/app/infrastructure/ratelimit.py`)
+- `redis` zu `backend/requirements.txt` hinzugefuegt
+
+### Added (Frontend)
+- `PageLayout`: SPA-Navigation per `react-router` (kein Seiten-Reload), `aria-current`, Abmelden-Button
+- `FileBrowser`: Upload von Textdateien (max. 1 MB, Workaround ueber Write-Endpoint) und "Neue Datei"
+- Auto-Refresh (15s, abschaltbar, nur bei sichtbarem Tab) fuer Jobs-Dashboard, Fleet Monitoring, Dashboard und Admin-Instances (`hooks/useAutoRefresh.ts`, `AutoRefreshToggle`)
+- 401-Handling: abgelaufene Sitzung leitet zu `/login?expired=1` mit Hinweis um
+- `ErrorBoundary` gegen weisse Seite bei Render-Fehlern, `NotFoundPage` als Catch-all-Route
+- Navigation: Link-Leiste scrollt separat, Abmelden-Button bleibt auf schmalen Screens sichtbar; Login leitet eingeloggte Nutzer zum Dashboard
+- `LoginPage`: gemeinsame UI-Styles, Label-Verknuepfung, `autocomplete`, `role="alert"`
+
+### Changed (Frontend)
+- Responsive Layout: dynamisches Padding, horizontal scrollbare Tabellen, `FileBrowser`-Grid bricht auf schmalen Screens um
+
 ## [0.33.0-rc] - 2026-10-03
 
 ### Added (M33 – Wings Remote-API)
@@ -43,26 +76,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 ### Notes
 - M33 schliesst die groesste Luecke fuer den Pilotbetrieb: Ohne Remote-API konnte Wings keinen Server booten
 - Bewusst nicht enthalten: S3-Presigned-Uploads, Mounts, Rate-Limit auf `/sftp/auth`
-## [Unreleased]
 
-### Security (M35 – Admin-Guard)
-- Der gesamte `/api/admin`-Blueprint verlangt jetzt einen angemeldeten Admin (`before_request`, JWT, API-Key oder in Dev/Test `X-User-Id`). Ausnahme: `GET /api/admin/health`. Ohne Login 401, ohne Admin-Recht 403
-- Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
-- `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
-- Weiterhin offen: `/api/agent/*` (Legacy-Callbacks, durch `/api/remote` ersetzt)
-
-### Added (Self-Service Teil 1)
-- `POST /api/auth/register` – Selbstregistrierung, standardmaessig AUS (`REGISTRATION_ENABLED=true` zum Aktivieren), neue Nutzer sind nie Admin
-- `POST /api/auth/password-reset/request` und `/confirm` – Reset per signiertem, zeitlich begrenztem Einmal-Link (`PASSWORD_RESET_TTL_MINUTES`, Standard 60), antwortet unabhaengig von der Adresse gleich
-- `backend/app/infrastructure/mail.py` – SMTP-Versand (`MAIL_SERVER`, `MAIL_PORT`, `MAIL_USE_TLS`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`), ohne `MAIL_SERVER` nur Logging
-- `FRONTEND_URL` fuer den Link in der Reset-Mail
-- Neue Auth-Pfade unterliegen dem Rate Limiting
-- `backend/test_m34.py` (18 Tests)
-- Noch offen: E-Mail-Verifizierung bei Registrierung, Frontend-Seiten (Registrieren, Passwort vergessen)
-
-### Changed
-- Rate Limiting fuer `/api/auth/login` nutzt jetzt Redis (geteilter Zaehler ueber alle Gunicorn-Worker), mit In-Memory-Fallback wenn Redis nicht erreichbar ist (`backend/app/infrastructure/ratelimit.py`)
-- `redis` zu `backend/requirements.txt` hinzugefuegt
 
 ## [0.32.0-rc] - 2026-03-16
 
