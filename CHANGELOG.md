@@ -46,6 +46,10 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M54 – Bestaetigungsmails bei Zahlung)
+- Zahlungseingang loest Mails aus: erste Zahlung mit Platz "Dein Server ist bereit" (mit Verbindungsadresse), ohne Platz "Zahlung eingegangen" mit Hinweis auf die automatische Bereitstellung, Verlaengerung "Zahlung eingegangen, Server verlaengert" mit neuem Laufzeitende. Keine Mails bei Wiederholung derselben Zahlungsreferenz und bei kostenlosen Paketen; Mailfehler brechen die Zahlung nicht ab
+- `backend/test_m54.py` (11 Tests); `test_m46.py` zaehlt Zahlungsmails nicht mehr als Erinnerungen; Doku in `docs/orders-api.md`, `docs/known-limitations.md`
+
 ### Added (M53 – Ueberwachung des Billing-Ticks)
 - Jeder Tick-Lauf (auch mit Fehlern) vermerkt Zeitpunkt und Ergebnis in der neuen Tabelle `system_state` (Schluessel `billing_tick`, Migration `r8m9n0o1p2q3`, Up/Down geprueft; neues Modell `SystemState`, ein kleiner Schluessel-Wert-Speicher fuer Betriebszustand)
 - `GET /api/admin/billing/status`: `healthy`, `last_run_at`, `age_seconds`, `max_age_minutes`, `orders_needing_tick`, `orders_by_status`, `last_summary`. `healthy` ist false, wenn Bestellungen den Tick brauchen (active, past_due, awaiting_provisioning) und der letzte Lauf aelter als `BILLING_TICK_MAX_AGE_MINUTES` (Standard 15) ist oder fehlt
