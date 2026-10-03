@@ -293,12 +293,15 @@ def _register_blueprints(app: Flask) -> None:
     from app.api.client.routes import client_bp
     from app.api.auth.routes import auth_bp
     from app.api.remote.routes import remote_bp
+    from app.api.payments.routes import payments_bp
 
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
     app.register_blueprint(client_bp, url_prefix="/api/client")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     # M33: Wings Remote-API (Node-Token-Auth, Pfade wie im Referenz-Panel)
     app.register_blueprint(remote_bp, url_prefix="/api/remote")
+    # M48: Webhooks der Zahlungsanbieter (ohne Login, Signaturpruefung)
+    app.register_blueprint(payments_bp, url_prefix="/api/payments")
 
 
 # ── Ops-Endpunkte ──────────────────────────────────────

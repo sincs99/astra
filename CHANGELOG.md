@@ -44,6 +44,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M48 – Zahlungsanbieter Stripe)
+- `backend/app/domain/billing/payments.py`: Provider-Schnittstelle (`create_checkout`, `handle_webhook`) mit `ManualProvider` (Standard) und `StripeProvider` (Stripe Checkout `mode=payment`, Webhook mit `Webhook.construct_event`); `PAYMENT_PROVIDER=manual|stripe`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (`stripe==16.0.0` in `requirements.txt`)
+- `POST /api/client/orders/{uuid}/checkout` -> `{checkout_url}` (pending_payment, active, past_due; 409 bei manual, anderem Status, Gratis-Bestellung und Waehrungen ohne Nachkommastellen; 502 bei Stripe-Fehler ohne Interna), `GET /api/client/billing-info` (oeffentlich)
+- `POST /api/payments/stripe` (ohne Login, Signaturpruefung, Replay-Schutz): `checkout.session.completed`/`async_payment_succeeded` mit `payment_status=paid` verbuchen wie `mark-paid` (Referenz = PaymentIntent); Idempotenz ueber `payment_events` (Event-ID) und `payment_references`; Betrag/Waehrung-Abweichung -> `mismatch` ohne Freischaltung; Zahlung fuer stornierte/beendete Bestellung -> `unapplied`; beides mit Activity-/Webhook-Event `order:payment_unapplied`; kein Platz -> 200 und `awaiting_provisioning`; interne Fehler -> 500 (Stripe wiederholt)
+- Neue Tabelle `payment_events` (Migration `q7l8m9n0o1p2`, Up/Down geprueft); Produktion meldet KRITISCH bei `PAYMENT_PROVIDER=stripe` ohne Schluessel oder unbekanntem Anbieter
+- Gekuendigte Bestellungen bekommen vor Laufzeitende einmalig den Hinweis "Server wird am X geloescht" (Event `order:reminder`, `kind: deletion_notice`), normale Erinnerungen `kind: expiry_reminder`
+- Doku: `docs/orders-api.md` (Einrichtung, Webhook-Regeln, Test-Modus); Tests: `backend/test_m48.py` (60, ohne Netzwerk: Checkout gemockt, Signaturen nach Stripes Verfahren), `test_m46.py` (86)
+
 ### Added (M46 Nachtrag – Erinnerung, Gratis-Verlaengerung, blueprint_name)
 - Erinnerungsmail `BILLING_REMINDER_DAYS` (Standard 3, 0 = aus) vor Laufzeitende, Event `order:reminder`, hoechstens einmal pro Bestellung und Laufzeit (`orders.reminded_for_period_end`, Migration `p6k7l8m9n0o1`); nur bezahlte Bestellungen ohne Kuendigung mit Laufzeit laenger als das Fenster
 - Kostenlose Bestellungen (`price_cents = 0`) werden vom Tick bei Ablauf automatisch verlaengert statt gesperrt und geloescht (der Kunde kann nichts bezahlen); gekuendigte laufen zum Laufzeitende aus. Tick-Zusammenfassung enthaelt jetzt `reminded` und `renewed`

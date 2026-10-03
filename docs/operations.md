@@ -178,6 +178,8 @@ in der Agents-Ansicht. Details: `docs/wings-remote-api.md`.
 | `JWT_ACCESS_TOKEN_EXPIRES_HOURS` | Token-Gültigkeit | 24 |
 | `MFA_ISSUER_NAME` | TOTP Issuer | Astra |
 | `RATELIMIT_ENABLED` | Rate Limiting aktiv | true |
+| `PAYMENT_PROVIDER` | Zahlungsweg: `manual` oder `stripe` (siehe orders-api.md) | manual |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Stripe-Zugang (nur Umgebung, nie ins Repository) | – |
 | `BILLING_REMINDER_DAYS` | Tage vor Laufzeitende für die Erinnerungsmail, 0 = aus (Billing-Tick) | 3 |
 | `BILLING_GRACE_DAYS` | Tage von überfälliger Zahlung bis zur Löschung der Instance (Billing-Tick) | 7 |
 | `REGISTRATION_ENABLED` | Selbstregistrierung erlauben | false |

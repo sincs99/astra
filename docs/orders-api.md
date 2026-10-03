@@ -2,7 +2,8 @@
 
 Phase 4, Schritte 3 und 4 aus [phase4-plan.md](phase4-plan.md): Pakete definieren, Kunden bestellen,
 der Admin bestätigt die Zahlung manuell, die Instance wird automatisch platziert und angelegt.
-Der Billing-Tick (Ablauf → Suspend → Löschen, M46) ist umgesetzt, ein Zahlungsanbieter noch nicht.
+Der Billing-Tick (Ablauf → Suspend → Löschen, M46) und die Online-Zahlung mit Stripe (M48) sind umgesetzt.
+Standard bleibt die manuelle Zahlung.
 
 ## Ablauf
 
@@ -55,7 +56,7 @@ Compose-Service gedacht (alle 5 Minuten reichen). Ausgabe: eine JSON-Zeile
 | `past_due` länger als `BILLING_GRACE_DAYS` (Standard 7) | Instance gelöscht (`force`), `expired`, Mail |
 | Kündigung zum Laufzeitende, Laufzeit abgelaufen | sofort gelöscht, `expired` (ohne Karenzzeit) |
 | Instance existiert nicht mehr | `expired`, ohne Runner-Aufruf |
-| `BILLING_REMINDER_DAYS` (Standard 3) vor Laufzeitende | Erinnerungsmail, Event `order:reminder`, höchstens einmal pro Bestellung und Laufzeit; nur bezahlte Bestellungen ohne Kündigung, Laufzeit länger als das Fenster; `0` schaltet ab |
+| `BILLING_REMINDER_DAYS` (Standard 3) vor Laufzeitende | Mail, Event `order:reminder`, höchstens einmal pro Bestellung und Laufzeit; `0` schaltet ab. Normale Bestellungen (bezahlt, Laufzeit länger als das Fenster): „Laufzeit endet bald“. Gekündigte: einmalig „Server wird am X gelöscht“ |
 | Kostenloses Paket (`price_cents = 0`), Laufzeit abgelaufen | wird automatisch verlängert (`renewed`, Referenz `free-auto:...`), keine Sperre, keine Mail; nach Kündigung läuft es zum Laufzeitende aus |
 
 Sicherheiten:
@@ -72,6 +73,61 @@ Sicherheiten:
 Wird eine Instance direkt gelöscht (Admin oder Kunde), setzt Astra die verknüpfte lebende Bestellung auf
 `expired`. Ein bereits bezahlter Rest der Laufzeit wird nicht erstattet. Die Bestellung zeigt
 `scheduled_deletion_at`, wann der Server gelöscht wird (Ende der Karenzzeit bzw. Laufzeitende bei Kündigung).
+
+## Zahlungsanbieter (M48)
+
+`PAYMENT_PROVIDER` wählt den Zahlungsweg:
+
+| Wert | Verhalten |
+|---|---|
+| `manual` (Standard) | Zahlung geht außerhalb ein, der Admin bestätigt per `mark-paid`. `POST /orders/{uuid}/checkout` liefert 409 mit Hinweis auf die Überweisung |
+| `stripe` | Stripe Checkout (`mode=payment`) für Kunden, Zahlung wird per Webhook automatisch verbucht |
+
+`GET /api/client/billing-info` (öffentlich) liefert `{"payment_provider", "online_payment"}`, damit der Shop
+„Jetzt bezahlen“ nur bei aktivem Stripe zeigt.
+
+### Ablauf mit Stripe
+
+1. Kunde ruft `POST /api/client/orders/{uuid}/checkout` auf und bekommt `{"checkout_url"}`. Erlaubt bei
+   `pending_payment` (Erstzahlung) sowie `active`/`past_due` (Verlängerung). Jeder Aufruf erzeugt eine neue
+   Checkout-Session; jede bezahlte Session verlängert um eine Laufzeit (Vorauszahlung möglich).
+2. Nach dem Bezahlen schickt Stripe `checkout.session.completed` an `POST /api/payments/stripe`. Astra
+   verbucht wie bei `mark-paid`: Erstbereitstellung oder Verlängerung, `payment_reference` = PaymentIntent-ID.
+3. Stripe leitet den Kunden zu `{FRONTEND_URL}/orders?paid=<uuid>` (Abbruch: `?cancelled=<uuid>`) zurück.
+   Die Bestellung kann einen Moment brauchen, bis der Webhook angekommen ist; die Seite sollte den Status
+   erneut abfragen.
+
+### Webhook-Regeln
+
+- Ohne Login, geschützt durch die Signaturprüfung (`Stripe-Signature`, Toleranz 5 Minuten). Fehlende oder
+  falsche Signatur: 400.
+- **Idempotenz:** Jede Event-ID wird einmal verarbeitet (Tabelle `payment_events`); dieselbe Zahlung wird
+  zusätzlich über `payment_references` nie doppelt verbucht (auch nicht bei `completed` und
+  `async_payment_succeeded` für dieselbe Zahlung). Bricht die Verarbeitung ab (500), wiederholt Stripe die
+  Zustellung und sie wird erneut versucht.
+- `payment_status` muss `paid` sein (bei verzögerten Zahlarten wie SEPA kommt die Freischaltung mit
+  `checkout.session.async_payment_succeeded`). Alle anderen Ereignisse: 200 und ignoriert.
+- Weicht **Betrag oder Währung** von der Bestellung ab, wird nichts freigeschaltet (Status `mismatch`,
+  Activity-Event `order:payment_unapplied`).
+- Ist die Bestellung nicht mehr bezahlbar (storniert oder beendet), bleibt die Zahlung unverbucht (`unapplied`)
+  und es entsteht `order:payment_unapplied`: **Erstattung im Stripe-Dashboard prüfen.**
+- Ist nach der Zahlung kein Node frei, antwortet der Webhook trotzdem 200 (Zahlung ist verbucht, Bestellung
+  `awaiting_provisioning`); der Admin stellt später per `mark-paid` bereit.
+- Nur Währungen mit Nachkommastellen werden unterstützt (kein JPY, KRW usw.).
+
+### Einrichtung
+
+1. In Stripe zuerst den **Test-Modus** nutzen (Schlüssel `sk_test_...`).
+2. Webhook-Endpunkt anlegen: URL `https://<PANEL_DOMAIN>/api/payments/stripe`, Ereignisse
+   `checkout.session.completed` und `checkout.session.async_payment_succeeded`. Das Signing-Secret
+   (`whsec_...`) kopieren.
+3. In der Backend-Umgebung setzen (nicht ins Repository): `PAYMENT_PROVIDER=stripe`, `STRIPE_SECRET_KEY`,
+   `STRIPE_WEBHOOK_SECRET`; `FRONTEND_URL` muss die öffentliche Panel-URL sein. Backend neu starten.
+   In Produktion meldet der Start einen kritischen Konfigurationsfehler, wenn Stripe ohne Schlüssel gewählt ist.
+4. Lokal testen mit der Stripe CLI: `stripe listen --forward-to localhost:5000/api/payments/stripe`
+   (gibt ein temporäres `whsec_...` aus) und eine Testzahlung mit Karte `4242 4242 4242 4242`.
+5. Erst nach erfolgreichem Test-Durchlauf auf Live-Schlüssel wechseln. Rechtliche Voraussetzungen
+   (Gewerbe, AGB, Widerruf, Rechnungen) siehe [phase4-plan.md](phase4-plan.md).
 
 ## Regeln und Grenzen
 
@@ -91,15 +147,18 @@ Wird eine Instance direkt gelöscht (Admin oder Kunde), setzt Astra die verknüp
 | `POST /api/client/orders` | Kunde | `{product_id, name?}` bestellen |
 | `GET /api/client/orders`, `/{uuid}` | Kunde | eigene Bestellungen, inkl. Instance und Verbindungsadresse |
 | `POST /api/client/orders/{uuid}/cancel` | Kunde | stornieren bzw. zum Laufzeitende kündigen |
+| `POST /api/client/orders/{uuid}/checkout` | Kunde | Online-Zahlung starten → `{checkout_url}` (nur mit Stripe) |
+| `GET /api/client/billing-info` | öffentlich | aktiver Zahlungsweg |
+| `POST /api/payments/stripe` | Stripe | Webhook (Signatur statt Login) |
 | `GET/POST /api/admin/products`, `GET/PATCH/DELETE /{id}` | Admin | Pakete verwalten |
 | `GET /api/admin/orders?status=&user_id=`, `/{uuid}` | Admin | alle Bestellungen |
 | `POST /api/admin/orders/{uuid}/mark-paid` | Admin | `{payment_reference?}` Zahlung bestätigen, Instance bereitstellen |
 
 Activity- und Webhook-Events: `order:created`, `order:paid`, `order:provision_failed`, `order:cancelled`,
-`order:past_due`, `order:renewed`, `order:expired`, `order:reminder`.
+`order:past_due`, `order:renewed`, `order:expired`, `order:reminder`, `order:payment_unapplied`.
 
 ## Noch nicht enthalten
 
-Zahlungsanbieter mit Webhook, Mails zu Bestellungen beim Anlegen und Bezahlen,
+Mails zu Bestellungen beim Anlegen und Bezahlen, Erstattungen (manuell im Stripe-Dashboard),
 Rechnungen mit Umsatzsteuer, Frontend (Shop, Bestellübersicht, Admin-Seiten). Rechtliche
 Voraussetzungen siehe [phase4-plan.md](phase4-plan.md).

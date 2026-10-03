@@ -68,6 +68,7 @@ ORDER_PAST_DUE = "order:past_due"
 ORDER_EXPIRED = "order:expired"
 ORDER_RENEWED = "order:renewed"
 ORDER_REMINDER = "order:reminder"
+ORDER_PAYMENT_UNAPPLIED = "order:payment_unapplied"
 
 # M30: SFTP-/SSH-Key-Auth-Events
 SSH_KEY_AUTH_SUCCESS = "ssh_key:auth_success"
