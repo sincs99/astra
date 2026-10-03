@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { api, type Order } from "../services/api";
 import { formatDate } from "../lib/dates";
 import { formatPrice } from "../lib/money";
+import { isManualPayment, readPaymentReturn, safeCheckoutUrl } from "../lib/checkout";
 import { OrderNotice } from "../components/OrderNotice";
 import { ConnectionAddress } from "../components/ConnectionAddress";
 import {
   PageLayout, StatusBadge, LoadingState, ErrorState, EmptyState, ConfirmButton, Toast, useToast,
-  cardStyle, thStyle, tdStyle, linkStyle,
+  cardStyle, thStyle, tdStyle, linkStyle, btnPrimary,
 } from "../components/ui";
 
 /** Meine Bestellungen (Kunde). */
@@ -16,6 +17,11 @@ export function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [paying, setPaying] = useState<string | null>(null);
+  // Sobald der Checkout mit 409 "manual" antwortet, wird nicht online bezahlt: Button ausblenden
+  const [manualPayment, setManualPayment] = useState(false);
+  const handledReturn = useRef(false);
 
   const load = async () => {
     try {
@@ -30,6 +36,51 @@ export function OrdersPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Rueckkehr von Stripe: /orders?paid=<uuid> bzw. ?cancelled=<uuid> -> Toast, Parameter entfernen
+  useEffect(() => {
+    const ret = readPaymentReturn(searchParams);
+    if (!ret || handledReturn.current) return;
+    handledReturn.current = true;
+    if (ret.kind === "paid") {
+      toast.success("Danke für deine Zahlung! Wir bestätigen sie gerade und stellen deinen Server bereit.");
+      // Die Bestaetigung kommt asynchron per Webhook: kurz nachladen, bis der Status wechselt
+      let tries = 0;
+      const timer = setInterval(async () => {
+        tries += 1;
+        try {
+          const list = await api.getMyOrders();
+          setOrders(list);
+          const current = list.find((o) => o.uuid === ret.orderUuid);
+          if (!current || current.status !== "pending_payment" || tries >= 10) clearInterval(timer);
+        } catch {
+          clearInterval(timer);
+        }
+      }, 3000);
+    } else {
+      toast.warning("Zahlung abgebrochen. Deine Bestellung bleibt offen, du kannst jederzeit erneut bezahlen.");
+    }
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const pay = async (order: Order) => {
+    try {
+      setPaying(order.uuid);
+      const { checkout_url } = await api.createCheckout(order.uuid);
+      const target = safeCheckoutUrl(checkout_url);
+      if (!target) {
+        toast.error("Die Zahlungsseite konnte nicht geöffnet werden (ungültige Adresse).");
+        return;
+      }
+      window.location.assign(target);
+    } catch (err) {
+      if (isManualPayment(err)) setManualPayment(true);
+      else toast.error(err instanceof Error ? err.message : "Zahlung konnte nicht gestartet werden");
+    } finally {
+      setPaying(null);
+    }
+  };
 
   const cancel = async (order: Order) => {
     try {
@@ -48,8 +99,20 @@ export function OrdersPage() {
   const action = (o: Order) => {
     if (o.status === "pending_payment") {
       return (
-        <ConfirmButton size="sm" danger label="Stornieren"
-          confirmMessage="Bestellung wirklich stornieren?" onConfirm={() => cancel(o)} />
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          {manualPayment ? (
+            <span style={{ fontSize: 12, color: "#666", maxWidth: 220 }}>
+              Zahlung per Überweisung: Wir schalten deinen Server nach Zahlungseingang frei.
+            </span>
+          ) : (
+            <button type="button" onClick={() => pay(o)} disabled={paying === o.uuid}
+              style={{ ...btnPrimary, padding: "4px 12px", fontSize: 12, opacity: paying === o.uuid ? 0.6 : 1 }}>
+              {paying === o.uuid ? "…" : "Jetzt bezahlen"}
+            </button>
+          )}
+          <ConfirmButton size="sm" danger label="Stornieren"
+            confirmMessage="Bestellung wirklich stornieren?" onConfirm={() => cancel(o)} />
+        </div>
       );
     }
     if ((o.status === "active" || o.status === "past_due") && !o.cancel_at_period_end) {
