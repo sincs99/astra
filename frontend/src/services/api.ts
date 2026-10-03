@@ -319,6 +319,15 @@ export interface Instance {
   created_at: string | null;
   updated_at: string | null;
   role?: "owner" | "collaborator" | "none";
+  /** Verbindungsadresse (FQDN des Agents + Port des primaeren Endpoints); null ohne Endpoint */
+  connection?: InstanceConnection | null;
+}
+
+export interface InstanceConnection {
+  host: string;
+  port: number;
+  /** Fertige Adresse, z.B. "node1.example.com:25565" */
+  address: string;
 }
 
 export interface InstanceCreate {

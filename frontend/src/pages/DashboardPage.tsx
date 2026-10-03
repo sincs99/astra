@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type Instance, getSimulatedUserId } from "../services/api";
+import { ConnectionAddress } from "../components/ConnectionAddress";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, ErrorState, EmptyState, cardStyle } from "../components/ui";
 
@@ -32,7 +33,7 @@ export function DashboardPage() {
 
   return (
     <PageLayout title="Dashboard" maxWidth={900}>
-      <p style={{ color: "#888", marginTop: -12, marginBottom: 24, fontSize: 14 }}>
+      <p style={{ color: "#666", marginTop: -12, marginBottom: 24, fontSize: 14 }}>
         Eingeloggt als User #{userId}
       </p>
 
@@ -61,7 +62,7 @@ export function DashboardPage() {
                 <div>
                   <strong style={{ fontSize: 16 }}>{inst.name}</strong>
                   {inst.description && (
-                    <span style={{ color: "#888", marginLeft: 8, fontSize: 14 }}>
+                    <span style={{ color: "#666", marginLeft: 8, fontSize: 14 }}>
                       {inst.description}
                     </span>
                   )}
@@ -74,6 +75,11 @@ export function DashboardPage() {
                   {inst.memory} MB RAM &middot; {inst.disk} MB Disk &middot; {inst.cpu}% CPU
                 </span>
               </div>
+              {inst.connection && (
+                <div style={{ marginTop: 8 }}>
+                  <ConnectionAddress connection={inst.connection} compact />
+                </div>
+              )}
             </div>
           ))}
         </div>

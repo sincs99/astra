@@ -29,12 +29,12 @@ import { cardStyle, inputStyle, labelStyle, btnPrimary, btnDanger, btnDefault, t
 
 | Farbe | Hex | Verwendung |
 |-------|-----|-----------|
-| Gruen | `#4caf50` | ready, running, healthy, completed, ok, active, success |
-| Blau | `#1976d2` | provisioning, starting, pending, info, reinstalling |
-| Orange | `#f57c00` | stale, retrying, warning, maintenance, restoring, stopping |
-| Rot | `#d32f2f` | failed, error, degraded, stopped, provision_failed |
-| Lila | `#9c27b0` | retrying (Jobs) |
-| Grau | `#888` | offline, unknown, inactive, unreachable, none |
+| Gruen | `#2e7d32` | ready, running, healthy, completed, ok, active, success |
+| Blau | `#1565c0` | provisioning, starting, pending, info, reinstalling |
+| Orange | `#e65100` | stale, retrying, warning, maintenance, restoring, stopping |
+| Rot | `#c62828` | failed, error, degraded, stopped, provision_failed |
+| Lila | `#7b1fa2` | retrying (Jobs) |
+| Grau | `#666` | offline, unknown, inactive, unreachable, none |
 
 ### Background-Farben (Badges)
 
@@ -44,6 +44,9 @@ Immer heller Hintergrund mit dunkler Schrift:
 - Orange: `bg: #fff3e0, color: #f57c00`
 - Rot: `bg: #ffebee, color: #d32f2f`
 - Grau: `bg: #f5f5f5, color: #888`
+
+Hinweis: Textfarben erfuellen WCAG AA (Kontrast >= 4.5:1). Fuer Text keine helleren Grautoene als `#666`
+und kein `#4caf50` auf hellem Grund verwenden. Jedes Formularfeld braucht ein Label (`htmlFor`/`id`).
 
 ## Loading / Error / Empty States
 

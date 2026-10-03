@@ -57,23 +57,23 @@ export function Toast({ messages }: ToastProps) {
 
   return (
     <div style={{
-      position: "fixed", top: 16, right: 16, zIndex: 9999,
-      display: "flex", flexDirection: "column", gap: 8, maxWidth: 400,
+      position: "fixed", top: 16, right: 16, left: 16, marginLeft: "auto", zIndex: 9999,
+      display: "flex", flexDirection: "column", gap: 8, maxWidth: 400, pointerEvents: "none",
     }}>
       {messages.map((msg) => {
         const c = COLORS[msg.type];
         return (
           <div
             key={msg.id}
-            role="alert"
+            role={msg.type === "error" ? "alert" : "status"}
             style={{
+              pointerEvents: "auto",
               padding: "10px 16px", borderRadius: 8,
               backgroundColor: c.bg, color: c.color,
               border: `1px solid ${c.border}`,
               fontSize: 14, fontWeight: 500,
               boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              animation: "fadeIn 0.2s ease-in",
-            }}
+                          }}
           >
             {msg.text}
           </div>
