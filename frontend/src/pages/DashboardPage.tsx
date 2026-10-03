@@ -57,7 +57,7 @@ export function DashboardPage() {
       {error && <ErrorState message={error} onRetry={() => load()} />}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-        <h2 style={{ fontSize: 18, margin: 0 }}>Meine Instances</h2>
+        <h2 style={{ fontSize: 18, margin: 0 }}>Meine Server</h2>
         <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
       </div>
 

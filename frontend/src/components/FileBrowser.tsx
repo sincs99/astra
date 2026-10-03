@@ -135,7 +135,7 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
       await loadFiles(directory);
       await openFile(joinPath(name));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler");
+      toast.error(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
     }
   };
 
@@ -149,7 +149,7 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
       setNewDirName("");
       await loadFiles(directory);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler");
+      toast.error(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
     }
   };
 
@@ -162,7 +162,7 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
       setRenameSrc(""); setRenameTgt("");
       await loadFiles(directory);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler");
+      toast.error(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
     }
   };
 

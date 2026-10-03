@@ -21,7 +21,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
       const data = await api.getBackups(instanceUuid);
       setBackups(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      setError(err instanceof Error ? err.message : "Backups konnten nicht geladen werden");
     } finally {
       setLoading(false);
     }
@@ -47,7 +47,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
       showMsg("Backup erstellt");
       await loadBackups();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
+      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
     } finally {
       setActing(false);
     }
@@ -62,7 +62,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
       showMsg(result.message);
       await loadBackups();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
+      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
     } finally {
       setActing(false);
     }
@@ -77,7 +77,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
       showMsg(result.message);
       await loadBackups();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
+      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
     } finally {
       setActing(false);
     }

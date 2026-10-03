@@ -175,6 +175,8 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `LoginPage`: gemeinsame UI-Styles, Label-Verknuepfung, `autocomplete`, `role="alert"`
 
 ### Changed (Frontend)
+- Kunden-Durchsicht (verstaendliche Texte): korrekte Umlaute in allen Kundentexten; ASCII-Schreibweisen aus Backend-Meldungen werden korrigiert (`lib/umlauts.ts`, z.B. "Ungültige Anmeldedaten"); technische Statuscodes ("Request failed: 500") durch allgemeine Meldungen ersetzt; Fehlerseite ohne technischen Text (Details einklappbar); "Instance" heisst fuer Kunden "Server"; Steuerung auf der Server-Seite mit deutschen Beschriftungen (Starten, Stoppen, Neustarten, "Beenden erzwingen" mit Rueckfrage, "Neu installieren"); deutsche Statuslabels (bereit, laeuft, gestoppt, wird eingerichtet, gesperrt ...); Konsole und Fehlerfallbacks ohne Fachbegriffe (Token, WebSocket, Daemon)
+- Barrierefreiheit: Link-Farbe `#1565c0`, Kontrast im Sperr-Banner und in der Konsole, Beschriftung der Benutzerauswahl bei Mitbenutzern (axe auf Dashboard, Server-Seite, Konto, Bestellungen, Shop sauber)
 - API-Client: 401 von `/auth/change-password` (falsches aktuelles Passwort) loggt nicht mehr aus
 - Verstaendliche Fehlermeldungen im API-Client: 403 vom Admin-Guard -> "Nur Administratoren duerfen diese Aktion ausfuehren.", nicht erreichbarer Server -> eigene Meldung (`lib/errors.ts`)
 - Kunden-Dashboard: Platzhalter "Noch kein Server. Bestellung folgt in Phase 4." (Admins weiter mit Hinweis auf den Admin-Bereich), Komponententests fuer Leer-/Fehler-/Normalzustand

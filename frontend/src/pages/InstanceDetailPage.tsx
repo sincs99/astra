@@ -113,7 +113,7 @@ export function InstanceDetailPage() {
       toast.success(result.message);
       setTimeout(() => loadInstance(), 500);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler bei Power-Aktion");
+      toast.error(err instanceof Error ? err.message : "Die Aktion konnte nicht ausgeführt werden");
     } finally {
       setActing(false);
     }
@@ -128,7 +128,7 @@ export function InstanceDetailPage() {
       toast.success(result.message);
       await loadInstance();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Reinstall fehlgeschlagen");
+      toast.error(err instanceof Error ? err.message : "Die Neuinstallation ist fehlgeschlagen");
     } finally {
       setActing(false);
     }
@@ -154,15 +154,15 @@ export function InstanceDetailPage() {
 
   if (loading) {
     return (
-      <PageLayout title="Instance" maxWidth={700}>
-        <LoadingState message="Instance wird geladen..." />
+      <PageLayout title="Server" maxWidth={700}>
+        <LoadingState message="Server wird geladen..." />
       </PageLayout>
     );
   }
 
   if (error && !instance) {
     return (
-      <PageLayout title="Instance" maxWidth={700}>
+      <PageLayout title="Server" maxWidth={700}>
         <ErrorState message={error} onRetry={loadInstance} />
         <button onClick={() => navigate("/")} style={btnDefault}>Zurück</button>
       </PageLayout>
@@ -204,15 +204,15 @@ export function InstanceDetailPage() {
         <div style={{
           padding: "12px 16px", marginBottom: 16,
           backgroundColor: "#fff3e0", border: "1px solid #ffcc80",
-          borderRadius: 8, color: "#e65100",
+          borderRadius: 8, color: "#bf360c",
         }}>
-          <strong>Instance gesperrt (suspendiert)</strong>
+          <strong>Dein Server ist gesperrt</strong>
           {instance.suspended_reason && (
             <span style={{ marginLeft: 8 }}>— {instance.suspended_reason}</span>
           )}
           <div style={{ fontSize: 12, marginTop: 4, color: "#bf360c" }}>
-            Operative Aktionen (Power, Dateien, Backups, Datenbanken, Routinen) sind blockiert.
-            Nur ein Administrator kann die Sperre aufheben.
+            Starten, Dateien, Backups, Datenbanken und Routinen sind bis zur Entsperrung nicht verfügbar.
+            Bitte kontaktiere den Support.
           </div>
         </div>
       )}
@@ -223,18 +223,25 @@ export function InstanceDetailPage() {
 
       {/* Power-Aktionen */}
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Power</h3>
+        <h3 style={{ marginTop: 0 }}>Steuerung</h3>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={() => handlePower("start")} disabled={acting} style={powerBtn("#5cb85c")}>▶ Start</button>
-          <button onClick={() => handlePower("stop")} disabled={acting} style={powerBtn("#f0ad4e")}>⏹ Stop</button>
-          <button onClick={() => handlePower("restart")} disabled={acting} style={powerBtn("#5bc0de")}>🔄 Restart</button>
-          <button onClick={() => handlePower("kill")} disabled={acting} style={powerBtn("#d9534f")}>✕ Kill</button>
+          <button onClick={() => handlePower("start")} disabled={acting} style={powerBtn("#2e7d32")}>▶ Starten</button>
+          <button onClick={() => handlePower("stop")} disabled={acting} style={powerBtn("#bf360c")}>⏹ Stoppen</button>
+          <button onClick={() => handlePower("restart")} disabled={acting} style={powerBtn("#1565c0")}>🔄 Neustarten</button>
+          <button
+            onClick={() => { if (confirm("Server sofort beenden? Nicht gespeicherte Daten können verloren gehen.")) handlePower("kill"); }}
+            disabled={acting}
+            title="Beendet den Server sofort. Nur nutzen, wenn Stoppen nicht funktioniert."
+            style={powerBtn("#c62828")}
+          >
+            ✕ Beenden erzwingen
+          </button>
         </div>
 
         {(status === "provisioning" || status === "reinstalling") && (
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #eee" }}>
             <p style={{ fontSize: 13, color: "#666", margin: "0 0 8px" }}>
-              {status === "reinstalling" ? "⏳ Reinstallation läuft..." : "⏳ Installation läuft..."}
+              {status === "reinstalling" ? "⏳ Der Server wird neu installiert…" : "⏳ Der Server wird eingerichtet…"}
             </p>
           </div>
         )}
@@ -242,11 +249,11 @@ export function InstanceDetailPage() {
         {(status === "provision_failed" || status === "reinstall_failed") && (
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #eee" }}>
             <p style={{ fontSize: 13, color: "#d9534f", margin: "0 0 8px" }}>
-              {status === "reinstall_failed" ? "❌ Reinstallation fehlgeschlagen" : "❌ Installation fehlgeschlagen"}
+              {status === "reinstall_failed" ? "❌ Die Neuinstallation ist fehlgeschlagen." : "❌ Die Einrichtung ist fehlgeschlagen. Du kannst es erneut versuchen."}
             </p>
             {instance.role === "owner" && (
               <button onClick={handleReinstall} disabled={acting} style={powerBtn("#f0ad4e")}>
-                🔄 Reinstall
+                🔄 Neu installieren
               </button>
             )}
           </div>
@@ -256,7 +263,7 @@ export function InstanceDetailPage() {
       {/* Runtime Resources */}
       <div style={cardStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ margin: 0 }}>Runtime</h3>
+          <h3 style={{ margin: 0 }}>Live-Auslastung</h3>
           {resources && (
             <StatusBadge status={resources.container_status === "running" ? "running" : "stopped"} size="sm" />
           )}
@@ -330,13 +337,13 @@ export function InstanceDetailPage() {
 
       {/* Console */}
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Console</h3>
+        <h3 style={{ marginTop: 0 }}>Konsole</h3>
         <ServerConsole instanceUuid={instance.uuid} />
       </div>
 
       {/* Files */}
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Files</h3>
+        <h3 style={{ marginTop: 0 }}>Dateien</h3>
         <FileBrowser instanceUuid={instance.uuid} />
       </div>
 
@@ -349,14 +356,14 @@ export function InstanceDetailPage() {
       {/* Routines */}
       {instance.role === "owner" && (
         <div style={cardStyle}>
-          <h3 style={{ marginTop: 0 }}>Routines</h3>
+          <h3 style={{ marginTop: 0 }}>Routinen</h3>
           <RoutineManager instanceUuid={instance.uuid} />
         </div>
       )}
 
       {/* Collaborators */}
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Collaborators</h3>
+        <h3 style={{ marginTop: 0 }}>Mitbenutzer</h3>
         <CollaboratorManager
           instanceUuid={instance.uuid}
           isOwner={instance.role === "owner"}
@@ -365,14 +372,14 @@ export function InstanceDetailPage() {
 
       {/* Activity */}
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Activity</h3>
+        <h3 style={{ marginTop: 0 }}>Aktivität</h3>
         <ActivityLog instanceUuid={instance.uuid} />
       </div>
 
       {/* Gefahrenzone: nur Owner */}
       {instance.role === "owner" && (
         <div style={{ ...cardStyle, borderColor: "#ef9a9a" }}>
-          <h3 style={{ marginTop: 0, color: "#c62828" }}>Instance löschen</h3>
+          <h3 style={{ marginTop: 0, color: "#c62828" }}>Server löschen</h3>
           {instance.status === "suspended" ? (
             <p style={{ margin: 0, fontSize: 13, color: "#666" }}>
               Gesperrt, bitte Support kontaktieren.
@@ -387,12 +394,12 @@ export function InstanceDetailPage() {
               onDelete={async () => {
                 await api.deleteInstance(instance.uuid, instance.name);
                 // Toast auf dem Dashboard anzeigen (die Detailseite wird verlassen)
-                navigate("/", { state: { toast: `Instance "${instance.name}" wurde gelöscht.` } });
+                navigate("/", { state: { toast: `Server "${instance.name}" wurde gelöscht.` } });
               }}
             />
           ) : (
             <button type="button" onClick={startDeleting} style={{ ...btnDefault, color: "#c62828", borderColor: "#ef9a9a" }}>
-              Instance löschen…
+              Server löschen…
             </button>
           )}
         </div>
