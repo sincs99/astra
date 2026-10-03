@@ -257,6 +257,7 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
                     <td style={{ padding: "4px 4px 4px 8px" }}>
                       <input
                         type="checkbox"
+                        aria-label={`${entry.name} auswählen`}
                         checked={selected.has(entry.path)}
                         onChange={() => toggleSelect(entry.path)}
                         onClick={e => e.stopPropagation()}

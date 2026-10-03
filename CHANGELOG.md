@@ -165,6 +165,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `redis` zu `backend/requirements.txt` hinzugefuegt
 
 ### Added (Frontend)
+- Zahlungsweg ueber `GET /client/billing-info` (einmal beim Laden von `/orders`): bei manuellem Anbieter werden keine Bezahl-Buttons gerendert, sondern direkt der Hinweis aus `src/legal/payment.ts`; 409 "manual" bleibt Fallback. Kostenlose Bestellungen zeigen weder Bezahl-Button noch Ueberweisungshinweis
 - Stripe-Frontend an den Vertrag angepasst: "Verlängern und bezahlen" bei aktiven/ueberfaelligen Bestellungen, Hinweis zum manuellen Zahlungsweg aus zentraler Konstante (`src/legal/payment.ts`), Toasts "Zahlung eingegangen, Server wird bereitgestellt." / "Zahlung abgebrochen.", Nachladen nach 5 s
 - Alle Backend-Zeitstempel werden als UTC gelesen (`parseUtc`, `formatDateTime`, `formatTimeAgo`, ...): Aktivitaetslog, Backups, Routinen, API-Keys, SSH-Keys, Jobs, Agents, Blueprints, Fleet Monitoring. Behebt falsche "vor X Std."-Angaben in Browsern ausserhalb von UTC; Strings mit Zeitzonen-Suffix (z.B. `+00:00`) bleiben unveraendert
 - Stripe-Vorbereitung auf `/orders`: Button "Jetzt bezahlen" fuer unbezahlte Bestellungen (`POST /client/orders/{uuid}/checkout` -> Weiterleitung zur `checkout_url`, nur https); bei 409 "manual" verschwindet der Button und es erscheint der Hinweis zur Zahlung per Ueberweisung; Rueckkehr `?paid=<uuid>` (Dank-Toast, Status wird bis zur Bestaetigung nachgeladen) und `?cancelled=<uuid>` (Hinweis, Bestellung bleibt offen)
@@ -197,6 +198,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `LoginPage`: gemeinsame UI-Styles, Label-Verknuepfung, `autocomplete`, `role="alert"`
 
 ### Changed (Frontend)
+- Ende-zu-Ende gegen das echte Backend geprueft (Registrierung, Passwort aendern ohne Ausloggen bei falschem Passwort, MFA mit echtem TOTP-Code, API-Keys, Bestellung/Zahlung/Verlaengerung/Kuendigung, Server loeschen, Produkte, Agents mit Kapazitaet, automatische Platzierung). Dabei behoben: unbeschriftete Checkboxen in der Dateiliste, englischer Rohstatus im Loesch-Hinweis (deutsches Label), deutsche Health-Labels, "Kapazitaet" in Backend-Fehlertexten
 - Kunden-Durchsicht (verstaendliche Texte): korrekte Umlaute in allen Kundentexten; ASCII-Schreibweisen aus Backend-Meldungen werden korrigiert (`lib/umlauts.ts`, z.B. "Ungültige Anmeldedaten"); technische Statuscodes ("Request failed: 500") durch allgemeine Meldungen ersetzt; Fehlerseite ohne technischen Text (Details einklappbar); "Instance" heisst fuer Kunden "Server"; Steuerung auf der Server-Seite mit deutschen Beschriftungen (Starten, Stoppen, Neustarten, "Beenden erzwingen" mit Rueckfrage, "Neu installieren"); deutsche Statuslabels (bereit, laeuft, gestoppt, wird eingerichtet, gesperrt ...); Konsole und Fehlerfallbacks ohne Fachbegriffe (Token, WebSocket, Daemon)
 - Barrierefreiheit: Link-Farbe `#1565c0`, Kontrast im Sperr-Banner und in der Konsole, Beschriftung der Benutzerauswahl bei Mitbenutzern (axe auf Dashboard, Server-Seite, Konto, Bestellungen, Shop sauber)
 - API-Client: 401 von `/auth/change-password` (falsches aktuelles Passwort) loggt nicht mehr aus

@@ -17,6 +17,7 @@ const WORDS: Record<string, string> = {
   gehoert: "gehört", zugehoerigen: "zugehörigen", spaeter: "später", hoechstens: "höchstens",
   zurueckgesetzt: "zurückgesetzt", zuruecksetzen: "zurücksetzen", Zuruecksetzen: "Zurücksetzen",
   Prueft: "Prüft", prueft: "prüft", laeuft: "läuft", Verraet: "Verrät", unterstuetzter: "unterstützter", Unterstuetzt: "Unterstützt",
+  Kapazitaet: "Kapazität", kapazitaet: "kapazität", Ueberallokation: "Überallokation", ueberallokation: "überallokation",
   Passwoerter: "Passwörter", zusaetzlich: "zusätzlich", ausgeloest: "ausgelöst",
 };
 
