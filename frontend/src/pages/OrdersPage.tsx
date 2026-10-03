@@ -2,18 +2,17 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type Order } from "../services/api";
 import { formatDate } from "../lib/dates";
+import { formatPrice } from "../lib/money";
+import { ConnectionAddress } from "../components/ConnectionAddress";
 import {
   PageLayout, StatusBadge, LoadingState, ErrorState, EmptyState, ConfirmButton, Toast, useToast,
   cardStyle, thStyle, tdStyle, linkStyle,
 } from "../components/ui";
 
-const CANCELLABLE = ["pending_payment", "active", "past_due"];
-
 /** Meine Bestellungen (Kunde). */
 export function OrdersPage() {
   const toast = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [instanceUuids, setInstanceUuids] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,13 +20,7 @@ export function OrdersPage() {
     try {
       setLoading(true);
       setError(null);
-      const [list, instances] = await Promise.all([
-        api.getMyOrders(),
-        // Instance-UUIDs fuer die Links; best effort, falls die Bestellung keine mitliefert
-        api.getClientInstances().catch(() => []),
-      ]);
-      setOrders(list);
-      setInstanceUuids(Object.fromEntries(instances.map((i) => [i.id, i.uuid])));
+      setOrders(await api.getMyOrders());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Bestellungen konnten nicht geladen werden");
     } finally {
@@ -39,12 +32,36 @@ export function OrdersPage() {
 
   const cancel = async (order: Order) => {
     try {
-      await api.cancelOrder(order.id);
-      toast.success(order.status === "pending_payment" ? "Bestellung storniert." : "Gekündigt zum Laufzeitende.");
+      const result = await api.cancelOrder(order.uuid);
+      toast.success(
+        order.status === "pending_payment"
+          ? "Bestellung storniert."
+          : `Gekündigt. Dein Server läuft noch bis ${formatDate(result.current_period_end ?? order.current_period_end)}.`,
+      );
       await load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Kündigung fehlgeschlagen");
     }
+  };
+
+  const action = (o: Order) => {
+    if (o.status === "pending_payment") {
+      return (
+        <ConfirmButton size="sm" danger label="Stornieren"
+          confirmMessage="Bestellung wirklich stornieren?" onConfirm={() => cancel(o)} />
+      );
+    }
+    if ((o.status === "active" || o.status === "past_due") && !o.cancel_at_period_end) {
+      return (
+        <ConfirmButton size="sm" danger label="Kündigen zum Laufzeitende"
+          confirmMessage="Zum Laufzeitende kündigen? Der Server bleibt bis dahin nutzbar."
+          onConfirm={() => cancel(o)} />
+      );
+    }
+    if (o.status === "awaiting_provisioning") {
+      return <span style={{ fontSize: 12, color: "#666" }}>Bezahlt, wird bereitgestellt</span>;
+    }
+    return "–";
   };
 
   return (
@@ -72,41 +89,33 @@ export function OrdersPage() {
               </tr>
             </thead>
             <tbody>
-              {orders.map((o) => {
-                const uuid = o.instance_uuid ?? (o.instance_id !== null ? instanceUuids[o.instance_id] : undefined);
-                return (
-                  <tr key={o.id}>
-                    <td style={tdStyle}>
-                      <strong>{o.product_name ?? `Produkt #${o.product_id}`}</strong>
-                      {o.name && <div style={{ fontSize: 12, color: "#666" }}>{o.name}</div>}
-                    </td>
-                    <td style={tdStyle}><StatusBadge status={o.status} size="sm" /></td>
-                    <td style={tdStyle}>
-                      {formatDate(o.current_period_end)}
-                      {o.cancel_at_period_end && o.status !== "cancelled" && (
-                        <div style={{ fontSize: 12, color: "#e65100" }}>gekündigt zum Laufzeitende</div>
-                      )}
-                    </td>
-                    <td style={tdStyle}>
-                      {o.instance_id === null ? "–" : uuid ? (
-                        <Link to={`/instances/${uuid}`} style={linkStyle}>Zum Server</Link>
-                      ) : `Server #${o.instance_id}`}
-                    </td>
-                    <td style={tdStyle}>
-                      {CANCELLABLE.includes(o.status) && !o.cancel_at_period_end ? (
-                        <ConfirmButton
-                          size="sm" danger
-                          label={o.status === "pending_payment" ? "Stornieren" : "Kündigen zum Laufzeitende"}
-                          confirmMessage={o.status === "pending_payment"
-                            ? "Bestellung wirklich stornieren?"
-                            : "Zum Laufzeitende kündigen? Der Server bleibt bis dahin nutzbar."}
-                          onConfirm={() => cancel(o)}
-                        />
-                      ) : "–"}
-                    </td>
-                  </tr>
-                );
-              })}
+              {orders.map((o) => (
+                <tr key={o.uuid}>
+                  <td style={tdStyle}>
+                    <strong>{o.product_name ?? `Produkt #${o.product_id}`}</strong>
+                    <div style={{ fontSize: 12, color: "#666" }}>
+                      {formatPrice(o.price_cents, o.currency, o.billing_period_days)}
+                    </div>
+                  </td>
+                  <td style={tdStyle}><StatusBadge status={o.status} size="sm" /></td>
+                  <td style={tdStyle}>
+                    {formatDate(o.current_period_end)}
+                    {o.cancel_at_period_end && o.status !== "cancelled" && (
+                      <div style={{ fontSize: 12, color: "#bf360c" }}>gekündigt zum Laufzeitende</div>
+                    )}
+                  </td>
+                  <td style={tdStyle}>
+                    <div>{o.instance_name}</div>
+                    {o.instance_uuid && (
+                      <>
+                        <Link to={`/instances/${o.instance_uuid}`} style={linkStyle}>Zum Server</Link>
+                        {o.connection && <div style={{ marginTop: 4 }}><ConnectionAddress connection={o.connection} compact /></div>}
+                      </>
+                    )}
+                  </td>
+                  <td style={tdStyle}>{action(o)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

@@ -3,12 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AdminProductsPage } from "./AdminProductsPage";
-import { api, type Product } from "../services/api";
+import { api } from "../services/api";
+import { makeProduct } from "../test/fixtures";
 
-const product = {
-  id: 5, name: "Starter", description: "Klein", blueprint_id: 1, memory: 2048, disk: 10240, cpu: 150, swap: 0, io: 500,
-  price_cents: 999, currency: "EUR", billing_period_days: 30, active: true, max_instances_per_user: null,
-} as Product;
+const product = makeProduct({ description: "Klein" });
 
 function mount() {
   return render(<MemoryRouter><AdminProductsPage /></MemoryRouter>);
@@ -50,7 +48,7 @@ describe("AdminProductsPage", () => {
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(create.mock.calls[0][0]).toMatchObject({
       name: "Pro", blueprint_id: 1, price_cents: 1990, currency: "EUR", billing_period_days: 30,
-      active: true, max_instances_per_user: null, memory: 1024, swap: 0, io: 500,
+      is_active: true, max_instances_per_user: null, memory: 1024, swap: 0, io: 500,
     });
   });
 
@@ -67,11 +65,27 @@ describe("AdminProductsPage", () => {
     expect(update.mock.calls[0][1]).toMatchObject({ price_cents: 1250, name: "Starter" });
   });
 
+  it("verlangt bei kostenlosen Produkten ein Limit pro Nutzer", async () => {
+    const create = vi.spyOn(api, "createProduct").mockResolvedValue(product);
+    mount();
+    await screen.findByText("Starter");
+    fireEvent.change(screen.getByLabelText("Name *"), { target: { value: "Gratis" } });
+    fireEvent.change(screen.getByLabelText("Blueprint *"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Preis (€) *"), { target: { value: "0" } });
+    fireEvent.click(screen.getByRole("button", { name: "Produkt erstellen" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/Kostenlose Produkte/);
+    expect(create).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText(/Max\. Instances pro Nutzer/), { target: { value: "1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Produkt erstellen" }));
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).toMatchObject({ price_cents: 0, max_instances_per_user: 1 });
+  });
+
   it("deaktiviert ein aktives Produkt", async () => {
     const update = vi.spyOn(api, "updateProduct").mockResolvedValue(product);
     mount();
     fireEvent.click(await screen.findByRole("button", { name: "Deaktivieren" }));
-    await waitFor(() => expect(update).toHaveBeenCalledWith(5, { active: false }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith(5, { is_active: false }));
   });
 
   it("zeigt den Backend-Fehler, wenn das Loeschen abgelehnt wird", async () => {
