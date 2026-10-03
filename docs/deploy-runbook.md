@@ -117,24 +117,27 @@ Im Panel unter **Admin → Agents → Neuer Agent**:
 | Name | `node1` | frei |
 | FQDN | `node1.deinedomain.de` | muss zum DNS und zu `NODE_DOMAIN` passen |
 | Schema | `https` | Caddy terminiert TLS |
-| Wings-Port | `8080` | Wings lauscht lokal auf 8080 |
+| Connect-Port | `443` | Port, über den das Panel Wings erreicht (Caddy) |
+| Listen-Port | `8080` | Port, auf dem Wings lokal lauscht |
 | SFTP-Port | `2022` | |
 | Datenverzeichnis | `/var/lib/pterodactyl/volumes` | Pelican: `/var/lib/pelican/volumes` |
 | Hinter Reverse Proxy | **an** | Wings ohne eigenes SSL, Caddy davor |
 
-Danach den Agent per API auf Port 443 für die Panel→Wings-Verbindung umstellen (das Formular setzt Connect- und Listen-Port gleich):
+Beim Anlegen erzeugt Astra die Node-Credentials (Token-ID sichtbar, Secret nur in der config.yml).
+Alle Felder lassen sich später über *Bearbeiten* ändern.
+
+Dann **Endpoints** anlegen: Agent `node1`, IP `0.0.0.0`, Port-Bereich `25565-25600`
+(ein Endpoint = ein Gameserver-Port; der Bereich wird in einem Schritt angelegt, vorhandene
+Ports werden übersprungen). Per API: `POST /api/admin/agents/1/endpoints/bulk` mit
+`{"ip": "0.0.0.0", "port_start": 25565, "port_end": 25600}`.
+
+Für die Skripte in Abschnitt 6 brauchst du einen Admin-Token:
 
 ```bash
 TOKEN=$(curl -s -H 'Content-Type: application/json' \
   -d '{"username":"admin","password":"<PW>"}' https://panel.deinedomain.de/api/auth/login \
   | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
-
-curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"daemon_connect": 443, "daemon_listen": 8080, "behind_proxy": true, "scheme": "https"}' \
-  https://panel.deinedomain.de/api/admin/agents/1
 ```
-
-Dann **Endpoints** anlegen: Agent `node1`, IP `0.0.0.0`, Ports 25565, 25566, 25567 … (ein Endpoint = ein Gameserver-Port).
 
 ---
 
@@ -186,7 +189,8 @@ Dann unter **Admin → Instances** eine Instanz anlegen: Blueprint Paper, Agent 
 1. Instanz steht auf `provisioning`, Wings holt `GET /api/remote/servers/{uuid}/install`.
 2. Install-Container läuft, lädt Paper, meldet `POST .../install` → Status `ready`.
 3. Start über die Konsole, Container-Status `starting` → nach der Zeile `)! For help, type ` → `running`.
-4. Mit dem Minecraft-Client auf `node1.deinedomain.de:25565` verbinden.
+4. Mit dem Minecraft-Client auf die Adresse verbinden, die die Instanz-Detailseite unter
+   *Verbindung* anzeigt (`node1.deinedomain.de:25565`, Kopier-Button).
 
 ---
 
