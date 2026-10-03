@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api, type Order, type OrderStatus } from "../services/api";
 import { formatDate } from "../lib/dates";
 import { formatPrice } from "../lib/money";
@@ -6,6 +7,8 @@ import {
   PageLayout, StatusBadge, LoadingState, ErrorState, EmptyState, ConfirmButton, Toast, useToast,
   cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, thStyle, tdStyle,
 } from "../components/ui";
+
+const STATUS_VALUES = ["pending_payment", "awaiting_provisioning", "active", "past_due", "cancelled", "expired"];
 
 const STATUSES: { value: OrderStatus; label: string }[] = [
   { value: "pending_payment", label: "Zahlung ausstehend" },
@@ -20,7 +23,14 @@ const STATUSES: { value: OrderStatus; label: string }[] = [
 export function AdminOrdersPage() {
   const toast = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [status, setStatus] = useState<OrderStatus | "">("");
+  // Filter ueber ?status=... vorbelegbar (z.B. vom Dashboard); unbekannte Werte werden ignoriert
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initial = searchParams.get("status") ?? "";
+  const [status, setStatusState] = useState<OrderStatus | "">(STATUS_VALUES.includes(initial) ? (initial as OrderStatus) : "");
+  const setStatus = (value: OrderStatus | "") => {
+    setStatusState(value);
+    setSearchParams(value ? { status: value } : {}, { replace: true });
+  };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payingUuid, setPayingUuid] = useState<string | null>(null);

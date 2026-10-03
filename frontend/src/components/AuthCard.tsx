@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { SiteFooter } from "./SiteFooter";
 
 interface AuthCardProps {
   title: string;
@@ -11,6 +12,7 @@ export function AuthCard({ title, children }: AuthCardProps) {
     <div style={{ maxWidth: 400, margin: "clamp(24px, 10vh, 80px) auto", padding: 24 }}>
       <h1 style={{ textAlign: "center", marginBottom: 24 }}>{title}</h1>
       {children}
+      <SiteFooter />
     </div>
   );
 }

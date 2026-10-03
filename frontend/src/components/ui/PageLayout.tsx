@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { linkStyle, btnDefault } from "./styles";
 import { isAuthenticated, logout } from "../../services/api";
+import { SiteFooter } from "../SiteFooter";
 import { loginUrl } from "../../lib/redirect";
 import { useCurrentUser, resetCurrentUserCache } from "../../hooks/useCurrentUser";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
@@ -95,6 +96,7 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
           <h1 style={{ marginTop: 0, marginBottom: 20, fontSize: 24, fontWeight: 700 }}>{title}</h1>
           {children}
         </main>
+        <SiteFooter />
       </div>
     );
   }
@@ -205,6 +207,7 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
         </h1>
         {children}
       </main>
+      <SiteFooter />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, isAuthenticated, setAccessToken } from "../services/api";
+import { SiteFooter } from "../components/SiteFooter";
 import { safeRedirectPath } from "../lib/redirect";
 import { inputStyle, labelStyle, btnPrimary, linkStyle } from "../components/ui";
 
@@ -171,6 +172,7 @@ export function LoginPage() {
           <Link to={redirectTo === "/" ? "/register" : `/register?redirect=${encodeURIComponent(redirectTo)}`} style={linkStyle}>Konto erstellen</Link>
         </p>
       </form>
+      <SiteFooter />
     </div>
   );
 }

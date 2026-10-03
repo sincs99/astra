@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { LoginPage } from "./LoginPage";
 import { RegisterPage } from "./RegisterPage";
@@ -112,11 +112,12 @@ describe("LoginPage", () => {
 });
 
 describe("RegisterPage", () => {
-  function fill(password = "langgenug1", confirm = password) {
+  function fill(password = "langgenug1", confirm = password, accept = true) {
     type("Benutzername", "bob");
     type("E-Mail", "bob@example.com");
     type("Passwort", password);
     type("Passwort wiederholen", confirm);
+    if (accept) fireEvent.click(screen.getByLabelText(/Ich akzeptiere/));
   }
 
   it("validiert vor dem Request", async () => {
@@ -129,6 +130,34 @@ describe("RegisterPage", () => {
     submit("Konto erstellen");
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/stimmen nicht ueberein/));
     expect(register).not.toHaveBeenCalled();
+  });
+
+  it("verlangt die Zustimmung zu AGB und Datenschutz und verlinkt beide", async () => {
+    const register = vi.spyOn(api, "register").mockResolvedValue({ access_token: "neu", token_type: "Bearer", user: {} } as never);
+    mount("/register");
+    fill("langgenug1", "langgenug1", false);
+    submit("Konto erstellen");
+    expect((await screen.findByRole("alert")).textContent).toMatch(/AGB und die Datenschutzerklaerung/);
+    expect(register).not.toHaveBeenCalled();
+    const terms = within(screen.getByLabelText(/Ich akzeptiere/).closest("label")!);
+    const agb = terms.getByRole("link", { name: "AGB" });
+    expect(agb.getAttribute("href")).toBe("/agb");
+    expect(agb.getAttribute("target")).toBe("_blank");
+    expect(agb.getAttribute("rel")).toContain("noopener");
+    expect(terms.getByRole("link", { name: "Datenschutzerklärung" }).getAttribute("href")).toBe("/datenschutz");
+    fireEvent.click(screen.getByLabelText(/Ich akzeptiere/));
+    submit("Konto erstellen");
+    await waitFor(() => expect(register).toHaveBeenCalled());
+  });
+
+  it("zeigt die Rechtslinks auch auf Login und Registrierung", () => {
+    mount("/login");
+    expect(screen.getByRole("navigation", { name: "Rechtliches" })).toBeTruthy();
+    cleanup();
+    mount("/register");
+    for (const name of ["Impressum", "Datenschutz", "AGB"]) {
+      expect(within(screen.getByRole("navigation", { name: "Rechtliches" })).getByRole("link", { name })).toBeTruthy();
+    }
   });
 
   it("leitet nach der Registrierung zum angegebenen Ziel weiter", async () => {

@@ -10,8 +10,8 @@ const pending = makeOrder({ id: 7, uuid: "o-7", status: "pending_payment", user_
 const active = makeOrder({ id: 8, uuid: "o-8", status: "active", user_id: 2, username: "bob", instance_uuid: "0f3a9c1e-ffff", payment_reference: "ÜW-123" });
 const awaiting = makeOrder({ id: 9, uuid: "o-9", status: "awaiting_provisioning", user_id: 3, username: "eve" });
 
-function mount() {
-  return render(<MemoryRouter><AdminOrdersPage /></MemoryRouter>);
+function mount(path = "/admin/orders") {
+  return render(<MemoryRouter initialEntries={[path]}><AdminOrdersPage /></MemoryRouter>);
 }
 
 beforeEach(() => {
@@ -31,6 +31,21 @@ describe("AdminOrdersPage", () => {
     expect(list).toHaveBeenLastCalledWith("");
     fireEvent.change(screen.getByLabelText("Status"), { target: { value: "awaiting_provisioning" } });
     await waitFor(() => expect(list).toHaveBeenLastCalledWith("awaiting_provisioning"));
+  });
+
+  it("uebernimmt den Statusfilter aus der URL (Link vom Dashboard)", async () => {
+    const list = vi.spyOn(api, "getAdminOrders").mockResolvedValue([pending]);
+    mount("/admin/orders?status=awaiting_provisioning");
+    await screen.findByText("bob");
+    expect(list).toHaveBeenCalledWith("awaiting_provisioning");
+    expect((screen.getByLabelText("Status") as HTMLSelectElement).value).toBe("awaiting_provisioning");
+  });
+
+  it("ignoriert unbekannte Statuswerte in der URL", async () => {
+    const list = vi.spyOn(api, "getAdminOrders").mockResolvedValue([pending]);
+    mount("/admin/orders?status=hacked");
+    await screen.findByText("bob");
+    expect(list).toHaveBeenCalledWith("");
   });
 
   it("bietet je Status die passende Aktion", async () => {
