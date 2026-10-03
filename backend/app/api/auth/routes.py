@@ -124,7 +124,7 @@ def resend_verification_endpoint():
     from app.domain.accounts.service import resend_verification
 
     data = request.get_json() or {}
-    resend_verification(data.get("email"))
+    resend_verification(data.get("email") or data.get("login"))
     return jsonify({"message": "Falls die Adresse existiert und unbestaetigt ist, wurde eine E-Mail versendet"})
 
 

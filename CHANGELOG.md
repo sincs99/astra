@@ -32,12 +32,20 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Migration `k1f2g3h4i5j6` (M29 Suspension) brach auf SQLite im Batch-Modus mit "Constraint must have a name"
   ab; jetzt `ALTER TABLE ADD COLUMN` ohne Neuaufbau (FK-Constraint nur auf PostgreSQL)
 - Migration `l2g3h4i5j6k7` (M33) nutzt fuer `agents.uuid` einen Unique-Index statt einer Batch-Constraint
-  (gleicher SQLite-Fehler); Up-/Downgrade-Roundtrip auf beiden Datenbanken getestet
+  (gleicher SQLite-Fehler)
+- Downgrades von M29/M33/M38 tolerieren jetzt Datenbanken, deren Schema per `db-init`/`create_all()`
+  entstand (andere Constraint-Namen als im Migrationspfad). Up-/Downgrade-Roundtrip von Head bis M28 und
+  zurueck auf PostgreSQL 16 und SQLite verifiziert, jeweils fuer Migrations- und create_all-Datenbanken
 
 ### Security (M35 – Admin-Guard)
 - Der gesamte `/api/admin`-Blueprint verlangt jetzt einen angemeldeten Admin (`before_request`, JWT, API-Key oder in Dev/Test `X-User-Id`). Ausnahme: `GET /api/admin/health`. Ohne Login 401, ohne Admin-Recht 403
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
+
+### Fixed / Added (E-Mail-Links und Verifizierungs-Frontend)
+- Fix: Der Link in der Passwort-Reset-Mail zeigte auf `/reset-password`, die Frontend-Route heisst `/password-reset/confirm` (Link fuehrte auf die 404-Seite); Tests pruefen jetzt beide Mail-Links gegen die Frontend-Routen
+- `POST /api/auth/resend-verification` akzeptiert zusaetzlich `login` (Benutzername oder Adresse), Antwort bleibt neutral
+- Frontend: neue Seite `/verify-email` (Ziel des Mail-Links), Registrierung zeigt bei aktiver Verifizierung den Hinweis "E-Mail bestaetigen" mit "Erneut senden", Login zeigt bei `email_not_verified` einen Hinweis mit Knopf zum erneuten Senden; `ApiError` traegt HTTP-Status und Fehlercode
 
 ### Removed (M40 – Legacy /api/agent)
 - Der Blueprint `/api/agent` (`instances/{uuid}/install`, `instances/{uuid}/container/status`, `sftp-auth`, `health`) wurde komplett entfernt. Wings und alle Agents nutzen `/api/remote` mit Node-Token. Der Agent-Guard aus M36 samt `AGENT_GUARD_ENABLED` und `test_m36.py` entfaellt damit
@@ -77,7 +85,6 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `FRONTEND_URL` fuer den Link in der Reset-Mail
 - Neue Auth-Pfade unterliegen dem Rate Limiting
 - `backend/test_m34.py` (18 Tests)
-- Noch offen: Frontend-Seiten (Registrieren, Passwort vergessen, E-Mail bestaetigen)
 
 ### Changed
 - Rate Limiting fuer `/api/auth/login` nutzt jetzt Redis (geteilter Zaehler ueber alle Gunicorn-Worker), mit In-Memory-Fallback wenn Redis nicht erreichbar ist (`backend/app/infrastructure/ratelimit.py`)

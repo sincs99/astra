@@ -20,6 +20,15 @@ branch_labels = None
 depends_on = None
 
 
+NAMING_CONVENTION = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s",
+}
+
+
 def _column_exists(table, column):
     bind = op.get_bind()
     columns = [c["name"] for c in sa_inspect(bind).get_columns(table)]
@@ -28,7 +37,7 @@ def _column_exists(table, column):
 
 def upgrade():
     if not _column_exists("users", "email_verified_at"):
-        with op.batch_alter_table("users", schema=None) as batch_op:
+        with op.batch_alter_table("users", schema=None, naming_convention=NAMING_CONVENTION) as batch_op:
             batch_op.add_column(sa.Column("email_verified_at", sa.DateTime(), nullable=True))
 
     users = sa.table(
@@ -44,5 +53,5 @@ def upgrade():
 
 
 def downgrade():
-    with op.batch_alter_table("users", schema=None) as batch_op:
+    with op.batch_alter_table("users", schema=None, naming_convention=NAMING_CONVENTION) as batch_op:
         batch_op.drop_column("email_verified_at")

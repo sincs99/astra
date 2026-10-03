@@ -54,7 +54,23 @@ def upgrade():
 def downgrade():
     bind = op.get_bind()
     if bind.dialect.name != "sqlite":
-        op.drop_constraint("fk_instances_suspended_by_user_id_users", "instances", type_="foreignkey")
-    op.drop_column("instances", "suspended_by_user_id")
-    op.drop_column("instances", "suspended_at")
-    op.drop_column("instances", "suspended_reason")
+        # FK-Name haengt davon ab, ob die Spalte per Migration (benannt) oder per
+        # db.create_all() (DB-Default-Name) entstanden ist.
+        for fk in sa_inspect(bind).get_foreign_keys("instances"):
+            if fk.get("constrained_columns") == ["suspended_by_user_id"] and fk.get("name"):
+                op.drop_constraint(fk["name"], "instances", type_="foreignkey")
+        op.drop_column("instances", "suspended_by_user_id")
+        op.drop_column("instances", "suspended_at")
+        op.drop_column("instances", "suspended_reason")
+    else:
+        naming = {
+            "ix": "ix_%(column_0_label)s",
+            "uq": "uq_%(table_name)s_%(column_0_name)s",
+            "ck": "ck_%(table_name)s_%(constraint_name)s",
+            "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+            "pk": "pk_%(table_name)s",
+        }
+        with op.batch_alter_table("instances", schema=None, naming_convention=naming) as batch_op:
+            batch_op.drop_column("suspended_by_user_id")
+            batch_op.drop_column("suspended_at")
+            batch_op.drop_column("suspended_reason")

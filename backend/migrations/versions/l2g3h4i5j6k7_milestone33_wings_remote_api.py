@@ -82,8 +82,20 @@ def upgrade():
             batch_op.add_column(sa.Column("file_denylist", sa.JSON(), nullable=True))
 
 
+NAMING_CONVENTION = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s",
+}
+
+
 def downgrade():
-    with op.batch_alter_table("blueprints", schema=None) as batch_op:
+    bind = op.get_bind()
+    inspector = sa_inspect(bind)
+
+    with op.batch_alter_table("blueprints", schema=None, naming_convention=NAMING_CONVENTION) as batch_op:
         batch_op.drop_column("file_denylist")
         batch_op.drop_column("config_files")
         batch_op.drop_column("config_stop")
@@ -91,11 +103,21 @@ def downgrade():
         batch_op.drop_column("install_entrypoint")
         batch_op.drop_column("install_container")
 
-    with op.batch_alter_table("agents", schema=None) as batch_op:
+    with op.batch_alter_table("agents", schema=None, naming_convention=NAMING_CONVENTION) as batch_op:
         batch_op.drop_column("upload_size")
         batch_op.drop_column("daemon_base")
         batch_op.drop_column("daemon_sftp")
         batch_op.drop_column("behind_proxy")
-    op.drop_index("uq_agents_uuid", table_name="agents")
-    with op.batch_alter_table("agents", schema=None) as batch_op:
+
+    # Eindeutigkeit von agents.uuid: entweder unser Index (Migrationspfad) oder eine
+    # Unique-Constraint aus db.create_all() (Frischinstallation via db-init).
+    index_names = {ix["name"] for ix in inspector.get_indexes("agents")}
+    if "uq_agents_uuid" in index_names:
+        op.drop_index("uq_agents_uuid", table_name="agents")
+    elif bind.dialect.name != "sqlite":
+        for uq in inspector.get_unique_constraints("agents"):
+            if uq.get("column_names") == ["uuid"] and uq.get("name"):
+                op.drop_constraint(uq["name"], "agents", type_="unique")
+
+    with op.batch_alter_table("agents", schema=None, naming_convention=NAMING_CONVENTION) as batch_op:
         batch_op.drop_column("uuid")
