@@ -464,9 +464,134 @@ def delete_blueprint(blueprint_id: int):
     if blueprint.instances:
         return jsonify({"error": "Blueprint wird noch von Instances verwendet"}), 409
 
+    from app.domain.billing.models import Product
+    if Product.query.filter_by(blueprint_id=blueprint.id).first():
+        return jsonify({"error": "Blueprint wird noch von Produkten verwendet"}), 409
+
     db.session.delete(blueprint)
     db.session.commit()
     return jsonify({"message": f"Blueprint '{blueprint.name}' gelöscht"})
+
+
+# ── Produkte und Bestellungen (M44) ─────────────────────
+
+
+def _billing_error(e):
+    return jsonify({"error": e.message}), e.status_code
+
+
+@admin_bp.route("/products", methods=["GET"])
+def list_products():
+    from app.domain.billing.models import Product
+    products = Product.query.order_by(Product.price_cents, Product.id).all()
+    return jsonify([p.to_dict() for p in products])
+
+
+@admin_bp.route("/products", methods=["POST"])
+def create_product_route():
+    from app.domain.billing.service import BillingError, create_product
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body is required"}), 400
+    try:
+        return jsonify(create_product(data).to_dict()), 201
+    except BillingError as e:
+        return _billing_error(e)
+
+
+@admin_bp.route("/products/<int:product_id>", methods=["GET"])
+def get_product_route(product_id: int):
+    from app.domain.billing.models import Product
+    product = db.session.get(Product, product_id)
+    if not product:
+        return jsonify({"error": "Produkt nicht gefunden"}), 404
+    return jsonify(product.to_dict())
+
+
+@admin_bp.route("/products/<int:product_id>", methods=["PATCH"])
+def update_product_route(product_id: int):
+    from app.domain.billing.models import Product
+    from app.domain.billing.service import BillingError, update_product
+    product = db.session.get(Product, product_id)
+    if not product:
+        return jsonify({"error": "Produkt nicht gefunden"}), 404
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body is required"}), 400
+    try:
+        return jsonify(update_product(product, data).to_dict())
+    except BillingError as e:
+        return _billing_error(e)
+
+
+@admin_bp.route("/products/<int:product_id>", methods=["DELETE"])
+def delete_product_route(product_id: int):
+    from app.domain.billing.models import Product
+    from app.domain.billing.service import BillingError, delete_product
+    product = db.session.get(Product, product_id)
+    if not product:
+        return jsonify({"error": "Produkt nicht gefunden"}), 404
+    try:
+        delete_product(product)
+    except BillingError as e:
+        return _billing_error(e)
+    return jsonify({"message": "Produkt geloescht"})
+
+
+@admin_bp.route("/orders", methods=["GET"])
+def list_orders():
+    """Alle Bestellungen, optional gefiltert: ?status=...&user_id=..."""
+    from sqlalchemy.orm import joinedload
+    from app.domain.billing.models import Order, ALL_ORDER_STATUSES
+    query = Order.query.options(
+        joinedload(Order.user), joinedload(Order.instance).joinedload(Instance.agent),
+        joinedload(Order.instance).joinedload(Instance.primary_endpoint),
+    )
+    status = request.args.get("status")
+    if status:
+        if status not in ALL_ORDER_STATUSES:
+            return jsonify({"error": f"Unbekannter Status '{status}'"}), 400
+        query = query.filter(Order.status == status)
+    user_id = request.args.get("user_id", type=int)
+    if user_id is not None:
+        query = query.filter(Order.user_id == user_id)
+    orders = query.order_by(Order.created_at.desc(), Order.id.desc()).all()
+    return jsonify([o.to_dict(include_user=True) for o in orders])
+
+
+@admin_bp.route("/orders/<string:uuid>", methods=["GET"])
+def get_order_route(uuid: str):
+    from app.domain.billing.models import Order
+    order = Order.query.filter_by(uuid=uuid).first()
+    if not order:
+        return jsonify({"error": "Bestellung nicht gefunden"}), 404
+    return jsonify(order.to_dict(include_user=True))
+
+
+@admin_bp.route("/orders/<string:uuid>/mark-paid", methods=["POST"])
+def mark_order_paid_route(uuid: str):
+    """Bestellung als bezahlt markieren und Instance bereitstellen (manueller Zahlungsweg).
+
+    Body (optional): {"payment_reference": "Ueberweisung 2026-10-03"}.
+    Idempotent: eine bereits aktive Bestellung bleibt unveraendert. Eine bezahlte Bestellung
+    ohne Instance (awaiting_provisioning) wird erneut bereitgestellt.
+    """
+    from app.domain.auth.service import get_current_user
+    from app.domain.billing.models import Order
+    from app.domain.billing.service import BillingError, mark_order_paid
+    order = Order.query.filter_by(uuid=uuid).first()
+    if not order:
+        return jsonify({"error": "Bestellung nicht gefunden"}), 404
+    data = request.get_json(silent=True) or {}
+    ref = data.get("payment_reference")
+    if ref is not None and not isinstance(ref, str):
+        return jsonify({"error": "Field 'payment_reference' must be a string"}), 400
+    actor = get_current_user()
+    try:
+        order = mark_order_paid(order, ref, actor.id if actor else None)
+    except BillingError as e:
+        return _billing_error(e)
+    return jsonify(order.to_dict(include_user=True))
 
 
 # ── Endpoints ───────────────────────────────────────────

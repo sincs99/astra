@@ -43,6 +43,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M44 – Produkte und Bestellungen)
+- Neue Tabellen `products` und `orders` (Migration `n4i5j6k7l8m9`, Upgrade/Downgrade geprueft, Schema stimmt mit `create_all` ueberein). Bestellungen halten einen Schnappschuss von Preis, Laufzeit und Ressourcen
+- Admin: `GET/POST /api/admin/products`, `GET/PATCH/DELETE /api/admin/products/{id}`, `GET /api/admin/orders` (Filter `status`, `user_id`), `GET /api/admin/orders/{uuid}`, `POST /api/admin/orders/{uuid}/mark-paid` (manuelle Zahlung, stellt die Instance per automatischer Platzierung bereit; idempotent; ohne freien Node bleibt die Bestellung `awaiting_provisioning` und kann erneut bereitgestellt werden)
+- Kunde: `GET /api/client/products` (oeffentlich, nur aktive Pakete ohne interne Felder), `POST /api/client/orders`, `GET /api/client/orders[/{uuid}]`, `POST /api/client/orders/{uuid}/cancel` (offen: sofort, aktiv: zum Laufzeitende)
+- Regeln: max. 5 offene Bestellungen pro Kunde, `max_instances_per_user` je Paket, kostenlose Pakete nur mit Limit und sofort bereitgestellt, bestaetigte E-Mail wenn `EMAIL_VERIFICATION_REQUIRED`, Produkt mit Bestellungen und Blueprint mit Produkten nicht loeschbar (409)
+- Neue Activity-/Webhook-Events `order:created`, `order:paid`, `order:provision_failed`, `order:cancelled`
+- `docs/orders-api.md`, `backend/test_m44.py` (84 Tests)
+
 ### Added (M43 – Instance loeschen)
 - `delete_instance(instance, actor_id, force)` im Instance-Service: Runner-Aufraeumen best effort (Backups, Datenbanken, Instance auf dem Node; Fehler werden geloggt und als `runner_cleanup: "failed"` gemeldet, das Panel loescht trotzdem), Endpoints werden freigegeben (Zeilen bleiben), Backups/Datenbanken/Collaborators/Routines inkl. Actions werden entfernt, Activity-Eintraege bleiben erhalten
 - Laufende Vorgaenge (`provisioning`, `reinstalling`, `restoring`, `transferring`) -> 409, ausser Admin mit `force: true`
