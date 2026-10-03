@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api, type Instance } from "../services/api";
 import { ConnectionAddress } from "../components/ConnectionAddress";
+import { SHOP_ENABLED } from "../config";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
-import { PageLayout, AutoRefreshToggle, Toast, useToast, StatusBadge, LoadingState, ErrorState, EmptyState, cardStyle } from "../components/ui";
+import { PageLayout, AutoRefreshToggle, Toast, useToast, StatusBadge, LoadingState, ErrorState, EmptyState, cardStyle, linkStyle } from "../components/ui";
 
 export function DashboardPage() {
   const [instances, setInstances] = useState<Instance[]>([]);
@@ -61,12 +62,21 @@ export function DashboardPage() {
       {loading ? (
         <LoadingState />
       ) : instances.length === 0 ? (
-        <EmptyState
-          message={user?.is_admin
-            ? "Keine Instances vorhanden. Erstelle eine ueber den Admin-Bereich."
-            : "Noch kein Server. Bestellung folgt in Phase 4."}
-          icon="📦"
-        />
+        <div>
+          <EmptyState
+            message={user?.is_admin
+              ? "Keine Instances vorhanden. Erstelle eine ueber den Admin-Bereich."
+              : SHOP_ENABLED
+                ? "Du hast noch keinen Server."
+                : "Noch kein Server. Bestellung folgt in Phase 4."}
+            icon="📦"
+          />
+          {SHOP_ENABLED && (
+            <p style={{ textAlign: "center" }}>
+              <Link to="/shop" style={linkStyle}>Zum Shop und Server bestellen</Link>
+            </p>
+          )}
+        </div>
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
           {instances.map((inst) => (

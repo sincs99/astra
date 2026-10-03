@@ -31,7 +31,7 @@ import { cardStyle, inputStyle, labelStyle, btnPrimary, btnDanger, btnDefault, t
 |-------|-----|-----------|
 | Gruen | `#2e7d32` | ready, running, healthy, completed, ok, active, success |
 | Blau | `#1565c0` | provisioning, starting, pending, info, reinstalling |
-| Orange | `#e65100` | stale, retrying, warning, maintenance, restoring, stopping |
+| Orange | `#bf360c` | stale, retrying, warning, maintenance, restoring, stopping |
 | Rot | `#c62828` | failed, error, degraded, stopped, provision_failed |
 | Lila | `#7b1fa2` | retrying (Jobs) |
 | Grau | `#666` | offline, unknown, inactive, unreachable, none |
