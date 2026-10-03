@@ -36,7 +36,26 @@ describe("LoginPage", () => {
     submit("Anmelden");
     expect(await screen.findByText("Dashboard")).toBeTruthy();
     expect(getAccessToken()).toBe("tok");
-    expect(api.login).toHaveBeenCalledWith("alice", "geheim123");
+    expect(api.login).toHaveBeenCalledWith("alice", "geheim123", undefined);
+  });
+
+  it("fragt bei aktivem MFA den Code ab und sendet ihn im zweiten Schritt mit", async () => {
+    const login = vi.spyOn(api, "login")
+      .mockResolvedValueOnce({ requires_mfa: true, message: "MFA-Code erforderlich" })
+      .mockResolvedValueOnce({ access_token: "mfa-tok", token_type: "Bearer", user: {} } as never);
+    mount("/login");
+    type("Username oder Email", "alice");
+    type("Passwort", "geheim123");
+    submit("Anmelden");
+    const codeField = await screen.findByLabelText("Authenticator-Code");
+    expect(getAccessToken()).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Bestaetigen" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/Code/);
+    fireEvent.change(codeField, { target: { value: " 123456 " } });
+    submit("Bestaetigen");
+    expect(await screen.findByText("Dashboard")).toBeTruthy();
+    expect(login).toHaveBeenLastCalledWith("alice", "geheim123", "123456");
+    expect(getAccessToken()).toBe("mfa-tok");
   });
 
   it("verlangt beide Felder", async () => {

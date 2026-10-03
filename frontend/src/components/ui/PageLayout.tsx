@@ -32,6 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   // Integrations
   { label: "Webhooks", adminOnly: true, href: "/admin/webhooks", group: "Integrations" },
   // Account
+  { label: "Konto", href: "/account", group: "Account" },
   { label: "SSH Keys", href: "/account/ssh-keys", group: "Account" },
 ];
 

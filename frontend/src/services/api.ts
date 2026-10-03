@@ -5,6 +5,8 @@
  * In Produktion:  VITE_API_BASE_URL oder /api (hinter Nginx)
  */
 
+import { friendlyApiMessage, NETWORK_ERROR_MESSAGE } from "../lib/errors";
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 const TOKEN_KEY = "astra_access_token";
 
@@ -94,7 +96,12 @@ async function request<T = unknown>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, { ...options, headers });
+  let response: Response;
+  try {
+    response = await fetch(url, { ...options, headers });
+  } catch {
+    throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
+  }
 
   if (!response.ok) {
     // Abgelaufene/ungueltige Session: Token verwerfen und zum Login (Login-Fehler selbst ausgenommen)
@@ -106,7 +113,7 @@ async function request<T = unknown>(
     }
     const error = (await response.json().catch(() => ({}))) as Record<string, string>;
     throw new ApiError(
-      error.error || `Request failed: ${response.status}`,
+      friendlyApiMessage(response.status, error.error || `Request failed: ${response.status}`),
       response.status,
       error.code,
     );
@@ -143,6 +150,44 @@ export interface LoginResponse {
   user: User;
 }
 
+/** Antwort von /auth/login bei aktivem MFA, solange noch kein Code mitgeschickt wurde. */
+export interface MfaRequiredResponse {
+  requires_mfa: true;
+  message: string;
+}
+
+export type LoginResult = LoginResponse | MfaRequiredResponse;
+
+export interface MfaSetupResult {
+  secret: string;
+  provisioning_uri: string;
+  message: string;
+}
+
+export interface MfaEnableResult {
+  mfa_enabled: boolean;
+  recovery_codes: string[];
+  message: string;
+}
+
+export interface ApiKeyEntry {
+  id: number;
+  user_id: number;
+  key_type: "account" | "application";
+  identifier: string;
+  memo: string | null;
+  allowed_ips: string[] | null;
+  permissions: string[] | null;
+  last_used_at: string | null;
+  expires_at: string | null;
+  created_at: string | null;
+}
+
+/** Nach dem Anlegen enthaelt die Antwort genau einmal den Klartext-Token. */
+export interface ApiKeyCreated extends ApiKeyEntry {
+  raw_token: string;
+}
+
 /** Bei aktiver E-Mail-Verifizierung gibt es kein Token, sondern nur den Hinweis zur Bestaetigung. */
 export type RegisterResponse =
   | LoginResponse
@@ -156,6 +201,7 @@ export interface User {
   email: string;
   is_admin: boolean;
   email_verified?: boolean;
+  mfa_enabled?: boolean;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -702,11 +748,27 @@ export const api = {
       body: JSON.stringify({ token, password }),
     }),
 
-  login: (login: string, password: string) =>
-    request<LoginResponse>("/auth/login", {
+  login: (login: string, password: string, mfaCode?: string) =>
+    request<LoginResult>("/auth/login", {
       method: "POST",
-      body: JSON.stringify({ login, password }),
+      body: JSON.stringify(mfaCode ? { login, password, mfa_code: mfaCode } : { login, password }),
     }),
+
+  // ── Konto: Passwort, MFA, API-Keys ───────────────────
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ message: string }>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    }),
+  setupMfa: () => request<MfaSetupResult>("/auth/mfa/setup", { method: "POST" }),
+  verifyMfa: (code: string) =>
+    request<MfaEnableResult>("/auth/mfa/verify", { method: "POST", body: JSON.stringify({ code }) }),
+  disableMfa: () => request<{ message: string }>("/auth/mfa/disable", { method: "POST" }),
+  getApiKeys: () => request<ApiKeyEntry[]>("/auth/api-keys"),
+  createApiKey: (data: { key_type?: "account" | "application"; memo?: string; allowed_ips?: string[] }) =>
+    request<ApiKeyCreated>("/auth/api-keys", { method: "POST", body: JSON.stringify(data) }),
+  deleteApiKey: (id: number) =>
+    request<{ message: string }>(`/auth/api-keys/${id}`, { method: "DELETE" }),
 
   getCurrentUser: () => request<User>("/auth/me"),
 

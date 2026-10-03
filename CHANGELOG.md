@@ -110,6 +110,8 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `redis` zu `backend/requirements.txt` hinzugefuegt
 
 ### Added (Frontend)
+- Konto-Seite `/account` (Navigation "Konto"): Profil, MFA/TOTP einrichten (QR-Code clientseitig mit `qrcode`, Secret als Text, Verifikation, Recovery-Codes einmalig) und deaktivieren, API-Keys (Liste, anlegen, loeschen; Token nur einmal sichtbar), Link auf SSH-Keys, "Passwort aendern" hinter Feature-Flag `VITE_CHANGE_PASSWORD_ENABLED=true` (Backend `POST /auth/change-password`)
+- Login: zweiter Schritt fuer MFA (`requires_mfa` -> Code/Recovery-Code); vorher konnten sich MFA-Nutzer im Frontend nicht anmelden
 - Agents-Seite: Health-Badge je Agent (`GET /admin/agents/monitoring`, 15s Auto-Refresh), optional "Wings erreichbar"/Version sobald `daemon_reachable`/`daemon_version` geliefert werden
 - Kunden-/Admin-Trennung im UI: Admin-Links nur fuer `is_admin`, Admin-Routen leiten Kunden zum Dashboard um (`AdminRoute`, `useCurrentUser`); Dashboard zeigt den Benutzernamen statt "User #id" und einen Kunden-Leerzustand
 - Instance-Detail: Box "SFTP-Zugang" (Host, Port, Benutzername `<user>.<uuid[:8]>` mit Kopier-Buttons, Hinweis auf Panel-Passwort/SSH-Key). Port aus `connection.sftp_port`, fuer Admins sonst aus der Agent-Liste
@@ -127,6 +129,8 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `LoginPage`: gemeinsame UI-Styles, Label-Verknuepfung, `autocomplete`, `role="alert"`
 
 ### Changed (Frontend)
+- Verstaendliche Fehlermeldungen im API-Client: 403 vom Admin-Guard -> "Nur Administratoren duerfen diese Aktion ausfuehren.", nicht erreichbarer Server -> eigene Meldung (`lib/errors.ts`)
+- Kunden-Dashboard: Platzhalter "Noch kein Server. Bestellung folgt in Phase 4." (Admins weiter mit Hinweis auf den Admin-Bereich), Komponententests fuer Leer-/Fehler-/Normalzustand
 - Frontend-Tests mit Vitest (`npm test`, 54 Tests): Login/Registrierung/Passwort-Reset inkl. E-Mail-Verifizierung (Komponententests), SFTP-Box, Port-Bereich, Egg-Parser, Agent-Formular-Validierung, `useAutoRefresh`, API-Client (Bearer-Token, 401-Handling, Reset-Payload); Logik dafuer nach `src/lib/` ausgelagert
 - Barrierefreiheit (axe-core, WCAG 2 A/AA, 13 Seiten ohne Verstoesse): Kontraste bei Grautexten, Status-Badges und Kennzahlen, Labels fuer Selects/Inputs auf Agents-, Instances-, Jobs- und Monitoring-Seite
 - Responsive Layout: dynamisches Padding, horizontal scrollbare Tabellen, `FileBrowser`-Grid bricht auf schmalen Screens um
