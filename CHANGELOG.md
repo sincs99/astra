@@ -56,6 +56,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Preflight-Check `billing_tick` (`ok`, `not_needed`, `warning` mit Alter und Zahl der wartenden Bestellungen); nur eine Warnung, blockiert nichts. Das Vermerken ist best effort und kann den Tick nie stoeren
 - `backend/test_m53.py` (30 Tests, inkl. CLI-Lauf und Gegenprobe ohne Vermerken); Doku in `docs/orders-api.md`, `docs/known-limitations.md`, `docs/operations.md`
 
+### Added (Betrieb: Tick-Ueberwachung durchgereicht)
+- `BILLING_TICK_MAX_AGE_MINUTES` in `.env.prod.example` und `docker-compose.prod.yml`; `scripts/smoke-test.sh` prueft `GET /api/admin/billing/status` (`healthy`); Runbook Abschnitt 9/9a beschreibt Status-Endpunkt und externen Monitor
+
 ### Added (Admin: Zahlungsereignisse ansehen)
 - `GET /api/admin/payment-events` (nur lesen, Admin-Guard): Zahlungsereignisse des Anbieters, neueste zuerst; Filter `status` (`processed`, `ignored`, `unapplied`, `mismatch`, `received`), `order_uuid`, `limit` (1 bis 500, Standard 100; ungueltige Werte ergeben 400). Damit lassen sich `mismatch` (Betrag/Waehrung weicht ab) und `unapplied` (Zahlung fuer beendete Bestellung, Erstattung pruefen) ohne Datenbankzugriff finden. Tests in `test_m48.py` (83), Doku in `docs/orders-api.md`
 

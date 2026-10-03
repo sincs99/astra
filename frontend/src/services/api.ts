@@ -790,6 +790,17 @@ export interface JobSummary {
   by_type: Record<string, number>;
 }
 
+export interface BillingStatus {
+  healthy: boolean;
+  /** ISO UTC mit Suffix; null wenn der Tick noch nie lief */
+  last_run_at: string | null;
+  age_seconds: number | null;
+  max_age_minutes: number;
+  orders_needing_tick: number;
+  orders_by_status: Record<string, number>;
+  last_summary: Record<string, unknown> | null;
+}
+
 // ── System / Version Types (M24) ────────────────────────
 
 export interface SystemVersionInfo {
@@ -1254,6 +1265,7 @@ export const api = {
   getSystemVersion: () => request<SystemVersionInfo>("/admin/system/version"),
   getUpgradeStatus: () => request<UpgradeStatus>("/admin/system/upgrade-status"),
   getPreflight: () => request<PreflightResult>("/admin/system/preflight"),
+  getBillingStatus: () => request<BillingStatus>("/admin/billing/status"),
 
   // ── Admin: Agent Maintenance (M25) ────────────────────
   enableAgentMaintenance: (agentId: number, payload?: { reason?: string }) =>

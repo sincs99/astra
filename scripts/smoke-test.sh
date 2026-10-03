@@ -85,6 +85,17 @@ else
 
         READY=$(curl -s -m 10 "${AUTH[@]}" "$PANEL/api/admin/health/detailed" | json "d.get('status')")
         [ "$READY" = "ok" ] && ok "GET /api/admin/health/detailed -> ok" || fail "health/detailed" "status=$READY"
+
+        # Billing-Tick (M53): healthy ist false, wenn Bestellungen warten und der Tick zu lange nicht lief
+        BILLING=$(curl -s -m 10 "${AUTH[@]}" "$PANEL/api/admin/billing/status")
+        HEALTHY=$(echo "$BILLING" | json "d.get('healthy')")
+        AGE=$(echo "$BILLING" | json "d.get('age_seconds')")
+        NEED=$(echo "$BILLING" | json "d.get('orders_needing_tick')")
+        if [ "$HEALTHY" = "True" ]; then
+            ok "GET /api/admin/billing/status -> healthy (letzter Tick vor ${AGE}s, $NEED Bestellung(en) brauchen ihn)"
+        else
+            fail "billing/status" "healthy=$HEALTHY, letzter Tick vor ${AGE}s, $NEED Bestellung(en) warten (Container 'billing' pruefen)"
+        fi
     fi
 fi
 
