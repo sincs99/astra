@@ -5,6 +5,22 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Phase 2 – Produktions-Deployment)
+- `docker-compose.prod.yml`: Caddy als TLS-Terminierung (Let's Encrypt, einziger oeffentlicher Eingang 80/443),
+  Worker-Container fuer die Redis-Job-Queue, Healthchecks fuer Backend/Redis, Redis mit Passwort und AOF,
+  gemeinsamer Backend-Env-Block (`x-backend-env`), kein direktes Port-Mapping fuer Frontend/Backend mehr
+- `deploy/Caddyfile` + `deploy/node.caddy.template`: optionaler Reverse Proxy fuer den Wings-Node auf
+  demselben Host (`NODE_DOMAIN` -> `host.docker.internal:8080`, Websockets inklusive)
+- `.env.prod.example` im Root (Domains, Secrets, Admin, Mail, Queue), `COMPOSE_FILE` vorbelegt
+- `scripts/deploy.sh` (Build, Start, Warten auf Readiness, `--bootstrap`, `--status`),
+  `scripts/install-wings.sh` (Docker + Wings + config.yml aus dem Panel + systemd, `--pelican`),
+  `scripts/smoke-test.sh` (Health, TLS, Admin-Guard, Remote-API-Auth je Agent)
+- `docs/deploy-runbook.md`: Runbook fuer Panel + Wings auf einem Server, Abnahme-Checkliste, Umzug
+
+### Changed
+- `frontend/nginx.conf`: `X-Forwarded-Proto` wird vom vorgelagerten Proxy durchgereicht (statt `$scheme`),
+  damit das Backend hinter Caddy `https` erkennt; Backend nutzt `PROXY_FIX_X_FOR/X_PROTO=2`
+
 ### Security (M35 – Admin-Guard)
 - Der gesamte `/api/admin`-Blueprint verlangt jetzt einen angemeldeten Admin (`before_request`, JWT, API-Key oder in Dev/Test `X-User-Id`). Ausnahme: `GET /api/admin/health`. Ohne Login 401, ohne Admin-Recht 403
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
@@ -44,12 +60,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `redis` zu `backend/requirements.txt` hinzugefuegt
 
 ### Added (Frontend)
+- Blueprint-Import-UI (`BlueprintImport`) auf der Blueprint-Admin-Seite: Egg-JSON per Datei oder Textarea, Vorschau, Aufruf `POST /api/admin/blueprints/import`. Per Feature-Flag `VITE_BLUEPRINT_IMPORT_ENABLED=true` (Build-Zeit) freizuschalten, standardmaessig aus
+- Self-Service (M34-Frontend): `RegisterPage` (/register), `ForgotPasswordPage` (/password-reset), `ResetPasswordPage` (/password-reset/confirm?token=), Links auf der LoginPage; Meldung "Registrierung ist deaktiviert"; clientseitige Validierung (Passwort min. 8 Zeichen)
 - `PageLayout`: SPA-Navigation per `react-router` (kein Seiten-Reload), `aria-current`, Abmelden-Button
 - `FileBrowser`: Upload von Textdateien (max. 1 MB, Workaround ueber Write-Endpoint) und "Neue Datei"
 - Auto-Refresh (15s, abschaltbar, nur bei sichtbarem Tab) fuer Jobs-Dashboard, Fleet Monitoring, Dashboard und Admin-Instances (`hooks/useAutoRefresh.ts`, `AutoRefreshToggle`)
 - 401-Handling: abgelaufene Sitzung leitet zu `/login?expired=1` mit Hinweis um
 - `ErrorBoundary` gegen weisse Seite bei Render-Fehlern, `NotFoundPage` als Catch-all-Route
-- Navigation: Link-Leiste scrollt separat, Abmelden-Button bleibt auf schmalen Screens sichtbar; Login leitet eingeloggte Nutzer zum Dashboard
+- Mobile-Navigation (<=760px): Hamburger-Menue mit gruppierten Links und Abmelden, schliesst bei Seitenwechsel/Escape (`hooks/useMediaQuery.ts`); Login leitet eingeloggte Nutzer zum Dashboard
 - `LoginPage`: gemeinsame UI-Styles, Label-Verknuepfung, `autocomplete`, `role="alert"`
 
 ### Changed (Frontend)

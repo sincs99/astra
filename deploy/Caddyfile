@@ -1,0 +1,31 @@
+# ══════════════════════════════════════════════════════════
+# Astra – Caddy-Konfiguration (TLS automatisch via Let's Encrypt)
+#
+# PANEL_DOMAIN und ACME_EMAIL kommen aus der .env (docker-compose.prod.yml).
+# Zusaetzliche Sites (z.B. Wings-Node hinter Caddy) liegen in deploy/sites/*.caddy
+# und werden von scripts/deploy.sh aus NODE_DOMAIN erzeugt.
+# ══════════════════════════════════════════════════════════
+
+{
+    email {$ACME_EMAIL}
+    # Fuer Tests ohne Rate-Limit-Risiko bei Let's Encrypt:
+    # acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+{$PANEL_DOMAIN} {
+    encode zstd gzip
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+
+    # Alles an das Frontend (Nginx), das /api an das Backend weiterreicht
+    reverse_proxy frontend:80 {
+        header_up X-Forwarded-Proto https
+    }
+}
+
+import /etc/caddy/sites/*.caddy
