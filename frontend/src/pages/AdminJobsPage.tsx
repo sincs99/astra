@@ -52,11 +52,11 @@ export function AdminJobsPage() {
       {summary && (
         <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
           <MiniCard label="Gesamt" value={summary.total} />
-          <MiniCard label="Pending" value={summary.by_status.pending || 0} color="#1976d2" />
-          <MiniCard label="Running" value={summary.by_status.running || 0} color="#f57c00" />
-          <MiniCard label="Completed" value={summary.by_status.completed || 0} color="#4caf50" />
-          <MiniCard label="Failed" value={summary.by_status.failed || 0} color="#d32f2f" />
-          <MiniCard label="Retrying" value={summary.by_status.retrying || 0} color="#9c27b0" />
+          <MiniCard label="Pending" value={summary.by_status?.pending || 0} color="#1976d2" />
+          <MiniCard label="Running" value={summary.by_status?.running || 0} color="#f57c00" />
+          <MiniCard label="Completed" value={summary.by_status?.completed || 0} color="#4caf50" />
+          <MiniCard label="Failed" value={summary.by_status?.failed || 0} color="#d32f2f" />
+          <MiniCard label="Retrying" value={summary.by_status?.retrying || 0} color="#9c27b0" />
         </div>
       )}
 
@@ -77,8 +77,8 @@ export function AdminJobsPage() {
           <label style={labelStyle}>Typ</label>
           <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }} style={inputStyle}>
             <option value="">Alle</option>
-            {summary && Object.keys(summary.by_type).map(t => (
-              <option key={t} value={t}>{t} ({summary.by_type[t]})</option>
+            {summary && Object.keys(summary.by_type ?? {}).map(t => (
+              <option key={t} value={t}>{t} ({summary.by_type?.[t]})</option>
             ))}
           </select>
         </div>
