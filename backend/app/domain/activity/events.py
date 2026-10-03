@@ -59,6 +59,12 @@ INSTANCE_SUSPENDED = "instance:suspended"
 INSTANCE_DELETED = "instance:deleted"
 INSTANCE_UNSUSPENDED = "instance:unsuspended"
 
+# M44: Bestellungen
+ORDER_CREATED = "order:created"
+ORDER_PAID = "order:paid"
+ORDER_PROVISION_FAILED = "order:provision_failed"
+ORDER_CANCELLED_EVENT = "order:cancelled"
+
 # M30: SFTP-/SSH-Key-Auth-Events
 SSH_KEY_AUTH_SUCCESS = "ssh_key:auth_success"
 SSH_KEY_AUTH_FAILED = "ssh_key:auth_failed"
