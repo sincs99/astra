@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type BackupEntry } from "../services/api";
+import { formatDateTime } from "../lib/dates";
 
 interface BackupManagerProps {
   instanceUuid: string;
@@ -137,9 +138,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
                   )}
                 </td>
                 <td style={tdS}>
-                  {b.created_at
-                    ? new Date(b.created_at).toLocaleString("de-CH")
-                    : "–"}
+                  {formatDateTime(b.created_at)}
                 </td>
                 <td style={tdS}>
                   <div style={{ display: "flex", gap: 4 }}>

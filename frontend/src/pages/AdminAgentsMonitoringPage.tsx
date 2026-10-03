@@ -7,6 +7,7 @@ import {
   PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState,
   cardStyle, inputStyle, labelStyle, btnDefault, thStyle, tdStyle,
 } from "../components/ui";
+import { formatTimeAgo } from "../lib/dates";
 
 type HealthFilter = "" | "healthy" | "stale" | "degraded" | "unreachable";
 type SortKey = "name" | "last_seen_at" | "memory" | "disk" | "cpu" | "instances";
@@ -297,13 +298,3 @@ function MaintenanceToggle({ agent, onRefresh }: { agent: AgentMonitoringEntry; 
 
 // ── Hilfsfunktionen ──────────────────────────────────────
 
-function formatTimeAgo(isoStr: string): string {
-  try {
-    const d = new Date(isoStr);
-    const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-    if (diff < 60) return "gerade eben";
-    if (diff < 3600) return `vor ${Math.floor(diff / 60)} Min.`;
-    if (diff < 86400) return `vor ${Math.floor(diff / 3600)} Std.`;
-    return `vor ${Math.floor(diff / 86400)} Tagen`;
-  } catch { return isoStr; }
-}
