@@ -173,7 +173,7 @@ export function AdminBlueprintsPage() {
     <PageLayout title="Blueprints">
       <Toast {...toast} />
 
-      {/* ── Import (Feature-Flag VITE_BLUEPRINT_IMPORT_ENABLED) ── */}
+      {/* ── Import (Pterodactyl-Egg) ── */}
       <BlueprintImport
         onImported={(bp) => { toast.success(`Blueprint '${bp.name}' importiert.`); loadBlueprints(); }}
         onError={() => { /* Fehler wird im Import-Formular angezeigt */ }}
