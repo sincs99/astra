@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, type FileEntry } from "../services/api";
 import { Toast, useToast, btnDefault, btnPrimary } from "./ui";
 
@@ -7,6 +7,9 @@ interface FileBrowserProps {
 }
 
 const ARCHIVE_EXTENSIONS = [".tar.gz", ".tgz", ".zip", ".tar", ".gz", ".bz2", ".xz", ".7z"];
+
+// Der Backend-Write-Endpoint nimmt nur Text entgegen (kein Multipart-Upload).
+const MAX_UPLOAD_BYTES = 1024 * 1024;
 
 function isArchive(name: string): boolean {
   return ARCHIVE_EXTENSIONS.some(ext => name.toLowerCase().endsWith(ext));
@@ -23,6 +26,9 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [newFileName, setNewFileName] = useState("");
   const [newDirName, setNewDirName] = useState("");
   const [renameSrc, setRenameSrc] = useState("");
   const [renameTgt, setRenameTgt] = useState("");
@@ -84,6 +90,52 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
       await loadFiles(directory);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Fehler beim Löschen");
+    }
+  };
+
+  const joinPath = (name: string) => (directory === "/" ? `/${name}` : `${directory}/${name}`);
+
+  const handleUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    let ok = 0;
+    for (const file of Array.from(files)) {
+      if (file.size > MAX_UPLOAD_BYTES) {
+        toast.error(`'${file.name}' ist zu gross (max. 1 MB).`);
+        continue;
+      }
+      try {
+        const text = await file.text();
+        // Binaerdateien wuerden beim Text-Write beschaedigt -> ablehnen
+        if (text.includes("\uFFFD") || text.includes("\0")) {
+          toast.error(`'${file.name}' ist keine Textdatei und kann nicht hochgeladen werden.`);
+          continue;
+        }
+        await api.writeFile(instanceUuid, joinPath(file.name), text);
+        ok++;
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : `Upload von '${file.name}' fehlgeschlagen`);
+      }
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setUploading(false);
+    if (ok > 0) {
+      toast.success(`${ok} Datei(en) hochgeladen.`);
+      await loadFiles(directory);
+    }
+  };
+
+  const handleCreateFile = async () => {
+    const name = newFileName.trim();
+    if (!name) return;
+    try {
+      await api.writeFile(instanceUuid, joinPath(name), "");
+      toast.success(`Datei '${name}' erstellt.`);
+      setNewFileName("");
+      await loadFiles(directory);
+      await openFile(joinPath(name));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Fehler");
     }
   };
 
@@ -176,7 +228,7 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: selectedFile ? "1fr 1fr" : "1fr", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: selectedFile ? "repeat(auto-fit, minmax(280px, 1fr))" : "1fr", gap: 16 }}>
         {/* Dateiliste */}
         <div>
           {loading ? (
@@ -233,6 +285,23 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
 
           {/* ── Aktionen ── */}
           <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              hidden
+              aria-label="Dateien hochladen"
+              onChange={e => handleUpload(e.target.files)}
+            />
+            <button onClick={() => fileInputRef.current?.click()} disabled={uploading} style={smBtn}>
+              {uploading ? "Wird hochgeladen..." : "⬆ Hochladen"}
+            </button>
+            <small style={{ color: "#666", fontSize: 11 }}>nur Textdateien, max. 1 MB</small>
+          </div>
+
+          <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <input type="text" value={newFileName} onChange={e => setNewFileName(e.target.value)} placeholder="Neue Datei" style={actionInput} />
+            <button onClick={handleCreateFile} style={smBtn}>📄+</button>
             <input type="text" value={newDirName} onChange={e => setNewDirName(e.target.value)} placeholder="Neuer Ordner" style={actionInput} />
             <button onClick={handleCreateDir} style={smBtn}>📁+</button>
           </div>

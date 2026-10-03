@@ -3,6 +3,16 @@
 Alle relevanten Aenderungen an Astra werden hier dokumentiert.
 Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added (Frontend)
+- `PageLayout`: SPA-Navigation per `react-router` (kein Seiten-Reload), `aria-current`, Abmelden-Button
+- `FileBrowser`: Upload von Textdateien (max. 1 MB, Workaround ueber Write-Endpoint) und "Neue Datei"
+- `LoginPage`: gemeinsame UI-Styles, Label-Verknuepfung, `autocomplete`, `role="alert"`
+
+### Changed (Frontend)
+- Responsive Layout: dynamisches Padding, horizontal scrollbare Tabellen, `FileBrowser`-Grid bricht auf schmalen Screens um
+
 ## [0.32.0-rc] - 2026-03-16
 
 ### Added (M32 – Pilotbetrieb & v1.0-Rollout)

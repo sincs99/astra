@@ -25,7 +25,8 @@
 - Kein Transfer-Mechanismus zwischen Agents.
 
 ### UI / Frontend
-- Responsive Design ist grundlegend, aber nicht Mobile-optimiert.
+- Responsive Design ist grundlegend (Tabellen scrollen horizontal), aber nicht vollstaendig Mobile-optimiert.
+- File-Upload nur fuer Textdateien bis 1 MB (kein Multipart-Endpoint im Backend).
 - Nicht alle Admin-Seiten verwenden bereits die neuen `PageLayout`/`StatusBadge`-Komponenten (schrittweise Migration).
 - Keine Echtzeit-Updates via WebSocket fuer Admin-Ansichten (Polling oder manuelle Aktualisierung).
 
