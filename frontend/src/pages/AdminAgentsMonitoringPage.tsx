@@ -252,7 +252,7 @@ function MaintenanceToggle({ agent, onRefresh }: { agent: AgentMonitoringEntry; 
 
   const handleToggle = async () => {
     const action = agent.maintenance_mode ? "deaktivieren" : "aktivieren";
-    if (!confirm(`Maintenance fuer "${agent.name}" ${action}?`)) return;
+    if (!confirm(`Maintenance für "${agent.name}" ${action}?`)) return;
     setToggling(true);
     try {
       if (agent.maintenance_mode) {

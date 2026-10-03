@@ -32,7 +32,7 @@ export function BlueprintImport({ onImported, onError }: BlueprintImportProps) {
       setError(null);
     } catch (err) {
       setParsed(null);
-      setError(err instanceof Error ? err.message : "Ungueltige Eingabe");
+      setError(err instanceof Error ? err.message : "Ungültige Eingabe");
     }
   };
 
@@ -66,7 +66,7 @@ export function BlueprintImport({ onImported, onError }: BlueprintImportProps) {
     <div style={cardStyle}>
       <h2 style={{ marginTop: 0, fontSize: 18, fontWeight: 700 }}>Blueprint importieren</h2>
       <p style={{ marginTop: -8, color: "#666", fontSize: 13 }}>
-        Pterodactyl-Egg als JSON-Datei hochladen oder einfuegen.
+        Pterodactyl-Egg als JSON-Datei hochladen oder einfügen.
       </p>
 
       <div style={{ marginBottom: 12 }}>
@@ -81,7 +81,7 @@ export function BlueprintImport({ onImported, onError }: BlueprintImportProps) {
       </div>
 
       <div style={{ marginBottom: 12 }}>
-        <label htmlFor="egg-text" style={labelStyle}>oder JSON einfuegen</label>
+        <label htmlFor="egg-text" style={labelStyle}>oder JSON einfügen</label>
         <textarea
           id="egg-text"
           value={text}
@@ -111,7 +111,7 @@ export function BlueprintImport({ onImported, onError }: BlueprintImportProps) {
           style={{ ...btnPrimary, opacity: !parsed || importing ? 0.6 : 1, cursor: !parsed || importing ? "not-allowed" : "pointer" }}>
           {importing ? "Wird importiert..." : "Importieren"}
         </button>
-        <button type="button" onClick={reset} disabled={importing} style={btnDefault}>Zuruecksetzen</button>
+        <button type="button" onClick={reset} disabled={importing} style={btnDefault}>Zurücksetzen</button>
       </div>
     </div>
   );

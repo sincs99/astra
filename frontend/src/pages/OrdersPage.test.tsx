@@ -263,4 +263,36 @@ describe("OrdersPage", () => {
       expect(screen.getByRole("button", { name: "Jetzt bezahlen" })).toBeTruthy();
     });
   });
+
+  describe("Schmale Bildschirme", () => {
+    beforeEach(() => {
+      vi.stubGlobal("matchMedia", (query: string) => ({
+        matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {},
+      }));
+    });
+    afterEach(() => { vi.unstubAllGlobals(); });
+
+    it("zeigt Bestellungen als Karten mit allen Angaben und Aktionen statt als Tabelle", async () => {
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([active, pending]);
+      mount();
+      const list = await screen.findByRole("list", { name: "Meine Bestellungen" });
+      expect(screen.queryByRole("table")).toBeNull();
+      const cards = within(list).getAllByRole("listitem");
+      expect(cards).toHaveLength(2);
+      expect(within(cards[0]).getByLabelText("aktiv")).toBeTruthy();
+      expect(within(cards[0]).getByText("15.11.2026")).toBeTruthy();
+      expect(within(cards[0]).getByRole("link", { name: "Zum Server" }).getAttribute("href")).toBe("/instances/inst-abc");
+      expect(within(cards[0]).getByRole("button", { name: "Kündigen zum Laufzeitende" })).toBeTruthy();
+      expect(within(cards[1]).getByRole("button", { name: "Jetzt bezahlen" })).toBeTruthy();
+      expect(within(cards[1]).getByRole("button", { name: "Stornieren" })).toBeTruthy();
+    });
+
+    it("kuendigt auch in der Kartenansicht", async () => {
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([active]);
+      const cancel = vi.spyOn(api, "cancelOrder").mockResolvedValue(active);
+      mount();
+      fireEvent.click(await screen.findByRole("button", { name: "Kündigen zum Laufzeitende" }));
+      await waitFor(() => expect(cancel).toHaveBeenCalledWith("o-1"));
+    });
+  });
 });

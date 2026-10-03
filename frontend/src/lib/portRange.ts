@@ -16,7 +16,7 @@ export function parsePortRange(input: string): PortRange | string {
   if (!m) return "Bitte einen Port (25565) oder Bereich (25565-25600) eingeben.";
   const start = Number(m[1]);
   const end = m[2] === undefined ? start : Number(m[2]);
-  if (start < 1 || start > 65535 || end < 1 || end > 65535) return "Ports muessen zwischen 1 und 65535 liegen.";
+  if (start < 1 || start > 65535 || end < 1 || end > 65535) return "Ports müssen zwischen 1 und 65535 liegen.";
   if (start > end) return "Der Anfangsport muss kleiner oder gleich dem Endport sein.";
   const count = end - start + 1;
   if (count > MAX_BULK_PORTS) return `Maximal ${MAX_BULK_PORTS} Ports pro Aufruf (angefragt: ${count}).`;

@@ -70,9 +70,9 @@ export function toAgentPayload(v: AgentFormValues): AgentUpdate | string {
   const memoryOveralloc = over(v.memoryOveralloc);
   const diskOveralloc = over(v.diskOveralloc);
   const cpuOveralloc = over(v.cpuOveralloc);
-  if (memoryOveralloc === null) return "Memory-Ueberallokation muss zwischen 0 und 1000 % liegen.";
-  if (diskOveralloc === null) return "Disk-Ueberallokation muss zwischen 0 und 1000 % liegen.";
-  if (cpuOveralloc === null) return "CPU-Ueberallokation muss zwischen 0 und 1000 % liegen.";
+  if (memoryOveralloc === null) return "Memory-Überallokation muss zwischen 0 und 1000 % liegen.";
+  if (diskOveralloc === null) return "Disk-Überallokation muss zwischen 0 und 1000 % liegen.";
+  if (cpuOveralloc === null) return "CPU-Überallokation muss zwischen 0 und 1000 % liegen.";
   return {
     name: v.name.trim(),
     fqdn: v.fqdn.trim(),

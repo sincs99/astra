@@ -11,7 +11,7 @@ export function parseEgg(text: string): { egg: Record<string, unknown>; preview:
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error("Kein gueltiges JSON.");
+    throw new Error("Kein gültiges JSON.");
   }
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     throw new Error("Das Egg muss ein JSON-Objekt sein.");
