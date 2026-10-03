@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { btnDanger, btnDefault, inputStyle, labelStyle, ErrorState } from "./ui";
 
-/** Status, bei denen das Backend das Loeschen ohne `force` mit 409 ablehnt. */
+/** Status, bei denen das Backend das Löschen ohne `force` mit 409 ablehnt. */
 export const DELETE_BLOCKING_STATUSES = ["provisioning", "reinstalling", "restoring", "transferring"];
 
 interface DeleteInstanceFormProps {
-  /** Name der Instance; muss zur Bestaetigung exakt eingegeben werden */
+  /** Name der Instance; muss zur Bestätigung exakt eingegeben werden */
   name: string;
   status?: string | null;
   /** Admin: "Erzwingen" anbieten, wenn die Instance in einem laufenden Vorgang ist */
@@ -17,7 +17,7 @@ interface DeleteInstanceFormProps {
   idPrefix?: string;
 }
 
-/** Loeschen erst nach Eingabe des Instance-Namens (ein ConfirmButton reicht hier nicht). */
+/** Löschen erst nach Eingabe des Instance-Namens (ein ConfirmButton reicht hier nicht). */
 export function DeleteInstanceForm({ name, status, allowForce = false, notice, onDelete, onCancel, idPrefix = "del" }: DeleteInstanceFormProps) {
   const [typed, setTyped] = useState("");
   const [force, setForce] = useState(false);
@@ -45,7 +45,7 @@ export function DeleteInstanceForm({ name, status, allowForce = false, notice, o
       {error && <ErrorState message={error} />}
       <p style={{ marginTop: 0, fontSize: 13 }}>
         <strong>Das lässt sich nicht rückgängig machen.</strong> Alle Dateien, Backups, Datenbanken, Collaborators und
-        Routinen dieser Instance werden gelöscht, die Endpoints werden freigegeben.
+        Routinen dieses Servers werden gelöscht, die Endpoints werden freigegeben.
       </p>
       {notice && (
         <p style={{ margin: "0 0 12px", fontSize: 13, color: "#c62828", fontWeight: 600 }}>{notice}</p>
@@ -63,7 +63,7 @@ export function DeleteInstanceForm({ name, status, allowForce = false, notice, o
       )}
       {!allowForce && blocked && (
         <p style={{ fontSize: 12, color: "#c62828", margin: "8px 0 0" }}>
-          Die Instance ist im Status „{status}“. Löschen ist erst danach möglich.
+          Der Server ist im Status „{status}“. Löschen ist erst danach möglich.
         </p>
       )}
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>

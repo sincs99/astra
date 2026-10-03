@@ -13,7 +13,7 @@ export function ForgotPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
-      setError("Bitte eine gueltige E-Mail-Adresse eingeben");
+      setError("Bitte eine gültige E-Mail-Adresse eingeben");
       return;
     }
     try {
@@ -31,9 +31,9 @@ export function ForgotPasswordPage() {
   return (
     <AuthCard title="Passwort vergessen">
       {sent ? (
-        // Antwort ist bewusst neutral: sie verraet nicht, ob die Adresse existiert
+        // Antwort ist bewusst neutral: sie verrät nicht, ob die Adresse existiert
         <AuthMessage kind="success">
-          Falls ein Konto mit dieser Adresse existiert, haben wir dir eine E-Mail mit einem Link zum Zuruecksetzen geschickt.
+          Falls ein Konto mit dieser Adresse existiert, haben wir dir eine E-Mail mit einem Link zum Zurücksetzen geschickt.
         </AuthMessage>
       ) : (
         <form onSubmit={handleSubmit} noValidate>
@@ -50,7 +50,7 @@ export function ForgotPasswordPage() {
         </form>
       )}
       <p style={{ textAlign: "center", fontSize: 14 }}>
-        <Link to="/login" style={linkStyle}>Zurueck zum Login</Link>
+        <Link to="/login" style={linkStyle}>Zurück zum Login</Link>
       </p>
     </AuthCard>
   );

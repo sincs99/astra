@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 
-/** Rendert den Text clientseitig als QR-Code (kein Secret verlaesst den Browser). */
+/** Rendert den Text clientseitig als QR-Code (kein Secret verlässt den Browser). */
 export function QrCode({ value, size = 180, alt }: { value: string; size?: number; alt: string }) {
   const [src, setSrc] = useState<string | null>(null);
 

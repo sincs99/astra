@@ -50,7 +50,7 @@ export function ServerConsole({ instanceUuid }: Props) {
 
     setConnectionState("connecting");
     setErrorMessage(null);
-    addLine("Verbindung wird aufgebaut...", "[System]");
+    addLine("Verbindung wird aufgebaut…", "[System]");
 
     try {
       // Credentials vom Backend holen
@@ -61,7 +61,7 @@ export function ServerConsole({ instanceUuid }: Props) {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        addLine("WebSocket verbunden, authentifiziere...", "[System]");
+        addLine("Verbunden, Anmeldung läuft…", "[System]");
         // Auth-Event senden
         ws.send(
           JSON.stringify({
@@ -82,8 +82,8 @@ export function ServerConsole({ instanceUuid }: Props) {
 
       ws.onerror = () => {
         setConnectionState("error");
-        setErrorMessage("WebSocket-Verbindungsfehler");
-        addLine("Verbindungsfehler!", "[Fehler]");
+        setErrorMessage("Die Verbindung zur Konsole ist fehlgeschlagen.");
+        addLine("Verbindung unterbrochen.", "[Fehler]");
       };
 
       ws.onclose = (event) => {
@@ -108,7 +108,7 @@ export function ServerConsole({ instanceUuid }: Props) {
       switch (data.event) {
         case "auth success":
           setConnectionState("connected");
-          addLine("Authentifizierung erfolgreich!", "[System]");
+          addLine("Verbunden.", "[System]");
           // Logs anfordern
           wsRef.current?.send(
             JSON.stringify({ event: "send logs", args: [null] })
@@ -118,7 +118,7 @@ export function ServerConsole({ instanceUuid }: Props) {
         case "console output":
         case "install output":
           if (data.args[0]) {
-            // ANSI-Codes fuer einfache Darstellung entfernen
+            // ANSI-Codes für einfache Darstellung entfernen
             const clean = stripAnsi(data.args[0]);
             addLine(clean);
           }
@@ -133,12 +133,12 @@ export function ServerConsole({ instanceUuid }: Props) {
           break;
 
         case "daemon error":
-          addLine(data.args[0] || "Daemon-Fehler", "[Daemon]");
+          addLine(data.args[0] || "Der Server meldet einen Fehler", "[Daemon]");
           break;
 
         case "token expiring":
         case "token expired":
-          addLine("Token laeuft ab, erneuere...", "[System]");
+          addLine("Sitzung wird erneuert…", "[System]");
           renewToken();
           break;
 
@@ -157,9 +157,9 @@ export function ServerConsole({ instanceUuid }: Props) {
       wsRef.current?.send(
         JSON.stringify({ event: "auth", args: [creds.token] })
       );
-      addLine("Token erneuert", "[System]");
+      addLine("Sitzung erneuert", "[System]");
     } catch {
-      addLine("Token-Erneuerung fehlgeschlagen", "[Fehler]");
+      addLine("Die Sitzung konnte nicht erneuert werden. Bitte lade die Seite neu.", "[Fehler]");
     }
   }, [instanceUuid, addLine]);
 
@@ -296,7 +296,7 @@ export function ServerConsole({ instanceUuid }: Props) {
       {/* Output */}
       <div ref={outputRef} style={consoleOutputStyle}>
         {lines.length === 0 ? (
-          <div style={{ color: "#666" }}>
+          <div style={{ color: "#9e9e9e" }}>
             Klicke "Verbinden" um die Console zu starten...
           </div>
         ) : (
@@ -332,7 +332,7 @@ export function ServerConsole({ instanceUuid }: Props) {
 // ── Hilfsfunktionen ──────────────────────────────────
 
 function stripAnsi(text: string): string {
-  // Entfernt ANSI-Escape-Codes fuer einfache Text-Darstellung
+  // Entfernt ANSI-Escape-Codes für einfache Text-Darstellung
   return text.replace(
     // eslint-disable-next-line no-control-regex
     /\u001b\[[0-9;]*[a-zA-Z]/g,

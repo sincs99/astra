@@ -1,4 +1,4 @@
-/** Button mit Bestaetigungsdialog fuer gefaehrliche Aktionen (M26). */
+/** Button mit Bestaetigungsdialog für gefährliche Aktionen (M26). */
 
 import { useState } from "react";
 import { btnDanger, btnDefault } from "./styles";
@@ -23,7 +23,7 @@ export function ConfirmButton({
   const [busy, setBusy] = useState(false);
 
   const handleClick = async () => {
-    const msg = confirmMessage || `"${label}" wirklich ausfuehren?`;
+    const msg = confirmMessage || `"${label}" wirklich ausführen?`;
     if (!confirm(msg)) return;
 
     setBusy(true);

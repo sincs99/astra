@@ -4,7 +4,7 @@ import { formatDate, formatDateTime } from "../lib/dates";
 /**
  * Warnhinweise zur Laufzeit einer Bestellung (Kunde und Admin):
  * - past_due: "Gesperrt seit …" und "Server wird am … gelöscht" (rot)
- * - aktiv + gekuendigt: "Läuft bis …, wird dann gelöscht" (orange)
+ * - aktiv + gekündigt: "Läuft bis …, wird dann gelöscht" (orange)
  */
 export function OrderNotice({ order }: { order: Order }) {
   const deletion = order.scheduled_deletion_at;

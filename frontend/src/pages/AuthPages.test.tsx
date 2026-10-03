@@ -50,10 +50,10 @@ describe("LoginPage", () => {
     submit("Anmelden");
     const codeField = await screen.findByLabelText("Authenticator-Code");
     expect(getAccessToken()).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Bestaetigen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Bestätigen" }));
     expect((await screen.findByRole("alert")).textContent).toMatch(/Code/);
     fireEvent.change(codeField, { target: { value: " 123456 " } });
-    submit("Bestaetigen");
+    submit("Bestätigen");
     expect(await screen.findByText("Dashboard")).toBeTruthy();
     expect(login).toHaveBeenLastCalledWith("alice", "geheim123", "123456");
     expect(getAccessToken()).toBe("mfa-tok");
@@ -91,20 +91,20 @@ describe("LoginPage", () => {
   });
 
   it("bietet bei unbestaetigter E-Mail das erneute Senden an", async () => {
-    vi.spyOn(api, "login").mockRejectedValue(new ApiError("E-Mail nicht bestaetigt", 403, "email_not_verified"));
+    vi.spyOn(api, "login").mockRejectedValue(new ApiError("E-Mail nicht bestätigt", 403, "email_not_verified"));
     const resend = vi.spyOn(api, "resendVerification").mockResolvedValue({ message: "ok" } as never);
     mount("/login");
     type("Username oder Email", "alice");
     type("Passwort", "geheim123");
     submit("Anmelden");
-    fireEvent.click(await screen.findByRole("button", { name: /Bestaetigungs-Mail erneut senden/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Bestätigungs-Mail erneut senden/ }));
     await waitFor(() => expect(resend).toHaveBeenCalledWith("alice"));
-    expect(await screen.findByText(/neue Bestaetigungs-Mail/)).toBeTruthy();
+    expect(await screen.findByText(/neue Bestätigungs-Mail/)).toBeTruthy();
   });
 
   it("zeigt Hinweise nach Passwort-Reset und abgelaufener Sitzung", () => {
     mount("/login?reset=1");
-    expect(screen.getByRole("status").textContent).toMatch(/Passwort wurde geaendert/);
+    expect(screen.getByRole("status").textContent).toMatch(/Passwort wurde geändert/);
     cleanup();
     mount("/login?expired=1");
     expect(screen.getByRole("status").textContent).toMatch(/abgelaufen/);
@@ -128,7 +128,7 @@ describe("RegisterPage", () => {
     expect((await screen.findByRole("alert")).textContent).toMatch(/mindestens 8 Zeichen/);
     fill("langgenug1", "anders1234");
     submit("Konto erstellen");
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/stimmen nicht ueberein/));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/stimmen nicht überein/));
     expect(register).not.toHaveBeenCalled();
   });
 
@@ -137,7 +137,7 @@ describe("RegisterPage", () => {
     mount("/register");
     fill("langgenug1", "langgenug1", false);
     submit("Konto erstellen");
-    expect((await screen.findByRole("alert")).textContent).toMatch(/AGB und die Datenschutzerklaerung/);
+    expect((await screen.findByRole("alert")).textContent).toMatch(/AGB und die Datenschutzerklärung/);
     expect(register).not.toHaveBeenCalled();
     const terms = within(screen.getByLabelText(/Ich akzeptiere/).closest("label")!);
     const agb = terms.getByRole("link", { name: "AGB" });
@@ -211,6 +211,6 @@ describe("ResetPasswordPage", () => {
     type("Passwort wiederholen", "neuespasswort1");
     submit("Passwort speichern");
     await waitFor(() => expect(confirm).toHaveBeenCalledWith("abc", "neuespasswort1"));
-    expect((await screen.findByRole("status")).textContent).toMatch(/Passwort wurde geaendert/);
+    expect((await screen.findByRole("status")).textContent).toMatch(/Passwort wurde geändert/);
   });
 });

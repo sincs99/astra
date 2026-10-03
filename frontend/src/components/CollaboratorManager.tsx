@@ -38,7 +38,7 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
       setCollaborators(collabs);
       setUsers(userList);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
+      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
       showMsg("Collaborator hinzugefügt");
       await loadAll();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
+      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
     } finally {
       setActing(false);
     }
@@ -80,7 +80,7 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
       showMsg("Permissions aktualisiert");
       await loadAll();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
+      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
     } finally {
       setActing(false);
     }
@@ -95,7 +95,7 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
       showMsg("Collaborator entfernt");
       await loadAll();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
+      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
     } finally {
       setActing(false);
     }
@@ -120,9 +120,10 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
             value={newUserId}
             onChange={(e) => setNewUserId(e.target.value ? Number(e.target.value) : "")}
             required
+            aria-label="Benutzer auswählen"
             style={{ padding: 6, fontSize: 13, flex: 1 }}
           >
-            <option value="">– User wählen –</option>
+            <option value="">– Benutzer wählen –</option>
             {users.map((u) => (
               <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
             ))}

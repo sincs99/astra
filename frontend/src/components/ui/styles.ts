@@ -81,7 +81,7 @@ export const tdStyle: React.CSSProperties = {
 };
 
 export const linkStyle: React.CSSProperties = {
-  color: "#1976d2",
+  color: "#1565c0",
   textDecoration: "none",
   fontWeight: 500,
 };

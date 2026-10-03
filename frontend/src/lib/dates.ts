@@ -8,7 +8,7 @@ export function parseUtc(iso: string): Date {
   return new Date(HAS_ZONE.test(iso) ? iso : `${iso}Z`);
 }
 
-/** Datum fuer Tabellen, z.B. "31.10.2026"; "–" ohne Wert. */
+/** Datum für Tabellen, z.B. "31.10.2026"; "–" ohne Wert. */
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return "–";
   const d = parseUtc(iso);
@@ -23,7 +23,7 @@ export function formatDateTime(iso: string | null | undefined): string {
   return `${d.toLocaleDateString("de-CH")} ${d.toLocaleTimeString("de-CH", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
-/** Relative Angabe wie "vor 5 Min."; `now` ist fuer Tests ueberschreibbar. Zukunft/Uhrenabweichung = "gerade eben". */
+/** Relative Angabe wie "vor 5 Min."; `now` ist für Tests ueberschreibbar. Zukunft/Uhrenabweichung = "gerade eben". */
 export function formatTimeAgo(iso: string, now: number = Date.now()): string {
   const d = parseUtc(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -34,7 +34,7 @@ export function formatTimeAgo(iso: string, now: number = Date.now()): string {
   return `vor ${Math.floor(diff / 86400)} Tagen`;
 }
 
-/** Kurzes Datum mit Uhrzeit inkl. Sekunden fuer Protokolle, z.B. "03.10., 14:05:09". */
+/** Kurzes Datum mit Uhrzeit inkl. Sekunden für Protokolle, z.B. "03.10., 14:05:09". */
 export function formatLogTime(iso: string | null | undefined): string {
   if (!iso) return "–";
   const d = parseUtc(iso);

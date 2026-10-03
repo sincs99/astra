@@ -30,14 +30,14 @@ describe("SftpAccess", () => {
     expect(agents).not.toHaveBeenCalled();
   });
 
-  it("laedt den Port fuer Admins aus der Agent-Liste, wenn das Backend ihn nicht liefert", async () => {
+  it("lädt den Port für Admins aus der Agent-Liste, wenn das Backend ihn nicht liefert", async () => {
     vi.spyOn(api, "getCurrentUser").mockResolvedValue({ id: 1, username: "root", is_admin: true } as never);
     vi.spyOn(api, "getAgents").mockResolvedValue([{ id: 7, daemon_sftp: 2222 }] as never);
     renderBox(base);
     expect(await screen.findByText("2222")).toBeTruthy();
   });
 
-  it("laesst die Port-Zeile fuer Kunden ohne bekannten Port weg", async () => {
+  it("laesst die Port-Zeile für Kunden ohne bekannten Port weg", async () => {
     vi.spyOn(api, "getCurrentUser").mockResolvedValue({ id: 2, username: "bob", is_admin: false } as never);
     renderBox(base);
     expect(await screen.findByText("bob.0f3a9c1e")).toBeTruthy();

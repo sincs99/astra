@@ -12,7 +12,7 @@ export function parseEuroToCents(input: string): number | null {
   return euros * 100 + cents;
 }
 
-/** Cent -> Eingabewert fuer Formulare, z.B. 999 -> "9.99". */
+/** Cent -> Eingabewert für Formulare, z.B. 999 -> "9.99". */
 export function centsToEuroInput(cents: number): string {
   const sign = cents < 0 ? "-" : "";
   const abs = Math.abs(Math.round(cents));

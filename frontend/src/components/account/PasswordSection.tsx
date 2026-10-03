@@ -11,18 +11,18 @@ export function PasswordSection({ onChanged }: { onChanged: (message: string) =>
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!current || !next) return setError("Bitte alle Felder ausfuellen");
+    if (!current || !next) return setError("Bitte alle Felder ausfüllen");
     if (next.length < MIN_PASSWORD_LENGTH) return setError(`Das neue Passwort muss mindestens ${MIN_PASSWORD_LENGTH} Zeichen lang sein`);
     if (next === current) return setError("Das neue Passwort muss sich vom aktuellen unterscheiden");
-    if (next !== confirm) return setError("Die neuen Passwoerter stimmen nicht ueberein");
+    if (next !== confirm) return setError("Die neuen Passwörter stimmen nicht überein");
     try {
       setBusy(true);
       setError(null);
       await api.changePassword(current, next);
       setCurrent(""); setNext(""); setConfirm("");
-      onChanged("Passwort geaendert.");
+      onChanged("Passwort geändert.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Passwort konnte nicht geaendert werden");
+      setError(err instanceof Error ? err.message : "Passwort konnte nicht geändert werden");
     } finally {
       setBusy(false);
     }
@@ -30,7 +30,7 @@ export function PasswordSection({ onChanged }: { onChanged: (message: string) =>
 
   return (
     <section style={cardStyle} aria-labelledby="pw-title">
-      <h2 id="pw-title" style={{ marginTop: 0, fontSize: 18 }}>Passwort aendern</h2>
+      <h2 id="pw-title" style={{ marginTop: 0, fontSize: 18 }}>Passwort ändern</h2>
       {error && <ErrorState message={error} />}
       <form onSubmit={submit} noValidate style={{ maxWidth: 360 }}>
         <div style={{ marginBottom: 12 }}>
@@ -50,11 +50,11 @@ export function PasswordSection({ onChanged }: { onChanged: (message: string) =>
             onChange={(e) => setConfirm(e.target.value)} style={inputStyle} />
         </div>
         <button type="submit" disabled={busy} style={{ ...btnPrimary, opacity: busy ? 0.6 : 1 }}>
-          {busy ? "..." : "Passwort aendern"}
+          {busy ? "..." : "Passwort ändern"}
         </button>
       </form>
       <p style={{ color: "#666", fontSize: 12, margin: "12px 0 0" }}>
-        Hinweis: Bestehende Sitzungen auf anderen Geraeten bleiben bis zum Ablauf ihres Tokens gueltig.
+        Hinweis: Bestehende Sitzungen auf anderen Geräten bleiben bis zum Ablauf ihres Tokens gültig.
       </p>
     </section>
   );

@@ -29,7 +29,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       const data = await api.getRoutines(instanceUuid);
       setRoutines(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
+      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
     } finally {
       setLoading(false);
     }
@@ -48,7 +48,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       setNewName("");
       showMsg("Routine erstellt");
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Fehler"); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
     finally { setActing(false); }
   };
 
@@ -59,7 +59,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       await api.deleteRoutine(instanceUuid, r.id);
       showMsg("Routine gelöscht");
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Fehler"); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
     finally { setActing(false); }
   };
 
@@ -68,7 +68,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       setError(null);
       await api.updateRoutine(instanceUuid, r.id, { is_active: !r.is_active });
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Fehler"); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
   };
 
   const handleExecute = async (r: RoutineEntry) => {
@@ -79,7 +79,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       const fail = result.results.filter((r) => !r.success).length;
       showMsg(`Routine ausgeführt: ${ok} OK, ${fail} Fehler`);
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Fehler"); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
     finally { setActing(false); }
   };
 
@@ -88,7 +88,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
     if (!routine) return;
     const nextSeq = routine.actions.length > 0 ? Math.max(...routine.actions.map((a) => a.sequence)) + 1 : 1;
     let payload: Record<string, unknown> | null = null;
-    try { payload = JSON.parse(aPayload); } catch { setError("Ungültiges JSON im Payload"); return; }
+    try { payload = JSON.parse(aPayload); } catch { setError("Die Nutzdaten (Payload) sind kein gültiges JSON."); return; }
     try {
       setActing(true); setError(null);
       await api.addRoutineAction(instanceUuid, routineId, {
@@ -97,7 +97,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       setAPayload("{}"); setADelay(0);
       showMsg("Action hinzugefügt");
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Fehler"); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
     finally { setActing(false); }
   };
 
@@ -107,7 +107,7 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       await api.deleteRoutineAction(instanceUuid, routineId, actionId);
       showMsg("Action gelöscht");
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Fehler"); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
     finally { setActing(false); }
   };
 

@@ -15,7 +15,7 @@ export function DashboardPage() {
   const location = useLocation();
   const toast = useToast();
 
-  // Meldung von der vorherigen Seite (z.B. nach dem Loeschen einer Instance), nur einmal anzeigen
+  // Meldung von der vorherigen Seite (z.B. nach dem Löschen einer Instance), nur einmal anzeigen
   useEffect(() => {
     const message = (location.state as { toast?: string } | null)?.toast;
     if (message) {
@@ -57,7 +57,7 @@ export function DashboardPage() {
       {error && <ErrorState message={error} onRetry={() => load()} />}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-        <h2 style={{ fontSize: 18, margin: 0 }}>Meine Instances</h2>
+        <h2 style={{ fontSize: 18, margin: 0 }}>Meine Server</h2>
         <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
       </div>
 
@@ -67,7 +67,7 @@ export function DashboardPage() {
         <div>
           <EmptyState
             message={user?.is_admin
-              ? "Keine Instances vorhanden. Erstelle eine ueber den Admin-Bereich."
+              ? "Keine Instances vorhanden. Erstelle eine über den Admin-Bereich."
               : "Du hast noch keinen Server."}
             icon="📦"
           />

@@ -32,20 +32,20 @@ describe("AccountPage", () => {
     const change = vi.spyOn(api, "changePassword").mockResolvedValue({ message: "ok" });
     mount();
     await screen.findByText("alice@example.com");
-    expect(screen.getByText(/Sitzungen auf anderen Geraeten/)).toBeTruthy();
+    expect(screen.getByText(/Sitzungen auf anderen Geräten/)).toBeTruthy();
 
     const fill = (cur: string, next: string, conf: string) => {
       fireEvent.change(screen.getByLabelText("Aktuelles Passwort"), { target: { value: cur } });
       fireEvent.change(screen.getByLabelText("Neues Passwort"), { target: { value: next } });
       fireEvent.change(screen.getByLabelText("Neues Passwort wiederholen"), { target: { value: conf } });
-      fireEvent.click(screen.getByRole("button", { name: "Passwort aendern" }));
+      fireEvent.click(screen.getByRole("button", { name: "Passwort ändern" }));
     };
     fill("altespasswort", "kurz", "kurz");
     expect((await screen.findByRole("alert")).textContent).toMatch(/mindestens 8/);
     fill("altespasswort", "altespasswort", "altespasswort");
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/unterscheiden/));
     fill("altespasswort", "neuespasswort1", "anders12345");
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/stimmen nicht ueberein/));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/stimmen nicht überein/));
     expect(change).not.toHaveBeenCalled();
 
     fill("altespasswort", "neuespasswort1", "neuespasswort1");
@@ -59,7 +59,7 @@ describe("AccountPage", () => {
     fireEvent.change(screen.getByLabelText("Aktuelles Passwort"), { target: { value: "falsch123" } });
     fireEvent.change(screen.getByLabelText("Neues Passwort"), { target: { value: "neuespasswort1" } });
     fireEvent.change(screen.getByLabelText("Neues Passwort wiederholen"), { target: { value: "neuespasswort1" } });
-    fireEvent.click(screen.getByRole("button", { name: "Passwort aendern" }));
+    fireEvent.click(screen.getByRole("button", { name: "Passwort ändern" }));
     expect(await screen.findByText("Aktuelles Passwort ist falsch")).toBeTruthy();
   });
 
@@ -81,7 +81,7 @@ describe("AccountPage", () => {
     expect(screen.getByText(/MFA ist/).textContent).toMatch(/aktiv/);
   });
 
-  it("deaktiviert MFA nach Bestaetigung", async () => {
+  it("deaktiviert MFA nach Bestätigung", async () => {
     (api.getCurrentUser as ReturnType<typeof vi.fn>).mockResolvedValue({ ...user, mfa_enabled: true });
     const disable = vi.spyOn(api, "disableMfa").mockResolvedValue({ message: "ok" });
     mount();
@@ -118,7 +118,7 @@ describe("AccountPage", () => {
     (api.getApiKeys as ReturnType<typeof vi.fn>).mockResolvedValueOnce([key]).mockResolvedValue([]);
     const del = vi.spyOn(api, "deleteApiKey").mockResolvedValue({ message: "ok" });
     mount();
-    fireEvent.click(await screen.findByRole("button", { name: "Loeschen" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Löschen" }));
     await waitFor(() => expect(del).toHaveBeenCalledWith(9));
   });
 });
