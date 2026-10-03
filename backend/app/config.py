@@ -110,6 +110,8 @@ class Config:
     REGISTRATION_ENABLED = os.getenv("REGISTRATION_ENABLED", "false").lower() == "true"
     # M46: Tage zwischen Ablauf der Laufzeit (Suspend) und automatischer Loeschung der Instance
     BILLING_GRACE_DAYS = max(int(os.getenv("BILLING_GRACE_DAYS", "7")), 0)
+    # M53: Warnung, wenn der Billing-Tick laenger als so viele Minuten nicht gelaufen ist (Tick laeuft alle ~5 Minuten)
+    BILLING_TICK_MAX_AGE_MINUTES = max(int(os.getenv("BILLING_TICK_MAX_AGE_MINUTES", "15")), 1)
     # M46: Erinnerungsmail so viele Tage vor Laufzeitende (0 = keine Erinnerung)
     BILLING_REMINDER_DAYS = max(int(os.getenv("BILLING_REMINDER_DAYS", "3")), 0)
     # M48: Zahlungsanbieter: "manual" (Admin bestaetigt Zahlungen) oder "stripe" (Checkout + Webhook)

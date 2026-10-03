@@ -71,6 +71,21 @@ Compose-Service gedacht (alle 5 Minuten reichen). Ausgabe: eine JSON-Zeile
 | `awaiting_provisioning` (bezahlt, keine Instance) | erneute Bereitstellung bei freiem Platz (`provisioned`), ohne Event bei jedem erfolglosen Versuch; Mail und Event `order:provisioned` bei Erfolg |
 | Kostenloses Paket (`price_cents = 0`), Laufzeit abgelaufen | wird automatisch verlängert (`renewed`, Referenz `free-auto:...`), keine Sperre, keine Mail; nach Kündigung läuft es zum Laufzeitende aus |
 
+### Überwachung des Ticks (M53)
+
+Jeder Lauf (auch einer mit Fehlern) vermerkt Zeitpunkt und Ergebnis in der Tabelle `system_state`
+(Schlüssel `billing_tick`). Daran erkennen Admin-API und Preflight, wenn der Tick **nicht mehr läuft**:
+
+- `GET /api/admin/billing/status` liefert `healthy`, `last_run_at` (UTC mit Suffix), `age_seconds`,
+  `max_age_minutes`, `orders_needing_tick`, `orders_by_status` und `last_summary`.
+- `healthy` ist `false`, wenn Bestellungen auf den Tick warten (`active`, `past_due`, `awaiting_provisioning`) und
+  der letzte Lauf länger als `BILLING_TICK_MAX_AGE_MINUTES` (Standard 15, der Tick läuft alle ~5 Minuten) zurückliegt
+  oder fehlt. Ohne solche Bestellungen ist ein fehlender Tick unkritisch.
+- Der Preflight (`python cli.py preflight`, `/api/admin/system/preflight`) meldet den Check `billing_tick`
+  (`ok`, `not_needed` oder `warning` mit „Billing-Tick lief zuletzt vor N Minuten“). Es bleibt eine Warnung,
+  nichts wird blockiert.
+- Das Vermerken ist best effort: Scheitert es, läuft der Tick trotzdem normal weiter.
+
 Sicherheiten:
 
 - Die Karenzzeit zählt ab `past_due_at` (dem Moment, in dem der Tick die Bestellung überfällig gesetzt hat),
@@ -210,6 +225,7 @@ header = f"t={t},v1={sig}"          # als Header "Stripe-Signature" senden
 | `POST /api/payments/stripe` | Stripe | Webhook (Signatur statt Login) |
 | `GET/POST /api/admin/products`, `GET/PATCH/DELETE /{id}` | Admin | Pakete verwalten |
 | `GET /api/admin/orders?status=&user_id=`, `/{uuid}` | Admin | alle Bestellungen |
+| `GET /api/admin/billing/status` | Admin | Läuft der Billing-Tick? Letzter Lauf, Alter, Ergebnis, Bestellungen je Status |
 | `GET /api/admin/payment-events?status=&order_uuid=&limit=` | Admin | Zahlungsereignisse des Anbieters (nur lesen, neueste zuerst, `limit` 1 bis 500); `mismatch` und `unapplied` brauchen Aufmerksamkeit |
 | `POST /api/admin/orders/{uuid}/mark-paid` | Admin | `{payment_reference?}` Zahlung bestätigen und Instance bereitstellen; auf `active`/`past_due` ist die Referenz Pflicht (Verlängerung) |
 
