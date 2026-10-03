@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, setAccessToken } from "../services/api";
+import { inputStyle, labelStyle, btnPrimary } from "../components/ui";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -30,11 +31,11 @@ export function LoginPage() {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: "80px auto", padding: 24 }}>
+    <div style={{ maxWidth: 400, margin: "clamp(24px, 10vh, 80px) auto", padding: 24 }}>
       <h1 style={{ textAlign: "center", marginBottom: 24 }}>Astra Login</h1>
 
       {error && (
-        <div style={{
+        <div role="alert" style={{
           padding: "10px 14px",
           backgroundColor: "#fce4e4",
           color: "#c0392b",
@@ -48,11 +49,13 @@ export function LoginPage() {
 
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: 16 }}>
-          <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 600 }}>
+          <label htmlFor="login" style={labelStyle}>
             Username oder Email
           </label>
           <input
+            id="login"
             type="text"
+            autoComplete="username"
             value={login}
             onChange={(e) => setLogin(e.target.value)}
             placeholder="admin"
@@ -62,11 +65,13 @@ export function LoginPage() {
         </div>
 
         <div style={{ marginBottom: 20 }}>
-          <label style={{ display: "block", marginBottom: 4, fontSize: 14, fontWeight: 600 }}>
+          <label htmlFor="password" style={labelStyle}>
             Passwort
           </label>
           <input
+            id="password"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••"
@@ -78,14 +83,9 @@ export function LoginPage() {
           type="submit"
           disabled={loading}
           style={{
+            ...btnPrimary,
             width: "100%",
-            padding: "10px 16px",
-            backgroundColor: loading ? "#95a5a6" : "#3498db",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            fontSize: 15,
-            fontWeight: 600,
+            backgroundColor: loading ? "#95a5a6" : btnPrimary.backgroundColor,
             cursor: loading ? "not-allowed" : "pointer",
           }}
         >
@@ -95,12 +95,3 @@ export function LoginPage() {
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "8px 12px",
-  border: "1px solid #ccc",
-  borderRadius: 6,
-  fontSize: 14,
-  boxSizing: "border-box",
-};
