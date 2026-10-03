@@ -51,10 +51,10 @@ export function ApiKeysSection({ onMessage }: { onMessage: (message: string) => 
     try {
       await api.deleteApiKey(key.id);
       if (created?.id === key.id) setCreated(null);
-      onMessage("API-Key geloescht.");
+      onMessage("API-Key gelöscht.");
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Loeschen fehlgeschlagen");
+      setError(err instanceof Error ? err.message : "Löschen fehlgeschlagen");
     }
   };
 
@@ -128,8 +128,8 @@ export function ApiKeysSection({ onMessage }: { onMessage: (message: string) => 
                   <td style={tdStyle}>{k.key_type}</td>
                   <td style={tdStyle}>{k.last_used_at ? formatDateTime(k.last_used_at) : "nie"}</td>
                   <td style={tdStyle}>
-                    <ConfirmButton label="Loeschen" danger size="sm"
-                      confirmMessage={`API-Key ${k.identifier} wirklich loeschen? Programme, die ihn nutzen, verlieren den Zugriff.`}
+                    <ConfirmButton label="Löschen" danger size="sm"
+                      confirmMessage={`API-Key ${k.identifier} wirklich löschen? Programme, die ihn nutzen, verlieren den Zugriff.`}
                       onConfirm={() => remove(k)} />
                   </td>
                 </tr>

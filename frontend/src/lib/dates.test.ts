@@ -21,7 +21,7 @@ describe("Formatierung", () => {
     expect(formatDateTime("")).toBe("–");
   });
   it("formatiert Datum und Uhrzeit (UTC-Mitternacht bleibt am selben Tag in UTC-Umgebung)", () => {
-    // Die Testumgebung laeuft in UTC; die Formatierung nutzt die lokale Zeit des Browsers.
+    // Die Testumgebung läuft in UTC; die Formatierung nutzt die lokale Zeit des Browsers.
     expect(formatDate("2026-11-15T00:00:00")).toBe(new Date("2026-11-15T00:00:00Z").toLocaleDateString("de-CH"));
     expect(formatDateTime("2026-11-15T09:05:00")).toMatch(/^\d{1,2}\.\d{1,2}\.2026 \d{2}:\d{2}$/);
   });
@@ -42,7 +42,7 @@ describe("formatTimeAgo", () => {
     expect(formatTimeAgo("2026-10-03T10:00:00Z", now)).toBe("vor 2 Std.");
   });
 
-  it("behandelt Zukunft als 'gerade eben' und ungueltige Eingaben unveraendert", () => {
+  it("behandelt Zukunft als 'gerade eben' und ungültige Eingaben unveraendert", () => {
     expect(formatTimeAgo("2026-10-03T13:00:00", now)).toBe("gerade eben");
     expect(formatTimeAgo("kaputt", now)).toBe("kaputt");
   });

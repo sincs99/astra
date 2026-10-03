@@ -106,7 +106,7 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
       }
       try {
         const text = await file.text();
-        // Binaerdateien wuerden beim Text-Write beschaedigt -> ablehnen
+        // Binärdateien würden beim Text-Write beschädigt -> ablehnen
         if (text.includes("\uFFFD") || text.includes("\0")) {
           toast.error(`'${file.name}' ist keine Textdatei und kann nicht hochgeladen werden.`);
           continue;

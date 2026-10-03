@@ -52,7 +52,7 @@ describe("OrdersPage", () => {
     expect(within(rows[4]).getByLabelText("gekündigt")).toBeTruthy();
   });
 
-  it("unterscheidet Stornieren (sofort) und Kuendigen zum Laufzeitende, beides ueber die uuid", async () => {
+  it("unterscheidet Stornieren (sofort) und Kuendigen zum Laufzeitende, beides über die uuid", async () => {
     vi.spyOn(api, "getMyOrders").mockResolvedValue([active, pending]);
     const cancel = vi.spyOn(api, "cancelOrder").mockResolvedValue(active);
     mount();
@@ -103,7 +103,7 @@ describe("OrdersPage", () => {
     });
     afterEach(() => { vi.unstubAllGlobals(); });
 
-    it("startet den Checkout fuer unbezahlte Bestellungen und leitet zur Zahlungsseite weiter", async () => {
+    it("startet den Checkout für unbezahlte Bestellungen und leitet zur Zahlungsseite weiter", async () => {
       vi.spyOn(api, "getMyOrders").mockResolvedValue([active, pending]);
       const checkout = vi.spyOn(api, "createCheckout").mockResolvedValue({ checkout_url: "https://checkout.stripe.com/c/pay/cs_1" });
       mount();
@@ -123,7 +123,7 @@ describe("OrdersPage", () => {
       await waitFor(() => expect(screen.queryByRole("button", { name: "Jetzt bezahlen" })).toBeNull());
       expect(screen.getAllByText(/Zahlung per Überweisung/)).toHaveLength(2);
       expect(assign).not.toHaveBeenCalled();
-      // Stornieren bleibt moeglich
+      // Stornieren bleibt möglich
       expect(screen.getAllByRole("button", { name: "Stornieren" })).toHaveLength(2);
     });
 
@@ -158,7 +158,7 @@ describe("OrdersPage", () => {
       expect((urgent as HTMLElement).style.backgroundColor).toBe("rgb(211, 47, 47)");
     });
 
-    it("laedt die Liste neu, wenn der Checkout invalid_status meldet", async () => {
+    it("lädt die Liste neu, wenn der Checkout invalid_status meldet", async () => {
       const list = vi.spyOn(api, "getMyOrders").mockResolvedValue([pending]);
       vi.spyOn(api, "createCheckout").mockRejectedValue(new ApiError("Bestellung ist nicht zahlbar", 409, "invalid_status"));
       mount();
@@ -188,8 +188,8 @@ describe("OrdersPage", () => {
     });
   });
 
-  describe("Rueckkehr von Stripe", () => {
-    it("meldet bei ?paid= den Zahlungseingang und laedt nach 5 s den Status nach", async () => {
+  describe("Rückkehr von Stripe", () => {
+    it("meldet bei ?paid= den Zahlungseingang und lädt nach 5 s den Status nach", async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       try {
         const list = vi.spyOn(api, "getMyOrders")

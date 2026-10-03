@@ -15,7 +15,7 @@ export function DashboardPage() {
   const location = useLocation();
   const toast = useToast();
 
-  // Meldung von der vorherigen Seite (z.B. nach dem Loeschen einer Instance), nur einmal anzeigen
+  // Meldung von der vorherigen Seite (z.B. nach dem Löschen einer Instance), nur einmal anzeigen
   useEffect(() => {
     const message = (location.state as { toast?: string } | null)?.toast;
     if (message) {
@@ -67,7 +67,7 @@ export function DashboardPage() {
         <div>
           <EmptyState
             message={user?.is_admin
-              ? "Keine Instances vorhanden. Erstelle eine ueber den Admin-Bereich."
+              ? "Keine Instances vorhanden. Erstelle eine über den Admin-Bereich."
               : "Du hast noch keinen Server."}
             icon="📦"
           />

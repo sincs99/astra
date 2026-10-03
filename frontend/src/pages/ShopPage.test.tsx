@@ -39,7 +39,7 @@ describe("ShopPage", () => {
     expect(await screen.findByText("Minecraft Vanilla")).toBeTruthy();
   });
 
-  it("zeigt den Shop auch ausgeloggt und fuehrt zum Login mit Rueckkehr zum Shop", async () => {
+  it("zeigt den Shop auch ausgeloggt und fuehrt zum Login mit Rückkehr zum Shop", async () => {
     localStorage.clear();
     const me = vi.mocked(api.getCurrentUser);
     me.mockClear();

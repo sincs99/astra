@@ -4,7 +4,7 @@ import { btnPrimary } from "./ui";
 interface Props { children: ReactNode }
 interface State { error: Error | null }
 
-/** Faengt Render-Fehler ab, damit nicht die ganze App weiss wird. */
+/** Fängt Render-Fehler ab, damit nicht die ganze App weiss wird. */
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
 

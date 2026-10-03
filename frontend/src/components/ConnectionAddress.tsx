@@ -4,7 +4,7 @@ import { btnDefault } from "./ui";
 
 interface ConnectionAddressProps {
   connection?: InstanceConnection | null;
-  /** Kompakte Darstellung fuer Listen */
+  /** Kompakte Darstellung für Listen */
   compact?: boolean;
 }
 
@@ -20,7 +20,7 @@ export function ConnectionAddress({ connection, compact = false }: ConnectionAdd
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard nicht verfuegbar (z.B. http): Adresse bleibt sichtbar und markierbar
+      // Clipboard nicht verfügbar (z.B. http): Adresse bleibt sichtbar und markierbar
     }
   };
 

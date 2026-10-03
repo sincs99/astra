@@ -16,7 +16,7 @@ function CopyValue({ label, value }: { label: string; value: string }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard nicht verfuegbar: Wert bleibt markierbar
+      // Clipboard nicht verfügbar: Wert bleibt markierbar
     }
   };
   return (
@@ -34,7 +34,7 @@ function CopyValue({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** SFTP-Zugangsdaten fuer eine Instance (Host, Port, Benutzername). */
+/** SFTP-Zugangsdaten für eine Instance (Host, Port, Benutzername). */
 export function SftpAccess({ instance }: SftpAccessProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [adminPort, setAdminPort] = useState<number | null>(null);
@@ -48,7 +48,7 @@ export function SftpAccess({ instance }: SftpAccessProps) {
       .then(async (user) => {
         if (cancelled) return;
         setUsername(user.username);
-        // Admins koennen den SFTP-Port aus der Agent-Liste lesen, falls das Backend ihn nicht mitliefert
+        // Admins können den SFTP-Port aus der Agent-Liste lesen, falls das Backend ihn nicht mitliefert
         if (user.is_admin && instance.connection?.sftp_port === undefined) {
           const agent = (await api.getAgents()).find((a) => a.id === instance.agent_id);
           if (!cancelled && agent) setAdminPort(agent.daemon_sftp);

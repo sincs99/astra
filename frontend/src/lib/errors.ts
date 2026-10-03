@@ -1,4 +1,4 @@
-/** Uebersetzt technische API-Fehler in verstaendliche Meldungen fuer Nutzer. */
+/** Übersetzt technische API-Fehler in verständliche Meldungen für Nutzer. */
 export function friendlyApiMessage(status: number, message: string): string {
   if (status === 403 && /^Admin-Berechtigung erforderlich/i.test(message)) {
     return "Nur Administratoren dürfen diese Aktion ausführen.";

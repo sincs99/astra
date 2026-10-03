@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { btnDanger, btnDefault, inputStyle, labelStyle, ErrorState } from "./ui";
 
-/** Status, bei denen das Backend das Loeschen ohne `force` mit 409 ablehnt. */
+/** Status, bei denen das Backend das Löschen ohne `force` mit 409 ablehnt. */
 export const DELETE_BLOCKING_STATUSES = ["provisioning", "reinstalling", "restoring", "transferring"];
 
 interface DeleteInstanceFormProps {
-  /** Name der Instance; muss zur Bestaetigung exakt eingegeben werden */
+  /** Name der Instance; muss zur Bestätigung exakt eingegeben werden */
   name: string;
   status?: string | null;
   /** Admin: "Erzwingen" anbieten, wenn die Instance in einem laufenden Vorgang ist */
@@ -17,7 +17,7 @@ interface DeleteInstanceFormProps {
   idPrefix?: string;
 }
 
-/** Loeschen erst nach Eingabe des Instance-Namens (ein ConfirmButton reicht hier nicht). */
+/** Löschen erst nach Eingabe des Instance-Namens (ein ConfirmButton reicht hier nicht). */
 export function DeleteInstanceForm({ name, status, allowForce = false, notice, onDelete, onCancel, idPrefix = "del" }: DeleteInstanceFormProps) {
   const [typed, setTyped] = useState("");
   const [force, setForce] = useState(false);

@@ -38,14 +38,14 @@ export function OrdersPage() {
 
   useEffect(() => { load(); }, []);
 
-  // Rueckkehr von Stripe: /orders?paid=<uuid> bzw. ?cancelled=<uuid> -> Toast, Parameter entfernen
+  // Rückkehr von Stripe: /orders?paid=<uuid> bzw. ?cancelled=<uuid> -> Toast, Parameter entfernen
   useEffect(() => {
     const ret = readPaymentReturn(searchParams);
     if (!ret || handledReturn.current) return;
     handledReturn.current = true;
     if (ret.kind === "paid") {
       toast.success("Zahlung eingegangen, Server wird bereitgestellt.");
-      // Die Bestaetigung kommt asynchron per Webhook: nach 5 s nachladen, solange der Status noch aussteht (max. 6x)
+      // Die Bestätigung kommt asynchron per Webhook: nach 5 s nachladen, solange der Status noch aussteht (max. 6x)
       let tries = 0;
       const timer = setInterval(async () => {
         tries += 1;
@@ -79,7 +79,7 @@ export function OrdersPage() {
       if (isManualPayment(err)) setManualPayment(true);
       else {
         toast.error(err instanceof Error ? err.message : "Zahlung konnte nicht gestartet werden");
-        // Der Status der Bestellung hat sich inzwischen geaendert (z.B. bereits bezahlt): Liste aktualisieren
+        // Der Status der Bestellung hat sich inzwischen geändert (z.B. bereits bezahlt): Liste aktualisieren
         if (err instanceof ApiError && err.code === "invalid_status") await load();
       }
     } finally {
@@ -102,7 +102,7 @@ export function OrdersPage() {
   };
 
   const action = (o: Order) => {
-    // Bei ueberfaelliger Zahlung ist der Server gesperrt: Bezahl-Button rot hervorheben
+    // Bei überfälliger Zahlung ist der Server gesperrt: Bezahl-Button rot hervorheben
     const payButton = (label: string, urgent = false) => manualPayment ? (
       <span style={{ fontSize: 12, color: "#666", maxWidth: 220 }}>{MANUAL_PAYMENT_NOTICE}</span>
     ) : (

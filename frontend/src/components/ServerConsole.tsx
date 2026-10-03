@@ -118,7 +118,7 @@ export function ServerConsole({ instanceUuid }: Props) {
         case "console output":
         case "install output":
           if (data.args[0]) {
-            // ANSI-Codes fuer einfache Darstellung entfernen
+            // ANSI-Codes für einfache Darstellung entfernen
             const clean = stripAnsi(data.args[0]);
             addLine(clean);
           }
@@ -138,7 +138,7 @@ export function ServerConsole({ instanceUuid }: Props) {
 
         case "token expiring":
         case "token expired":
-          addLine("Token laeuft ab, erneuere...", "[System]");
+          addLine("Token läuft ab, erneuere...", "[System]");
           renewToken();
           break;
 
@@ -332,7 +332,7 @@ export function ServerConsole({ instanceUuid }: Props) {
 // ── Hilfsfunktionen ──────────────────────────────────
 
 function stripAnsi(text: string): string {
-  // Entfernt ANSI-Escape-Codes fuer einfache Text-Darstellung
+  // Entfernt ANSI-Escape-Codes für einfache Text-Darstellung
   return text.replace(
     // eslint-disable-next-line no-control-regex
     /\u001b\[[0-9;]*[a-zA-Z]/g,

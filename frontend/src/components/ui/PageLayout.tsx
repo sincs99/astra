@@ -17,7 +17,7 @@ interface NavItem {
   label: string;
   href: string;
   group: string;
-  /** Nur fuer Administratoren sichtbar */
+  /** Nur für Administratoren sichtbar */
   adminOnly?: boolean;
 }
 
@@ -55,7 +55,7 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
   const isMobile = useMediaQuery("(max-width: 760px)");
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Menue schliessen bei Seitenwechsel, Escape oder Wechsel zur Desktop-Ansicht
+  // Menü schliessen bei Seitenwechsel, Escape oder Wechsel zur Desktop-Ansicht
   useEffect(() => { setMenuOpen(false); }, [currentPath, isMobile]);
   useEffect(() => {
     if (!menuOpen) return;
@@ -65,7 +65,7 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
   }, [menuOpen]);
 
   const user = useCurrentUser();
-  // Waehrend der User laedt, gelten die Admin-Links als nicht sichtbar (kein Flackern fuer Kunden)
+  // Während der User lädt, gelten die Admin-Links als nicht sichtbar (kein Flackern für Kunden)
   const navItems = NAV_ITEMS.filter((i) => (!i.adminOnly || user?.is_admin));
   const groups = Array.from(new Set(navItems.map((i) => i.group)));
 
@@ -75,7 +75,7 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
     navigate("/login");
   };
 
-  // Ausgeloggt (z.B. oeffentlicher Shop): schlanke Leiste ohne Konto-Navigation
+  // Ausgeloggt (z.B. öffentlicher Shop): schlanke Leiste ohne Konto-Navigation
   if (!isAuthenticated()) {
     return (
       <div style={{ minHeight: "100vh", backgroundColor: "#fafafa" }}>

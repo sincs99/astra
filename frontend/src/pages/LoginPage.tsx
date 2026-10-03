@@ -64,7 +64,7 @@ export function LoginPage() {
           padding: "10px 14px", backgroundColor: "#e8f5e9", color: "#2e7d32",
           borderRadius: 6, marginBottom: 16, fontSize: 14,
         }}>
-          Dein Passwort wurde geaendert. Bitte melde dich jetzt an.
+          Dein Passwort wurde geändert. Bitte melde dich jetzt an.
         </div>
       )}
 
@@ -89,12 +89,12 @@ export function LoginPage() {
           {error}
           {unverified && (
             <div style={{ marginTop: 8 }}>
-              {resent ? "Wir haben dir eine neue Bestaetigungs-Mail geschickt." : (
+              {resent ? "Wir haben dir eine neue Bestätigungs-Mail geschickt." : (
                 <button type="button" style={{ ...linkStyle, background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}
                   onClick={async () => {
                     try { await api.resendVerification(login.trim()); setResent(true); } catch { /* neutral */ }
                   }}>
-                  Bestaetigungs-Mail erneut senden
+                  Bestätigungs-Mail erneut senden
                 </button>
               )}
             </div>
@@ -164,7 +164,7 @@ export function LoginPage() {
             cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Wird angemeldet..." : mfaRequired ? "Bestaetigen" : "Anmelden"}
+          {loading ? "Wird angemeldet..." : mfaRequired ? "Bestätigen" : "Anmelden"}
         </button>
 
         <p style={{ display: "flex", justifyContent: "space-between", fontSize: 14, marginTop: 16 }}>

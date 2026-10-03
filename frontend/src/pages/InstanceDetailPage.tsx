@@ -36,7 +36,7 @@ export function InstanceDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [orderNotice, setOrderNotice] = useState<string | null>(null);
 
-  // Gehoert die Instance zu einer laufenden Bestellung, endet diese mit dem Loeschen (ohne Erstattung)
+  // Gehört die Instance zu einer laufenden Bestellung, endet diese mit dem Löschen (ohne Erstattung)
   const startDeleting = async () => {
     setDeleting(true);
     try {
@@ -164,7 +164,7 @@ export function InstanceDetailPage() {
     return (
       <PageLayout title="Instance" maxWidth={700}>
         <ErrorState message={error} onRetry={loadInstance} />
-        <button onClick={() => navigate("/")} style={btnDefault}>Zurueck</button>
+        <button onClick={() => navigate("/")} style={btnDefault}>Zurück</button>
       </PageLayout>
     );
   }
@@ -181,7 +181,7 @@ export function InstanceDetailPage() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: -12, marginBottom: 16 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button onClick={() => navigate("/")} style={btnDefault}>Zurueck</button>
+          <button onClick={() => navigate("/")} style={btnDefault}>Zurück</button>
           <StatusBadge status={status} />
           {instance.container_state && (
             <StatusBadge status={instance.container_state} size="sm" />

@@ -68,16 +68,16 @@ export function MfaSection({ enabled, onChanged }: MfaSectionProps) {
 
       {enabled && !setup && (
         <>
-          <p style={{ marginTop: 0 }}>MFA ist <strong>aktiv</strong>. Beim Login wird zusaetzlich ein Code abgefragt.</p>
+          <p style={{ marginTop: 0 }}>MFA ist <strong>aktiv</strong>. Beim Login wird zusätzlich ein Code abgefragt.</p>
           <ConfirmButton label="MFA deaktivieren" danger disabled={busy}
-            confirmMessage="MFA wirklich deaktivieren? Dein Konto ist danach nur noch mit dem Passwort geschuetzt."
+            confirmMessage="MFA wirklich deaktivieren? Dein Konto ist danach nur noch mit dem Passwort geschützt."
             onConfirm={disable} />
         </>
       )}
 
       {!enabled && !setup && (
         <>
-          <p style={{ marginTop: 0 }}>Schuetze dein Konto mit einem Code aus einer Authenticator-App.</p>
+          <p style={{ marginTop: 0 }}>Schütze dein Konto mit einem Code aus einer Authenticator-App.</p>
           <button type="button" onClick={start} disabled={busy} style={{ ...btnPrimary, opacity: busy ? 0.6 : 1 }}>
             MFA einrichten
           </button>

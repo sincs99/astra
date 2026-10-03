@@ -11,7 +11,7 @@ interface Counts {
 
 /**
  * Admin-Dashboard: offene Bestellungen (wartet auf Zahlung / auf Bereitstellung),
- * damit Zahlungseingaenge nicht uebersehen werden. Fehler blenden die Karte still aus.
+ * damit Zahlungseingänge nicht übersehen werden. Fehler blenden die Karte still aus.
  */
 export function OpenOrdersCard() {
   const [counts, setCounts] = useState<Counts | null>(null);

@@ -6,7 +6,7 @@ import { PasswordSection } from "../components/account/PasswordSection";
 import { MfaSection } from "../components/account/MfaSection";
 import { ApiKeysSection } from "../components/account/ApiKeysSection";
 
-/** Konto-Seite fuer alle eingeloggten Nutzer. */
+/** Konto-Seite für alle eingeloggten Nutzer. */
 export function AccountPage() {
   const toast = useToast();
   const [user, setUser] = useState<User | null>(null);

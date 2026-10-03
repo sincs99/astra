@@ -23,11 +23,11 @@ export function RegisterPage() {
   if (isAuthenticated()) return <Navigate to={redirectTo} replace />;
 
   const validate = (): string | null => {
-    if (!username.trim() || !email.trim() || !password) return "Bitte alle Felder ausfuellen";
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return "Bitte eine gueltige E-Mail-Adresse eingeben";
+    if (!username.trim() || !email.trim() || !password) return "Bitte alle Felder ausfüllen";
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return "Bitte eine gültige E-Mail-Adresse eingeben";
     if (password.length < MIN_PASSWORD_LENGTH) return `Das Passwort muss mindestens ${MIN_PASSWORD_LENGTH} Zeichen lang sein`;
-    if (password !== confirm) return "Die Passwoerter stimmen nicht ueberein";
-    if (!acceptedTerms) return "Bitte akzeptiere die AGB und die Datenschutzerklaerung";
+    if (password !== confirm) return "Die Passwörter stimmen nicht überein";
+    if (!acceptedTerms) return "Bitte akzeptiere die AGB und die Datenschutzerklärung";
     return null;
   };
 
@@ -44,7 +44,7 @@ export function RegisterPage() {
         setAccessToken(result.access_token);
         navigate(redirectTo);
       } else {
-        // E-Mail-Verifizierung aktiv: erst nach Klick auf den Link in der Mail ist ein Login moeglich
+        // E-Mail-Verifizierung aktiv: erst nach Klick auf den Link in der Mail ist ein Login möglich
         setVerifyPending(true);
       }
     } catch (err) {
@@ -62,7 +62,7 @@ export function RegisterPage() {
       {verifyPending ? (
         <>
           <AuthMessage kind="success">
-            Fast geschafft: Wir haben eine E-Mail an {email.trim()} geschickt. Bitte klicke auf den Link darin, um deine Adresse zu bestaetigen.
+            Fast geschafft: Wir haben eine E-Mail an {email.trim()} geschickt. Bitte klicke auf den Link darin, um deine Adresse zu bestätigen.
           </AuthMessage>
           {resent && <AuthMessage kind="success">Die E-Mail wurde erneut gesendet.</AuthMessage>}
           <p style={{ textAlign: "center", fontSize: 14 }}>
@@ -79,7 +79,7 @@ export function RegisterPage() {
       ) : disabled ? (
         <>
           <AuthMessage kind="warning">Registrierung ist deaktiviert. Bitte wende dich an einen Administrator.</AuthMessage>
-          <p style={{ textAlign: "center" }}><Link to="/login" style={linkStyle}>Zurueck zum Login</Link></p>
+          <p style={{ textAlign: "center" }}><Link to="/login" style={linkStyle}>Zurück zum Login</Link></p>
         </>
       ) : (
         <form onSubmit={handleSubmit} noValidate>

@@ -15,8 +15,8 @@ export function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <AuthCard title="Passwort zuruecksetzen">
-        <AuthMessage kind="error">Der Link ist ungueltig, es fehlt der Token.</AuthMessage>
+      <AuthCard title="Passwort zurücksetzen">
+        <AuthMessage kind="error">Der Link ist ungültig, es fehlt der Token.</AuthMessage>
         <p style={{ textAlign: "center", fontSize: 14 }}>
           <Link to="/password-reset" style={linkStyle}>Neuen Link anfordern</Link>
         </p>
@@ -31,7 +31,7 @@ export function ResetPasswordPage() {
       return;
     }
     if (password !== confirm) {
-      setError("Die Passwoerter stimmen nicht ueberein");
+      setError("Die Passwörter stimmen nicht überein");
       return;
     }
     try {
@@ -40,7 +40,7 @@ export function ResetPasswordPage() {
       await api.confirmPasswordReset(token, password);
       navigate("/login?reset=1");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Zuruecksetzen fehlgeschlagen");
+      setError(err instanceof Error ? err.message : "Zurücksetzen fehlgeschlagen");
     } finally {
       setLoading(false);
     }
