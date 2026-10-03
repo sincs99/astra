@@ -99,6 +99,18 @@ def get_runner() -> RunnerProtocol:
 # ── Instance erstellen ──────────────────────────────────
 
 
+def _complete_if_runner_done(instance: Instance, response) -> None:
+    """Runner, der synchron fertig wird (Stub: `data["completed"] is True`), schliesst die Installation direkt ab.
+
+    Entspricht dem Install-Callback, den Wings spaeter ueber /api/remote schickt: Status wird ready,
+    `installed_at` gesetzt und das passende Event geloggt (Erstinstallation oder Reinstall).
+    Der Wings-Adapter liefert kein `completed`, dort bleibt es beim asynchronen Callback.
+    """
+    data = getattr(response, "data", None)
+    if isinstance(data, dict) and data.get("completed") is True:
+        handle_install_callback(instance, True)
+
+
 def create_instance(
     name: str,
     owner_id: int,
@@ -222,6 +234,8 @@ def create_instance(
             from app.domain.activity.events import log_instance_event, INSTANCE_INSTALL_FAILED
             log_instance_event(INSTANCE_INSTALL_FAILED, instance.id,
                                description=f"Erstinstallation fehlgeschlagen: {response.message}")
+        else:
+            _complete_if_runner_done(instance, response)
 
     except Exception as e:
         logger.error("Runner create_instance Fehler: %s", str(e))
@@ -430,6 +444,8 @@ def reinstall_instance(instance: Instance) -> Instance:
             from app.domain.activity.events import INSTANCE_REINSTALL_FAILED
             log_instance_event(INSTANCE_REINSTALL_FAILED, instance.id,
                                description=f"Reinstall-Runner-Fehler: {response.message}")
+        else:
+            _complete_if_runner_done(instance, response)
 
     except Exception as e:
         logger.error("Runner reinstall Fehler: %s", str(e))
@@ -845,6 +861,8 @@ def transfer_instance(instance: Instance, target_agent_id: int) -> Instance:
                 "instance.transfer.failed", instance.id,
                 description=f"Transfer fehlgeschlagen: {response.message}",
             )
+        else:
+            _complete_if_runner_done(instance, response)  # Stub: sofort fertig, Wings: Callback
 
     except Exception as e:
         logger.error("Transfer: Runner-Fehler: %s", str(e))

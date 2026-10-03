@@ -52,17 +52,21 @@ class WingsRunnerAdapter(RunnerProtocol):
             "start_on_completion": True,
         })
 
+        # Wings meldet das Ergebnis der Installation asynchron ueber die Remote-API. Ein Feld "completed" in der
+        # HTTP-Antwort darf den Service nie dazu bringen, die Installation als fertig zu werten (nur der Stub tut das).
+        data = {k: v for k, v in response.data.items() if k != "completed"} if isinstance(response.data, dict) else response.data
+
         if response.success:
             return RunnerResponse(
                 success=True,
                 message=f"Wings: Instance '{instance.name}' erstellt",
-                data=response.data,
+                data=data,
             )
         else:
             return RunnerResponse(
                 success=False,
                 message=f"Wings: Fehler beim Erstellen - {response.error}",
-                data=response.data,
+                data=data,
             )
 
     def sync_instance(self, agent: Agent, instance: Instance) -> RunnerResponse:

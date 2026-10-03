@@ -162,7 +162,7 @@ Alle Umgebungsvariablen sind in `backend/.env.example` dokumentiert.
 
 | Variable | Beschreibung | Default |
 |----------|-------------|---------|
-| `RUNNER_ADAPTER` | "stub" oder "wings" | stub |
+| `RUNNER_ADAPTER` | "stub" oder "wings". Der Stub schließt Installation, Neuinstallation und Transfer **sofort** ab (Status ready), Wings meldet das Ergebnis asynchron über die Remote-API | stub |
 | `RUNNER_TIMEOUT_CONNECT` | Verbindungstimeout (Sek.) | 5 |
 | `RUNNER_TIMEOUT_READ` | Lese-Timeout (Sek.) | 30 |
 

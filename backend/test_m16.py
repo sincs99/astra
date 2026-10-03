@@ -273,8 +273,15 @@ with app.app_context():
     )
     from app.domain.instances.models import Instance
     from app.infrastructure.runner.stub_adapter import StubRunnerAdapter
+    from app.infrastructure.runner.protocol import RunnerResponse
 
-    set_runner(StubRunnerAdapter())
+    class AsyncStubRunner(StubRunnerAdapter):
+        """Wie Wings: create_instance nimmt den Auftrag an, das Ergebnis kommt spaeter per Callback."""
+
+        def create_instance(self, agent, instance):
+            return RunnerResponse(success=True, message="async angenommen")
+
+    set_runner(AsyncStubRunner())
     inst = db.session.get(Instance, _inst_id)
 
     # Normaler Reinstall
@@ -541,8 +548,15 @@ with app.app_context():
     from app.domain.instances.models import Instance
     from app.domain.instances.service import set_runner
     from app.infrastructure.runner.stub_adapter import StubRunnerAdapter
+    from app.infrastructure.runner.protocol import RunnerResponse
 
-    set_runner(StubRunnerAdapter())
+    class AsyncStubRunner(StubRunnerAdapter):
+        """Wie Wings: create_instance nimmt den Auftrag an, das Ergebnis kommt spaeter per Callback."""
+
+        def create_instance(self, agent, instance):
+            return RunnerResponse(success=True, message="async angenommen")
+
+    set_runner(AsyncStubRunner())
     client = app.test_client()
     headers = {"X-User-Id": str(_user_id)}
 

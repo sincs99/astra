@@ -196,5 +196,87 @@ with app.app_context():
 check("mit Endpoint unveraendert (25566)", cfg["allocations"]["default"]["port"] == 25566
       and cfg["environment"]["SERVER_PORT"] == "25566" and cfg["allocations"]["mappings"] == {"0.0.0.0": [25566]})
 
+print("Lebenszeichen: erreichbarer Daemon gilt als gesund (kein Widerspruch mehr)")
+from datetime import datetime, timedelta
+from app.domain.agents.monitoring_service import get_fleet_summary, LIVENESS_REFRESH_SECONDS
+
+
+def mk(name, **kw):
+    with app.app_context():
+        a = Agent(name=name, fqdn=f"{name}.test", **kw)
+        a.generate_daemon_credentials()
+        db.session.add(a)
+        db.session.commit()
+        return a.id
+
+
+def seen(aid):
+    with app.app_context():
+        return db.session.get(Agent, aid).last_seen_at
+
+
+def detail(aid):
+    return c.get(f"/api/admin/agents/{aid}/monitoring").json
+
+
+# Stub: erreichbar -> healthy, last_seen_at gesetzt
+app.config["_RUNNER_ADAPTER_NAME"] = "stub"
+reachability.clear_cache()
+a_stub = mk("lz-stub")
+check("Vorbedingung: nie gesehen", seen(a_stub) is None)
+d = detail(a_stub)
+check("Stub: daemon_reachable=true UND health healthy (kein Widerspruch)", d["daemon_reachable"] is True and d["health_status"] == "healthy", str(d["health_status"]))
+check("Stub: last_seen_at wurde gesetzt", seen(a_stub) is not None and d["last_seen_at"] is not None and d["last_seen_at"].endswith("+00:00"))
+check("Stub: is_stale=false", d["is_stale"] is False)
+
+# Wings: erreichbar -> gesund; nicht erreichbar -> beides "unreachable"
+app.config["_RUNNER_ADAPTER_NAME"] = "wings"
+behavior["lz-stub"] = WingsResponse(success=True, status_code=200, data={"version": "1.11.13"})
+behavior["lz-up"] = WingsResponse(success=True, status_code=200, data={"version": "1.11.13"})
+behavior["lz-down"] = WingsResponse(success=False, status_code=None, data=None, error="Wings nicht erreichbar")
+behavior["lz-stale-up"] = WingsResponse(success=True, status_code=200, data={"version": "1.11.13"})
+behavior["lz-stale-down"] = WingsResponse(success=False, status_code=None, data=None, error="Wings nicht erreichbar")
+behavior["lz-inactive"] = WingsResponse(success=True, status_code=200, data={"version": "1.11.13"})
+behavior["lz-fresh"] = WingsResponse(success=True, status_code=200, data={"version": "1.11.13"})
+reachability.clear_cache()
+a_up, a_down = mk("lz-up"), mk("lz-down")
+d = detail(a_up)
+check("Wings erreichbar: healthy, Version, last_seen_at gesetzt", d["health_status"] == "healthy" and d["daemon_version"] == "1.11.13" and seen(a_up) is not None)
+d = detail(a_down)
+check("Wings nicht erreichbar: beide Anzeigen sagen 'unreachable'", d["daemon_reachable"] is False and d["health_status"] == "unreachable", str(d["health_status"]))
+check("Wings nicht erreichbar: last_seen_at bleibt leer", seen(a_down) is None)
+
+old = datetime.utcnow() - timedelta(minutes=30)
+a_su, a_sd = mk("lz-stale-up", last_seen_at=old), mk("lz-stale-down", last_seen_at=old)
+d = detail(a_su)
+after = seen(a_su)
+check("veraltet, aber Daemon erreichbar -> wieder healthy", d["health_status"] == "healthy", str(d["health_status"]))
+check("... und last_seen_at ist frisch", after is not None and abs(datetime.utcnow() - after.replace(tzinfo=None)) < timedelta(minutes=1), str(after))
+d = detail(a_sd)
+check("veraltet und Daemon nicht erreichbar -> bleibt stale", d["health_status"] == "stale" and seen(a_sd) == old)
+
+a_in = mk("lz-inactive", is_active=False)
+d = detail(a_in)
+check("inaktiver Agent: nicht angefasst (degraded, nie gesehen)", d["health_status"] == "degraded" and seen(a_in) is None)
+
+# Schreibschutz: frisch gesehene Agents werden nicht bei jedem Aufruf neu geschrieben
+fresh = datetime.utcnow() - timedelta(seconds=LIVENESS_REFRESH_SECONDS // 2)
+a_fresh = mk("lz-fresh", last_seen_at=fresh)
+detail(a_fresh)
+check(f"vor {LIVENESS_REFRESH_SECONDS}s nicht erneut geschrieben", seen(a_fresh) == fresh, str(seen(a_fresh)))
+
+# Liste und Fleet-Summary zeigen dasselbe
+r = c.get("/api/admin/agents/monitoring")
+by = {x["name"]: x for x in r.json}
+check("Liste: erreichbare gesund, nicht erreichbare nicht", by["lz-up"]["health_status"] == "healthy" and by["lz-down"]["health_status"] == "unreachable")
+check("Liste: kein Widerspruch zwischen daemon_reachable und Health",
+      all(not (x["daemon_reachable"] and x["health_status"] == "unreachable") for x in r.json), str([(x["name"], x["health_status"], x["daemon_reachable"]) for x in r.json]))
+with app.app_context():
+    summary = get_fleet_summary()
+check("Fleet-Summary zaehlt wie die Liste (unreachable = nie gesehen und nicht erreichbar)",
+      summary["unreachable_agents"] == len([x for x in r.json if x["health_status"] == "unreachable"]), str(summary))
+app.config["_RUNNER_ADAPTER_NAME"] = "stub"
+reachability.clear_cache()
+
 print(f"\n{passed} OK, {failed} FAIL")
 sys.exit(1 if failed else 0)

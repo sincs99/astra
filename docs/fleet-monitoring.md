@@ -21,8 +21,14 @@ Jeder Agent hat einen standardisierten Health-Status:
 
 - Schwellwert: konfigurierbar via Query-Parameter `stale_threshold` (Default: 10 Minuten)
 - Basiert auf `last_seen_at` Feld im Agent-Modell
-- Wird bei jedem Agent-Heartbeat via `agent.touch()` aktualisiert
-- Wenn `last_seen_at` NULL ist → `unreachable`
+- Wird aktualisiert, wenn der Agent das Panel aufruft (Remote-API, `agent.touch()`) **und** wenn das Panel den
+  Daemon gerade erfolgreich erreicht hat (Erreichbarkeits-Check `GET /api/system`, M41). Ein erreichbarer Daemon gilt
+  als Lebenszeichen, damit `daemon_reachable = true` und der Health-Status sich nicht widersprechen. Geschrieben wird
+  höchstens einmal pro Minute und nur für aktive Agents.
+- Wenn `last_seen_at` NULL ist und der Daemon nicht erreichbar ist → `unreachable`
+- Mit dem **Stub-Runner** (Entwicklung) ist jeder Daemon erreichbar; Agents sind daher beim Öffnen des Monitorings
+  sofort `healthy`. `stale` und `unreachable` zeigen sich nur mit `RUNNER_ADAPTER=wings` (oder in Tests mit
+  nachgebautem Wings-Client). Das Fleet-Summary zählt nach derselben Regel wie die Liste.
 
 ## Kapazitätsberechnung
 

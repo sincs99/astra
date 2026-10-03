@@ -154,6 +154,9 @@ check("jeder Zeitstempel endet auf Z oder +hh:mm", not bad, "; ".join(bad[:8]))
 
 print("Stichprobe je Modell (naive DB-Werte)")
 with app.app_context():
+    # Das Monitoring (Crawler oben) setzt last_seen_at als Lebenszeichen neu, daher fuer die Stichprobe den festen Wert zurueck
+    db.session.get(Agent, ids["agent"]).last_seen_at = datetime(2026, 10, 3, 10, 0, 0)
+    db.session.commit()
     samples = {
         "User": User.query.first().to_dict()["created_at"],
         "Agent": db.session.get(Agent, ids["agent"]).to_dict()["last_seen_at"],

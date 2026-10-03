@@ -99,7 +99,9 @@ class StubRunnerAdapter(RunnerProtocol):
 
     def create_instance(self, agent: Agent, instance: Instance) -> RunnerResponse:
         logger.info("[STUB] create_instance: agent=%s, instance=%s", agent.name, instance.uuid)
-        return RunnerResponse(success=True, message=f"Stub: Instance '{instance.name}' provisioniert")
+        # Stub: Installation ist sofort fertig (Wings meldet das Ergebnis asynchron ueber die Remote-API)
+        return RunnerResponse(success=True, message=f"Stub: Instance '{instance.name}' provisioniert",
+                              data={"completed": True})
 
     def delete_instance(self, agent: Agent, instance: Instance) -> RunnerResponse:
         logger.info("[STUB] delete_instance: agent=%s, instance=%s", agent.name, instance.uuid)

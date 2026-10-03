@@ -24,6 +24,28 @@ DEFAULT_STALE_THRESHOLD_MINUTES = 10
 # ── Agent-Monitoring-Eintrag ────────────────────────────
 
 
+# Ein erfolgreicher Erreichbarkeits-Check gilt als Lebenszeichen; last_seen_at wird dafuer hoechstens so oft geschrieben
+LIVENESS_REFRESH_SECONDS = 60
+
+
+def _record_liveness(agent: Agent, daemon: dict) -> None:
+    """Setzt last_seen_at, wenn das Panel den Daemon gerade erreicht hat (M41).
+
+    Sonst widersprechen sich "daemon_reachable = true" und Health "unreachable" (nie gesehen), z.B. mit
+    dem Stub-Runner oder bei einem Wings, das das Panel noch nie angerufen hat.
+    """
+    if not daemon.get("daemon_reachable") or not agent.is_active:
+        return
+    from datetime import datetime, timedelta, timezone
+    seen = agent.last_seen_at
+    if seen is not None and seen.tzinfo is None:
+        seen = seen.replace(tzinfo=timezone.utc)
+    if seen is None or datetime.now(timezone.utc) - seen > timedelta(seconds=LIVENESS_REFRESH_SECONDS):
+        from app.extensions import db
+        agent.touch()
+        db.session.commit()
+
+
 def get_agent_monitoring(
     agent: Agent,
     stale_threshold: int = DEFAULT_STALE_THRESHOLD_MINUTES,
@@ -33,13 +55,14 @@ def get_agent_monitoring(
 
     Enthaelt: Identifikation, Health, Kapazitaet, Auslastung, Endpoints.
     """
+    if daemon is None:
+        from app.domain.agents.reachability import check_daemon
+        daemon = check_daemon(agent)
+    _record_liveness(agent, daemon)  # vor der Health-Berechnung: erreichbar heisst nicht "nie gesehen"
     health = agent.get_health_summary(stale_threshold)
     capacity = agent.get_capacity_summary()
     utilization = agent.get_utilization_summary()
     endpoint_summary = _get_endpoint_summary(agent)
-    if daemon is None:
-        from app.domain.agents.reachability import check_daemon
-        daemon = check_daemon(agent)
 
     return {
         # Identifikation
@@ -181,8 +204,12 @@ def get_fleet_summary(stale_threshold: int = DEFAULT_STALE_THRESHOLD_MINUTES) ->
     total_endpoints = 0
     assigned_endpoints = 0
 
+    from app.domain.agents.reachability import check_daemons
+    daemons = check_daemons(agents)
+
     for agent in agents:
-        # Health zaehlen
+        # Health zaehlen (erreichbare Daemons gelten als lebendig, siehe get_agent_monitoring)
+        _record_liveness(agent, daemons[agent.id])
         status = agent.get_health_status(stale_threshold)
         if status == "healthy":
             healthy_count += 1
