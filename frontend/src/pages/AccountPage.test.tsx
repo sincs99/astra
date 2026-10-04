@@ -21,6 +21,17 @@ beforeEach(() => {
 afterEach(() => { cleanup(); localStorage.clear(); });
 
 describe("AccountPage", () => {
+  it("zeigt die Rechnungsadresse nur, wenn das Backend die Felder liefert", async () => {
+    vi.mocked(api.getCurrentUser).mockResolvedValue({ ...user, billing_name: null, billing_address: null } as never);
+    mount();
+    expect(await screen.findByRole("region", { name: "Rechnungsadresse" })).toBeTruthy();
+    cleanup();
+    vi.mocked(api.getCurrentUser).mockResolvedValue(user as never);
+    mount();
+    await screen.findByText("alice@example.com");
+    expect(screen.queryByRole("region", { name: "Rechnungsadresse" })).toBeNull();
+  });
+
   it("zeigt Profil und Link auf die SSH-Keys", async () => {
     mount();
     expect(await screen.findByText("alice@example.com")).toBeTruthy();

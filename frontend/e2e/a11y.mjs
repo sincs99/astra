@@ -44,6 +44,8 @@ try {
     { path: `/instances/${instanceUuid}?tab=console`, role: "customer", name: "Server-Detail (Konsole)", ready: "h1" },
     { path: "/admin", role: "admin", name: "Admin-Übersicht", ready: "h1" },
     { path: "/admin/orders", role: "admin", name: "Admin-Bestellungen", ready: "h1" },
+    { path: "/admin/invoices", role: "admin", name: "Admin-Rechnungen", ready: "h1" },
+    { path: "/account", role: "customer", name: "Konto", ready: "h1" },
   ];
   const tokens = { customer: customerToken, admin: adminToken };
 

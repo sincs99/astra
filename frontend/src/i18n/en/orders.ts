@@ -49,4 +49,13 @@ export const orders: Record<keyof typeof de, string> = {
   "orders.receiptShowAria": "Show receipt {number}",
   "orders.receiptFailed": "The receipt could not be loaded",
   "orders.receiptNote": "Simplified payment receipt, not an invoice with VAT.",
+  "orders.kindInvoice": "Invoice",
+  "orders.kindCreditNote": "Credit note",
+  "orders.kindReceipt": "Receipt",
+  "orders.creditNoteRef": "for invoice {number}",
+  "orders.invoiceDialog": "Invoice {number}",
+  "orders.creditNoteDialog": "Credit note {number}",
+  "orders.invoiceFrame": "Invoice {number}",
+  "orders.creditNoteFrame": "Credit note {number}",
+  "orders.receiptShowKindAria": "Show {kind} {number}",
 };
