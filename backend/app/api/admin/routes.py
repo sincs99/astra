@@ -572,6 +572,24 @@ def billing_status():
     return jsonify(get_tick_status())
 
 
+@admin_bp.route("/stats/revenue", methods=["GET"])
+def revenue_stats_route():
+    """Umsatz der letzten ?days=30 Tage (1 bis 3650) aus den tatsaechlichen Zahlungen, je Waehrung getrennt.
+
+    Antwort: {days, since, by_currency: {"EUR": cents}, paid_count (Erstzahlungen), renewals_count,
+    refunded_count}. Erstattungen werden nicht abgezogen.
+    """
+    from app.domain.billing.service import revenue_stats
+    raw = request.args.get("days", "30")
+    try:
+        days = int(raw)
+    except ValueError:
+        return jsonify({"error": "days muss eine ganze Zahl sein"}), 400
+    if not 1 <= days <= 3650:
+        return jsonify({"error": "days muss zwischen 1 und 3650 liegen"}), 400
+    return jsonify(revenue_stats(days))
+
+
 @admin_bp.route("/payment-events", methods=["GET"])
 def list_payment_events():
     """Zahlungsereignisse des Anbieters (nur lesen), neueste zuerst.

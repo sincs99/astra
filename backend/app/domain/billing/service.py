@@ -412,6 +412,39 @@ def log_orders_expired(order_ids: list[int], reason: str) -> None:
             _log("order:expired", order, None, f"Bestellung beendet ({reason})", {"reason": reason})
 
 
+# ── Umsatzstatistik (M63) ───────────────────────────────
+
+
+def revenue_stats(days: int = 30, now: datetime | None = None) -> dict:
+    """Umsatz der letzten `days` Tage aus den tatsaechlichen Zahlungen (Activity-Events `order:paid` und
+    `order:renewed`, je Zahlung ein Ereignis, auch fuer Zahlungen vor M62). Betrag = Preis der Bestellung.
+
+    Kostenlose Bestellungen zaehlen nicht. Erstattungen werden nicht abgezogen (`refunded_count` zeigt, wie viele
+    Erstattungen im Zeitraum eintrafen). Die Summen sind nach Waehrung getrennt (keine Umrechnung).
+    """
+    from app.domain.activity.models import ActivityLog
+    now = _utc_naive(now) or _now()
+    since = now - timedelta(days=days)
+    rows = (db.session.query(ActivityLog.event, Order.price_cents, Order.currency)
+            .join(Order, db.and_(ActivityLog.subject_type == "order", ActivityLog.subject_id == Order.id))
+            .filter(ActivityLog.event.in_(("order:paid", "order:renewed")), ActivityLog.created_at >= since,
+                    Order.price_cents > 0)
+            .all())
+    by_currency: dict[str, int] = {}
+    paid = renewals = 0
+    for event, cents, currency in rows:
+        by_currency[currency] = by_currency.get(currency, 0) + cents
+        if event == "order:paid":
+            paid += 1
+        else:
+            renewals += 1
+    refunded = (db.session.query(db.func.count(ActivityLog.id))
+                .filter(ActivityLog.event == "order:refunded", ActivityLog.created_at >= since)
+                .scalar()) or 0
+    return {"days": days, "since": iso_utc(since), "by_currency": dict(sorted(by_currency.items())),
+            "paid_count": paid, "renewals_count": renewals, "refunded_count": refunded}
+
+
 # ── Betriebszustand des Billing-Ticks (M53) ─────────────
 
 TICK_STATE_KEY = "billing_tick"

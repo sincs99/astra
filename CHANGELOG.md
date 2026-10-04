@@ -69,6 +69,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M63 – Umsatzstatistik)
+- `GET /api/admin/stats/revenue?days=30` (Admin-Guard, `days` 1 bis 3650, sonst 400): Umsatz aus den tatsaechlichen Zahlungen (Activity-Events `order:paid`/`order:renewed`, je Zahlung eines, auch vor M62; Betrag = Preis der Bestellung), `{days, since, by_currency, paid_count, renewals_count, refunded_count}`. Kostenlose Pakete zaehlen nicht, Erstattungen werden nicht abgezogen, keine Waehrungsumrechnung. `backend/test_m63.py` (17 Tests)
+
 ### Added (M62 – Zahlungsbelege mit fortlaufender Nummer, Grundlage)
 - Jede verbuchte Zahlung (nicht kostenlose Pakete) bekommt einen Beleg mit fortlaufender, lueckenloser Nummer je Jahr (`INVOICE_NUMBER_FORMAT`, Standard `AST-{year}-{seq:05d}`): Zaehler `invoice_counters` mit Zeilensperre (PostgreSQL), Zaehler und Beleg in einer Transaktion, Belege werden nie geloescht. Tabellen `receipts` und `invoice_counters` (Migration `v2q3r4s5t6u7`)
 - `receipts: [{number, issued_at, amount_cents, currency}]` in den Bestellungen (Kunde und Admin); `GET /api/client/orders/{uuid}/receipt?number=&format=html|text|json` (HTML escaped, `nosniff`, CSP, `no-store`). Anbieter-Kopf und Fusszeile ueber `INVOICE_SELLER` und `RECEIPT_FOOTER`. Kein Steuerbeleg, kein PDF, keine Umsatzsteuer; Belege nur fuer Zahlungen ab M62. Ein Fehler beim Ausstellen blockiert die Zahlung nie. `backend/test_m62.py` (42 Tests); Doku in `docs/orders-api.md`, was fuer echte Rechnungen fehlt
