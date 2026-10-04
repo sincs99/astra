@@ -332,7 +332,9 @@ mail.outbox.clear()
 res = tick(endr - D(days=REM, hours=1))
 check("vor dem Erinnerungsfenster: keine Mail", res["reminded"] == 0 and not mail.outbox)
 def mails_for(ou):
-    return [m for m in mail.outbox if ou in m["body"]]
+    # Zahlungsbestaetigungen (M54) gehoeren nicht zu den Erinnerungs-/Hinweis-Mails
+    return [m for m in mail.outbox if ou in m["body"] and "Zahlung eingegangen" not in m["subject"]
+            and m["subject"] != "Astra: Dein Server ist bereit"]
 
 
 res = tick(endr - D(days=REM) + D(minutes=1))
