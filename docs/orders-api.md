@@ -260,6 +260,7 @@ Beweise für Streitfälle, vorzeitiges Löschen eines erstatteten Servers (Admin
 | `GET /api/admin/billing/status` | Admin | Läuft der Billing-Tick? Letzter Lauf, Alter, Ergebnis, Bestellungen je Status |
 | `GET /api/admin/stats/revenue?days=30` | Admin | Umsatz der letzten `days` Tage (1 bis 365, sonst 400) auf Basis der Zahlungsbelege (`receipts.issued_at`, M62): `{days, since, by_currency: {"EUR": cents}, paid_count (Erstzahlungen), renewals_count, refunded_cents_by_currency}, prev_since, prev_by_currency, prev_paid_count, prev_renewals_count}`; `prev_*` (M66) ist der gleich lange Zeitraum davor für den Trend in der Admin-Übersicht. Erstattungen (M59) getrennt je Währung, nicht verrechnet; Zahlungen vor M62 und Gratis-Pakete fehlen |
 | `GET /api/admin/payment-events?status=&order_uuid=&limit=` | Admin | Zahlungsereignisse des Anbieters (nur lesen, neueste zuerst, `limit` 1 bis 500); `mismatch` und `unapplied` brauchen Aufmerksamkeit Jedes Ereignis trägt `amount_cents` und `currency` (Betrag laut Anbieter, bei Erstattungen der erstattete Betrag; `null` bei Altbestand und Ereignissen ohne Betrag) |
+| `POST /api/admin/orders/{uuid}/remind` | Admin | Zahlungserinnerung an den Kunden (in seiner Sprache), höchstens eine manuelle je Bestellung und 24 Stunden: `200 {sent_at, kind}`; `kind` = `expiry_reminder` (aktiv), `past_due` (überfällig, mit verbleibender Frist) oder `payment_open` (noch nicht bezahlt). Fehler: 404, 409 (`invalid_status`, `nothing_to_pay`, `cancelled`, `no_email`), 429 `{code: "reminder_cooldown", retry_after_seconds}` |
 | `POST /api/admin/orders/{uuid}/mark-paid` | Admin | `{payment_reference?}` Zahlung bestätigen und Instance bereitstellen; auf `active`/`past_due` ist die Referenz Pflicht (Verlängerung) |
 
 Activity- und Webhook-Events: `order:created`, `order:paid`, `order:provision_failed`, `order:cancelled`,
@@ -298,6 +299,23 @@ restriktiven Content-Security-Policy und `no-store` ausgeliefert. Ein Link im Br
 Steuernummer bzw. USt-IdNr. des Anbieters, Anschrift des Kunden, Umsatzsteuer-Ausweis (Netto/Brutto/Satz oder
 Kleinunternehmer-Hinweis), Leistungszeitraum, PDF bzw. revisionssichere Aufbewahrung, Rechnungskorrektur bei
 Erstattungen (Gutschrift) und die rechtliche Prüfung. Bis dahin Rechnungen außerhalb von Astra erstellen.
+
+## Manuelle Zahlungserinnerung (M69)
+
+`POST /api/admin/orders/{uuid}/remind` (kein Body) schickt dem Kunden die zum Status passende Mail in seiner Sprache (`users.locale`):
+
+| Status | Mail (`kind`) |
+|---|---|
+| `active` | „Die Laufzeit deines Servers endet bald“ mit Laufzeitende, Betrag und Verwendungszweck (`expiry_reminder`) |
+| `past_due` | „Zahlung überfällig“ mit der **verbleibenden** Karenzfrist in Tagen (aufgerundet, mindestens 1) und Verwendungszweck (`past_due`) |
+| `pending_payment` | „Zahlung noch offen“ mit Betrag und Verwendungszweck (`payment_open`) |
+
+Nicht erlaubt (409): beendet, storniert, erstattet, bezahlt aber noch nicht bereitgestellt (`invalid_status`), kostenlos (`nothing_to_pay`),
+gekündigt (`cancelled`), Kunde ohne E-Mail-Adresse (`no_email`). Abgelehnte Aufrufe zählen nicht für die Sperre.
+**Sperre:** je Bestellung höchstens eine manuelle Erinnerung in 24 Stunden, sonst 429 `{error, code: "reminder_cooldown", retry_after_seconds}`. Gelesen wird sie aus dem
+Activity-Log (Event `order:reminder` mit `properties.kind = "manual"`, Akteur = der Admin, `properties.mail` = `kind` der Antwort), es gibt kein neues Schema. Die
+automatischen Erinnerungen des Billing-Ticks und ihre Markierung bleiben unberührt und zählen nicht für die Sperre. Der Versand ist best effort wie bei allen
+Mails: `sent_at` bestätigt, dass die Mail übergeben wurde, nicht die Zustellung.
 
 ## Sprache der Servertexte (M67)
 
