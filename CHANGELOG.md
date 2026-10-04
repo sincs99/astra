@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – Umsatz-Kachel auf `GET /api/admin/stats/revenue`)
+- Admin-Uebersicht: Umsatz der letzten 30 Tage exakt aus den Belegen (je Waehrung, Zahlungen davon Verlaengerungen, "Erstattet im Zeitraum: X (nicht abgezogen)"); bei 404 (aelteres Backend) Rueckfall auf die bisherige Schaetzung aus der Bestellliste mit Hinweis
+
 ### Added (Frontend – F7 Zahlungsbelege, M62)
 - Kunden-Bestellungen: pro Bestellung die Belege (Nummer, Datum, Betrag) mit "Anzeigen"; der Beleg wird per fetch mit Token geholt (`GET /api/client/orders/{uuid}/receipt?number=&format=html`) und in einem Dialog mit sandbox-Iframe (ohne Skripte) angezeigt, "Als Datei speichern" laedt ihn als HTML herunter. Hinweis "Vereinfachter Zahlungsbeleg, keine Rechnung mit Umsatzsteuer." Admin-Bestellliste zeigt die Belegnummern als Text
 

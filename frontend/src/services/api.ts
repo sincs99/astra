@@ -838,6 +838,16 @@ export interface BillingStatus {
   };
 }
 
+/** Exakter Umsatz aus den Belegen (M62); Erstattungen sind getrennt und nicht abgezogen. */
+export interface RevenueStats {
+  days: number;
+  since: string;
+  by_currency: Record<string, number>;
+  paid_count: number;
+  renewals_count: number;
+  refunded_cents_by_currency: Record<string, number>;
+}
+
 export type PaymentEventStatus = "processed" | "ignored" | "unapplied" | "mismatch" | "received";
 
 export interface PaymentEvent {
@@ -1337,6 +1347,7 @@ export const api = {
   getSystemVersion: () => request<SystemVersionInfo>("/admin/system/version"),
   getUpgradeStatus: () => request<UpgradeStatus>("/admin/system/upgrade-status"),
   getPreflight: () => request<PreflightResult>("/admin/system/preflight"),
+  getRevenueStats: (days = 30) => request<RevenueStats>(`/admin/stats/revenue?days=${days}`),
   getPaymentEvents: (params?: { status?: PaymentEventStatus; limit?: number }) => {
     const p = new URLSearchParams();
     if (params?.status) p.set("status", params.status);

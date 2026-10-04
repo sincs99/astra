@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { api, type Order, type AgentMonitoringEntry, type PaymentEvent } from "../../services/api";
+import { api, ApiError, type Order, type AgentMonitoringEntry, type PaymentEvent, type RevenueStats } from "../../services/api";
 import { cardStyle, linkStyle, StatusBadge, statusLabel } from "../ui";
 import { UtilizationBar } from "../UtilizationBar";
 import { formatMoney } from "../../lib/money";
 import { formatDateTime } from "../../lib/dates";
-import { countByStatus, fleetLoad, mergeEvents, revenueLastDays, OVERVIEW_STATUSES } from "../../lib/adminOverview";
+import { countByStatus, fleetLoad, mergeEvents, revenueLastDays, OVERVIEW_STATUSES, type RevenueSummary } from "../../lib/adminOverview";
 import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 
 /** Gemeinsamer Rahmen einer Kachel; Ladefehler blenden nur diese Kachel ein, nicht die ganze Seite. */
@@ -47,24 +47,52 @@ function Unavailable() {
   return <p style={muted}>Daten konnten nicht geladen werden.</p>;
 }
 
-export function RevenueTile({ orders }: { orders: Order[] | null }) {
-  const rev = orders ? revenueLastDays(orders) : null;
-  const currencies = rev ? Object.keys(rev.byCurrency) : [];
+/** Umsatzdaten: exakt aus GET /admin/stats/revenue, bei älterem Backend (404) geschätzt aus der Bestellliste. */
+export type RevenueView =
+  | { kind: "exact"; stats: RevenueStats }
+  | { kind: "estimate"; summary: RevenueSummary };
+
+export async function loadRevenue(): Promise<RevenueView> {
+  try {
+    return { kind: "exact", stats: await api.getRevenueStats(30) };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      return { kind: "estimate", summary: revenueLastDays(await api.getAdminOrders()) };
+    }
+    throw err;
+  }
+}
+
+export function RevenueTile({ view }: { view: RevenueView | null }) {
+  const byCurrency = view ? (view.kind === "exact" ? view.stats.by_currency : view.summary.byCurrency) : {};
+  const currencies = Object.keys(byCurrency);
+  const refunds = view?.kind === "exact" ? Object.entries(view.stats.refunded_cents_by_currency ?? {}).filter(([, c]) => c > 0) : [];
   return (
     <Tile id="tile-revenue" title="Umsatz, letzte 30 Tage">
-      {!rev ? <p style={muted}>Wird geladen…</p> : currencies.length === 0 ? (
+      {!view ? <p style={muted}>Wird geladen…</p> : currencies.length === 0 ? (
         <p style={muted}>Keine bezahlten Bestellungen im Zeitraum.</p>
       ) : (
         <>
           {currencies.map((c) => (
-            <p key={c} style={bigNumber} data-testid={`revenue-${c}`}>{formatMoney(rev.byCurrency[c], c)}</p>
+            <p key={c} style={bigNumber} data-testid={`revenue-${c}`}>{formatMoney(byCurrency[c], c)}</p>
           ))}
-          <p style={muted}>{rev.paidCount} bezahlte Bestellung(en)</p>
+          <p style={muted}>
+            {view.kind === "exact"
+              ? `${view.stats.paid_count} Zahlung(en), davon ${view.stats.renewals_count} Verlängerung(en)`
+              : `${view.summary.paidCount} bezahlte Bestellung(en)`}
+          </p>
         </>
       )}
-      <p style={{ ...muted, marginTop: 8, fontSize: 12 }}>
-        Näherung: gezählt wird die letzte Zahlung je Bestellung; frühere Verlängerungen fehlen.
-      </p>
+      {refunds.length > 0 && (
+        <p style={{ ...muted, marginTop: 8 }} data-testid="revenue-refunds">
+          Erstattet im Zeitraum: {refunds.map(([c, cents]) => formatMoney(cents, c)).join(", ")} (nicht abgezogen)
+        </p>
+      )}
+      {view?.kind === "estimate" && (
+        <p style={{ ...muted, marginTop: 8, fontSize: 12 }}>
+          Näherung: gezählt wird die letzte Zahlung je Bestellung; frühere Verlängerungen fehlen.
+        </p>
+      )}
     </Tile>
   );
 }
@@ -144,16 +172,13 @@ export function PaymentEventsTile({ events }: { events: PaymentEvent[] | null })
 /** Die drei datengetriebenen Kacheln; jede Quelle faellt einzeln aus, ohne die anderen zu stoeren. */
 export function OverviewTiles() {
   const orders = useTileData(loadOrders);
+  const revenue = useTileData(loadRevenue);
   const agents = useTileData(loadAgents);
   const events = useTileData(loadEvents);
   return (
     <>
-      {orders.failed && !orders.data ? <Tile id="tile-orders-err" title="Bestellungen und Umsatz"><Unavailable /></Tile> : (
-        <>
-          <RevenueTile orders={orders.data} />
-          <OrdersTile orders={orders.data} />
-        </>
-      )}
+      {revenue.failed && !revenue.data ? <Tile id="tile-revenue-err" title="Umsatz"><Unavailable /></Tile> : <RevenueTile view={revenue.data} />}
+      {orders.failed && !orders.data ? <Tile id="tile-orders-err" title="Bestellungen"><Unavailable /></Tile> : <OrdersTile orders={orders.data} />}
       {agents.failed && !agents.data ? <Tile id="tile-fleet-err" title="Node-Auslastung"><Unavailable /></Tile> : <FleetTile agents={agents.data} />}
       {events.failed && !events.data ? <Tile id="tile-events-err" title="Zahlungsereignisse"><Unavailable /></Tile> : <PaymentEventsTile events={events.data} />}
     </>
