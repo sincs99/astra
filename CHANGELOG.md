@@ -147,6 +147,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M69 – Manuelle Zahlungserinnerung)
+- `POST /api/admin/orders/{uuid}/remind`: Admin schickt dem Kunden die zum Status passende Zahlungsmail in dessen Sprache (`active`: Erinnerung vor Laufzeitende, `past_due`: Zahlung ueberfaellig mit verbleibender Frist, `pending_payment`: neue Mail "Zahlung noch offen" mit Betrag und Verwendungszweck, DE/EN). Antwort `200 {sent_at, kind}`; 409 bei beendet/storniert/erstattet/wartend, kostenlos, gekuendigt oder ohne E-Mail (je mit `code`); 429 `reminder_cooldown` mit `retry_after_seconds` (hoechstens eine manuelle Erinnerung je Bestellung und 24 Stunden, gelesen aus dem Activity-Log, keine Migration). Event `order:reminder` mit `kind=manual` und Akteur. `BillingError` traegt optional `code` und Zusatzfelder, `_mail_order` liefert, ob gesendet wurde. `backend/test_m69.py` (28 Tests)
+
 ### Added (M68 – Betrag je Zahlungsereignis)
 - `payment_events.amount_cents` und `payment_events.currency` (Migration `x4s5t6u7v8w9`, Inspector-Guard, Up/Down geprueft): Betrag laut Anbieter-Ereignis, bei `mismatch` der tatsaechlich gezahlte (nicht der erwartete) Betrag, bei Erstattungen der erstattete Betrag, bei Streitfaellen der angefochtene; NULL bei Altbestand und Ereignissen ohne Betrag. `GET /api/admin/payment-events` liefert beide Felder. Eine Wiederzustellung eines unfertigen Altereignisses zieht den Betrag nach. `backend/test_m68.py` (16 Tests)
 

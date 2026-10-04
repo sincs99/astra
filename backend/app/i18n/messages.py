@@ -65,6 +65,12 @@ MESSAGES: dict[str, dict[str, str]] = {
             "{period_days} Tage), sonst wird der Server gesperrt und nach der Karenzzeit gelöscht.\n"
             "Verwendungszweck: {purpose}\nBestellung: {uuid}\n"
         ),
+        "mail.payment_open.subject": "Astra: Zahlung noch offen",
+        "mail.payment_open.body": (
+            "Hallo,\n\nfür deine Bestellung '{instance_name}' ist noch keine Zahlung eingegangen. "
+            "Bitte überweise {price}; dein Server wird nach dem Zahlungseingang bereitgestellt.\n"
+            "Verwendungszweck: {purpose}\nBestellung: {uuid}\n"
+        ),
         "mail.refunded.subject": "Astra: Zahlung erstattet – dein Server wurde gesperrt",
         "mail.refunded.body": (
             "Hallo,\n\ndeine Zahlung wurde erstattet, daher wurde dein Server '{instance_name}' gesperrt. "
@@ -146,6 +152,12 @@ MESSAGES: dict[str, dict[str, str]] = {
             "Hello,\n\nthe term of your server '{instance_name}' ends on {end}.\n"
             "Please arrange payment in time ({price} for "
             "{period_days} days), otherwise the server will be suspended and deleted after the grace period.\n"
+            "Payment reference: {purpose}\nOrder: {uuid}\n"
+        ),
+        "mail.payment_open.subject": "Astra: Payment still outstanding",
+        "mail.payment_open.body": (
+            "Hello,\n\nwe have not received a payment for your order '{instance_name}' yet. "
+            "Please transfer {price}; your server will be set up once the payment has arrived.\n"
             "Payment reference: {purpose}\nOrder: {uuid}\n"
         ),
         "mail.refunded.subject": "Astra: Payment refunded – your server has been suspended",

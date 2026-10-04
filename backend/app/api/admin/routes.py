@@ -478,7 +478,11 @@ def delete_blueprint(blueprint_id: int):
 
 
 def _billing_error(e):
-    return jsonify({"error": e.message}), e.status_code
+    body = {"error": e.message}
+    if getattr(e, "code", None):
+        body["code"] = e.code
+    body.update(getattr(e, "extra", None) or {})
+    return jsonify(body), e.status_code
 
 
 @admin_bp.route("/products", methods=["GET"])
@@ -674,6 +678,29 @@ def mark_order_paid_route(uuid: str):
     except BillingError as e:
         return _billing_error(e)
     return jsonify(order.to_dict(include_user=True))
+
+
+@admin_bp.route("/orders/<string:uuid>/remind", methods=["POST"])
+def remind_order_route(uuid: str):
+    """Schickt dem Kunden eine Zahlungserinnerung (in seiner Sprache), hoechstens eine manuelle je Bestellung und 24 Stunden.
+
+    Erlaubt bei active (Erinnerung vor Laufzeitende), past_due (Zahlung ueberfaellig) und pending_payment
+    (Zahlung noch offen). Antwort 200 {sent_at, kind: expiry_reminder|past_due|payment_open}.
+    Fehler: 404 unbekannt, 409 (`invalid_status`, `nothing_to_pay`, `cancelled`, `no_email`),
+    429 {code: reminder_cooldown, retry_after_seconds}.
+    """
+    from app.domain.auth.service import get_current_user
+    from app.domain.billing.models import Order
+    from app.domain.billing.service import BillingError, send_manual_reminder
+    order = Order.query.filter_by(uuid=uuid).first()
+    if not order:
+        return jsonify({"error": "Bestellung nicht gefunden"}), 404
+    actor = get_current_user()
+    try:
+        result = send_manual_reminder(order, actor.id if actor else None)
+    except BillingError as e:
+        return _billing_error(e)
+    return jsonify(result)
 
 
 # ── Endpoints ───────────────────────────────────────────
