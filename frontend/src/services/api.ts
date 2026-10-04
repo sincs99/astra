@@ -799,6 +799,14 @@ export interface BillingStatus {
   orders_needing_tick: number;
   orders_by_status: Record<string, number>;
   last_summary: Record<string, unknown> | null;
+  /** Bezahlte Bestellungen ohne Instance (warten auf freien Node); fehlt bei aelteren Backends */
+  awaiting_provisioning?: {
+    count: number;
+    oldest_paid_at: string | null;
+    oldest_wait_hours: number | null;
+    warn_after_hours: number;
+    waiting_too_long: boolean;
+  };
 }
 
 // ── System / Version Types (M24) ────────────────────────
