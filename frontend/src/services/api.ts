@@ -152,6 +152,9 @@ export interface LoginResponse {
   access_token: string;
   token_type: string;
   user: User;
+  /** Gesetzt, wenn statt eines Authenticator-Codes ein Recovery-Code verwendet wurde (M60) */
+  recovery_code_used?: boolean;
+  recovery_codes_remaining?: number;
 }
 
 /** Antwort von /auth/login bei aktivem MFA, solange noch kein Code mitgeschickt wurde. */
@@ -171,6 +174,13 @@ export interface MfaSetupResult {
 export interface MfaEnableResult {
   mfa_enabled: boolean;
   recovery_codes: string[];
+  recovery_codes_remaining?: number;
+  message: string;
+}
+
+export interface RecoveryCodesResult {
+  recovery_codes: string[];
+  recovery_codes_remaining: number;
   message: string;
 }
 
@@ -304,6 +314,8 @@ export interface User {
   is_admin: boolean;
   email_verified?: boolean;
   mfa_enabled?: boolean;
+  /** Noch gueltige Recovery-Codes (0, wenn MFA aus ist) */
+  mfa_recovery_codes_remaining?: number;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -938,6 +950,9 @@ export const api = {
   setupMfa: () => request<MfaSetupResult>("/auth/mfa/setup", { method: "POST" }),
   verifyMfa: (code: string) =>
     request<MfaEnableResult>("/auth/mfa/verify", { method: "POST", body: JSON.stringify({ code }) }),
+  /** Neue Recovery-Codes erzeugen (alte werden ungueltig); falsches Passwort -> 403 invalid_password. */
+  regenerateRecoveryCodes: (password: string) =>
+    request<RecoveryCodesResult>("/auth/mfa/recovery-codes", { method: "POST", body: JSON.stringify({ password }) }),
   disableMfa: () => request<{ message: string }>("/auth/mfa/disable", { method: "POST" }),
   getApiKeys: () => request<ApiKeyEntry[]>("/auth/api-keys"),
   createApiKey: (data: { key_type?: "account" | "application"; memo?: string; allowed_ips?: string[] }) =>

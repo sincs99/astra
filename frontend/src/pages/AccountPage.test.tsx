@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AccountPage } from "./AccountPage";
-import { api } from "../services/api";
+import { api, ApiError } from "../services/api";
 
 const user = { id: 1, username: "alice", email: "alice@example.com", is_admin: false, mfa_enabled: false };
 
@@ -79,6 +79,61 @@ describe("AccountPage", () => {
     await waitFor(() => expect(verify).toHaveBeenCalledWith("123456"));
     expect(await screen.findByText(/aaaa1111/)).toBeTruthy();
     expect(screen.getByText(/MFA ist/).textContent).toMatch(/aktiv/);
+  });
+
+  it("zeigt die Recovery-Codes gross und schliesst erst nach Bestaetigung", async () => {
+    vi.spyOn(api, "setupMfa").mockResolvedValue({ secret: "S", provisioning_uri: "otpauth://x", message: "" });
+    vi.spyOn(api, "verifyMfa").mockResolvedValue({
+      mfa_enabled: true, recovery_codes: ["abcde-fghij", "klmno-pqrst"], recovery_codes_remaining: 10, message: "",
+    });
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: "MFA einrichten" }));
+    await screen.findByText("S");
+    fireEvent.change(screen.getByLabelText(/Code aus der App/), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Aktivieren" }));
+    const list = await screen.findByRole("list", { name: "Recovery-Codes" });
+    expect(within(list).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["abcde-fghij", "klmno-pqrst"]);
+    expect(screen.getByRole("button", { name: /Als Textdatei speichern/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Kopieren/ })).toBeTruthy();
+    const done = screen.getByRole("button", { name: "Fertig" }) as HTMLButtonElement;
+    expect(done.disabled).toBe(true);
+    fireEvent.click(screen.getByLabelText("Ich habe die Codes gesichert"));
+    expect(done.disabled).toBe(false);
+    fireEvent.click(done);
+    expect(screen.queryByRole("list", { name: "Recovery-Codes" })).toBeNull();
+    expect(await screen.findByText("Recovery-Codes: noch 10 von 10 übrig.")).toBeTruthy();
+  });
+
+  it("zeigt den Restbestand an und warnt bei wenigen oder keinen Codes", async () => {
+    const me = vi.mocked(api.getCurrentUser);
+    me.mockResolvedValue({ ...user, mfa_enabled: true, mfa_recovery_codes_remaining: 2 } as never);
+    const first = mount();
+    expect(await screen.findByText("Nur noch 2 Recovery-Code(s) übrig. Erzeuge bald neue Codes.")).toBeTruthy();
+    first.unmount();
+    me.mockResolvedValue({ ...user, mfa_enabled: true, mfa_recovery_codes_remaining: 0 } as never);
+    mount();
+    expect((await screen.findByText(/keine Recovery-Codes mehr/)).getAttribute("role")).toBe("alert");
+  });
+
+  it("erzeugt neue Codes nach Passwortabfrage; bei falschem Passwort bleibt alles wie es ist", async () => {
+    vi.mocked(api.getCurrentUser).mockResolvedValue({ ...user, mfa_enabled: true, mfa_recovery_codes_remaining: 3 } as never);
+    const regen = vi.spyOn(api, "regenerateRecoveryCodes")
+      .mockRejectedValueOnce(new ApiError("Passwort falsch", 403, "invalid_password"))
+      .mockResolvedValueOnce({ recovery_codes: ["aaaaa-bbbbb"], recovery_codes_remaining: 10, message: "" });
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Neue Codes erzeugen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Codes erzeugen" }));
+    expect(await screen.findByText("Bitte dein Passwort eingeben")).toBeTruthy();
+    expect(regen).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Passwort"), { target: { value: "falsch" } });
+    fireEvent.click(screen.getByRole("button", { name: "Codes erzeugen" }));
+    expect(await screen.findByText("Das Passwort ist falsch.")).toBeTruthy();
+    expect(localStorage.getItem("astra_access_token")).toBe("t");
+    expect(screen.queryByRole("list", { name: "Recovery-Codes" })).toBeNull();
+    fireEvent.change(screen.getByLabelText("Passwort"), { target: { value: "richtig12" } });
+    fireEvent.click(screen.getByRole("button", { name: "Codes erzeugen" }));
+    expect(await screen.findByText("aaaaa-bbbbb")).toBeTruthy();
+    expect(regen).toHaveBeenLastCalledWith("richtig12");
   });
 
   it("deaktiviert MFA nach Bestätigung", async () => {

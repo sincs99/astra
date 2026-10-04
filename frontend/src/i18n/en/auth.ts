@@ -60,4 +60,12 @@ export const auth: Record<keyof typeof de, string> = {
   "auth.verify.ok": "Your email address has been confirmed. You can sign in now.",
   "auth.verify.expiredHint": "The link may have expired. Sign in to request a new email.",
   "auth.verify.missing": "The link is incomplete (token missing).",
+  "auth.login.useRecovery": "Use a recovery code",
+  "auth.login.useApp": "Use authenticator code instead",
+  "auth.login.recoveryLabel": "Recovery code",
+  "auth.login.recoveryHint": "One of your single-use backup codes, e.g. abcde-fghij. Case does not matter.",
+  "auth.login.missingRecovery": "Please enter a recovery code",
+  "auth.login.recoveryUsed": "Recovery code used, {n} left.",
+  "auth.login.recoveryLow": "Recovery code used, only {n} left. Generate new codes before you run out.",
+  "auth.login.recoveryLink": "Go to account",
 };
