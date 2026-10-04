@@ -109,6 +109,7 @@ def create_app(config_name: str | None = None) -> Flask:
 
     # Rate Limiting (lightweight, ohne externe Abhaengigkeit)
     _register_rate_limiting(app)
+    _register_error_localization(app)
 
     # Ops-Endpunkte registrieren
     _register_ops_endpoints(app)
@@ -215,6 +216,35 @@ def _register_rate_limiting(app: Flask) -> None:
         if not allowed:
             return ratelimit.limited_response(retry_after)
         return None
+
+
+# ── Fehlertexte (M72) ───────────────────────────────────
+
+
+def _register_error_localization(app: Flask) -> None:
+    """Kundenseitige Fehlerantworten (/api/auth, /api/client) einheitlich als {error, code} in der Sprache des Aufrufers.
+
+    Der Text kommt aus dem Katalog `app/i18n/errors.py` (Deutsch bleibt wortgleich); fehlt ein Code, wird er aus dem Katalog
+    oder dem HTTP-Status ergaenzt. Admin-Routen und Zahlungs-Webhooks bleiben unberuehrt.
+    """
+    import json
+
+    @app.after_request
+    def localize_api_errors(response):
+        if response.status_code < 400 or not request.path.startswith(("/api/auth/", "/api/client/")):
+            return response
+        if response.mimetype != "application/json":
+            return response
+        data = response.get_json(silent=True)
+        if not isinstance(data, dict) or not isinstance(data.get("error"), str):
+            return response
+        from app.i18n import request_locale
+        from app.i18n.errors import localize_error
+        text, code = localize_error(data["error"], data.get("code"), response.status_code, request_locale())
+        if text != data["error"] or data.get("code") != code:
+            data["error"], data["code"] = text, code
+            response.set_data(json.dumps(data, ensure_ascii=False))
+        return response
 
 
 # ── Runner-Init ─────────────────────────────────────────
