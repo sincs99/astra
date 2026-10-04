@@ -15,8 +15,8 @@ const TONES: Record<string, Tone> = {
   stale: "warn", pending: "warn", retrying: "warn", pending_payment: "warn", awaiting_provisioning: "warn",
   disputed: "warn", unapplied: "warn", warning: "warn",
   stopped: "danger", suspended: "danger", provision_failed: "danger", reinstall_failed: "danger", transfer_failed: "danger",
-  degraded: "danger", failed: "danger", past_due: "danger", expired: "danger", refunded: "danger", mismatch: "danger", error: "danger",
-  unreachable: "neutral", cancelled: "neutral", inactive: "neutral", offline: "neutral", unknown: "neutral",
+  degraded: "danger", unreachable: "danger", failed: "danger", past_due: "danger", expired: "danger", refunded: "danger", mismatch: "danger", error: "danger",
+  cancelled: "neutral", inactive: "neutral", offline: "neutral", unknown: "neutral",
   maintenance: "accent", info: "accent",
 };
 

@@ -83,3 +83,57 @@ describe("mergeEvents", () => {
     expect(merged.map((e) => e.id)).toEqual([2, 3, 1]);
   });
 });
+
+import { dueWithin, instanceCounts, nodeBar, ordersInPeriod, problemNodes } from "./adminOverview";
+
+describe("ordersInPeriod", () => {
+  it("zaehlt Bestellungen des Zeitraums nach Zustand", () => {
+    const orders = [
+      makeOrder({ status: "active", created_at: "2026-10-01T00:00:00Z", paid_at: "2026-10-01T01:00:00Z" }),
+      makeOrder({ status: "active", created_at: "2026-09-20T00:00:00Z", paid_at: "2026-09-20T01:00:00Z" }),
+      makeOrder({ status: "pending_payment", created_at: "2026-10-03T00:00:00Z" }),
+      makeOrder({ status: "awaiting_provisioning", created_at: "2026-10-03T00:00:00Z", paid_at: "2026-10-03T01:00:00Z" }),
+      makeOrder({ status: "past_due", created_at: "2026-09-25T00:00:00Z", paid_at: "2026-09-25T01:00:00Z" }),
+      makeOrder({ status: "active", created_at: "2026-06-01T00:00:00Z", paid_at: "2026-06-01T01:00:00Z" }),
+      makeOrder({ status: "active", created_at: null }),
+    ];
+    expect(ordersInPeriod(orders, 30, NOW)).toEqual({ total: 5, paid: 2, waiting: 2, overdue: 1 });
+    expect(ordersInPeriod(orders, 7, NOW)).toEqual({ total: 3, paid: 1, waiting: 2, overdue: 0 });
+  });
+});
+
+describe("dueWithin", () => {
+  it("findet aktive, kostenpflichtige, nicht gekuendigte Bestellungen die in 24 h enden", () => {
+    const inH = (h: number) => new Date(NOW + h * 3_600_000).toISOString();
+    const orders = [
+      makeOrder({ uuid: "a", status: "active", current_period_end: inH(5) }),
+      makeOrder({ uuid: "b", status: "active", current_period_end: inH(30) }),
+      makeOrder({ uuid: "c", status: "active", current_period_end: inH(5), cancel_at_period_end: true }),
+      makeOrder({ uuid: "d", status: "active", current_period_end: inH(5), price_cents: 0 }),
+      makeOrder({ uuid: "e", status: "past_due", current_period_end: inH(5) }),
+      makeOrder({ uuid: "f", status: "active", current_period_end: inH(-2) }),
+    ];
+    expect(dueWithin(orders, 24, NOW).map((o) => o.uuid)).toEqual(["a"]);
+  });
+});
+
+describe("Nodes und Instances", () => {
+  const agentOf = (id: number, health: string, active = true) => ({ id, name: `n${id}`, is_active: active, health_status: health }) as never;
+  it("erkennt gestoerte aktive Nodes und zaehlt Instances darauf", () => {
+    const agents = [agentOf(1, "healthy"), agentOf(2, "unreachable"), agentOf(3, "degraded"), agentOf(4, "unreachable", false)];
+    const problem = problemNodes(agents);
+    expect(problem.map((a) => a.id)).toEqual([2, 3]);
+    const counts = instanceCounts([
+      { status: "ready", container_state: "running", agent_id: 1 },
+      { status: "ready", container_state: "offline", agent_id: 2 },
+      { status: "suspended", container_state: "running", agent_id: 3 },
+      { status: null, container_state: "running", agent_id: 1 },
+    ], problem);
+    expect(counts).toEqual({ total: 4, running: 2, onProblemNodes: 2 });
+  });
+  it("berechnet Balken inkl. Ueberbuchung und fehlendem Limit", () => {
+    expect(nodeBar("RAM", 46, 64, 64)).toMatchObject({ percent: 72, overbooked: false });
+    expect(nodeBar("RAM", 136, 128, 140)).toMatchObject({ percent: 97, overbooked: true });
+    expect(nodeBar("RAM", 10, 0, 0)).toMatchObject({ percent: null, overbooked: false });
+  });
+});

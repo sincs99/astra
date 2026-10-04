@@ -5,6 +5,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – D6 Admin-Uebersicht nach Mockup)
+- `/admin` nach `design/mockups/AdminOverview.html`: Warnbanner (rot, role=alert) bei nicht erreichbaren oder beeintraechtigten Nodes mit Heartbeat und betroffenen Instances, gebuendelter Hinweis (role=status) zu Zahlungen mit Fehlstatus, in 24 h ablaufenden Bestellungen, ausfallendem Abrechnungs-Tick und zu lange wartenden Bestellungen; vier Kennzahlen (Umsatz exakt aus `stats/revenue` mit Rueckfall, Bestellungen im Zeitraum mit bezahlt/wartend/ueberfaellig, laufende Instances aus `GET /admin/instances`, Abrechnungs-Tick); Zeitraum waehlbar (7/30/90 Tage); Node-Auslastung mit RAM-/Festplattenbalken (Warnfarbe ab 80 %, "ueberbucht" mit schraffiertem Anteil, kein Limit/keine Daten) und Tabelle der auffaelligen Zahlungen (`payment-events`); Aktualisierung alle 30 s, jede Quelle faellt einzeln aus
+- Nicht aus den APIs verfuegbar und daher weggelassen: Trend "+12 % zum Vormonat", Betrag je Zahlungsereignis, naechster Tick-Lauf, "Erinnerung senden"
+- Status-Badge: "nicht erreichbar" ist rot
+
 ### Changed (Frontend – D5 Server-Detail)
 - Server-Detailseite nach Mockup: Zurueck-Link "Meine Server", Titel mit Status-Badge und Kurz-ID, Start/Neustart/Stop/Kill im Seitenkopf (passend zum Container-Zustand; Kill mit Rueckfrage), Tabs Konsole / Dateien / Backups / Einstellungen (Tastatursteuerung, Tab in der URL `?tab=`), rechts Infospalte mit Verbindung (Adresse, IP, Node), Ressourcen (Balken fuer CPU, RAM, Festplatte, Netzwerk, Uptime; ab 80 % Warnfarbe) und Laufzeit (Paket, Laufzeitende, Verlaengerungspreis, "Verlaengern"; nur mit zugehoeriger Bestellung). Einstellungen enthalten Variablen, SFTP-Zugang, Routinen, Mitbenutzer, Aktivitaet, Details, Limits und "Server loeschen". Seitentexte DE/EN; die Unterkomponenten (Konsole, Dateien, Backups, Routinen, Mitbenutzer) bleiben deutsch
 
