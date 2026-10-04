@@ -892,10 +892,14 @@ export const api = {
     }),
 
   // ── Konto: Passwort, MFA, API-Keys ───────────────────
+  // Nach dem Wechsel sind alle alten Tokens ungültig; die Antwort enthält ein frisches für dieses Gerät
   changePassword: (currentPassword: string, newPassword: string) =>
-    request<{ message: string }>("/auth/change-password", {
+    request<{ message: string; access_token?: string }>("/auth/change-password", {
       method: "POST",
       body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    }).then((res) => {
+      if (res.access_token) setAccessToken(res.access_token);
+      return res;
     }),
   setupMfa: () => request<MfaSetupResult>("/auth/mfa/setup", { method: "POST" }),
   verifyMfa: (code: string) =>

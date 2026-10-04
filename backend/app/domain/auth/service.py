@@ -6,6 +6,7 @@ Unterstuetzt:
 - X-User-Id Header als Dev/Test-Fallback
 """
 
+import hashlib
 import logging
 from datetime import timedelta
 
@@ -36,12 +37,19 @@ def authenticate_user(login: str, password: str) -> User | None:
     return user
 
 
+def password_fingerprint(user: User) -> str:
+    """Kurzer Hash des Passwort-Hashes. Aendert sich mit jedem Passwortwechsel/-reset."""
+    return hashlib.sha256((user.password_hash or "").encode()).hexdigest()[:16]
+
+
 def issue_access_token(user: User, expires_hours: int = 24) -> str:
     """Erstellt ein JWT Access-Token fuer den Benutzer."""
     additional_claims = {
         "username": user.username,
         "email": user.email,
         "is_admin": user.is_admin,
+        # Passwortwechsel/-reset macht aeltere Tokens ungueltig (siehe get_current_user)
+        "pwf": password_fingerprint(user),
     }
 
     token = create_access_token(
@@ -78,6 +86,12 @@ def get_current_user() -> User | None:
             if identity:
                 user = db.session.get(User, int(identity))
                 if user:
+                    # Tokens vor dem Claim `pwf` (alt) bleiben bis zum Ablauf gueltig; neue verlieren
+                    # die Gueltigkeit, sobald sich das Passwort aendert.
+                    pwf = decoded.get("pwf")
+                    if pwf is not None and pwf != password_fingerprint(user):
+                        logger.debug("JWT nach Passwortwechsel verworfen (User %s)", user.id)
+                        return None
                     return user
         except Exception as e:
             logger.debug("JWT-Decode fehlgeschlagen: %s", str(e))
