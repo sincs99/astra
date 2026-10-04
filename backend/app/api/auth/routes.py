@@ -171,7 +171,8 @@ def change_password_endpoint():
         return jsonify({"error": e.message}), e.status_code
 
     _log_auth_event("auth:password_changed", user.id, f"Passwort geändert: {user.username}")
-    return jsonify({"message": "Passwort wurde geändert"})
+    # Alle bisherigen Tokens sind jetzt ungueltig; dieses Gerät bekommt ein frisches und bleibt angemeldet
+    return jsonify({"message": "Passwort wurde geändert", "access_token": issue_access_token(user)})
 
 
 @auth_bp.route("/logout", methods=["POST"])
