@@ -873,6 +873,20 @@ export interface PreflightResult {
 // ── API-Methoden ───────────────────────────────────────
 
 export const api = {
+  /**
+   * Meldet das aktuelle Token am Server ab (best effort, M61). Fehler werden ignoriert;
+   * bewusst ohne request(), damit der 401-Handler den Endpunkt nie erneut aufruft.
+   */
+  logoutServer: async (): Promise<void> => {
+    const token = getAccessToken();
+    if (!token) return;
+    try {
+      await fetch(`${BASE_URL}/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+    } catch {
+      // Netzwerkproblem: lokal wird trotzdem abgemeldet
+    }
+  },
+
   // ── Auth ─────────────────────────────────────────────
   register: (username: string, email: string, password: string) =>
     request<RegisterResponse>("/auth/register", {

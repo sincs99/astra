@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { linkStyle, btnDefault } from "./styles";
-import { isAuthenticated, logout } from "../../services/api";
+import { api, isAuthenticated, logout } from "../../services/api";
 import { SkipLink } from "./SkipLink";
 import { t, type MessageKey } from "../../i18n";
 import { SiteFooter } from "../SiteFooter";
@@ -77,7 +77,9 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
   const navItems = NAV_ITEMS.filter((i) => (!i.adminOnly || user?.is_admin));
   const groups = Array.from(new Set(navItems.map((i) => i.group)));
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Token zuerst am Server sperren (best effort), danach immer lokal abmelden
+    await api.logoutServer();
     logout();
     resetCurrentUserCache();
     navigate("/login");

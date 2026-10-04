@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – M61 Logout)
+- Der Abmelden-Button sperrt das Token zuerst serverseitig (`POST /api/auth/logout`, best effort, Fehler werden ignoriert) und meldet danach immer lokal ab; der 401-Handler ruft den Endpunkt bewusst nicht auf
+
 ### Added (Frontend – F5 Englische Sprachversion)
 - Leichtgewichtiges i18n (`src/i18n`): Deutsch bleibt Standard, Englisch ist per Sprachumschalter (Fusszeile jeder Seite, inkl. Login, und Konto > Darstellung) waehlbar und wird im Browser gemerkt (`astra_lang`). Woerterbuecher `de`/`en` je Namensraum, der Compiler erzwingt gleiche Schluessel, ein Test prueft Platzhalter-Paritaet. Uebersetzt: Login, Registrierung, Passwort-Reset, E-Mail-Bestaetigung, Navigation, Dashboard, Shop, Bestellungen (inkl. Status, Hinweise, Verbindungsadresse), Konto (Passwort, MFA, API-Keys, Darstellung), SSH-Keys, 404, Fehlerseiten, Zeitangaben, Datums- und Waehrungsformate (`en-GB`)
 - Nicht uebersetzt (bewusst/spaeter): Admin-Bereich, Server-Detailseite (Konsole, Dateien, Backups), Rechtstexte (Impressum, Datenschutz, AGB) sowie Meldungen, die das Backend selbst liefert (deutsch)
