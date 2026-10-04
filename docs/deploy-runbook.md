@@ -221,6 +221,7 @@ Dann unter **Admin → Instances** eine Instanz anlegen: Blueprint Paper, Agent 
 | Node-Credentials rotieren | Panel → Agent → *Credentials rotieren*, dann `install-wings.sh` erneut ausführen |
 | Billing-Tick manuell | `docker compose exec backend python cli.py billing-tick` (läuft sonst automatisch alle 5 Minuten im Container `billing`) |
 | Läuft der Billing-Tick? | `curl -s -H "Authorization: Bearer $TOKEN" https://panel.deinedomain.de/api/admin/billing/status` → `healthy` muss `true` sein, sobald es Bestellungen gibt. Auch im Preflight (`python cli.py preflight`, Check `billing_tick`) und im Smoke-Test. Schwelle: `BILLING_TICK_MAX_AGE_MINUTES` (Standard 15) |
+| Admin-Benachrichtigung testen | `docker compose exec backend python cli.py alert-test` schickt eine Testnachricht an `ADMIN_ALERT_EMAIL` und `ADMIN_ALERT_WEBHOOK_URL` (Exit 1, wenn kein Kanal gesetzt). Der Container `alerts` prüft alle 5 Minuten Tick-Ausfall, Tick-Fehler und zu lange wartende Bestellungen; Zahlungs-Mismatch meldet der Webhook direkt |
 
 ---
 
@@ -258,8 +259,13 @@ Abgelaufene Bestellungen sperrt der Billing-Tick, nach `BILLING_GRACE_DAYS` lös
 Fällt der Container `billing` aus, passiert nichts davon mehr. Das Panel merkt das selbst: `GET /api/admin/billing/status`
 liefert `healthy=false`, sobald Bestellungen auf den Tick warten und der letzte Lauf älter als
 `BILLING_TICK_MAX_AGE_MINUTES` ist; der Preflight und `scripts/smoke-test.sh` prüfen dasselbe. Eine aktive
-Benachrichtigung gibt es nicht, daher den Smoke-Test regelmäßig laufen lassen oder einen externen Monitor
-(z.B. Uptime Kuma mit Keyword `"healthy": true`) auf den Endpunkt richten.
+Aktive Benachrichtigung (seit M58): In `.env` `ADMIN_ALERT_EMAIL` (braucht `MAIL_SERVER`) und/oder
+`ADMIN_ALERT_WEBHOOK_URL` setzen. Für Discord: Server-Einstellungen → Integrationen → Webhooks → neue URL kopieren;
+für Slack eine Incoming-Webhook-URL. Danach `./scripts/deploy.sh` (startet den Container `alerts` mit) und
+`docker compose exec backend python cli.py alert-test`. Eine anhaltende Störung wird höchstens alle
+`ADMIN_ALERT_COOLDOWN_MINUTES` (Standard 360) wiederholt, die Entwarnung kommt einmal. Zusätzlich lohnt ein
+externer Monitor (z.B. Uptime Kuma mit Keyword `"healthy": true` auf `/api/admin/billing/status`), falls das
+Panel selbst ausfällt.
 
 Details zu Endpunkten, Status und Stripe-Einrichtung: `docs/orders-api.md`.
 
