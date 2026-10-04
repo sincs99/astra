@@ -1,15 +1,15 @@
 import { Link } from "react-router-dom";
 import { StatusBadge } from "../ui/StatusBadge";
 import { formatMemory } from "../../lib/dashboard";
-import { nodeBar, type NodeBar } from "../../lib/adminOverview";
-import { dateLocale } from "../../i18n";
+import { nodeBar, plural, type NodeBar } from "../../lib/adminOverview";
+import { dateLocale, t } from "../../i18n";
 import type { AgentMonitoringEntry } from "../../services/api";
 
 function Bar({ bar, noData }: { bar: NodeBar; noData: boolean }) {
   const locale = dateLocale();
   if (bar.capacity <= 0) {
     return (
-      <div className="kv"><span>{bar.label}</span><span className="mono" style={{ color: "var(--text-3)" }}>kein Limit hinterlegt</span></div>
+      <div className="kv"><span>{bar.label}</span><span className="mono" style={{ color: "var(--text-3)" }}>{t("aover.noLimit")}</span></div>
     );
   }
   const pct = bar.percent ?? 0;
@@ -22,7 +22,7 @@ function Bar({ bar, noData }: { bar: NodeBar; noData: boolean }) {
       <div className="kv">
         <span>{bar.label}</span>
         <span className={`mono${tone ? ` text-${tone}` : ""}`}>
-          {formatMemory(bar.used, locale)} / {formatMemory(bar.capacity, locale)}{bar.overbooked ? " · überbucht" : ""}
+          {formatMemory(bar.used, locale)} / {formatMemory(bar.capacity, locale)}{bar.overbooked ? ` · ${t("aover.overbooked")}` : ""}
         </span>
       </div>
       <div className={`bar${tone ? ` bar-${tone}` : ""} bar-stack${noData ? " bar-nodata" : ""}`} role="progressbar"
@@ -38,14 +38,14 @@ export function NodesPanel({ agents }: { agents: AgentMonitoringEntry[] | null }
   return (
     <section className="panel" aria-labelledby="nodes-title">
       <div className="panel-head">
-        <h2 id="nodes-title">Node-Auslastung</h2>
-        <Link to="/admin/agents/monitoring" style={{ fontSize: 13, textDecoration: "none" }}>Alle Nodes</Link>
+        <h2 id="nodes-title">{t("aover.nodesTitle")}</h2>
+        <Link to="/admin/agents/monitoring" style={{ fontSize: 13, textDecoration: "none" }}>{t("aover.allNodes")}</Link>
       </div>
       <div className="panel-body">
         {!agents ? (
-          <p className="hint">Wird geladen…</p>
+          <p className="hint">{t("aover.loading")}</p>
         ) : agents.filter((a) => a.is_active).length === 0 ? (
-          <p className="hint">Keine aktiven Nodes. <Link to="/admin/agents">Node anlegen</Link></p>
+          <p className="hint">{t("aover.noActiveNodes")} <Link to="/admin/agents">{t("aover.createNode")}</Link></p>
         ) : agents.filter((a) => a.is_active).map((a) => {
           const unreachable = a.health_status === "unreachable";
           return (
@@ -53,10 +53,10 @@ export function NodesPanel({ agents }: { agents: AgentMonitoringEntry[] | null }
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <span className="mono" style={{ fontWeight: 500 }}>{a.name}</span>
                 <StatusBadge status={a.maintenance_mode ? "maintenance" : a.health_status} />
-                <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-3)" }}>{a.instance_count} Instances</span>
+                <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-3)" }}>{plural(a.instance_count, "aover.instancesCountOne", "aover.instancesCountOther")}</span>
               </div>
-              <Bar noData={unreachable} bar={nodeBar("RAM", a.utilization.used_memory_mb, a.capacity.memory_total_mb, a.capacity.effective_memory_mb)} />
-              <Bar noData={unreachable} bar={nodeBar("Festplatte", a.utilization.used_disk_mb, a.capacity.disk_total_mb, a.capacity.effective_disk_mb)} />
+              <Bar noData={unreachable} bar={nodeBar(t("aover.ram"), a.utilization.used_memory_mb, a.capacity.memory_total_mb, a.capacity.effective_memory_mb)} />
+              <Bar noData={unreachable} bar={nodeBar(t("aover.disk"), a.utilization.used_disk_mb, a.capacity.disk_total_mb, a.capacity.effective_disk_mb)} />
             </div>
           );
         })}

@@ -5,6 +5,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – D10 Restmigration)
+- Alle Komponenten und Seiten nutzen direkte Tokens; die Kompatibilitaets-Aliase (`--bg-page`, `--fg`, `--c-*`, `--tint-*` …) sind aus `theme.css` entfernt
+- Uebersetzt (DE/EN): Transfer- und Loeschformular, Billing-Tick-Karte, offene Bestellungen, SFTP-Kopierbuttons, Validierungsmeldungen fuer Agents und Portbereiche, die gesamte Admin-Uebersicht (Plural sauber ueber `Intl.PluralRules`)
+- Performance: Server-Detail, Konto, SSH-Keys und Rechtstexte werden per `React.lazy` nachgeladen (Haupt-Chunk 541 kB -> 441 kB); Dashboard, Shop, Bestellungen und Landing bleiben im Haupt-Chunk
+
 ### Changed (Frontend – D9 Admin-Seiten)
 - Admin Bestellungen, Agents, Fleet Monitoring, Instances, Blueprints (inkl. Import), Produkte, Jobs, System und Webhooks im neuen Look-and-Feel und vollstaendig DE/EN (Namespaces `aorders`, `aagents`, `ainst`, `asys`). Tabellen sind mobil Karten (`tbl-cards` mit `data-label`), Formulare in `.panel`/`.field`, Fehler als `role=alert`, Loeschen/Rotieren mit Bestaetigung, Secrets nie in Labels
 - Bestellungen: Statusfilter und Dialog "Als bezahlt markieren" mit Zahlungsreferenz, vorbelegt mit dem Verwendungszweck (`payment_purpose`)

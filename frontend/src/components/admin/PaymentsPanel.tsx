@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { StatusBadge } from "../ui/StatusBadge";
+import { t } from "../../i18n";
 import { formatDateTime } from "../../lib/dates";
 import type { Order, PaymentEvent } from "../../services/api";
 
@@ -7,17 +8,17 @@ export function PaymentsPanel({ events, due }: { events: PaymentEvent[] | null; 
   return (
     <section className="panel" aria-labelledby="pay-title">
       <div className="panel-head">
-        <h2 id="pay-title">Auffällige Zahlungen</h2>
-        <Link to="/admin/orders" style={{ fontSize: 13, textDecoration: "none" }}>Alle Bestellungen</Link>
+        <h2 id="pay-title">{t("aover.paymentsTitle")}</h2>
+        <Link to="/admin/orders" style={{ fontSize: 13, textDecoration: "none" }}>{t("aover.allOrders")}</Link>
       </div>
       {!events ? (
-        <div className="panel-body"><p className="hint">Wird geladen…</p></div>
+        <div className="panel-body"><p className="hint">{t("aover.loading")}</p></div>
       ) : events.length === 0 ? (
-        <div className="panel-body"><p className="hint">Keine Abweichungen oder nicht zugeordneten Zahlungen.</p></div>
+        <div className="panel-body"><p className="hint">{t("aover.noEvents")}</p></div>
       ) : (
-        <div style={{ overflowX: "auto" }} role="region" aria-label="Auffällige Zahlungen (Tabelle)" tabIndex={0}>
+        <div style={{ overflowX: "auto" }} role="region" aria-label={t("aover.paymentsTable")} tabIndex={0}>
           <table className="tbl">
-            <thead><tr><th scope="col">Zeit</th><th scope="col">Referenz</th><th scope="col">Status</th><th scope="col">Hinweis</th></tr></thead>
+            <thead><tr><th scope="col">{t("aover.colTime")}</th><th scope="col">{t("aover.colRef")}</th><th scope="col">{t("aover.colStatus")}</th><th scope="col">{t("aover.colNote")}</th></tr></thead>
             <tbody>
               {events.slice(0, 5).map((e) => (
                 <tr key={e.id}>
@@ -36,10 +37,10 @@ export function PaymentsPanel({ events, due }: { events: PaymentEvent[] | null; 
       <div className="panel-foot">
         <span>
           {due.length === 0
-            ? "Keine Bestellung läuft in den nächsten 24 h ab."
-            : <>Läuft in 24 h ab: {due.slice(0, 5).map((o, i) => (
+            ? t("aover.noneDue")
+            : <>{t("aover.dueIn24")} {due.slice(0, 5).map((o, i) => (
               <span key={o.uuid}>{i > 0 && ", "}<Link to="/admin/orders?status=active" className="mono">#{o.id}</Link></span>
-            ))}{due.length > 5 ? ` und ${due.length - 5} weitere` : ""}</>}
+            ))}{due.length > 5 ? ` ${t("aover.andMore", { n: due.length - 5 })}` : ""}</>}
         </span>
       </div>
     </section>

@@ -5,9 +5,10 @@ import { MemoryRouter } from "react-router-dom";
 import { AdminOverview } from "./AdminOverview";
 import { api, ApiError, type PaymentEvent } from "../../services/api";
 import { makeOrder } from "../../test/fixtures";
+import { setLang } from "../../i18n";
 
 beforeEach(() => vi.restoreAllMocks());
-afterEach(cleanup);
+afterEach(() => { cleanup(); setLang("de"); });
 
 const mount = (period: 7 | 30 | 90 = 30) => render(<MemoryRouter><AdminOverview period={period} /></MemoryRouter>);
 
@@ -51,7 +52,7 @@ describe("AdminOverview", () => {
     mockAll();
     mount();
     expect((await screen.findByTestId("revenue-EUR")).textContent).toMatch(/1\.284,00/);
-    expect(screen.getByText("24 Zahlung(en), davon 6 Verlängerung(en)")).toBeTruthy();
+    expect(screen.getByText("24 Zahlungen, davon 6 Verlängerungen")).toBeTruthy();
     expect(screen.getByTestId("revenue-refunds").textContent).toMatch(/Erstattet: .*14,90.*\(nicht abgezogen\)/);
     expect(screen.getByTestId("orders-total").textContent).toBe("3");
     const orders = screen.getByRole("group", { name: "Bestellungen 30 Tage" });
@@ -91,7 +92,7 @@ describe("AdminOverview", () => {
     expect(screen.getByRole("link", { name: "Node öffnen" }).getAttribute("href")).toBe("/admin/agents/monitoring");
     const status = await screen.findByText(/Fehlstatus warten auf Prüfung/);
     expect(status.textContent).toContain("Container billing prüfen");
-    expect(status.textContent).toContain("1 Bestellung(en) laufen in 24 h ab");
+    expect(status.textContent).toContain("1 Bestellung läuft in 24 h ab");
     expect(await screen.findByText(/1 auf gestörten Nodes \(de-fra-02\)/)).toBeTruthy();
   });
 
@@ -121,5 +122,25 @@ describe("AdminOverview", () => {
     expect(await screen.findByText(/Node-Auslastung: Daten konnten nicht geladen werden/)).toBeTruthy();
     expect(await screen.findByTestId("revenue-EUR")).toBeTruthy();
     expect(screen.getByTestId("orders-total")).toBeTruthy();
+  });
+
+  it("zeigt die Übersicht auf Englisch mit Plural, Datum und Währung der Sprache", async () => {
+    setLang("en");
+    mockAll();
+    mount();
+    expect((await screen.findByTestId("revenue-EUR")).textContent).toMatch(/1,284\.00/);
+    expect(screen.getByText("24 payments, of which 6 renewals")).toBeTruthy();
+    expect(screen.getByTestId("revenue-refunds").textContent).toMatch(/Refunded: .*14\.90.*\(not deducted\)/);
+    const orders = screen.getByRole("group", { name: "Orders 30 days" });
+    expect(within(orders).getByText("1 paid")).toBeTruthy();
+    expect(within(orders).getByText("1 waiting")).toBeTruthy();
+    expect(within(orders).getByText("1 overdue")).toBeTruthy();
+    expect(await screen.findByText(/last run 2 min ago/)).toBeTruthy();
+    const nodes = await screen.findByRole("region", { name: "Node utilisation" });
+    expect(within(nodes).getByText("19 instances")).toBeTruthy();
+    expect(within(nodes).getByRole("progressbar", { name: "Disk 85 %" })).toBeTruthy();
+    const pay = screen.getByRole("region", { name: "Flagged payments" });
+    expect(pay.textContent).toContain("Expires within 24 h: #1");
+    expect(screen.getByText(/1 order expires within 24 h/)).toBeTruthy();
   });
 });

@@ -1,6 +1,13 @@
 /** Clientseitige Aggregation fuer die Admin-Uebersicht (aus GET /admin/orders und /admin/agents/monitoring). */
 import type { AgentMonitoringEntry, Order, OrderStatus, PaymentEvent } from "../services/api";
 import { parseUtc } from "./dates";
+import { dateLocale, t, type MessageKey } from "../i18n";
+
+/** Wählt je nach Sprache die Singular- oder Pluralform eines Schlüsselpaars und setzt {n} (weitere Parameter optional). */
+export function plural(n: number, one: MessageKey, other: MessageKey, params: Record<string, string | number> = {}): string {
+  const form = new Intl.PluralRules(dateLocale()).select(n);
+  return t(form === "one" ? one : other, { n, ...params });
+}
 
 const DAY_MS = 86_400_000;
 
