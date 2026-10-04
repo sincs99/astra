@@ -286,6 +286,10 @@ export interface Order {
   status: OrderStatus;
   product_id: number;
   product_name: string | null;
+  /** Spiel-Vorlage des Produkts, z.B. "Minecraft Paper 1.21" (M64) */
+  blueprint_name?: string | null;
+  /** Verwendungszweck fuer die Ueberweisung, Form "ASTRA-0042-7F", stabil pro Bestellung (M64) */
+  payment_purpose?: string | null;
   instance_name: string;
   instance_uuid: string | null;
   instance_status: string | null;
@@ -492,6 +496,8 @@ export interface Instance {
   owner_id: number;
   agent_id: number;
   blueprint_id: number;
+  /** Name der Spiel-Vorlage (M64) */
+  blueprint_name?: string | null;
   primary_endpoint_id: number | null;
   status: string | null;
   container_state: string | null;

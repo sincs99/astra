@@ -612,7 +612,7 @@ def _suspend_for_payment(order: Order, instance: Instance, now: datetime) -> boo
         order, "Astra: Zahlung überfällig – dein Server wurde gesperrt",
         f"Hallo,\n\ndie Laufzeit deines Servers '{order.instance_name}' ist abgelaufen, der Server wurde gesperrt.\n"
         f"Bitte begleiche die Zahlung innerhalb von {days} Tagen, sonst wird er gelöscht.\n"
-        f"Bestellung: {order.uuid}\n",
+        f"Verwendungszweck: {order.payment_purpose}\nBestellung: {order.uuid}\n",
     )
     return True
 
@@ -652,7 +652,7 @@ def _remind_if_due(order: Order, end: datetime, now: datetime, reminder: timedel
             f"Hallo,\n\ndie Laufzeit deines Servers '{order.instance_name}' endet am {end:%d.%m.%Y %H:%M} UTC.\n"
             f"Bitte veranlasse rechtzeitig die Zahlung ({order.price_cents / 100:.2f} {order.currency} für "
             f"{order.billing_period_days} Tage), sonst wird der Server gesperrt und nach der Karenzzeit gelöscht.\n"
-            f"Bestellung: {order.uuid}\n",
+            f"Verwendungszweck: {order.payment_purpose}\nBestellung: {order.uuid}\n",
         )
     return True
 
