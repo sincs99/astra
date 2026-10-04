@@ -4,14 +4,10 @@ import { t } from "../../i18n";
 
 interface EmptyStateProps {
   message?: string;
+  /** Veraltet: wird nicht mehr angezeigt */
   icon?: string;
 }
 
-export function EmptyState({ message = t("common.empty"), icon = "📭" }: EmptyStateProps) {
-  return (
-    <div style={{ padding: 32, textAlign: "center", color: "var(--fg-muted)" }}>
-      <div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div>
-      <div style={{ fontSize: 14 }}>{message}</div>
-    </div>
-  );
+export function EmptyState({ message = t("common.empty") }: EmptyStateProps) {
+  return <p className="card-empty">{message}</p>;
 }
