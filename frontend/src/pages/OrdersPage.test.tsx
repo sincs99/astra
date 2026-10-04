@@ -84,6 +84,58 @@ describe("OrdersPage", () => {
     expect(screen.queryByRole("button", { name: "Jetzt bezahlen" })).toBeNull();
   });
 
+  describe("Belege", () => {
+    const r1 = { number: "R-2026-0001", issued_at: "2026-10-01T10:00:00Z", amount_cents: 999, currency: "EUR" };
+    const r2 = { number: "R-2026-0007", issued_at: "2026-10-31T10:00:00Z", amount_cents: 999, currency: "EUR" };
+
+    it("zeigt je Bestellung keinen, einen oder mehrere Belege und den Hinweis nur bei vorhandenen Belegen", async () => {
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([
+        makeOrder({ id: 1, uuid: "a", status: "active", instance_name: "Ohne", receipts: [] }),
+        makeOrder({ id: 2, uuid: "b", status: "active", instance_name: "Eins", receipts: [r1] }),
+        makeOrder({ id: 3, uuid: "c", status: "active", instance_name: "Zwei", receipts: [r1, r2] }),
+      ]);
+      mount();
+      await screen.findByText("Zwei");
+      expect(screen.getAllByText("Belege")).toHaveLength(2);
+      expect(screen.getAllByText(/R-2026-0001 · 1\.10\.2026 · /)).toHaveLength(2);
+      expect(screen.getByText(/R-2026-0007 · 31\.10\.2026/)).toBeTruthy();
+      expect(screen.getByText("Vereinfachter Zahlungsbeleg, keine Rechnung mit Umsatzsteuer.")).toBeTruthy();
+    });
+
+    it("zeigt ohne Belege keinen Hinweis", async () => {
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([makeOrder({ status: "active", receipts: [] })]);
+      mount();
+      await screen.findByText("Mein Server");
+      expect(screen.queryByText(/Vereinfachter Zahlungsbeleg/)).toBeNull();
+    });
+
+    it("laedt den Beleg mit Nummer und zeigt ihn in einem Dialog; Escape schliesst", async () => {
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([makeOrder({ uuid: "ord-9", status: "active", receipts: [r1, r2] })]);
+      const get = vi.spyOn(api, "getReceiptHtml").mockResolvedValue("<h1>Beleg R-2026-0007</h1>");
+      mount();
+      fireEvent.click(await screen.findByRole("button", { name: "Beleg R-2026-0007 anzeigen" }));
+      const dialog = await screen.findByRole("dialog", { name: "Beleg R-2026-0007" });
+      expect(get).toHaveBeenCalledWith("ord-9", "R-2026-0007");
+      const frame = within(dialog).getByTitle("Zahlungsbeleg R-2026-0007") as HTMLIFrameElement;
+      expect(frame.getAttribute("sandbox")).toBe("");
+      expect(frame.getAttribute("srcdoc")).toBe("<h1>Beleg R-2026-0007</h1>");
+      expect(within(dialog).getByRole("button", { name: "Als Datei speichern" })).toBeTruthy();
+      // Der Dialog nimmt den Fokus (Effekt läuft nach dem ersten Render): erst dann ist Escape verdrahtet
+      await waitFor(() => expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Schliessen" })));
+      fireEvent.keyDown(document, { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    });
+
+    it("zeigt bei 404 eine Fehlermeldung statt eines Dialogs", async () => {
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([makeOrder({ status: "active", receipts: [r1] })]);
+      vi.spyOn(api, "getReceiptHtml").mockRejectedValue(new ApiError("Beleg nicht gefunden", 404));
+      mount();
+      fireEvent.click(await screen.findByRole("button", { name: "Beleg R-2026-0001 anzeigen" }));
+      expect(await screen.findByText("Beleg nicht gefunden")).toBeTruthy();
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+  });
+
   it("warnt bei ueberfaelligen Bestellungen deutlich vor Sperre und Loeschung", async () => {
     vi.spyOn(api, "getMyOrders").mockResolvedValue([overdue]);
     mount();

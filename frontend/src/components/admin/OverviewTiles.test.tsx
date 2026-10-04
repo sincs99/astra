@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { OverviewTiles } from "./OverviewTiles";
-import { api, type PaymentEvent } from "../../services/api";
+import { api, ApiError, type PaymentEvent } from "../../services/api";
 import { makeOrder } from "../../test/fixtures";
 
 beforeEach(() => vi.restoreAllMocks());
@@ -31,6 +31,10 @@ function mockAll() {
     makeOrder({ uuid: "b", status: "pending_payment" }),
     makeOrder({ uuid: "c", status: "awaiting_provisioning", price_cents: 500, paid_at: recent }),
   ]);
+  vi.spyOn(api, "getRevenueStats").mockResolvedValue({
+    days: 30, since: "2026-09-04T00:00:00Z", by_currency: { EUR: 2500, CHF: 700 }, paid_count: 3, renewals_count: 1,
+    refunded_cents_by_currency: { EUR: 999 },
+  });
   vi.spyOn(api, "getAgentsMonitoring").mockResolvedValue([agent] as never);
   vi.spyOn(api, "getPaymentEvents").mockImplementation(async (p) =>
     p?.status === "mismatch" ? [ev(1, "mismatch", "Betrag 5.00 statt 9.99")] : [ev(2, "unapplied", "Bestellung bereits beendet")]);
@@ -40,7 +44,11 @@ describe("OverviewTiles", () => {
   it("zeigt Umsatz, Bestellungen je Status, Auslastung und Zahlungsereignisse", async () => {
     mockAll();
     mount();
-    expect((await screen.findByTestId("revenue-EUR")).textContent).toMatch(/14,99/);
+    expect((await screen.findByTestId("revenue-EUR")).textContent).toMatch(/25,00/);
+    expect(screen.getByTestId("revenue-CHF").textContent).toMatch(/7,00/);
+    expect(screen.getByText("3 Zahlung(en), davon 1 Verlängerung(en)")).toBeTruthy();
+    expect(screen.getByTestId("revenue-refunds").textContent).toMatch(/Erstattet im Zeitraum: 9,99.*\(nicht abgezogen\)/);
+    expect(screen.queryByText(/Näherung/)).toBeNull();
     expect(screen.getByTestId("orders-active").textContent).toBe("1");
     expect(screen.getByTestId("orders-pending_payment").textContent).toBe("1");
     expect(screen.getByTestId("orders-past_due").textContent).toBe("0");
@@ -51,6 +59,25 @@ describe("OverviewTiles", () => {
     expect(within(events).getByText("Betrag weicht ab")).toBeTruthy();
     expect(within(events).getByText("Erstattung prüfen")).toBeTruthy();
     expect(within(events).getByText("Bestellung bereits beendet")).toBeTruthy();
+  });
+
+  it("faellt bei 404 auf die Schaetzung aus den Bestellungen zurueck", async () => {
+    mockAll();
+    vi.spyOn(api, "getRevenueStats").mockRejectedValue(new ApiError("Request failed: 404", 404));
+    mount();
+    expect((await screen.findByTestId("revenue-EUR")).textContent).toMatch(/14,99/);
+    expect(screen.getByText(/Näherung/)).toBeTruthy();
+    expect(screen.queryByTestId("revenue-refunds")).toBeNull();
+  });
+
+  it("zeigt ohne Erstattungen keinen Erstattungshinweis", async () => {
+    mockAll();
+    vi.spyOn(api, "getRevenueStats").mockResolvedValue({
+      days: 30, since: "", by_currency: { EUR: 999 }, paid_count: 1, renewals_count: 0, refunded_cents_by_currency: {},
+    });
+    mount();
+    await screen.findByTestId("revenue-EUR");
+    expect(screen.queryByTestId("revenue-refunds")).toBeNull();
   });
 
   it("meldet leere Zahlungsereignisse ruhig", async () => {

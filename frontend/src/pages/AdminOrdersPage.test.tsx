@@ -52,6 +52,16 @@ describe("AdminOrdersPage", () => {
     expect(screen.queryByRole("button", { name: "Als bezahlt markieren" })).toBeNull();
   });
 
+  it("zeigt Belegnummern als Text", async () => {
+    const withReceipts = { ...pending, id: 11, uuid: "rc", username: "dora", receipts: [
+      { number: "R-2026-0003", issued_at: "2026-10-01T10:00:00Z", amount_cents: 999, currency: "EUR" },
+      { number: "R-2026-0009", issued_at: "2026-10-31T10:00:00Z", amount_cents: 999, currency: "EUR" },
+    ] };
+    vi.spyOn(api, "getAdminOrders").mockResolvedValue([withReceipts]);
+    mount("/admin/orders");
+    expect(await screen.findByText("Belege: R-2026-0003, R-2026-0009")).toBeTruthy();
+  });
+
   it("ignoriert unbekannte Statuswerte in der URL", async () => {
     const list = vi.spyOn(api, "getAdminOrders").mockResolvedValue([pending]);
     mount("/admin/orders?status=hacked");

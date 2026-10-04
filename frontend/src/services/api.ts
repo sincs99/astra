@@ -84,7 +84,8 @@ export class ApiError extends Error {
 
 async function request<T = unknown>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  asText = false,
 ): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
 
@@ -123,7 +124,7 @@ async function request<T = unknown>(
     );
   }
 
-  return (await response.json()) as T;
+  return (asText ? await response.text() : await response.json()) as T;
 }
 
 // ── SSH-Key-Typen (M28) ────────────────────────────────
@@ -270,6 +271,14 @@ export interface OrderConnection {
   address: string;
 }
 
+/** Vereinfachter Zahlungsbeleg (M62), keine Rechnung mit Umsatzsteuer. */
+export interface OrderReceipt {
+  number: string;
+  issued_at: string;
+  amount_cents: number;
+  currency: string;
+}
+
 /** Bestellungen werden ueber `uuid` angesprochen (nicht ueber die numerische id). */
 export interface Order {
   id: number;
@@ -295,6 +304,8 @@ export interface Order {
   /** Geplante Loeschung: Ende der Karenzzeit bzw. Laufzeitende bei Kuendigung, sonst null */
   scheduled_deletion_at?: string | null;
   cancelled_at: string | null;
+  /** Zahlungsbelege, aelteste zuerst; [] ohne Beleg (M62) */
+  receipts?: OrderReceipt[];
   /** Zeitpunkt der Erstattung (UTC) bei Status refunded (M59) */
   refunded_at?: string | null;
   /** Zahlungsstreit (Dispute) offen: Server gesperrt, Status bleibt active/past_due (M59) */
@@ -827,6 +838,16 @@ export interface BillingStatus {
   };
 }
 
+/** Exakter Umsatz aus den Belegen (M62); Erstattungen sind getrennt und nicht abgezogen. */
+export interface RevenueStats {
+  days: number;
+  since: string;
+  by_currency: Record<string, number>;
+  paid_count: number;
+  renewals_count: number;
+  refunded_cents_by_currency: Record<string, number>;
+}
+
 export type PaymentEventStatus = "processed" | "ignored" | "unapplied" | "mismatch" | "received";
 
 export interface PaymentEvent {
@@ -1326,6 +1347,7 @@ export const api = {
   getSystemVersion: () => request<SystemVersionInfo>("/admin/system/version"),
   getUpgradeStatus: () => request<UpgradeStatus>("/admin/system/upgrade-status"),
   getPreflight: () => request<PreflightResult>("/admin/system/preflight"),
+  getRevenueStats: (days = 30) => request<RevenueStats>(`/admin/stats/revenue?days=${days}`),
   getPaymentEvents: (params?: { status?: PaymentEventStatus; limit?: number }) => {
     const p = new URLSearchParams();
     if (params?.status) p.set("status", params.status);
@@ -1367,6 +1389,9 @@ export const api = {
       body: JSON.stringify(name ? { product_id: productId, name } : { product_id: productId }),
     }),
   getMyOrders: () => request<Order[]>("/client/orders"),
+  /** Fertig gerenderte HTML-Seite eines Belegs (per Token geholt, ein normaler Link traegt keinen Authorization-Header). */
+  getReceiptHtml: (orderUuid: string, number: string) =>
+    request<string>(`/client/orders/${orderUuid}/receipt?number=${encodeURIComponent(number)}&format=html`, {}, true),
   /** Welcher Zahlungsweg aktiv ist: "manual" (Ueberweisung) oder "stripe" (online). */
   getBillingInfo: () =>
     request<{ payment_provider: "manual" | "stripe" | string; online_payment: boolean }>("/client/billing-info"),
