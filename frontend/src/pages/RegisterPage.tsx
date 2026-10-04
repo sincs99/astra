@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { getLang, t } from "../i18n";
-import { api, isAuthenticated, setAccessToken, MIN_PASSWORD_LENGTH } from "../services/api";
+import { api, ApiError, isAuthenticated, setAccessToken, MIN_PASSWORD_LENGTH } from "../services/api";
 import { inputStyle, labelStyle, btnPrimary, linkStyle } from "../components/ui";
 import { safeRedirectPath } from "../lib/redirect";
 import { AuthCard, AuthMessage } from "../components/AuthCard";
+import { CaptchaWidget } from "../components/CaptchaWidget";
+import { Honeypot } from "../components/Honeypot";
+import { NO_CAPTCHA, type CaptchaConfig } from "../lib/captcha";
+import { useRateLimit } from "../hooks/useRateLimit";
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -20,6 +24,17 @@ export function RegisterPage() {
   const [verifyPending, setVerifyPending] = useState(false);
   const [resent, setResent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [website, setWebsite] = useState("");
+  const [captcha, setCaptcha] = useState<CaptchaConfig>(NO_CAPTCHA);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
+  const rate = useRateLimit();
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getCaptchaConfig().then((c) => { if (!cancelled) setCaptcha(c); });
+    return () => { cancelled = true; };
+  }, []);
 
   if (isAuthenticated()) return <Navigate to={redirectTo} replace />;
 
@@ -29,18 +44,23 @@ export function RegisterPage() {
     if (password.length < MIN_PASSWORD_LENGTH) return `Das Passwort muss mindestens ${MIN_PASSWORD_LENGTH} Zeichen lang sein`;
     if (password !== confirm) return t("auth.pwMismatch");
     if (!acceptedTerms) return t("auth.reg.terms");
+    if (captcha.provider !== "none" && !captchaToken) return t("auth.captcha.required");
     return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Köder-Feld gefüllt: ein Bot, es wird nichts gesendet
+    if (website) return;
     const problem = validate();
     if (problem) { setError(problem); return; }
 
     try {
       setLoading(true);
       setError(null);
-      const result = await api.register(username.trim(), email.trim(), password, getLang());
+      const result = captcha.provider !== "none" && captchaToken
+        ? await api.register(username.trim(), email.trim(), password, getLang(), { captcha_token: captchaToken })
+        : await api.register(username.trim(), email.trim(), password, getLang());
       if ("access_token" in result) {
         setAccessToken(result.access_token);
         navigate(redirectTo);
@@ -49,6 +69,10 @@ export function RegisterPage() {
         setVerifyPending(true);
       }
     } catch (err) {
+      if (captcha.provider !== "none") { setCaptchaToken(null); setCaptchaReset((n) => n + 1); }
+      if (rate.apply(err)) return;
+      if (err instanceof ApiError && err.code === "captcha_failed") { setError(t("auth.captcha.failed")); return; }
+      if (err instanceof ApiError && err.code === "captcha_unavailable") { setError(t("auth.captcha.unavailable")); return; }
       const message = err instanceof Error ? err.message : t("auth.reg.failed");
       // 403 kommt mit "Registrierung ist deaktiviert"; ein fehlender Endpunkt (404) bedeutet dasselbe
       if (/deaktiviert|403|404/.test(message)) setDisabled(true);
@@ -85,6 +109,7 @@ export function RegisterPage() {
       ) : (
         <form onSubmit={handleSubmit} noValidate>
           {error && <AuthMessage kind="error">{error}</AuthMessage>}
+          {rate.message && <AuthMessage kind="warning">{rate.message}</AuthMessage>}
 
           <div style={{ marginBottom: 16 }}>
             <label htmlFor="username" style={labelStyle}>{t("auth.username")}</label>
@@ -120,8 +145,11 @@ export function RegisterPage() {
             </label>
           </div>
 
-          <button type="submit" disabled={loading}
-            style={{ ...btnPrimary, width: "100%", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1 }}>
+          <Honeypot value={website} onChange={setWebsite} />
+          <CaptchaWidget config={captcha} onToken={setCaptchaToken} resetKey={captchaReset} />
+
+          <button type="submit" disabled={loading || rate.blocked}
+            style={{ ...btnPrimary, width: "100%", cursor: loading || rate.blocked ? "not-allowed" : "pointer", opacity: loading || rate.blocked ? 0.7 : 1 }}>
             {loading ? t("auth.reg.busy") : t("auth.login.register")}
           </button>
           <p style={{ textAlign: "center", fontSize: 14 }}>

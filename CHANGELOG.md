@@ -5,6 +5,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – M71 Registrierungsschutz)
+- Registrierung und "Passwort vergessen" laden `GET /auth/captcha` (404/Netzfehler = kein Captcha) und rendern bei Turnstile/hCaptcha das Widget; das Script wird nur dann und nur von `challenges.cloudflare.com` bzw. `js.hcaptcha.com` geladen (Theme aus `data-theme`, Sprache aus `astra_lang`), ohne Anbieter gibt es keinen externen Aufruf. Das Token geht als `captcha_token` in den Body, nach einem Fehlversuch wird das Widget zurueckgesetzt. Datenschutzhinweis unter dem Formular (Text in `legal/captcha.ts` anpassbar)
+- Honeypot-Feld `website` (ausserhalb des Bildschirms, nicht per Tab erreichbar, `aria-hidden`); ist es gefuellt, wird nichts gesendet
+- 429 `rate_limited` bei Registrierung, Login und Passwort-Reset: "Zu viele Versuche, bitte in N Minuten erneut", Button so lange gesperrt (`ApiError.data.retry_after_seconds`); `captcha_failed` (400) und `captcha_unavailable` (503) mit eigenen Hinweisen. `/register` ist Teil der automatischen Barrierefreiheitspruefung
+
 ### Added (Frontend – M69 Zahlungserinnerung, vorbereitet)
 - "Erinnerung senden" je Bestellung (active/past_due/pending_payment) auf der Admin-Bestellseite und bei den bald ablaufenden Bestellungen in der Admin-Uebersicht: `POST /admin/orders/<uuid>/remind`; 200 -> "Erinnerung gesendet", 429 `reminder_cooldown` -> "wieder moeglich in N h" (aus `retry_after_seconds`), 409 -> Button ausgeblendet. `ApiError.data` enthaelt die rohe Fehlerantwort
 

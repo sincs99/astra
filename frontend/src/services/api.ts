@@ -6,6 +6,7 @@
  */
 
 import { friendlyApiMessage, networkErrorMessage } from "../lib/errors";
+import { NO_CAPTCHA, normalizeCaptchaConfig, type CaptchaConfig } from "../lib/captcha";
 
 /** 401 bedeutet hier "falsches Passwort", nicht "Sitzung abgelaufen". */
 const CREDENTIAL_ENDPOINTS = ["/auth/login", "/auth/change-password"];
@@ -941,11 +942,15 @@ export const api = {
   },
 
   // ── Auth ─────────────────────────────────────────────
-  register: (username: string, email: string, password: string, locale?: "de" | "en") =>
+  register: (username: string, email: string, password: string, locale?: "de" | "en", extras?: { captcha_token?: string }) =>
     request<RegisterResponse>("/auth/register", {
       method: "POST",
-      body: JSON.stringify(locale ? { username, email, password, locale } : { username, email, password }),
+      body: JSON.stringify({ username, email, password, ...(locale ? { locale } : {}), ...(extras ?? {}) }),
     }),
+
+  /** Registrierungsschutz (M71); jeder Fehler (404, Netz) gilt als "kein Captcha". */
+  getCaptchaConfig: (): Promise<CaptchaConfig> =>
+    request<unknown>("/auth/captcha").then(normalizeCaptchaConfig, () => NO_CAPTCHA),
 
   /** Sprache fuer Mails und Belege speichern (M67); aeltere Backends antworten mit 404/400 */
   updateAccountLocale: (locale: "de" | "en") =>
@@ -964,10 +969,10 @@ export const api = {
       body: JSON.stringify({ login }),
     }),
 
-  requestPasswordReset: (email: string) =>
+  requestPasswordReset: (email: string, captchaToken?: string) =>
     request<{ message: string }>("/auth/password-reset/request", {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify(captchaToken ? { email, captcha_token: captchaToken } : { email }),
     }),
 
   confirmPasswordReset: (token: string, password: string) =>
