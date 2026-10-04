@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – M69 Zahlungserinnerung, vorbereitet)
+- "Erinnerung senden" je Bestellung (active/past_due/pending_payment) auf der Admin-Bestellseite und bei den bald ablaufenden Bestellungen in der Admin-Uebersicht: `POST /admin/orders/<uuid>/remind`; 200 -> "Erinnerung gesendet", 429 `reminder_cooldown` -> "wieder moeglich in N h" (aus `retry_after_seconds`), 409 -> Button ausgeblendet. `ApiError.data` enthaelt die rohe Fehlerantwort
+
 ### Added (Frontend – M68)
 - Admin-Uebersicht, "Auffaellige Zahlungen": Spalte "Betrag" (Monospace, `formatMoney`, "–" bei null), nur wenn das Backend `amount_cents`/`currency` am Zahlungsereignis liefert
 
