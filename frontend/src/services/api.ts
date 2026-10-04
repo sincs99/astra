@@ -6,6 +6,7 @@
  */
 
 import { friendlyApiMessage, networkErrorMessage } from "../lib/errors";
+import { getLang } from "../i18n";
 import { NO_CAPTCHA, normalizeCaptchaConfig, type CaptchaConfig } from "../lib/captcha";
 
 /** 401 bedeutet hier "falsches Passwort", nicht "Sitzung abgelaufen". */
@@ -93,8 +94,10 @@ async function request<T = unknown>(
 ): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
 
+  // Der Server antwortet mit Fehlertexten in der Sprache der Oberfläche (M72)
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "Accept-Language": getLang(),
     ...(options.headers as Record<string, string>),
   };
 

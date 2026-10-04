@@ -74,8 +74,9 @@ export function RegisterPage() {
       if (err instanceof ApiError && err.code === "captcha_failed") { setError(t("auth.captcha.failed")); return; }
       if (err instanceof ApiError && err.code === "captcha_unavailable") { setError(t("auth.captcha.unavailable")); return; }
       const message = err instanceof Error ? err.message : t("auth.reg.failed");
-      // 403 kommt mit "Registrierung ist deaktiviert"; ein fehlender Endpunkt (404) bedeutet dasselbe
-      if (/deaktiviert|403|404/.test(message)) setDisabled(true);
+      // 403 ("Registrierung ist deaktiviert") und ein fehlender Endpunkt (404) bedeuten dasselbe; erkannt am Status, nicht am Text
+      if (err instanceof ApiError && (err.status === 403 || err.status === 404)) setDisabled(true);
+      else if (/deaktiviert|403|404/.test(message)) setDisabled(true);
       else setError(message);
     } finally {
       setLoading(false);

@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – M72 Fehlertexte in der Nutzersprache)
+- Jeder API-Aufruf sendet `Accept-Language: de|en` (Sprache der Oberflaeche). Fehlerdarstellung: der Server-Text gewinnt, nur technische Statuscodes ("Request failed: 500") und Netzwerkfehler kommen aus der Frontend-Uebersetzung; die ASCII-Umlaut-Korrektur alter deutscher Meldungen gilt nur noch in der deutschen Oberflaeche. Sonderfaelle (`manual`, `captcha_failed`, `rate_limited`, `reminder_cooldown`, `invalid_locale`, `email_not_verified`) werden am `code` bzw. Status erkannt, nicht am Text (Registrierung deaktiviert: Status 403/404)
+
 ### Added (Frontend – M70 Rechnungen)
 - Konto: Abschnitt "Rechnungsadresse" (Name/Firma, mehrzeilige Anschrift, optional, "Erscheint auf deinen Rechnungen") ueber `PATCH /client/account`; wird ausgeblendet, wenn das Backend die Felder nicht liefert
 - Bestellungen: Belegliste nennt "Rechnung" bzw. "Gutschrift" (mit Verweis "zu Rechnung ...", falls `references_number` in der Uebersicht steht), der Dialog traegt den passenden Titel und Dateinamen (`rechnung-...`/`gutschrift-...`); der Hinweis "Vereinfachter Zahlungsbeleg" erscheint nur noch bei Belegen ohne `kind`
