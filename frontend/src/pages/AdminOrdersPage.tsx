@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { Icon } from "../components/ui/Icon";
 import { api, type Order, type OrderStatus } from "../services/api";
 import { OrderNotice } from "../components/OrderNotice";
 import { formatDate } from "../lib/dates";
@@ -81,28 +82,48 @@ export function AdminOrdersPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initial = searchParams.get("status") ?? "";
   const [status, setStatusState] = useState<OrderStatus | "">(STATUS_VALUES.includes(initial as OrderStatus) ? (initial as OrderStatus) : "");
+  // Suche ueber ?q=... (verzoegert an die API, Treffer in Zweck, Servername, Kunde, UUID-Anfang)
+  const [query, setQuery] = useState((searchParams.get("q") ?? "").slice(0, 100));
+  const [search, setSearch] = useState(query.trim());
+  const syncUrl = (nextStatus: OrderStatus | "", nextQuery: string) => {
+    const params: Record<string, string> = {};
+    if (nextStatus) params.status = nextStatus;
+    if (nextQuery.trim()) params.q = nextQuery.trim();
+    setSearchParams(params, { replace: true });
+  };
   const setStatus = (value: OrderStatus | "") => {
     setStatusState(value);
-    setSearchParams(value ? { status: value } : {}, { replace: true });
+    syncUrl(value, query);
   };
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(query.trim());
+      syncUrl(status, query);
+    }, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+  const latest = useRef(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paying, setPaying] = useState<Order | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
+    const mine = ++latest.current;
     try {
       setLoading(true);
       setError(null);
-      setOrders(await api.getAdminOrders(status));
+      const result = await api.getAdminOrders(status, search);
+      if (mine === latest.current) setOrders(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("aorders.loadFailed"));
+      if (mine === latest.current) setError(err instanceof Error ? err.message : t("aorders.loadFailed"));
     } finally {
-      setLoading(false);
+      if (mine === latest.current) setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, [status]);
+  useEffect(() => { load(); }, [status, search]);
 
   const waiting = orders.filter((o) => o.status === "awaiting_provisioning").length;
 
@@ -138,12 +159,27 @@ export function AdminOrdersPage() {
     <PageLayout title={t("aorders.title")} maxWidth={1200}>
       <Toast {...toast} />
       <div className="stack">
-        <div className="field" style={{ maxWidth: 260 }}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+        <div className="field" style={{ flex: "1 1 260px", maxWidth: 420 }}>
+          <label htmlFor="order-search">{t("aorders.searchLabel")}</label>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input id="order-search" type="search" className="inp" value={query} maxLength={100} autoComplete="off"
+              placeholder={t("aorders.searchPlaceholder")}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Escape" && query) { e.preventDefault(); setQuery(""); } }} />
+            {query && (
+              <button type="button" className="btn btn-icon" aria-label={t("aorders.searchClear")} title={t("aorders.searchClear")}
+                onClick={() => setQuery("")}><Icon name="close" size={14} /></button>
+            )}
+          </div>
+        </div>
+        <div className="field" style={{ width: 260 }}>
           <label htmlFor="order-status">{t("aorders.filterLabel")}</label>
           <select id="order-status" className="inp" value={status} onChange={(e) => setStatus(e.target.value as OrderStatus | "")}>
             <option value="">{t("aorders.filterAll")}</option>
             {STATUS_VALUES.map((s) => <option key={s} value={s}>{t(`status.${s}`)}</option>)}
           </select>
+        </div>
         </div>
 
         {waiting > 0 && (
@@ -167,7 +203,7 @@ export function AdminOrdersPage() {
         {loading ? (
           <p className="hint" role="status">{t("aorders.loading")}</p>
         ) : orders.length === 0 && !error ? (
-          <div className="card-empty">{t("aorders.empty")}</div>
+          <div className="card-empty" role="status">{search ? t("aorders.noMatches", { q: search }) : t("aorders.empty")}</div>
         ) : orders.length > 0 && (
           <div className="panel">
             <ScrollRegion label={t("aorders.tableLabel")}>

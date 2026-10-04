@@ -37,4 +37,8 @@ export const aorders = {
   "aorders.provisioned": "Order #{id} has been provisioned.",
   "aorders.markedPaid": "Order #{id} marked as paid, instance is being created.",
   "aorders.actionFailed": "Activation failed",
+  "aorders.searchLabel": "Search",
+  "aorders.searchPlaceholder": "Payment reference, server, customer or UUID",
+  "aorders.searchClear": "Clear search",
+  "aorders.noMatches": "No matches for “{q}”.",
 } as const;

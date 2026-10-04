@@ -37,4 +37,8 @@ export const aorders = {
   "aorders.provisioned": "Bestellung #{id} wurde bereitgestellt.",
   "aorders.markedPaid": "Bestellung #{id} als bezahlt markiert, Instance wird angelegt.",
   "aorders.actionFailed": "Freischalten fehlgeschlagen",
+  "aorders.searchLabel": "Suche",
+  "aorders.searchPlaceholder": "Verwendungszweck, Server, Kunde oder UUID",
+  "aorders.searchClear": "Suche leeren",
+  "aorders.noMatches": "Keine Treffer für „{q}“.",
 } as const;

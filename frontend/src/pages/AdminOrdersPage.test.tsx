@@ -29,16 +29,38 @@ describe("AdminOrdersPage", () => {
     mount();
     expect(await screen.findAllByText("bob")).toHaveLength(2);
     expect(screen.getByText("Ref: ÜW-123")).toBeTruthy();
-    expect(list).toHaveBeenLastCalledWith("");
+    expect(list).toHaveBeenLastCalledWith("", "");
     fireEvent.change(screen.getByLabelText("Status"), { target: { value: "awaiting_provisioning" } });
-    await waitFor(() => expect(list).toHaveBeenLastCalledWith("awaiting_provisioning"));
+    await waitFor(() => expect(list).toHaveBeenLastCalledWith("awaiting_provisioning", ""));
+  });
+
+  it("sucht verzoegert, uebernimmt ?q= aus der URL und leert mit Escape", async () => {
+    const list = vi.spyOn(api, "getAdminOrders").mockResolvedValue([pending]);
+    mount("/admin/orders?q=ASTRA-0042");
+    await screen.findByText("bob");
+    expect(list).toHaveBeenLastCalledWith("", "ASTRA-0042");
+    expect((screen.getByLabelText("Suche") as HTMLInputElement).value).toBe("ASTRA-0042");
+    const input = screen.getByLabelText("Suche");
+    fireEvent.change(input, { target: { value: "bob" } });
+    await waitFor(() => expect(list).toHaveBeenLastCalledWith("", "bob"), { timeout: 2000 });
+    fireEvent.keyDown(input, { key: "Escape" });
+    await waitFor(() => expect(list).toHaveBeenLastCalledWith("", ""), { timeout: 2000 });
+    expect((input as HTMLInputElement).value).toBe("");
+  });
+
+  it("zeigt 'Keine Treffer' bei leerer Suche und bietet den Leeren-Button", async () => {
+    vi.spyOn(api, "getAdminOrders").mockResolvedValue([]);
+    mount("/admin/orders?q=xyz");
+    expect(await screen.findByText("Keine Treffer für „xyz“.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Suche leeren" }));
+    expect(await screen.findByText("Keine Bestellungen gefunden.", {}, { timeout: 2000 })).toBeTruthy();
   });
 
   it("uebernimmt den Statusfilter aus der URL (Link vom Dashboard)", async () => {
     const list = vi.spyOn(api, "getAdminOrders").mockResolvedValue([pending]);
     mount("/admin/orders?status=awaiting_provisioning");
     await screen.findByText("bob");
-    expect(list).toHaveBeenCalledWith("awaiting_provisioning");
+    expect(list).toHaveBeenCalledWith("awaiting_provisioning", "");
     expect((screen.getByLabelText("Status") as HTMLSelectElement).value).toBe("awaiting_provisioning");
   });
 
@@ -47,7 +69,7 @@ describe("AdminOrdersPage", () => {
     const list = vi.spyOn(api, "getAdminOrders").mockResolvedValue([refunded]);
     mount("/admin/orders?status=refunded");
     await screen.findByText("carol");
-    expect(list).toHaveBeenCalledWith("refunded");
+    expect(list).toHaveBeenCalledWith("refunded", "");
     expect(screen.getByRole("option", { name: "Erstattet" })).toBeTruthy();
     expect(screen.getByText(/Zahlung erstattet am 2\.10\.2026/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Als bezahlt markieren" })).toBeNull();
@@ -67,7 +89,7 @@ describe("AdminOrdersPage", () => {
     const list = vi.spyOn(api, "getAdminOrders").mockResolvedValue([pending]);
     mount("/admin/orders?status=hacked");
     await screen.findByText("bob");
-    expect(list).toHaveBeenCalledWith("");
+    expect(list).toHaveBeenCalledWith("", "");
   });
 
   it("bietet je Status die passende Aktion", async () => {
