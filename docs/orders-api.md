@@ -266,39 +266,55 @@ Beweise für Streitfälle, vorzeitiges Löschen eines erstatteten Servers (Admin
 Activity- und Webhook-Events: `order:created`, `order:paid`, `order:provision_failed`, `order:cancelled`,
 `order:past_due`, `order:renewed`, `order:expired`, `order:reminder`, `order:payment_unapplied`, `order:provisioned`, `order:refunded`, `order:disputed`.
 
-## Zahlungsbelege (M62, Grundlage)
+## Rechnungen und Gutschriften (M62, ab M70 mit Umsatzsteuer)
 
-Zu jeder verbuchten **Zahlung** (erste Zahlung, `mark-paid`, Stripe, Verlängerung) stellt Astra einen Beleg mit
-fortlaufender Nummer aus. Kostenlose Pakete und die automatische Gratis-Verlängerung bekommen keinen. Der
-Beleg ist **kein Steuerbeleg**: keine Umsatzsteuer, keine Anschrift des Kunden (siehe unten, was fehlt).
+Zu jeder verbuchten **Zahlung** (erste Zahlung, `mark-paid`, Stripe, Verlängerung) stellt Astra eine **Rechnung** mit
+fortlaufender Nummer aus (`kind = "invoice"`), zu jeder **Erstattung** eine **Gutschrift** (`kind = "credit_note"`). Kostenlose Pakete und die
+automatische Gratis-Verlängerung bekommen nichts. Gedacht ist die **Kleinbetragsrechnung nach § 33 UStDV** (Bruttobetrag bis 250 €):
+Anbieter, Datum, Leistung, Bruttobetrag und Steuersatz bzw. Hinweis auf Steuerbefreiung; die Anschrift des Empfängers wird gedruckt, wenn der Kunde sie
+hinterlegt hat. **Eine rechtliche und steuerliche Prüfung durch den Betreiber bleibt nötig** (siehe unten, was nicht abgedeckt ist).
 
-- **Nummer:** `INVOICE_NUMBER_FORMAT` (Standard `AST-{year}-{seq:05d}`, erlaubt sind nur `{year}` und `{seq}`).
-  Die laufende Nummer beginnt jedes Jahr bei 1 und ist lückenlos: Zähler (`invoice_counters`, Zeilensperre
-  auf PostgreSQL) und Beleg werden in einer Transaktion geschrieben, ein Fehler verbraucht keine Nummer.
-  Belege werden **nie gelöscht** (sonst entstünde eine Lücke). Das Format nach dem Start nicht mehr ändern.
-  Ein ungültiges Format meldet der Produktions-Check kritisch; zur Laufzeit gilt dann das Standardformat.
-- **Zeitpunkt:** direkt nach der Buchung, auch wenn die Bereitstellung wartet (kein Platz). Ein Fehler beim
-  Ausstellen blockiert die Zahlung nie (Log `Beleg fuer Bestellung ... fehlgeschlagen`, es fehlt dann ein Beleg;
-  für Zahlungen vor M62 gibt es keine Belege).
-- **Inhalt:** Nummer, Datum (UTC), Kunde (Benutzername, E-Mail), Paket, Servername, Laufzeit in Tagen, Betrag,
-  Zahlungsreferenz, optional Anbieter (`INVOICE_SELLER`) und Fußzeile (`RECEIPT_FOOTER`), jeweils mit `\n` für
-  Zeilenumbrüche. Der Inhalt ist ein Schnappschuss zum Zahlungszeitpunkt.
+- **Nummer:** `INVOICE_NUMBER_FORMAT` (Standard `AST-{year}-{seq:05d}`, erlaubt sind nur `{year}` und `{seq}`). Rechnungen und Gutschriften teilen sich
+  einen Zähler je Jahr: er beginnt jedes Jahr bei 1 und ist lückenlos (`invoice_counters`, Zeilensperre auf PostgreSQL, Zähler und Dokument in einer Transaktion,
+  ein Fehler verbraucht keine Nummer). Dokumente werden **nie gelöscht**. Das Format nach dem Start nicht mehr ändern. Ein ungültiges Format meldet der
+  Produktions-Check kritisch; zur Laufzeit gilt dann das Standardformat.
+- **Steuer:** Preise sind **Bruttopreise** (B2C). `VAT_RATE` in Prozent (Standard `0` = Kleinunternehmer, auch `7,5` oder `19`): netto = brutto / (1 + Satz) auf Cent
+  gerundet (kaufmännisch, Halbwerte nach oben), USt = brutto − netto, die Summen kommen aus den gerundeten Teilen. Satz 0 druckt statt des Steuerblocks den Hinweis
+  `INVOICE_SMALL_BUSINESS_NOTE` (Standard „Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.“, auf Englisch übersetzt, ein eigener Text gilt in beiden Sprachen);
+  ab Satz > 0 stehen Nettobetrag, Umsatzsteuer und Bruttobetrag auf dem Dokument. `INVOICE_SELLER_VAT_ID` (optional) erscheint als „USt-IdNr.“. Ein ungültiger Satz
+  meldet der Produktions-Check kritisch, zur Laufzeit gilt dann 0 und es wird geloggt. Der Satz steht im Schnappschuss: **eine spätere Änderung von `VAT_RATE` verändert
+  bestehende Rechnungen nicht**.
+- **Empfänger:** `PATCH /api/client/account` nimmt `billing_name` (bis 200 Zeichen) und `billing_address` (bis 500 Zeichen, mehrzeilig möglich); ein leerer Text löscht
+  den Wert, zu lang oder kein Text ergibt 400 `invalid_billing_name` bzw. `invalid_billing_address`. Beides steht im Nutzerobjekt und wird auf **neuen** Rechnungen
+  gedruckt (Schnappschuss, nachträgliche Änderungen wirken nicht auf alte).
+- **Leistungszeitraum:** Beginn der bezahlten Periode bis `current_period_end` (bei einer Verlängerung ab dem Ende der vorherigen Periode). Wartet die
+  Bereitstellung noch (kein Platz), ist der Zeitraum unbekannt und die Rechnung nennt „30 Tage ab Bereitstellung“.
+- **Zeitpunkt:** direkt nach der Buchung (nach dem Bereitstellungsversuch). Ein Fehler beim Ausstellen blockiert die Zahlung nie (Log, es fehlt dann ein Dokument;
+  für Zahlungen vor M62 gibt es keine).
+- **Gutschrift:** bei jedem Erstattungs-Ereignis (`order:refunded`, M59) mit zugehöriger Rechnung automatisch, mit **negativen** Beträgen, eigener Nummer, Titel
+  „Gutschrift / Stornorechnung“ (EN „Credit note“), „zu Rechnung Nr. …“ und Steuersatz sowie Leistungszeitraum der Rechnung. Stripe meldet die erstattete Summe
+  kumuliert: die Gutschrift deckt nur den noch nicht gutgeschriebenen Rest ab (höchstens bis zum Rechnungsbetrag), je Ereignis höchstens eine (idempotent). Ohne
+  Rechnung zur Zahlung (z. B. vor M62) gibt es keine Gutschrift; die Rechnung selbst bleibt unverändert. Ein verlorener Zahlungsstreit (M59) erzeugt keine Gutschrift.
+- **Alte Belege (vor M70):** ohne Steuerfelder im Schnappschuss; sie werden weiter als „Zahlungsbeleg“ mit dem Hinweis „keine Rechnung im Sinne des UStG“ dargestellt, ihre
+  Steuerfelder sind `null`.
 
 | Aufruf | Antwort |
 |---|---|
-| `GET /api/client/orders`, `/{uuid}` (und die Admin-Liste) | enthält `receipts: [{number, issued_at, amount_cents, currency}]`, älteste zuerst |
+| `GET /api/client/orders`, `/{uuid}` (und die Admin-Liste) | enthält `receipts: [{number, kind, issued_at, amount_cents, currency}]`, älteste zuerst (Rechnungen und Gutschriften, `amount_cents` = Brutto, bei Gutschriften negativ) |
 | `GET /api/client/orders`, `/{uuid}` (und die Admin-Liste) | enthält `blueprint_name` (Spiel-Vorlage des Produkts) und `payment_purpose` (M64): kurzer Verwendungszweck für die Überweisung, Form `ASTRA-NNNN-XX` (laufende Bestell-ID plus zwei Prüfzeichen aus der UUID), stabil pro Bestellung. Steht auch in der Erinnerungs- und Sperr-Mail sowie im Beleg; der Admin ordnet den Zahlungseingang damit zu und trägt die Bankreferenz bei `mark-paid` ein |
 | `GET /api/client/instances`, `/{uuid}` (und die Admin-Liste) | enthält `blueprint_name` (M64), z. B. für die Unterzeile „Minecraft (Paper 1.21) · Crew“ |
-| `GET /api/client/orders/{uuid}/receipt?number=&format=` | Beleg der eigenen Bestellung. `number` = Belegnummer (Standard: neuester), `format` = `html` (Standard, eigenständige Seite), `text` oder `json` (`number, issued_at, amount_cents, currency, payment_reference, product_name, blueprint_name, payment_purpose, instance_name, billing_period_days, customer`). 404 bei fremder/unbekannter Bestellung, unbekannter Nummer oder wenn es keinen Beleg gibt; 400 bei falschem `format`; 401 ohne Anmeldung |
+| `GET /api/client/orders/{uuid}/receipt?number=&format=` | Dokument der eigenen Bestellung. `number` = Dokumentnummer (Standard: die neueste **Rechnung**, Gutschriften nur über `number`), `format` = `html` (Standard, eigenständige Seite), `text` oder `json`: `number, kind, issued_at, amount_cents, currency, payment_reference, references_number, vat_rate, net_cents, vat_cents, gross_cents, period_start, period_end, customer_billing {name, address}, seller {lines, vat_id}, product_name, blueprint_name, instance_name, billing_period_days, customer {username, email}, payment_purpose`. 404 bei fremder/unbekannter Bestellung, unbekannter Nummer oder wenn es nichts gibt; 400 bei falschem `format`; 401 ohne Anmeldung |
+| `GET /api/admin/invoices?from=&to=&format=json\|csv` | Admin. Buchhaltungsliste aller Rechnungen und Gutschriften (Ausstelldatum UTC, `from`/`to` als `JJJJ-MM-TT` einschließlich, Standard: der laufende Monat, höchstens 366 Tage), älteste zuerst. JSON: Liste mit `number, kind, issued_at, order_uuid, username, net_cents, vat_cents, vat_rate, gross_cents, currency, payment_reference, references_number` (bei Altbelegen `net_cents`, `vat_cents`, `vat_rate` = `null`). CSV (`format=csv`): Semikolon, UTF-8 mit BOM, dieselben Spalten plus `net`, `vat`, `gross` als Dezimalzahl mit Komma, Dateiname `rechnungen-JJJJ-MM.csv` (bei mehreren Monaten `rechnungen-von_bis.csv`); Textzellen, die mit `=`, `+`, `-` oder `@` beginnen, werden mit `'` entschärft. Fehler 400: `invalid_date`, `invalid_range`, `range_too_large`, `invalid_format` |
+| `GET /api/admin/stats/revenue` | zusätzlich `net_by_currency` und `vat_by_currency` (nur Rechnungen mit Steuerfeldern); die Umsätze zählen nur Rechnungen, Gutschriften werden nicht verrechnet |
 
-Das HTML escaped alle Werte (auch den vom Kunden gewählten Servernamen) und wird mit `nosniff`, einer
+Das HTML escaped alle Werte (auch Servername, Name und Anschrift des Kunden) und wird mit `nosniff`, einer
 restriktiven Content-Security-Policy und `no-store` ausgeliefert. Ein Link im Browser trägt keinen
-`Authorization`-Header: das Frontend holt den Beleg per `fetch` und zeigt ihn als Blob bzw. rendert `json` selbst.
+`Authorization`-Header: das Frontend holt das Dokument per `fetch` und zeigt es als Blob bzw. rendert `json` selbst.
 
-**Es fehlt für eine echte Rechnung** (Angaben und Entscheidungen des Betreibers): vollständige Anschrift und
-Steuernummer bzw. USt-IdNr. des Anbieters, Anschrift des Kunden, Umsatzsteuer-Ausweis (Netto/Brutto/Satz oder
-Kleinunternehmer-Hinweis), Leistungszeitraum, PDF bzw. revisionssichere Aufbewahrung, Rechnungskorrektur bei
-Erstattungen (Gutschrift) und die rechtliche Prüfung. Bis dahin Rechnungen außerhalb von Astra erstellen.
+**Nicht abgedeckt** (Entscheidungen und Angaben des Betreibers): vollständige Anbieteranschrift, Steuernummer bzw. USt-IdNr. (über `INVOICE_SELLER` und
+`INVOICE_SELLER_VAT_ID` einzutragen), Rechnungen über 250 € brutto (§ 14 UStG verlangt dann zusätzlich die Empfängeranschrift, die Steuernummer des Anbieters und mehr; Astra
+erzwingt das nicht), Reverse-Charge und B2B mit Netto-Preisen, Mehrwertsteuer-OSS, PDF bzw. revisionssichere Aufbewahrung (GoBD, Aufbewahrungsfrist),
+Teil-Gutschriften nach Stripe-Streitfällen und die rechtliche Prüfung. Im Zweifel mit dem Steuerberater abstimmen, bevor echte Kunden zahlen.
 
 ## Manuelle Zahlungserinnerung (M69)
 

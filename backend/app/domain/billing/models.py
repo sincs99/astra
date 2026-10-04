@@ -264,16 +264,31 @@ class Receipt(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     number = db.Column(db.String(64), unique=True, nullable=False)
     order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, index=True)
-    payment_reference = db.Column(db.String(191), nullable=True)
-    amount_cents = db.Column(db.Integer, nullable=False)
+    payment_reference = db.Column(db.String(191), nullable=True)  # Gutschrift: "refund:<Ereignis-ID>"
+    # M70: "invoice" (Rechnung, ab M62 Beleg) oder "credit_note" (Gutschrift mit negativen Betraegen, verweist auf die Rechnung)
+    kind = db.Column(db.String(16), nullable=False, default="invoice", server_default="invoice")
+    references_id = db.Column(db.Integer, db.ForeignKey("receipts.id"), nullable=True)
+    amount_cents = db.Column(db.Integer, nullable=False)  # Brutto, bei Gutschriften negativ
     currency = db.Column(db.String(3), nullable=False)
     issued_at = db.Column(db.DateTime, nullable=False, default=_now)  # naive UTC
     # Schnappschuss zum Zeitpunkt der Zahlung: product_name, instance_name, billing_period_days, customer
     snapshot = db.Column(db.JSON, nullable=False)
 
+    references = db.relationship("Receipt", remote_side=[id], lazy="joined", join_depth=1)
+
     def to_summary(self) -> dict:
-        return {"number": self.number, "issued_at": iso_utc(self.issued_at),
+        return {"number": self.number, "kind": self.kind, "issued_at": iso_utc(self.issued_at),
                 "amount_cents": self.amount_cents, "currency": self.currency}
 
     def to_dict(self) -> dict:
-        return {**self.to_summary(), "payment_reference": self.payment_reference, **(self.snapshot or {})}
+        snap = self.snapshot or {}
+        return {
+            **self.to_summary(), "payment_reference": self.payment_reference,
+            "references_number": self.references.number if self.references else snap.get("references_number"),
+            # Steuerfelder: bei Dokumenten vor M70 (ohne Angaben im Schnappschuss) null
+            "vat_rate": snap.get("vat_rate"), "net_cents": snap.get("net_cents"), "vat_cents": snap.get("vat_cents"),
+            "gross_cents": self.amount_cents, "period_start": snap.get("period_start"), "period_end": snap.get("period_end"),
+            "customer_billing": snap.get("customer_billing"), "seller": snap.get("seller"),
+            **{k: v for k, v in snap.items() if k not in ("vat_rate", "net_cents", "vat_cents", "gross_cents", "period_start",
+                                                          "period_end", "customer_billing", "seller", "references_number")},
+        }

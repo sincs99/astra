@@ -305,15 +305,15 @@ check("EN: Recovery-Code-Mail mit Hinweis auf neue Codes", len(ms) == 1 and ms[0
 # Belege
 rc = c.get(f"/api/client/orders/{o_en}/receipt?format=text", headers=H).get_data(as_text=True)
 check("EN-Beleg (Text): Titel, Zeilenbezeichnungen, Betrag, Datum, Verwendungszweck", all(x in rc for x in [
-    "PAYMENT RECEIPT", "Receipt number: ", "Customer: kunde", "Service: Game server plan Klein (Minecraft Paper), server 'srv", "Term: 30 days",
-    "Amount: \u20ac1,234.56", "Payment reference: ASTRA-", "Transaction reference: pi_en2", "not an invoice for VAT purposes"]), rc)
-check("EN-Beleg: kein deutscher Text", not re.search(r"Belegnummer|Betrag|Laufzeit|Zahlungsbeleg|Verwendungszweck|Leistung", rc))
+    "INVOICE", "Invoice number: ", "Customer: kunde", "Service: Game server plan Klein (Minecraft Paper), server 'srv", "Service period: ",
+    "Amount: \u20ac1,234.56", "Payment reference: ASTRA-", "Transaction reference: pi_en2", "No VAT is charged"]), rc)
+check("EN-Beleg: kein deutscher Text", not re.search(r"Belegnummer|Rechnungsnummer|Betrag|Laufzeit|Zahlungsbeleg|Verwendungszweck|Leistung|Umsatzsteuer", rc))
 check("EN-Beleg: englisches Datum", re.search(r"Date: \d{1,2} [A-Z][a-z]{2} \d{4} \(UTC\)", rc) is not None, rc)
 rh = c.get(f"/api/client/orders/{o_en}/receipt", headers=H).get_data(as_text=True)
-check("EN-Beleg (HTML): lang=en, Titel", '<html lang="en">' in rh and "<h1>Payment receipt</h1>" in rh)
+check("EN-Beleg (HTML): lang=en, Titel", '<html lang="en">' in rh and "<h1>Invoice</h1>" in rh)
 set_locale("de")
 rc_de = c.get(f"/api/client/orders/{o_en}/receipt?format=text", headers=H).get_data(as_text=True)
-check("nach Wechsel auf de wird derselbe Beleg deutsch gerendert", "ZAHLUNGSBELEG" in rc_de and "Betrag: 1.234,56 EUR" in rc_de and "Verwendungszweck: ASTRA-" in rc_de, rc_de)
+check("nach Wechsel auf de wird derselbe Beleg deutsch gerendert", "RECHNUNG" in rc_de and "Betrag: 1.234,56 EUR" in rc_de and "Verwendungszweck: ASTRA-" in rc_de, rc_de)
 check("Beleg-JSON unabhaengig von der Sprache", c.get(f"/api/client/orders/{o_en}/receipt?format=json", headers=H).json["amount_cents"] == 123456)
 set_locale("fr")  # direkt in der Datenbank: unbekannte Sprache faellt auf Deutsch zurueck
 mail.outbox.clear()
