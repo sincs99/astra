@@ -66,6 +66,8 @@ rot (`danger`) für Fehler/überfällig/gesperrt/**nicht erreichbar**, grau (`ne
 - Platzhalter `{name}`; **keine „(en)“-Plurale**, sondern getrennte Schlüssel (`…One`/`…Other`) mit `Intl.PluralRules(dateLocale())` (siehe `plural()` in `lib/adminOverview.ts`).
 - Datum, Zahl, Währung, Relativzeit nur über `formatDateTime`/`formatMoney`/`formatTimeAgo`/`Intl`, nie feste `de-DE`-Strings.
 - Texte vom Server (Fehlermeldungen, Backup-/Restore-Antworten, Aktivitätsbeschreibungen) bleiben deutsch und werden unverändert angezeigt.
+- **Fehlertexte der API (M72):** jede Fehlerantwort von `/api/auth` und `/api/client` ist `{error, code}`. Der API-Client sendet bei jedem Request `Accept-Language` mit der
+  UI-Sprache (`de`/`en`); angemeldete Nutzer bekommen die Sprache aus `users.locale`. Im Code **auf `code` verzweigen**, `error` nur anzeigen (siehe `docs/orders-api.md` → Fehlerformat).
 - **Servertexte folgen `users.locale` (M67):** Mails (Bestätigung, Passwort-Reset, Zahlung, Server bereit, Erinnerung, Sperre, Löschhinweis, Beendet, Erstattung,
   Recovery-Code) und Zahlungsbelege (HTML/Text) rendert das Backend in der Sprache des Kunden (`de` Standard, `en`). Das Frontend setzt sie mit
   `PATCH /api/client/account {locale}` (beim Sprachwechsel im Konto mitsenden; `/api/auth/me` liefert `locale`) und bei der Registrierung optional mit `locale` im Body.

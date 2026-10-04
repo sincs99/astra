@@ -333,6 +333,27 @@ Activity-Log (Event `order:reminder` mit `properties.kind = "manual"`, Akteur = 
 automatischen Erinnerungen des Billing-Ticks und ihre Markierung bleiben unberührt und zählen nicht für die Sperre. Der Versand ist best effort wie bei allen
 Mails: `sent_at` bestätigt, dass die Mail übergeben wurde, nicht die Zustellung.
 
+## Fehlerformat und Sprache (M72)
+
+Alle **kundenseitigen** Fehlerantworten (`/api/auth/*` und `/api/client/*`, auch 401, 403, 404, 409, 429 und Eingabefehler) haben dieselbe Form:
+
+```json
+{"error": "Order not found", "code": "order_not_found"}
+```
+
+- **`code`** ist stabil und maschinenlesbar (snake_case); Frontends verzweigen darauf, nie auf den Text. Wo schon Codes existierten (`email_not_verified`, `manual`,
+  `invalid_locale`, `captcha_failed`, `rate_limited`, …), bleiben sie. Fehler ohne eigenen Eintrag bekommen einen Code nach dem HTTP-Status
+  (`bad_request`, `unauthorized`, `forbidden`, `not_found`, `conflict`, `rate_limited`, `server_error`, `bad_gateway`, `service_unavailable`).
+- **`error`** ist der Text in der Sprache des Aufrufers: angemeldete Nutzer bekommen `users.locale` (nicht gesetzt = Deutsch), sonst gilt der erste passende Eintrag
+  von **`Accept-Language`** (`de` oder `en`, nach q-Wert), sonst Deutsch. Der Frontend-Client sendet `Accept-Language` mit der UI-Sprache. Deutsch ist wortgleich zu den
+  bisherigen Texten (auch dort, wo sie bisher englisch waren, z. B. „Field 'name' is required“); Platzhalter (Status, Namen, Grenzen) werden in beiden Sprachen
+  eingesetzt, verschachtelte bekannte Texte („…: {Grund}“) mituebersetzt.
+- **Ohne Katalogeintrag** bleibt der Text unveraendert (z. B. Fehlermeldungen des Wings-Daemons bei Dateioperationen, Texte, die Admins in Sperrgruenden eintragen).
+- **Admin-Routen (`/api/admin`) und Zahlungs-Webhooks bleiben deutsch** und behalten ihre bisherigen Antwortformen (Codes nur, wo sie schon existieren).
+- **Umsetzung:** die Texte entstehen wie bisher an den Stellen, die den Fehler ausloesen; `backend/app/i18n/errors.py` ordnet ihnen Code und englische Fassung zu und ein
+  `after_request`-Hook schreibt die Antwort um. **Neue kundenseitige Fehlertexte brauchen einen Eintrag dort**: `test_m72.py` durchsucht den Quelltext und schlaegt sonst fehl.
+  Weitere Sprachen: Eintraege ergaenzen und `SUPPORTED_LOCALES` erweitern.
+
 ## Sprache der Servertexte (M67)
 
 Mails und Belege folgen der Sprache des Kunden (`users.locale`, `de` oder `en`, nicht gesetzt = `de`):
