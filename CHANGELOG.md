@@ -5,6 +5,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – D3 Kunden-Dashboard "Meine Server")
+- Dashboard nach Mockup: Titel "Meine Server" mit Untertitel "N Server · M laufen", Primaerbutton "Neuer Server" (mobil 44-px-Icon-Button), Hinweisbanner fuer offene Zahlungen ("Zahlungsdaten anzeigen" bzw. "Jetzt mit Karte bezahlen"), Serverkarten im Grid (Adresse in der Konsolen-Zeile mit Kopieren, Zeilen nur aus echten Daten: RAM, Speicher, Laufzeitende aus der Bestellung, bald faellig in Warnfarbe mit "Verlaengern"; Aktionen Stop/Start/Neustart/Oeffnen ueber die Power-API), Karten fuer Bestellungen ohne Server (wartet auf Zahlung/Platz) mit Stornieren, gestrichelter Leerzustand, Fussnote
+- Status-Badge einheitlich nach Design (Punkt + Text, --surface-2, 1 px --border), Buttons mobil mit 44-px-Touch-Zielen; Bausteine in `src/styles/ui.css`
+- Nicht aus der API verfuegbar und daher nicht angezeigt: Spieler, RAM-Auslastung, Spielname, Verwendungszweck der Ueberweisung
+
 ### Changed (Frontend – D2 App-Shell)
 - Neue App-Shell nach `design/mockups`: Seitenleiste links (240 px, einklappbar auf 56 px nur Icons mit `aria-label`/`title`, Zustand in localStorage), Logo (SVG-Stern in `--accent`, Satellit in `--text`), Navigation mit Icon + Text und aktivem Eintrag in `--accent-soft` (laengster Pfadpraefix), Admin-Gruppen nur fuer Admins, unten Nutzermenue (Avatar-Initialen, Sprache, Design, Konto, Abmelden). Mobil ab 760 px: Kopfzeile mit Logo, Avatar und 44-px-Hamburger sowie Vollbild-Overlay-Menue. Seitenkopf mit Titel, optionalem Untertitel und Aktionen (`PageLayout` Props `subtitle`, `actions`). Skip-Link und Tab-Titel bleiben; Sprachumschalter in der Fusszeile nur noch ausgeloggt
 - Design-Darstellung im Konto: "Wie das Geraet" heisst jetzt "System"

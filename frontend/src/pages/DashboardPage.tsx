@@ -1,21 +1,33 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { t } from "../i18n";
-import { api, type Instance } from "../services/api";
-import { ConnectionAddress } from "../components/ConnectionAddress";
+import { api, type Instance, type Order, type PowerSignal } from "../services/api";
 import { BillingTickCard } from "../components/BillingTickCard";
 import { OpenOrdersCard } from "../components/OpenOrdersCard";
+import { ServerCard } from "../components/dashboard/ServerCard";
+import { OrderCard } from "../components/dashboard/OrderCard";
+import { PaymentBanners } from "../components/dashboard/PaymentBanners";
+import { Icon } from "../components/ui/Icon";
 import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useCheckout } from "../hooks/useCheckout";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
-import { PageLayout, AutoRefreshToggle, Toast, useToast, StatusBadge, LoadingState, ErrorState, EmptyState, cardStyle, linkStyle } from "../components/ui";
+import { useMediaQuery } from "../hooks/useMediaQuery";
+import { isRunning, orderForInstance, pendingPayment, waitingForCapacity } from "../lib/dashboard";
+import { t } from "../i18n";
+import { PageLayout, AutoRefreshToggle, Toast, useToast, LoadingState, ErrorState } from "../components/ui";
 
+/** Kunden-Dashboard "Meine Server": Serverkarten, Hinweise zu offenen Zahlungen, Bestellungen ohne Server. */
 export function DashboardPage() {
   const [instances, setInstances] = useState<Instance[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [onlinePayment, setOnlinePayment] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [acting, setActing] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
+  const touch = useMediaQuery("(max-width: 760px)");
+  const { pay, paying } = useCheckout(toast.error);
 
   // Meldung von der vorherigen Seite (z.B. nach dem Löschen einer Instance), nur einmal anzeigen
   useEffect(() => {
@@ -29,93 +41,112 @@ export function DashboardPage() {
 
   const [autoRefresh, setAutoRefresh] = useAutoRefreshSetting("dashboard");
 
-  const load = async (silent = false) => {
+  const load = useCallback(async (silent = false) => {
     try {
       if (!silent) { setLoading(true); setError(null); }
-      const data = await api.getClientInstances();
-      setInstances(data);
+      const [list, myOrders, billing] = await Promise.all([
+        api.getClientInstances(),
+        // Bestellungen sind für die Anzeige von Laufzeit und Zahlungshinweisen nützlich, aber nicht kritisch
+        api.getMyOrders().catch(() => [] as Order[]),
+        api.getBillingInfo().catch(() => null),
+      ]);
+      setInstances(list);
+      setOrders(myOrders);
+      if (billing) setOnlinePayment(billing.online_payment);
     } catch (err) {
       if (!silent) setError(err instanceof Error ? err.message : t("dash.loadFailed"));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
-
+  useEffect(() => { load(); }, [load]);
   useAutoRefresh(() => load(true), 15000, autoRefresh);
 
   const user = useCurrentUser();
 
+  const power = async (inst: Instance, signal: PowerSignal) => {
+    try {
+      setActing(inst.uuid);
+      const result = await api.sendPowerAction(inst.uuid, signal);
+      toast.success(result.message);
+      setTimeout(() => load(true), 800);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("dash.actionFailed"));
+    } finally {
+      setActing(null);
+    }
+  };
+
+  // Bezahlen und Verlängern laufen über denselben Checkout; ohne Online-Zahlung geht es zu den Bestellungen
+  const payOrder = async (order: Order) => {
+    const outcome = await pay(order);
+    if (outcome === "manual") { setOnlinePayment(false); navigate("/orders"); }
+    if (outcome === "stale") await load(true);
+  };
+
+  const cancelOrder = async (order: Order) => {
+    try {
+      await api.cancelOrder(order.uuid);
+      toast.success(t("dash.cancelled"));
+      await load(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("orders.cancelFailed"));
+    }
+  };
+
+  const pending = pendingPayment(orders);
+  const waiting = waitingForCapacity(orders);
+  const running = instances.filter(isRunning).length;
+  const subtitle = instances.length === 0
+    ? t("dash.subtitleNone")
+    : instances.length === 1 ? t("dash.subtitleOne", { m: running }) : t("dash.subtitle", { n: instances.length, m: running });
+
+  const newServer = touch ? (
+    <Link to="/shop" className="btn btn-primary btn-touch btn-icon" aria-label={t("dash.newServer")}><Icon name="plus" size={18} /></Link>
+  ) : (
+    <Link to="/shop" className="btn btn-primary"><Icon name="plus" size={16} />{t("dash.newServer")}</Link>
+  );
+
+  const isEmpty = instances.length === 0 && pending.length === 0 && waiting.length === 0;
+
   return (
-    <PageLayout title={t("dash.title")} maxWidth={900}>
+    <PageLayout title={t("dash.title")} subtitle={subtitle} actions={newServer} maxWidth={1200}>
       <Toast {...toast} />
-      <p style={{ color: "var(--fg-muted)", marginTop: -12, marginBottom: 24, fontSize: 14 }}>
-        {t("dash.signedInAs", { name: user ? user.username : "…" })}
-      </p>
 
-      {user?.is_admin && <BillingTickCard onlyWhenUnhealthy />}
-      {user?.is_admin && <OpenOrdersCard />}
+      <div className="stack">
+        {user?.is_admin && <BillingTickCard onlyWhenUnhealthy />}
+        {user?.is_admin && <OpenOrdersCard />}
 
-      {error && <ErrorState message={error} onRetry={() => load()} />}
+        {error && <ErrorState message={error} onRetry={() => load()} />}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-        <h2 style={{ fontSize: 18, margin: 0 }}>{t("dash.myServers")}</h2>
-        <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
+        <PaymentBanners orders={pending} onlinePayment={onlinePayment} paying={paying} onPay={payOrder} />
+
+        {loading ? (
+          <LoadingState />
+        ) : isEmpty ? (
+          <div className="card-empty">
+            <p style={{ margin: "0 0 8px" }}>{user?.is_admin ? t("dash.noInstancesAdmin") : t("dash.empty")}</p>
+            {!user?.is_admin && <Link to="/shop">{t("dash.emptyAction")}</Link>}
+          </div>
+        ) : (
+          <section className="cards-grid" aria-label={t("dash.cardsLabel")}>
+            {instances.map((inst) => (
+              <ServerCard key={inst.uuid} instance={inst} order={orderForInstance(orders, inst.uuid)}
+                acting={acting === inst.uuid} onPower={power} onRenew={payOrder} onlinePayment={onlinePayment} />
+            ))}
+            {[...pending, ...waiting].map((o) => (
+              <OrderCard key={o.uuid} order={o} onlinePayment={onlinePayment} paying={paying === o.uuid} onPay={payOrder} onCancel={cancelOrder} />
+            ))}
+          </section>
+        )}
+
+        {!loading && !isEmpty && <p className="hint">{t("dash.footnote")}</p>}
+
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
+        </div>
       </div>
-
-      {loading ? (
-        <LoadingState />
-      ) : instances.length === 0 ? (
-        <div>
-          <EmptyState
-            message={user?.is_admin
-              ? t("dash.noInstancesAdmin")
-              : t("dash.noServers")}
-            icon="📦"
-          />
-          {!user?.is_admin && (
-            <p style={{ textAlign: "center" }}>
-              <Link to="/shop" style={linkStyle}>{t("dash.orderServer")}</Link>
-            </p>
-          )}
-        </div>
-      ) : (
-        <div style={{ display: "grid", gap: 12 }}>
-          {instances.map((inst) => (
-            <div
-              key={inst.id}
-              onClick={() => navigate(`/instances/${inst.uuid}`)}
-              style={{ ...cardStyle, cursor: "pointer", transition: "border-color 0.15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--c-blue)")}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <strong style={{ fontSize: 16 }}>{inst.name}</strong>
-                  {inst.description && (
-                    <span style={{ color: "var(--fg-muted)", marginLeft: 8, fontSize: 14 }}>
-                      {inst.description}
-                    </span>
-                  )}
-                </div>
-                <StatusBadge status={inst.status ?? "ready"} />
-              </div>
-              <div style={{ marginTop: 8, fontSize: 13, color: "var(--fg-muted)" }}>
-                <code style={{ fontSize: 11 }}>{inst.uuid}</code>
-                <span style={{ marginLeft: 16 }}>
-                  {inst.memory} MB {t("shop.ram")} &middot; {inst.disk} MB Disk &middot; {inst.cpu}% CPU
-                </span>
-              </div>
-              {inst.connection && (
-                <div style={{ marginTop: 8 }}>
-                  <ConnectionAddress connection={inst.connection} compact />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </PageLayout>
   );
 }
