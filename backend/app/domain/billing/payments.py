@@ -51,6 +51,11 @@ class PaymentEvent:
     payment_reference: str | None = None
     amount_cents: int | None = None
     currency: str | None = None
+    # M59: Erstattungen und Zahlungsstreitigkeiten
+    full_refund: bool = False        # kind="refunded": Zahlung vollstaendig erstattet
+    refunded_cents: int | None = None
+    dispute_status: str | None = None   # kind="dispute_*": Stripe-Status (needs_response, won, lost, ...)
+    dispute_reason: str | None = None
 
 
 class PaymentProvider:
@@ -165,6 +170,27 @@ class StripeProvider(PaymentProvider):
                 payment_reference=obj.get("payment_intent") or obj.get("id"),
                 amount_cents=obj.get("amount_total"),
                 currency=(obj.get("currency") or "").upper() or None,
+            )]
+        if etype == "charge.refunded":
+            meta = obj.get("metadata") or {}
+            amount, refunded = obj.get("amount"), obj.get("amount_refunded")
+            full = bool(obj.get("refunded")) or (
+                isinstance(amount, int) and isinstance(refunded, int) and amount > 0 and refunded >= amount)
+            return [PaymentEvent(
+                event_id, etype, "refunded",
+                order_uuid=meta.get("order_uuid"),
+                payment_reference=obj.get("payment_intent") or obj.get("id"),
+                amount_cents=amount, currency=(obj.get("currency") or "").upper() or None,
+                full_refund=full, refunded_cents=refunded,
+            )]
+        if etype in ("charge.dispute.created", "charge.dispute.closed"):
+            meta = obj.get("metadata") or {}
+            return [PaymentEvent(
+                event_id, etype, "dispute_created" if etype.endswith("created") else "dispute_closed",
+                order_uuid=meta.get("order_uuid"),
+                payment_reference=obj.get("payment_intent") or obj.get("charge"),
+                amount_cents=obj.get("amount"), currency=(obj.get("currency") or "").upper() or None,
+                dispute_status=obj.get("status"), dispute_reason=obj.get("reason"),
             )]
         return [PaymentEvent(event_id, etype, "ignored")]
 
