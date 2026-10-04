@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Astra Komponenten</title>
+</head>
+<body>
+<!-- Referenz-Mockup aus dem Claude-Design-Canvas. Als Vorlage für Markup und Inline-Styles gedacht, nicht als fertiger Produktionscode. -->
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#2bb8cc}a:hover{color:#5fd0e0}
+.mono{font-family:'Geist Mono','JetBrains Mono',ui-monospace,monospace}
+.lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#7d8794}
+.th{text-align:left;font-weight:500;font-size:12px;color:#9aa5b4;padding:10px 14px;background:#1c232d;border-bottom:1px solid #2a313c}
+.td{padding:12px 14px;border-bottom:1px solid #222935;font-size:14px;vertical-align:middle}
+.num{font-variant-numeric:tabular-nums;text-align:right}
+.dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.badge{display:inline-flex;align-items:center;gap:7px;padding:3px 9px 3px 8px;border-radius:4px;font-size:12px;font-weight:500;background:#1c232d;border:1px solid #2a313c;line-height:1.3}
+</style>
+</helmet>
+<div style="width: 1280px; height: 1640px; box-sizing: border-box; padding: 40px 36px; background: #0f1419; color: #e6e9ef; font-family: Geist, Inter, system-ui, sans-serif; font-size: 14px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; align-content: start">
+
+  <!-- Buttons -->
+  <div style="grid-column: span 6; display: flex; flex-direction: column; gap: 12px">
+    <span class="lbl">Button · primär, sekundär, gefährlich, Geist</span>
+    <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+      <button type="button" style="font: inherit; font-weight: 500; font-size: 14px; height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid #2bb8cc; background: #2bb8cc; color: #0b1118; cursor: pointer">Jetzt bestellen</button>
+      <button type="button" style="font: inherit; font-weight: 500; font-size: 14px; height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid #2a313c; background: #1c232d; color: #e6e9ef; cursor: pointer">Verlängern</button>
+      <button type="button" style="font: inherit; font-weight: 500; font-size: 14px; height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid #f85149; background: #f85149; color: #ffffff; cursor: pointer">Server löschen</button>
+      <button type="button" style="font: inherit; font-weight: 500; font-size: 14px; height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: #9aa5b4; cursor: pointer">Abbrechen</button>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+      <button type="button" style="font: inherit; font-weight: 500; font-size: 13px; height: 30px; padding: 0 10px; border-radius: 6px; border: 1px solid #2bb8cc; background: #2bb8cc; color: #0b1118; cursor: pointer">Klein</button>
+      <button type="button" style="font: inherit; font-weight: 500; font-size: 13px; height: 30px; padding: 0 10px; border-radius: 6px; border: 1px solid #2a313c; background: #1c232d; color: #e6e9ef; cursor: pointer; display: inline-flex; align-items: center; gap: 6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Kopieren</button>
+      <button type="button" style="font: inherit; font-weight: 500; font-size: 14px; height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid #2bb8cc; background: #2bb8cc; color: #0b1118; cursor: pointer; box-shadow: 0 0 0 2px #0f1419, 0 0 0 4px #2bb8cc">Fokus</button>
+      <button type="button" disabled style="font: inherit; font-weight: 500; font-size: 14px; height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid #2a313c; background: #161b22; color: #7d8794; cursor: not-allowed">Deaktiviert</button>
+      <button type="button" aria-label="Weitere Aktionen" style="font: inherit; height: 36px; width: 36px; border-radius: 6px; border: 1px solid #2a313c; background: #1c232d; color: #9aa5b4; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+    </div>
+  </div>
+
+  <!-- Input / Select -->
+  <div style="grid-column: span 6; display: flex; flex-direction: column; gap: 12px">
+    <span class="lbl">Input · Select</span>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="c-name" style="font-size: 13px; font-weight: 500">Servername</label>
+        <input id="c-name" type="text" value="Freitagsrunde" style="font: inherit; font-size: 14px; height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid #2a313c; background: #1c232d; color: #e6e9ef; box-sizing: border-box; width: 100%">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="c-game" style="font-size: 13px; font-weight: 500">Spiel</label>
+        <div style="position: relative">
+          <select id="c-game" style="font: inherit; font-size: 14px; height: 36px; padding: 0 32px 0 12px; border-radius: 6px; border: 1px solid #2a313c; background: #1c232d; color: #e6e9ef; width: 100%; appearance: none; -webkit-appearance: none"><option>Minecraft (Paper)</option><option>Valheim</option><option>Satisfactory</option></select>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9aa5b4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; right: 10px; top: 10px; pointer-events: none"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="c-focus" style="font-size: 13px; font-weight: 500">Fokus</label>
+        <input id="c-focus" type="text" placeholder="E-Mail-Adresse" style="font: inherit; font-size: 14px; height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid #2bb8cc; background: #1c232d; color: #e6e9ef; box-sizing: border-box; width: 100%; box-shadow: 0 0 0 3px rgba(43,184,204,.25)">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="c-err" style="font-size: 13px; font-weight: 500">Fehler</label>
+        <input id="c-err" type="text" value="astra" aria-describedby="c-err-msg" style="font: inherit; font-size: 14px; height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid #f85149; background: #1c232d; color: #e6e9ef; box-sizing: border-box; width: 100%">
+        <span id="c-err-msg" style="font-size: 12px; color: #f85149">Mindestens 8 Zeichen.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Badges -->
+  <div style="grid-column: span 12; display: flex; flex-direction: column; gap: 12px">
+    <span class="lbl">Status-Badge · Punkt plus Text, immer dieselbe Form</span>
+    <div style="display: flex; flex-wrap: wrap; gap: 10px">
+      <span class="badge"><span class="dot" style="background: #3fb950"></span>läuft</span>
+      <span class="badge"><span class="dot" style="background: #3fb950"></span>bezahlt</span>
+      <span class="badge"><span class="dot" style="background: #3fb950"></span>gesund</span>
+      <span class="badge"><span class="dot" style="background: #d29922"></span>wartet</span>
+      <span class="badge"><span class="dot" style="background: #d29922"></span>installiert</span>
+      <span class="badge"><span class="dot" style="background: #d29922"></span>bald fällig</span>
+      <span class="badge"><span class="dot" style="background: #f85149"></span>gestoppt</span>
+      <span class="badge"><span class="dot" style="background: #f85149"></span>überfällig</span>
+      <span class="badge"><span class="dot" style="background: #f85149"></span>gestört</span>
+      <span class="badge"><span class="dot" style="background: #6e7681"></span>inaktiv</span>
+      <span class="badge"><span class="dot" style="background: #6e7681"></span>unbekannt</span>
+      <span class="badge" style="background: rgba(43,184,204,.14); border-color: rgba(43,184,204,.3); color: #5fd0e0"><span class="dot" style="background: #2bb8cc"></span>Wartungsmodus</span>
+    </div>
+  </div>
+
+  <!-- Karte + Statistik-Kacheln -->
+  <div style="grid-column: span 7; display: flex; flex-direction: column; gap: 12px">
+    <span class="lbl">Statistik-Kachel · große Zahl, Beschriftung, Zusatz</span>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+      <div style="background: #161b22; border: 1px solid #2a313c; border-radius: 8px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px">
+        <span class="num" style="font-size: 28px; font-weight: 600; line-height: 1.1; text-align: left">1 284,00 €</span>
+        <span style="font-size: 13px; color: #9aa5b4">Umsatz 30 Tage</span>
+        <span style="font-size: 12px; color: #3fb950">+12 % zum Vormonat</span>
+      </div>
+      <div style="background: #161b22; border: 1px solid #2a313c; border-radius: 8px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px">
+        <span class="num" style="font-size: 28px; font-weight: 600; line-height: 1.1; text-align: left">4</span>
+        <span style="font-size: 13px; color: #9aa5b4">offene Bestellungen</span>
+        <span style="font-size: 12px; color: #d29922">2 warten auf Überweisung</span>
+      </div>
+      <div style="background: #161b22; border: 1px solid #2a313c; border-radius: 8px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px">
+        <span class="num" style="font-size: 28px; font-weight: 600; line-height: 1.1; text-align: left">17 / 20</span>
+        <span style="font-size: 13px; color: #9aa5b4">Server laufen</span>
+        <span style="font-size: 12px; color: #7d8794">3 gestoppt</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kapazitätsbalken -->
+  <div style="grid-column: span 5; display: flex; flex-direction: column; gap: 12px">
+    <span class="lbl">Kapazitätsbalken · Überbuchung markiert</span>
+    <div style="background: #161b22; border: 1px solid #2a313c; border-radius: 8px; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; justify-content: space-between; font-size: 13px"><span>RAM</span><span class="mono num" style="color: #9aa5b4">46 / 64 GB</span></div>
+        <div style="height: 6px; border-radius: 3px; background: #1c232d; overflow: hidden"><div style="width: 72%; height: 100%; background: #2bb8cc"></div></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; justify-content: space-between; font-size: 13px"><span>Festplatte</span><span class="mono num" style="color: #d29922">410 / 480 GB</span></div>
+        <div style="height: 6px; border-radius: 3px; background: #1c232d; overflow: hidden"><div style="width: 85%; height: 100%; background: #d29922"></div></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; justify-content: space-between; font-size: 13px"><span>CPU (zugewiesen)</span><span class="mono num" style="color: #f85149">18 / 16 Kerne · 112 %</span></div>
+        <div style="height: 6px; border-radius: 3px; background: #1c232d; display: flex; overflow: hidden"><div style="width: 89%; height: 100%; background: #f85149"></div><div style="width: 11%; height: 100%; background: repeating-linear-gradient(135deg, #f85149 0 3px, #161b22 3px 6px)"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabelle -->
+  <div style="grid-column: span 7; display: flex; flex-direction: column; gap: 12px">
+    <span class="lbl">Tabelle · tabular-nums, Mono für IDs</span>
+    <div style="background: #161b22; border: 1px solid #2a313c; border-radius: 8px; overflow: hidden">
+      <table style="width: 100%; border-collapse: collapse">
+        <thead><tr><th class="th">Bestellung</th><th class="th">Server</th><th class="th">Status</th><th class="th num">Betrag</th><th class="th" style="width: 40px"></th></tr></thead>
+        <tbody>
+          <tr><td class="td mono" style="font-size: 13px; color: #9aa5b4">ORD-2026-0417</td><td class="td">Freitagsrunde</td><td class="td"><span class="badge"><span class="dot" style="background: #3fb950"></span>bezahlt</span></td><td class="td num">9,90 €</td><td class="td"><button type="button" aria-label="Aktionen" style="font: inherit; border: 0; background: transparent; color: #9aa5b4; cursor: pointer; padding: 4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button></td></tr>
+          <tr style="background: #1a2029"><td class="td mono" style="font-size: 13px; color: #9aa5b4">ORD-2026-0418</td><td class="td">Valheim Clan</td><td class="td"><span class="badge"><span class="dot" style="background: #d29922"></span>wartet</span></td><td class="td num">14,90 €</td><td class="td"><button type="button" aria-label="Aktionen" style="font: inherit; border: 0; background: transparent; color: #9aa5b4; cursor: pointer; padding: 4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button></td></tr>
+          <tr><td class="td mono" style="font-size: 13px; color: #9aa5b4; border-bottom: 0">ORD-2026-0419</td><td class="td" style="border-bottom: 0">Factory 02</td><td class="td" style="border-bottom: 0"><span class="badge"><span class="dot" style="background: #f85149"></span>überfällig</span></td><td class="td num" style="border-bottom: 0">24,90 €</td><td class="td" style="border-bottom: 0"><button type="button" aria-label="Aktionen" style="font: inherit; border: 0; background: transparent; color: #9aa5b4; cursor: pointer; padding: 4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Tabs + Toast -->
+  <div style="grid-column: span 5; display: flex; flex-direction: column; gap: 12px">
+    <span class="lbl">Tabs · Toast</span>
+    <div style="display: flex; gap: 4px; border-bottom: 1px solid #2a313c; padding: 0 2px">
+      <a href="#konsole" style="text-decoration: none; color: #e6e9ef; font-weight: 500; font-size: 14px; padding: 10px 12px; border-bottom: 2px solid #2bb8cc; margin-bottom: -1px">Konsole</a>
+      <a href="#dateien" style="text-decoration: none; color: #9aa5b4; font-size: 14px; padding: 10px 12px; border-bottom: 2px solid transparent; margin-bottom: -1px">Dateien</a>
+      <a href="#backups" style="text-decoration: none; color: #9aa5b4; font-size: 14px; padding: 10px 12px; border-bottom: 2px solid transparent; margin-bottom: -1px">Backups</a>
+      <a href="#einstellungen" style="text-decoration: none; color: #9aa5b4; font-size: 14px; padding: 10px 12px; border-bottom: 2px solid transparent; margin-bottom: -1px">Einstellungen</a>
+    </div>
+    <div role="status" style="background: #161b22; border: 1px solid #2a313c; border-left: 1px solid #2a313c; border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.35)">
+      <span class="dot" style="background: #3fb950; width: 8px; height: 8px"></span>
+      <span style="flex: 1 1 auto; font-size: 14px">Backup erstellt.</span>
+      <button type="button" aria-label="Schließen" style="font: inherit; border: 0; background: transparent; color: #7d8794; cursor: pointer; padding: 2px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div role="alert" style="background: #161b22; border: 1px solid #2a313c; border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.35)">
+      <span class="dot" style="background: #f85149; width: 8px; height: 8px"></span>
+      <span style="flex: 1 1 auto; font-size: 14px">Server konnte nicht gestartet werden. <a href="#log">Log ansehen</a></span>
+      <button type="button" aria-label="Schließen" style="font: inherit; border: 0; background: transparent; color: #7d8794; cursor: pointer; padding: 2px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+  </div>
+
+  <!-- Seitenleiste -->
+  <div style="grid-column: span 4; display: flex; flex-direction: column; gap: 12px">
+    <span class="lbl">Seitenleiste · 240 px, eingeklappt 56 px</span>
+    <div style="display: flex; gap: 12px; align-items: flex-start">
+      <nav aria-label="Hauptnavigation" style="width: 232px; background: #161b22; border: 1px solid #2a313c; border-radius: 8px; padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; box-sizing: border-box">
+        <div style="display: flex; align-items: center; gap: 9px; padding: 4px 8px 14px"><svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 3 L18.6 13.4 L29 16 L18.6 18.6 L16 29 L13.4 18.6 L3 16 L13.4 13.4 Z" fill="#2bb8cc"/><circle cx="26" cy="6" r="2.4" fill="#e6e9ef"/></svg><span style="font-size: 18px; font-weight: 600; letter-spacing: -0.03em">Astra</span></div>
+        <a href="#dashboard" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; text-decoration: none; color: #e6e9ef; background: rgba(43,184,204,.14); font-weight: 500; font-size: 14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2bb8cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="8" rx="2"/><rect x="2" y="13" width="20" height="8" rx="2"/><path d="M6 7h.01M6 17h.01"/></svg>Meine Server</a>
+        <a href="#shop" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; text-decoration: none; color: #9aa5b4; font-size: 14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Shop</a>
+        <a href="#bestellungen" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; text-decoration: none; color: #9aa5b4; font-size: 14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-1 .7-3-2-3 2-3-2-3 2Z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Bestellungen<span style="margin-left: auto; font-size: 11px; font-weight: 600; background: #d29922; color: #0b1118; border-radius: 10px; padding: 1px 7px">1</span></a>
+        <a href="#konto" style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; text-decoration: none; color: #9aa5b4; font-size: 14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Konto</a>
+        <div style="height: 1px; background: #2a313c; margin: 10px 4px"></div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 6px 8px">
+          <span style="width: 28px; height: 28px; border-radius: 50%; background: #1c232d; border: 1px solid #2a313c; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #9aa5b4">PK</span>
+          <div style="display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto"><span style="font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">pasc</span><span style="font-size: 11px; color: #7d8794">DE · Dunkel</span></div>
+          <button type="button" aria-label="Nutzermenü" style="font: inherit; border: 0; background: transparent; color: #7d8794; cursor: pointer; padding: 4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></button>
+        </div>
+      </nav>
+      <nav aria-label="Hauptnavigation eingeklappt" style="width: 56px; background: #161b22; border: 1px solid #2a313c; border-radius: 8px; padding: 12px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; box-sizing: border-box">
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true" style="margin-bottom: 12px"><path d="M16 3 L18.6 13.4 L29 16 L18.6 18.6 L16 29 L13.4 18.6 L3 16 L13.4 13.4 Z" fill="#2bb8cc"/><circle cx="26" cy="6" r="2.4" fill="#e6e9ef"/></svg>
+        <a href="#dashboard" aria-label="Meine Server" style="width: 36px; height: 36px; border-radius: 6px; background: rgba(43,184,204,.14); display: flex; align-items: center; justify-content: center; color: #2bb8cc"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="8" rx="2"/><rect x="2" y="13" width="20" height="8" rx="2"/><path d="M6 7h.01M6 17h.01"/></svg></a>
+        <a href="#shop" aria-label="Shop" style="width: 36px; height: 36px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #9aa5b4"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></a>
+        <a href="#bestellungen" aria-label="Bestellungen" style="width: 36px; height: 36px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #9aa5b4; position: relative"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-1 .7-3-2-3 2-3-2-3 2Z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span style="position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: #d29922"></span></a>
+        <a href="#konto" aria-label="Konto" style="width: 36px; height: 36px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #9aa5b4"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Dialog + Leerzustand + Skelett -->
+  <div style="grid-column: span 4; display: flex; flex-direction: column; gap: 12px">
+    <span class="lbl">Bestätigungs-Dialog · destruktiv</span>
+    <div role="dialog" aria-labelledby="dlg-t" style="background: #161b22; border: 1px solid #2a313c; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 16px 48px rgba(0,0,0,.5)">
+      <h3 id="dlg-t" style="margin: 0; font-size: 16px; font-weight: 600">Server „Freitagsrunde“ löschen?</h3>
+      <p style="margin: 0; font-size: 13px; color: #9aa5b4; line-height: 1.5">Alle Dateien und Backups werden entfernt. Das lässt sich nicht rückgängig machen. Gib zur Bestätigung den Servernamen ein.</p>
+      <label for="dlg-in" style="font-size: 12px; color: #9aa5b4">Servername</label>
+      <input id="dlg-in" type="text" placeholder="Freitagsrunde" class="mono" style="font-size: 13px; height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid #2a313c; background: #1c232d; color: #e6e9ef; box-sizing: border-box; width: 100%">
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px">
+        <button type="button" style="font: inherit; font-weight: 500; font-size: 14px; height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: #9aa5b4; cursor: pointer">Abbrechen</button>
+        <button type="button" disabled style="font: inherit; font-weight: 500; font-size: 14px; height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid #f85149; background: #f85149; color: #ffffff; opacity: .5; cursor: not-allowed">Endgültig löschen</button>
+      </div>
+    </div>
+    <span class="lbl" style="margin-top: 6px">Leerzustand · Lade-Skelett</span>
+    <div style="background: #161b22; border: 1px dashed #2a313c; border-radius: 8px; padding: 22px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center">
+      <span style="font-size: 14px; color: #9aa5b4">Noch kein Server.</span>
+      <a href="#shop" style="font-weight: 500; font-size: 14px; height: 32px; padding: 0 12px; border-radius: 6px; background: #2bb8cc; color: #0b1118; text-decoration: none; display: inline-flex; align-items: center">Zum Shop</a>
+    </div>
+    <div style="background: #161b22; border: 1px solid #2a313c; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 10px" aria-hidden="true">
+      <div style="height: 14px; width: 55%; border-radius: 4px; background: #1c232d"></div>
+      <div style="height: 10px; width: 80%; border-radius: 4px; background: #1c232d"></div>
+      <div style="height: 10px; width: 40%; border-radius: 4px; background: #1c232d"></div>
+    </div>
+  </div>
+
+  <!-- Konsole -->
+  <div style="grid-column: span 4; display: flex; flex-direction: column; gap: 12px">
+    <span class="lbl">Konsole · dunkelster Bereich, Log-Level farbig</span>
+    <div style="background: #0a0d12; border: 1px solid #2a313c; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden">
+      <div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #1c232d">
+        <span class="badge"><span class="dot" style="background: #3fb950"></span>läuft</span>
+        <span class="mono" style="font-size: 12px; color: #7d8794">uptime 3 d 04 h</span>
+        <div style="margin-left: auto; display: flex; gap: 6px">
+          <button type="button" style="font: inherit; font-size: 12px; font-weight: 500; height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid #2a313c; background: #161b22; color: #e6e9ef; cursor: pointer">Neustart</button>
+          <button type="button" style="font: inherit; font-size: 12px; font-weight: 500; height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid #2a313c; background: #161b22; color: #f85149; cursor: pointer">Stop</button>
+        </div>
+      </div>
+      <pre class="mono" style="margin: 0; padding: 12px; font-size: 12px; line-height: 1.6; color: #c9d1d9; white-space: pre-wrap; min-height: 180px"><span style="color: #7d8794">12:04:11</span> <span style="color: #3fb950">INFO</span>  Starting minecraft server version 1.21.1
+<span style="color: #7d8794">12:04:12</span> <span style="color: #3fb950">INFO</span>  Loading properties
+<span style="color: #7d8794">12:04:14</span> <span style="color: #d29922">WARN</span>  Can't keep up! Running 2051 ms behind
+<span style="color: #7d8794">12:04:19</span> <span style="color: #3fb950">INFO</span>  Done (7.8 s)! For help, type "help"
+<span style="color: #7d8794">12:05:02</span> <span style="color: #f85149">ERROR</span> Failed to load plugin WorldEdit
+<span style="color: #7d8794">12:06:40</span> <span style="color: #3fb950">INFO</span>  Lena joined the game</pre>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px solid #1c232d">
+        <span class="mono" style="color: #2bb8cc; font-size: 13px">›</span>
+        <label for="c-cmd" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Befehl</label>
+        <input id="c-cmd" type="text" placeholder="Befehl eingeben…" class="mono" style="flex: 1 1 auto; font-size: 13px; height: 30px; padding: 0 8px; border-radius: 6px; border: 1px solid #1c232d; background: #0f1419; color: #e6e9ef; min-width: 0">
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

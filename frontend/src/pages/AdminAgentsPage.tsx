@@ -295,7 +295,7 @@ export function AdminAgentsPage() {
           {configLoading ? (
             <LoadingState message="config.yml wird erzeugt..." />
           ) : (
-            <pre style={{ background: "#1e1e1e", color: "#e8e8e8", padding: 12, borderRadius: 6, fontSize: 12, overflowX: "auto", margin: 0 }}>
+            <pre style={{ background: "var(--console)", color: "var(--text-console)", padding: 12, borderRadius: 6, fontSize: 12, overflowX: "auto", margin: 0 }}>
               {configYaml}
             </pre>
           )}

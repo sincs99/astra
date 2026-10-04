@@ -64,7 +64,7 @@ export async function loadRevenue(): Promise<RevenueView> {
 }
 
 export function RevenueTile({ view }: { view: RevenueView | null }) {
-  const byCurrency = view ? (view.kind === "exact" ? view.stats.by_currency : view.summary.byCurrency) : {};
+  const byCurrency = (view ? (view.kind === "exact" ? view.stats.by_currency : view.summary.byCurrency) : {}) ?? {};
   const currencies = Object.keys(byCurrency);
   const refunds = view?.kind === "exact" ? Object.entries(view.stats.refunded_cents_by_currency ?? {}).filter(([, c]) => c > 0) : [];
   return (

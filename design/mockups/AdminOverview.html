@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Astra Admin – Übersicht</title>
+</head>
+<body>
+<!-- Referenz-Mockup aus dem Claude-Design-Canvas. Als Vorlage für Markup und Inline-Styles gedacht, nicht als fertiger Produktionscode. -->
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#2bb8cc}a:hover{color:#5fd0e0}
+.mono{font-family:'Geist Mono','JetBrains Mono',ui-monospace,monospace}
+.nav-a{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;text-decoration:none;color:#9aa5b4;font-size:14px}
+.nav-on{color:#e6e9ef;background:rgba(43,184,204,.14);font-weight:500}
+.sec{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#7d8794;padding:12px 10px 4px}
+.dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.badge{display:inline-flex;align-items:center;gap:7px;padding:3px 9px 3px 8px;border-radius:4px;font-size:12px;font-weight:500;background:#1c232d;border:1px solid #2a313c;line-height:1.3;white-space:nowrap}
+.tile{background:#161b22;border:1px solid #2a313c;border-radius:8px;padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.big{font-size:28px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px}
+.th{text-align:left;font-weight:500;font-size:12px;color:#9aa5b4;padding:9px 14px;background:#1c232d;border-bottom:1px solid #2a313c;white-space:nowrap}
+.td{padding:10px 14px;border-bottom:1px solid #222935;font-size:13px;vertical-align:middle}
+.num{font-variant-numeric:tabular-nums;text-align:right}
+.kv{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:#9aa5b4}
+.bar{height:6px;border-radius:3px;background:#1c232d;overflow:hidden;display:flex}
+.btn2{font:inherit;font-weight:500;font-size:13px;height:32px;padding:0 12px;border-radius:6px;border:1px solid #2a313c;background:#1c232d;color:#e6e9ef;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+</style>
+</helmet>
+<div style="background: #0f1419; color: #e6e9ef; font-family: Geist, Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.5; min-height: 100vh; display: flex; flex-wrap: wrap; align-items: stretch">
+
+  <nav aria-label="Admin-Navigation" style="flex: 0 0 240px; background: #161b22; border-right: 1px solid #2a313c; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 9px; padding: 4px 8px 14px">
+      <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 3 L18.6 13.4 L29 16 L18.6 18.6 L16 29 L13.4 18.6 L3 16 L13.4 13.4 Z" fill="#2bb8cc"/><circle cx="26" cy="6" r="2.4" fill="#e6e9ef"/></svg>
+      <span style="font-size: 18px; font-weight: 600; letter-spacing: -0.03em">Astra</span>
+      <span class="mono" style="font-size: 10px; font-weight: 500; letter-spacing: .08em; color: #7d8794; border: 1px solid #2a313c; border-radius: 4px; padding: 1px 5px; margin-left: 2px">ADMIN</span>
+    </div>
+    <a href="AdminOverview.dc.html" class="nav-a nav-on" aria-current="page"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2bb8cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Übersicht</a>
+    <div class="sec">Betrieb</div>
+    <a href="#nodes" class="nav-a"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="8" rx="2"/><rect x="2" y="13" width="20" height="8" rx="2"/><path d="M6 7h.01M6 17h.01"/></svg>Nodes<span class="dot" style="background: #d29922; margin-left: auto"></span></a>
+    <a href="#instances" class="nav-a"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>Instances</a>
+    <a href="#blueprints" class="nav-a"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Blueprints</a>
+    <a href="#jobs" class="nav-a"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Jobs</a>
+    <div class="sec">Geschäft</div>
+    <a href="#bestellungen" class="nav-a"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-1 .7-3-2-3 2-3-2-3 2Z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Bestellungen &amp; Zahlungen<span style="margin-left: auto; font-size: 11px; font-weight: 600; background: #d29922; color: #0b1118; border-radius: 10px; padding: 1px 7px">4</span></a>
+    <a href="#nutzer" class="nav-a"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>Nutzer</a>
+    <div class="sec">System</div>
+    <a href="#webhooks" class="nav-a"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>Webhooks</a>
+    <a href="#system" class="nav-a"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>System</a>
+    <div style="flex: 1 1 auto; min-height: 16px"></div>
+    <div style="height: 1px; background: #2a313c; margin: 6px 4px 10px"></div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px">
+      <span style="width: 28px; height: 28px; border-radius: 50%; background: #1c232d; border: 1px solid #2a313c; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #9aa5b4">PK</span>
+      <div style="display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto"><span style="font-size: 13px; font-weight: 500">pasc</span><span style="font-size: 11px; color: #7d8794">Admin · DE · Dunkel</span></div>
+      <button type="button" aria-label="Nutzermenü" style="font: inherit; border: 0; background: transparent; color: #7d8794; cursor: pointer; padding: 4px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></button>
+    </div>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; padding: 24px; box-sizing: border-box">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px">
+
+      <!-- Warnbanner -->
+      <div role="alert" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: rgba(248,81,73,.1); border: 1px solid rgba(248,81,73,.35); border-radius: 8px; padding: 10px 14px">
+        <span class="dot" style="background: #f85149"></span>
+        <span style="flex: 1 1 240px">Node <span class="mono">de-fra-02</span> seit 6 min nicht erreichbar – 5 Instances betroffen. Letzter Heartbeat 12:28:41.</span>
+        <a href="#nodes" class="btn2">Node öffnen</a>
+      </div>
+      <div role="status" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: rgba(210,153,34,.1); border: 1px solid rgba(210,153,34,.35); border-radius: 8px; padding: 10px 14px">
+        <span class="dot" style="background: #d29922"></span>
+        <span style="flex: 1 1 240px">2 Zahlungen mit Fehlstatus warten auf Prüfung. 3 Bestellungen werden morgen überfällig.</span>
+        <a href="#zahlungen" class="btn2">Zahlungen prüfen</a>
+      </div>
+
+      <!-- Kopfzeile -->
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.02em">Übersicht</h1>
+          <span style="color: #9aa5b4">Stand 12:34 · aktualisiert alle 30 s</span>
+        </div>
+        <div style="display: flex; gap: 8px">
+          <button type="button" class="btn2">Letzte 30 Tage</button>
+          <a href="#bestellungen" class="btn2" style="background: #2bb8cc; border-color: #2bb8cc; color: #0b1118">Als bezahlt markieren</a>
+        </div>
+      </div>
+
+      <!-- Kacheln -->
+      <div class="tiles">
+        <div class="tile"><span class="big">1 284,00 €</span><span style="font-size: 13px; color: #9aa5b4">Umsatz 30 Tage</span><span style="font-size: 12px; color: #3fb950">+12 % zum Vormonat</span></div>
+        <div class="tile">
+          <span class="big">31</span><span style="font-size: 13px; color: #9aa5b4">Bestellungen 30 Tage</span>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; margin-top: 2px">
+            <span style="display: inline-flex; align-items: center; gap: 5px; color: #9aa5b4"><span class="dot" style="background: #3fb950"></span>24 bezahlt</span>
+            <span style="display: inline-flex; align-items: center; gap: 5px; color: #9aa5b4"><span class="dot" style="background: #d29922"></span>4 wartend</span>
+            <span style="display: inline-flex; align-items: center; gap: 5px; color: #9aa5b4"><span class="dot" style="background: #f85149"></span>3 überfällig</span>
+          </div>
+        </div>
+        <div class="tile"><span class="big">41 / 46</span><span style="font-size: 13px; color: #9aa5b4">Instances laufen</span><span style="font-size: 12px; color: #f85149">5 auf de-fra-02 nicht erreichbar</span></div>
+        <div class="tile">
+          <div style="display: flex; align-items: center; gap: 10px"><span class="dot" style="background: #3fb950; width: 12px; height: 12px"></span><span class="big" style="font-size: 20px">Abrechnungs-Tick</span></div>
+          <span style="font-size: 13px; color: #9aa5b4">letzter Lauf 12:30:00 · 1,2 s</span>
+          <span class="mono" style="font-size: 12px; color: #7d8794">nächster 13:00 · 0 Fehler</span>
+        </div>
+      </div>
+
+      <div class="cols">
+        <!-- Nodes -->
+        <section aria-label="Node-Auslastung" style="background: #161b22; border: 1px solid #2a313c; border-radius: 8px; display: flex; flex-direction: column">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid #2a313c">
+            <span style="font-weight: 600">Node-Auslastung</span>
+            <a href="#nodes" style="font-size: 13px; text-decoration: none">Alle Nodes</a>
+          </div>
+          <div style="padding: 14px 18px; display: flex; flex-direction: column; gap: 16px">
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <div style="display: flex; align-items: center; gap: 10px"><span class="mono" style="font-weight: 500">de-fra-01</span><span class="badge"><span class="dot" style="background: #3fb950"></span>gesund</span><span style="margin-left: auto; font-size: 12px; color: #7d8794">19 Instances</span></div>
+              <div class="kv"><span>RAM</span><span class="mono num" style="color: #e6e9ef">46 / 64 GB</span></div><div class="bar"><div style="width: 72%; background: #2bb8cc"></div></div>
+              <div class="kv"><span>Festplatte</span><span class="mono num" style="color: #d29922">410 / 480 GB</span></div><div class="bar"><div style="width: 85%; background: #d29922"></div></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <div style="display: flex; align-items: center; gap: 10px"><span class="mono" style="font-weight: 500">de-fra-02</span><span class="badge"><span class="dot" style="background: #f85149"></span>gestört</span><span style="margin-left: auto; font-size: 12px; color: #7d8794">5 Instances</span></div>
+              <div class="kv"><span>RAM</span><span class="mono num" style="color: #7d8794">keine Daten</span></div><div class="bar"><div style="width: 100%; background: repeating-linear-gradient(135deg, #2a313c 0 3px, #1c232d 3px 6px)"></div></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <div style="display: flex; align-items: center; gap: 10px"><span class="mono" style="font-weight: 500">de-nue-01</span><span class="badge" style="background: rgba(43,184,204,.14); border-color: rgba(43,184,204,.3); color: #5fd0e0"><span class="dot" style="background: #2bb8cc"></span>Wartung</span><span style="margin-left: auto; font-size: 12px; color: #7d8794">22 Instances</span></div>
+              <div class="kv"><span>RAM</span><span class="mono num" style="color: #f85149">136 / 128 GB · überbucht</span></div><div class="bar"><div style="width: 94%; background: #f85149"></div><div style="width: 6%; background: repeating-linear-gradient(135deg, #f85149 0 3px, #161b22 3px 6px)"></div></div>
+              <div class="kv"><span>Festplatte</span><span class="mono num" style="color: #e6e9ef">620 / 960 GB</span></div><div class="bar"><div style="width: 65%; background: #2bb8cc"></div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Zahlungen -->
+        <section aria-label="Auffällige Zahlungen" style="background: #161b22; border: 1px solid #2a313c; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid #2a313c">
+            <span style="font-weight: 600">Auffällige Zahlungen</span>
+            <a href="#zahlungen" style="font-size: 13px; text-decoration: none">Alle Zahlungen</a>
+          </div>
+          <div style="overflow-x: auto">
+            <table style="width: 100%; border-collapse: collapse; min-width: 420px">
+              <thead><tr><th class="th">Zeit</th><th class="th">Referenz</th><th class="th">Status</th><th class="th num">Betrag</th></tr></thead>
+              <tbody>
+                <tr><td class="td" style="color: #9aa5b4; white-space: nowrap">12:21</td><td class="td mono" style="color: #9aa5b4">pi_3Q…8fK · ORD-0421</td><td class="td"><span class="badge"><span class="dot" style="background: #f85149"></span>Karte abgelehnt</span></td><td class="td num mono">14,90 €</td></tr>
+                <tr><td class="td" style="color: #9aa5b4; white-space: nowrap">11:48</td><td class="td mono" style="color: #9aa5b4">Überw. · ASTRA-0416-2P</td><td class="td"><span class="badge"><span class="dot" style="background: #d29922"></span>Betrag abweichend</span></td><td class="td num mono">9,00 €</td></tr>
+                <tr><td class="td" style="color: #9aa5b4; white-space: nowrap">gestern</td><td class="td mono" style="color: #9aa5b4">Überw. · ohne Zweck</td><td class="td"><span class="badge"><span class="dot" style="background: #d29922"></span>nicht zugeordnet</span></td><td class="td num mono">24,90 €</td></tr>
+                <tr><td class="td" style="color: #9aa5b4; white-space: nowrap">gestern</td><td class="td mono" style="color: #9aa5b4">pi_3Q…c2L · ORD-0409</td><td class="td"><span class="badge"><span class="dot" style="background: #f85149"></span>Rückbuchung</span></td><td class="td num mono" style="color: #f85149">−14,90 €</td></tr>
+                <tr><td class="td" style="color: #9aa5b4; white-space: nowrap; border-bottom: 0">2. Okt</td><td class="td mono" style="color: #9aa5b4; border-bottom: 0">Webhook · Stripe</td><td class="td" style="border-bottom: 0"><span class="badge"><span class="dot" style="background: #f85149"></span>Zustellung fehlgeschlagen</span></td><td class="td num mono" style="border-bottom: 0; color: #7d8794">–</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding: 10px 18px; border-top: 1px solid #2a313c; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #7d8794">
+            <span>Überfällig in 24 h: ORD-0410, ORD-0412, ORD-0415</span>
+            <a href="#erinnern" style="text-decoration: none; font-weight: 500">Erinnerung senden</a>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+</body>
+</html>

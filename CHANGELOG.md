@@ -5,6 +5,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – D1 Design-Tokens)
+- `design/tokens.css` ist die Quelle der Farben, Schrift und Maße; `frontend/src/styles/tokens.css` ist eine Kopie (Docker-Build-Kontext ist `frontend/`), `npm run sync:tokens` aktualisiert sie, ein Test prueft die Gleichheit. `src/theme.css` bindet sie ein und liefert Kompatibilitaets-Aliase fuer die bisherigen Variablennamen. Dunkel ist Standard, hell ueber `data-theme="light"`; `lib/theme.ts` setzt `data-theme` immer explizit (System-Praeferenz wird erkannt und verfolgt)
+- Schrift Geist / Geist Mono selbst gehostet (`@fontsource/geist`, `@fontsource/geist-mono`, nur Latin-Subsets, kein externer Abruf wegen DSGVO)
+- Alle verbliebenen Hex-Werte im Komponenten-Code durch Tokens ersetzt (Buttons, Power-Buttons, Server-Konsole, Dateimanager u.a.); Buttons nach DESIGN.md (36 px, Radius 6, Gewicht 500)
+- WCAG-AA-Korrekturen in `theme.css` (axe fand sie in den Tokens: u.a. `--text-3` hell 4,36:1, Gefahr-Button dunkel mit weissem Text 3,35:1), zur Uebernahme in `design/tokens.css` vorgeschlagen
+
 ### Changed (Frontend – Umsatz-Kachel auf `GET /api/admin/stats/revenue`)
 - Admin-Uebersicht: Umsatz der letzten 30 Tage exakt aus den Belegen (je Waehrung, Zahlungen davon Verlaengerungen, "Erstattet im Zeitraum: X (nicht abgezogen)"); bei 404 (aelteres Backend) Rueckfall auf die bisherige Schaetzung aus der Bestellliste mit Hinweis
 

@@ -225,14 +225,14 @@ export function InstanceDetailPage() {
       <div style={cardStyle}>
         <h3 style={{ marginTop: 0 }}>Steuerung</h3>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={() => handlePower("start")} disabled={acting} style={powerBtn("#2e7d32")}>▶ Starten</button>
-          <button onClick={() => handlePower("stop")} disabled={acting} style={powerBtn("#bf360c")}>⏹ Stoppen</button>
-          <button onClick={() => handlePower("restart")} disabled={acting} style={powerBtn("#1565c0")}>🔄 Neustarten</button>
+          <button onClick={() => handlePower("start")} disabled={acting} style={powerBtn("var(--ok)", "var(--on-accent)")}>▶ Starten</button>
+          <button onClick={() => handlePower("stop")} disabled={acting} style={powerBtn("var(--warn)", "var(--on-accent)")}>⏹ Stoppen</button>
+          <button onClick={() => handlePower("restart")} disabled={acting} style={powerBtn("var(--accent)", "var(--on-accent)")}>🔄 Neustarten</button>
           <button
             onClick={() => { if (confirm("Server sofort beenden? Nicht gespeicherte Daten können verloren gehen.")) handlePower("kill"); }}
             disabled={acting}
             title="Beendet den Server sofort. Nur nutzen, wenn Stoppen nicht funktioniert."
-            style={powerBtn("#c62828")}
+            style={powerBtn("var(--danger)", "var(--on-danger)")}
           >
             ✕ Beenden erzwingen
           </button>
@@ -252,7 +252,7 @@ export function InstanceDetailPage() {
               {status === "reinstall_failed" ? "❌ Die Neuinstallation ist fehlgeschlagen." : "❌ Die Einrichtung ist fehlgeschlagen. Du kannst es erneut versuchen."}
             </p>
             {instance.role === "owner" && (
-              <button onClick={handleReinstall} disabled={acting} style={powerBtn("#f0ad4e")}>
+              <button onClick={handleReinstall} disabled={acting} style={powerBtn("var(--warn)", "var(--on-accent)")}>
                 🔄 Neu installieren
               </button>
             )}
@@ -475,6 +475,6 @@ function formatUptime(seconds: number): string {
   return `${Math.floor(seconds / 86400)}d ${Math.floor((seconds % 86400) / 3600)}h`;
 }
 
-function powerBtn(bg: string): React.CSSProperties {
-  return { padding: "8px 16px", cursor: "pointer", border: "none", borderRadius: 4, color: "#fff", fontWeight: 600, fontSize: 13, backgroundColor: bg };
+function powerBtn(bg: string, fg: string): React.CSSProperties {
+  return { padding: "8px 16px", cursor: "pointer", border: "none", borderRadius: "var(--radius-btn)", color: fg, fontWeight: 500, fontSize: 13, backgroundColor: bg };
 }

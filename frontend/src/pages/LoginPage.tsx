@@ -178,7 +178,7 @@ export function LoginPage() {
           style={{
             ...btnPrimary,
             width: "100%",
-            backgroundColor: loading ? "#95a5a6" : btnPrimary.backgroundColor,
+            backgroundColor: loading ? "var(--neutral)" : btnPrimary.backgroundColor,
             cursor: loading ? "not-allowed" : "pointer",
           }}
         >

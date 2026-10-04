@@ -39,7 +39,7 @@ export function ReceiptViewer({ number, html, onClose }: { number: string; html:
         onClick={(e) => e.stopPropagation()}
         style={{ background: "var(--bg-card)", color: "var(--fg)", borderRadius: 8, width: "min(720px, 100%)", maxHeight: "100%", display: "flex", flexDirection: "column", padding: 16, gap: 12 }}>
         <iframe title={t("orders.receiptFrame", { number })} sandbox="" srcDoc={html}
-          style={{ flex: 1, minHeight: 360, border: "1px solid var(--border)", borderRadius: 6, background: "#fff" }} />
+          style={{ flex: 1, minHeight: 360, border: "1px solid var(--border)", borderRadius: 6, background: "white" }} />
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
           <button type="button" style={btnDefault} onClick={save}>{t("orders.receiptSave")}</button>
           <button type="button" ref={closeRef} style={btnPrimary} onClick={onClose}>{t("common.close")}</button>

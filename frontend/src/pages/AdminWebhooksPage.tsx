@@ -191,7 +191,7 @@ export function AdminWebhooksPage() {
                     type="checkbox"
                     checked={selectedEvents.includes(ev.event)}
                     onChange={() => toggleEvent(ev.event)}
-                    style={{ accentColor: "#1976d2" }}
+                    style={{ accentColor: "var(--accent)" }}
                   />
                   {ev.event}
                 </label>

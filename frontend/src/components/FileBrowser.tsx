@@ -345,8 +345,8 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
                   disabled={editContent === fileContent}
                   style={{
                     ...smBtn,
-                    backgroundColor: editContent !== fileContent ? "#2e7d32" : "var(--bg-subtle)",
-                    color: editContent !== fileContent ? "#fff" : "var(--fg-muted)",
+                    backgroundColor: editContent !== fileContent ? "var(--ok)" : "var(--surface-2)",
+                    color: editContent !== fileContent ? "var(--on-accent)" : "var(--text-3)",
                     cursor: editContent !== fileContent ? "pointer" : "default",
                   }}
                 >

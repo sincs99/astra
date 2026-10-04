@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Astra Tokens – Farbe und Typografie</title>
+</head>
+<body>
+<!-- Referenz-Mockup aus dem Claude-Design-Canvas. Als Vorlage für Markup und Inline-Styles gedacht, nicht als fertiger Produktionscode. -->
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#2bb8cc}a:hover{color:#5fd0e0}
+.row{display:grid;grid-template-columns:28px 150px 90px minmax(0,1fr);gap:12px;align-items:center;padding:7px 0;border-bottom:1px solid #222935;font-size:13px}
+.lrow{display:grid;grid-template-columns:28px 150px 90px minmax(0,1fr);gap:12px;align-items:center;padding:7px 0;border-bottom:1px solid #e3e8ee;font-size:13px}
+.sw{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.12)}
+.lsw{width:28px;height:28px;border-radius:6px;border:1px solid rgba(0,0,0,.12)}
+.mono{font-family:'Geist Mono','JetBrains Mono',ui-monospace,monospace}
+</style>
+</helmet>
+<div style="width: 1280px; height: 1080px; box-sizing: border-box; background: #0f1419; color: #e6e9ef; font-family: Geist, Inter, system-ui, sans-serif; font-size: 14px; display: flex; flex-direction: column">
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex: 1 1 auto">
+
+    <!-- DUNKEL -->
+    <div style="box-sizing: border-box; padding: 40px 36px; background: #0f1419; color: #e6e9ef; display: flex; flex-direction: column; gap: 6px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h1 style="margin: 0; font-size: 20px; font-weight: 600">Farb-Tokens · Dunkel (Standard)</h1>
+        <span style="font-size: 12px; color: #9aa5b4">Name · Wert · Verwendung</span>
+      </div>
+      <div style="height: 10px"></div>
+
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #7d8794; padding: 10px 0 4px">Flächen</div>
+      <div class="row"><div class="sw" style="background: #0f1419"></div><span style="font-weight: 500">bg</span><span class="mono" style="color: #9aa5b4">#0f1419</span><span style="color: #9aa5b4">Seitenhintergrund</span></div>
+      <div class="row"><div class="sw" style="background: #161b22"></div><span style="font-weight: 500">surface</span><span class="mono" style="color: #9aa5b4">#161b22</span><span style="color: #9aa5b4">Karten, Seitenleiste, Dialoge</span></div>
+      <div class="row"><div class="sw" style="background: #1c232d"></div><span style="font-weight: 500">surface-2</span><span class="mono" style="color: #9aa5b4">#1c232d</span><span style="color: #9aa5b4">Inputs, Tabellenkopf, Hover</span></div>
+      <div class="row"><div class="sw" style="background: #0a0d12"></div><span style="font-weight: 500">console</span><span class="mono" style="color: #9aa5b4">#0a0d12</span><span style="color: #9aa5b4">Konsole, Logs – dunkelster Bereich</span></div>
+      <div class="row"><div class="sw" style="background: #2a313c"></div><span style="font-weight: 500">border</span><span class="mono" style="color: #9aa5b4">#2a313c</span><span style="color: #9aa5b4">Kartenkante 1 px, Trennlinien</span></div>
+
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #7d8794; padding: 14px 0 4px">Text</div>
+      <div class="row"><div class="sw" style="background: #e6e9ef"></div><span style="font-weight: 500">text</span><span class="mono" style="color: #9aa5b4">#e6e9ef</span><span style="color: #9aa5b4">Primärtext – helles Grau, kein Weiß</span></div>
+      <div class="row"><div class="sw" style="background: #9aa5b4"></div><span style="font-weight: 500">text-2</span><span class="mono" style="color: #9aa5b4">#9aa5b4</span><span style="color: #9aa5b4">Sekundärtext, Beschreibungen</span></div>
+      <div class="row"><div class="sw" style="background: #7d8794"></div><span style="font-weight: 500">text-3</span><span class="mono" style="color: #9aa5b4">#7d8794</span><span style="color: #9aa5b4">Beschriftungen, Platzhalter (4,6:1)</span></div>
+
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #7d8794; padding: 14px 0 4px">Akzent</div>
+      <div class="row"><div class="sw" style="background: #2bb8cc"></div><span style="font-weight: 500">accent</span><span class="mono" style="color: #9aa5b4">#2bb8cc</span><span style="color: #9aa5b4">Links, Primärbutton, Fokusring, Logo</span></div>
+      <div class="row"><div class="sw" style="background: #5fd0e0"></div><span style="font-weight: 500">accent-hover</span><span class="mono" style="color: #9aa5b4">#5fd0e0</span><span style="color: #9aa5b4">Hover auf Links und Primärbutton</span></div>
+      <div class="row"><div class="sw" style="background: rgba(43,184,204,.14)"></div><span style="font-weight: 500">accent-soft</span><span class="mono" style="color: #9aa5b4">14 % accent</span><span style="color: #9aa5b4">Aktiver Nav-Eintrag, ausgewählte Karte</span></div>
+      <div class="row"><div class="sw" style="background: #0b1118"></div><span style="font-weight: 500">on-accent</span><span class="mono" style="color: #9aa5b4">#0b1118</span><span style="color: #9aa5b4">Text auf Akzentfläche</span></div>
+
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #7d8794; padding: 14px 0 4px">Status</div>
+      <div class="row"><div class="sw" style="background: #3fb950"></div><span style="font-weight: 500">ok</span><span class="mono" style="color: #9aa5b4">#3fb950</span><span style="color: #9aa5b4">läuft · bezahlt · gesund</span></div>
+      <div class="row"><div class="sw" style="background: #d29922"></div><span style="font-weight: 500">warn</span><span class="mono" style="color: #9aa5b4">#d29922</span><span style="color: #9aa5b4">wartet · Warnung · bald überfällig</span></div>
+      <div class="row"><div class="sw" style="background: #f85149"></div><span style="font-weight: 500">danger</span><span class="mono" style="color: #9aa5b4">#f85149</span><span style="color: #9aa5b4">gestoppt · Fehler · überfällig · löschen</span></div>
+      <div class="row" style="border-bottom: 0"><div class="sw" style="background: #6e7681"></div><span style="font-weight: 500">neutral</span><span class="mono" style="color: #9aa5b4">#6e7681</span><span style="color: #9aa5b4">inaktiv · unbekannt</span></div>
+    </div>
+
+    <!-- HELL -->
+    <div style="box-sizing: border-box; padding: 40px 36px; background: #f5f7fa; color: #1b222b; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid #2a313c">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h2 style="margin: 0; font-size: 20px; font-weight: 600">Farb-Tokens · Hell</h2>
+        <span style="font-size: 12px; color: #556070">gleiche Namen, invertierte Werte</span>
+      </div>
+      <div style="height: 10px"></div>
+
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #6f7a88; padding: 10px 0 4px">Flächen</div>
+      <div class="lrow"><div class="lsw" style="background: #f5f7fa"></div><span style="font-weight: 500">bg</span><span class="mono" style="color: #556070">#f5f7fa</span><span style="color: #556070">Seitenhintergrund</span></div>
+      <div class="lrow"><div class="lsw" style="background: #ffffff"></div><span style="font-weight: 500">surface</span><span class="mono" style="color: #556070">#ffffff</span><span style="color: #556070">Karten, Seitenleiste, Dialoge</span></div>
+      <div class="lrow"><div class="lsw" style="background: #eef1f5"></div><span style="font-weight: 500">surface-2</span><span class="mono" style="color: #556070">#eef1f5</span><span style="color: #556070">Inputs, Tabellenkopf, Hover</span></div>
+      <div class="lrow"><div class="lsw" style="background: #0f1419"></div><span style="font-weight: 500">console</span><span class="mono" style="color: #556070">#0f1419</span><span style="color: #556070">Konsole bleibt dunkel</span></div>
+      <div class="lrow"><div class="lsw" style="background: #d5dbe3"></div><span style="font-weight: 500">border</span><span class="mono" style="color: #556070">#d5dbe3</span><span style="color: #556070">Kartenkante 1 px, Trennlinien</span></div>
+
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #6f7a88; padding: 14px 0 4px">Text</div>
+      <div class="lrow"><div class="lsw" style="background: #1b222b"></div><span style="font-weight: 500">text</span><span class="mono" style="color: #556070">#1b222b</span><span style="color: #556070">Primärtext</span></div>
+      <div class="lrow"><div class="lsw" style="background: #556070"></div><span style="font-weight: 500">text-2</span><span class="mono" style="color: #556070">#556070</span><span style="color: #556070">Sekundärtext</span></div>
+      <div class="lrow"><div class="lsw" style="background: #6f7a88"></div><span style="font-weight: 500">text-3</span><span class="mono" style="color: #556070">#6f7a88</span><span style="color: #556070">Beschriftungen, Platzhalter</span></div>
+
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #6f7a88; padding: 14px 0 4px">Akzent</div>
+      <div class="lrow"><div class="lsw" style="background: #0b7f92"></div><span style="font-weight: 500">accent</span><span class="mono" style="color: #556070">#0b7f92</span><span style="color: #556070">Links, Primärbutton, Fokusring</span></div>
+      <div class="lrow"><div class="lsw" style="background: #096a7a"></div><span style="font-weight: 500">accent-hover</span><span class="mono" style="color: #556070">#096a7a</span><span style="color: #556070">Hover</span></div>
+      <div class="lrow"><div class="lsw" style="background: rgba(11,127,146,.12)"></div><span style="font-weight: 500">accent-soft</span><span class="mono" style="color: #556070">12 % accent</span><span style="color: #556070">Aktiver Nav-Eintrag, Auswahl</span></div>
+      <div class="lrow"><div class="lsw" style="background: #ffffff"></div><span style="font-weight: 500">on-accent</span><span class="mono" style="color: #556070">#ffffff</span><span style="color: #556070">Text auf Akzentfläche</span></div>
+
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #6f7a88; padding: 14px 0 4px">Status</div>
+      <div class="lrow"><div class="lsw" style="background: #1a7f37"></div><span style="font-weight: 500">ok</span><span class="mono" style="color: #556070">#1a7f37</span><span style="color: #556070">läuft · bezahlt · gesund</span></div>
+      <div class="lrow"><div class="lsw" style="background: #9a6700"></div><span style="font-weight: 500">warn</span><span class="mono" style="color: #556070">#9a6700</span><span style="color: #556070">wartet · Warnung</span></div>
+      <div class="lrow"><div class="lsw" style="background: #cf222e"></div><span style="font-weight: 500">danger</span><span class="mono" style="color: #556070">#cf222e</span><span style="color: #556070">gestoppt · Fehler · überfällig</span></div>
+      <div class="lrow" style="border-bottom: 0"><div class="lsw" style="background: #6e7781"></div><span style="font-weight: 500">neutral</span><span class="mono" style="color: #556070">#6e7781</span><span style="color: #556070">inaktiv · unbekannt</span></div>
+    </div>
+  </div>
+
+  <!-- TYPOGRAFIE -->
+  <div style="box-sizing: border-box; padding: 28px 36px 32px; border-top: 1px solid #2a313c; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px">
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600">Typografie</h2>
+      <div style="display: grid; grid-template-columns: 110px 150px minmax(0, 1fr); gap: 12px; font-size: 13px; color: #9aa5b4">
+        <span style="font-weight: 500; color: #e6e9ef">font-ui</span><span class="mono">Geist, Inter</span><span>UI, Fließtext, Tabellen · Grundgröße 14 px / 1,5</span>
+        <span style="font-weight: 500; color: #e6e9ef">font-mono</span><span class="mono">Geist Mono, JetBrains Mono</span><span>Konsole, IPs, Ports, IDs, Zahlungsreferenzen</span>
+        <span style="font-weight: 500; color: #e6e9ef">numbers</span><span class="mono">font-variant-numeric: tabular-nums</span><span>Beträge und Auslastung in Tabellen</span>
+        <span style="font-weight: 500; color: #e6e9ef">radius</span><span class="mono">8 px Karte · 6 px Button · 4 px Badge</span><span>Abstände: 24 px außen, 16 px zwischen Karten</span>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 28px; font-weight: 600; line-height: 1.2">Seitentitel 28 / 600</div>
+      <div style="font-size: 18px; font-weight: 600; line-height: 1.3">Kartentitel 18 / 600</div>
+      <div style="font-size: 14px; font-weight: 500; line-height: 1.5">Beschriftung 14 / 500</div>
+      <div style="font-size: 14px; font-weight: 400; line-height: 1.5; color: #9aa5b4">Fließtext 14 / 400 in text-2 – Hierarchie über Gewicht, nicht über viele Größen.</div>
+      <div style="font-size: 12px; font-weight: 400; line-height: 1.5; color: #7d8794">Hinweis 12 / 400 in text-3</div>
+      <div class="mono" style="font-size: 13px; color: #e6e9ef; background: #0a0d12; border: 1px solid #2a313c; border-radius: 6px; padding: 6px 10px; align-self: flex-start">mc.astra.example:25565 · srv_8k2f91 · ASTRA-2026-0417</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
