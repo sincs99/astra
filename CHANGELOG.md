@@ -5,6 +5,10 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – F3 E2E-Durchlauf)
+- `frontend/e2e/`: Playwright-Durchlauf gegen das echte Backend (SQLite, Stub-Runner, manuelle Zahlung): Registrierung, Login, Bestellung im Shop, Admin markiert als bezahlt, Kunde sieht den Server im Dashboard. `./e2e/run-local.sh` startet Backend und Frontend, fuehrt den Durchlauf aus und raeumt auf (Anleitung in `frontend/e2e/README.md`); `.github/workflows/e2e.yml` fuehrt ihn manuell bzw. bei Aenderungen an den E2E-Dateien aus (lokal verifiziert, auf GitHub noch nicht)
+- Login-Seite: Feldbezeichnung "Benutzername oder E-Mail" statt "Username oder Email"
+
 ### Changed (Frontend – F2 Admin-Seiten vereinheitlicht)
 - Alle 16 Routen bei 390 und 1100 px per Browser-Sweep geprueft (Tab-Titel, kein horizontaler Seitenueberlauf, axe WCAG 2 A/AA ohne Verstoesse, kein Absturz). Behoben: Kontrast der Event-Chips in Webhooks und der Auswahlzaehler im Dateimanager, Tabellen-Scrollbereiche der Admin-Seiten sind per Tastatur erreichbar (`ScrollRegion`). Keine Funktionsaenderung
 

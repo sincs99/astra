@@ -32,7 +32,7 @@ describe("LoginPage", () => {
   it("meldet an, speichert das Token und leitet zum Dashboard", async () => {
     vi.spyOn(api, "login").mockResolvedValue({ access_token: "tok", token_type: "Bearer", user: {} } as never);
     mount("/login");
-    type("Username oder Email", " alice ");
+    type("Benutzername oder E-Mail", " alice ");
     type("Passwort", "geheim123");
     submit("Anmelden");
     expect(await screen.findByText("Dashboard")).toBeTruthy();
@@ -45,7 +45,7 @@ describe("LoginPage", () => {
       .mockResolvedValueOnce({ requires_mfa: true, message: "MFA-Code erforderlich" })
       .mockResolvedValueOnce({ access_token: "mfa-tok", token_type: "Bearer", user: {} } as never);
     mount("/login");
-    type("Username oder Email", "alice");
+    type("Benutzername oder E-Mail", "alice");
     type("Passwort", "geheim123");
     submit("Anmelden");
     const codeField = await screen.findByLabelText("Authenticator-Code");
@@ -62,7 +62,7 @@ describe("LoginPage", () => {
   it("fuehrt nach dem Login zum angegebenen internen Ziel zurueck", async () => {
     vi.spyOn(api, "login").mockResolvedValue({ access_token: "tok", token_type: "Bearer", user: {} } as never);
     mount("/login?redirect=%2Fshop");
-    type("Username oder Email", "alice");
+    type("Benutzername oder E-Mail", "alice");
     type("Passwort", "geheim123");
     submit("Anmelden");
     expect(await screen.findByText("Shop")).toBeTruthy();
@@ -76,7 +76,7 @@ describe("LoginPage", () => {
   it("ignoriert externe Weiterleitungsziele (Open Redirect)", async () => {
     vi.spyOn(api, "login").mockResolvedValue({ access_token: "tok", token_type: "Bearer", user: {} } as never);
     mount("/login?redirect=https%3A%2F%2Fevil.example");
-    type("Username oder Email", "alice");
+    type("Benutzername oder E-Mail", "alice");
     type("Passwort", "geheim123");
     submit("Anmelden");
     expect(await screen.findByText("Dashboard")).toBeTruthy();
@@ -94,7 +94,7 @@ describe("LoginPage", () => {
     vi.spyOn(api, "login").mockRejectedValue(new ApiError("E-Mail nicht bestätigt", 403, "email_not_verified"));
     const resend = vi.spyOn(api, "resendVerification").mockResolvedValue({ message: "ok" } as never);
     mount("/login");
-    type("Username oder Email", "alice");
+    type("Benutzername oder E-Mail", "alice");
     type("Passwort", "geheim123");
     submit("Anmelden");
     fireEvent.click(await screen.findByRole("button", { name: /Bestätigungs-Mail erneut senden/ }));

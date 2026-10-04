@@ -26,7 +26,7 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!login.trim() || !password.trim()) {
-      setError("Bitte Username/Email und Passwort eingeben");
+      setError("Bitte Benutzername/E-Mail und Passwort eingeben");
       return;
     }
     if (mfaRequired && !mfaCode.trim()) {
@@ -105,7 +105,7 @@ export function LoginPage() {
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: 16 }}>
           <label htmlFor="login" style={labelStyle}>
-            Username oder Email
+            Benutzername oder E-Mail
           </label>
           <input
             id="login"
