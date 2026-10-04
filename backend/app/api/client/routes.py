@@ -248,6 +248,43 @@ def get_my_order(uuid: str):
     return jsonify(order.to_dict())
 
 
+@client_bp.route("/orders/<uuid>/receipt", methods=["GET"])
+def get_my_receipt(uuid: str):
+    """Zahlungsbeleg einer eigenen Bestellung (M62, kein Steuerbeleg).
+
+    Query: `number` (Belegnummer, Standard: der neueste Beleg), `format` = `html` (Standard), `text` oder `json`.
+    404, wenn die Bestellung nicht existiert oder (noch) kein Beleg ausgestellt wurde.
+    """
+    from flask import Response
+    from app.domain.billing import receipts as receipt_service
+    from app.domain.billing.models import Order, Receipt
+    user, err = _current_db_user()
+    if err:
+        return err
+    order = Order.query.filter_by(uuid=uuid, user_id=user.id).first()
+    if not order:
+        return jsonify({"error": "Bestellung nicht gefunden"}), 404
+    fmt = request.args.get("format", "html").lower()
+    if fmt not in ("html", "text", "json"):
+        return jsonify({"error": "format muss html, text oder json sein"}), 400
+    query = Receipt.query.filter_by(order_id=order.id)
+    number = request.args.get("number")
+    receipt = (query.filter_by(number=number).first() if number else query.order_by(Receipt.id.desc()).first())
+    if not receipt:
+        return jsonify({"error": "Für diese Bestellung gibt es keinen Beleg"}), 404
+    if fmt == "json":
+        return jsonify(receipt.to_dict())
+    body, mimetype = ((receipt_service.render_html(receipt), "text/html") if fmt == "html"
+                      else (receipt_service.render_text(receipt), "text/plain"))
+    resp = Response(body, mimetype=mimetype, headers={
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
+        "Cache-Control": "private, no-store",
+    })
+    resp.charset = "utf-8"
+    return resp
+
+
 @client_bp.route("/orders", methods=["POST"])
 def create_my_order():
     """Bestellt ein Paket. Body: {"product_id": 1, "name": "Mein Server" (optional)}.

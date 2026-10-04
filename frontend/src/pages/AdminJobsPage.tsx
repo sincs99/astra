@@ -4,6 +4,7 @@ import { api, type JobEntry, type JobSummary } from "../services/api";
 import {
   PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState,
   cardStyle, inputStyle, labelStyle, btnDefault, thStyle, tdStyle,
+  ScrollRegion,
 } from "../components/ui";
 import { formatLogTime } from "../lib/dates";
 
@@ -53,11 +54,11 @@ export function AdminJobsPage() {
       {summary && (
         <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
           <MiniCard label="Gesamt" value={summary.total} />
-          <MiniCard label="Pending" value={summary.by_status?.pending || 0} color="#1565c0" />
-          <MiniCard label="Running" value={summary.by_status?.running || 0} color="#e65100" />
-          <MiniCard label="Completed" value={summary.by_status?.completed || 0} color="#2e7d32" />
-          <MiniCard label="Failed" value={summary.by_status?.failed || 0} color="#c62828" />
-          <MiniCard label="Retrying" value={summary.by_status?.retrying || 0} color="#9c27b0" />
+          <MiniCard label="Pending" value={summary.by_status?.pending || 0} color="var(--c-blue)" />
+          <MiniCard label="Running" value={summary.by_status?.running || 0} color="var(--c-orange)" />
+          <MiniCard label="Completed" value={summary.by_status?.completed || 0} color="var(--c-green)" />
+          <MiniCard label="Failed" value={summary.by_status?.failed || 0} color="var(--c-red)" />
+          <MiniCard label="Retrying" value={summary.by_status?.retrying || 0} color="var(--c-purple)" />
         </div>
       )}
 
@@ -87,7 +88,7 @@ export function AdminJobsPage() {
         <button onClick={() => loadData()} style={{ ...btnDefault, alignSelf: "flex-end" }}>
           ↻ Aktualisieren
         </button>
-        <span style={{ fontSize: 13, color: "#666", alignSelf: "flex-end" }}>
+        <span style={{ fontSize: 13, color: "var(--fg-muted)", alignSelf: "flex-end" }}>
           {total} Jobs total, Seite {page}/{pages || 1}
         </span>
       </div>
@@ -100,10 +101,10 @@ export function AdminJobsPage() {
         <EmptyState icon="⚙️" message="Keine Jobs gefunden." />
       ) : (
         <>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #e0e0e0" }}>
+          <ScrollRegion label="Jobs-Tabelle">
+            <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid var(--border)" }}>
               <thead>
-                <tr style={{ backgroundColor: "#f5f5f5" }}>
+                <tr style={{ backgroundColor: "var(--bg-subtle)" }}>
                   <th style={thStyle}>ID</th>
                   <th style={thStyle}>Typ</th>
                   <th style={thStyle}>Status</th>
@@ -128,22 +129,22 @@ export function AdminJobsPage() {
                     <td style={{ ...tdStyle, fontSize: 12, whiteSpace: "nowrap" }}>{formatDate(job.finished_at)}</td>
                     <td style={{ ...tdStyle, fontSize: 12, maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {job.error ? (
-                        <span style={{ color: "#d32f2f" }} title={job.error}>
+                        <span style={{ color: "var(--c-red)" }} title={job.error}>
                           {job.error.substring(0, 80)}{job.error.length > 80 ? "..." : ""}
                         </span>
                       ) : job.result ? (
-                        <span style={{ color: "#2e7d32" }} title={job.result}>
+                        <span style={{ color: "var(--c-green)" }} title={job.result}>
                           {job.result.substring(0, 80)}{job.result.length > 80 ? "..." : ""}
                         </span>
                       ) : (
-                        <span style={{ color: "#666" }}>-</span>
+                        <span style={{ color: "var(--fg-muted)" }}>-</span>
                       )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollRegion>
 
           {pages > 1 && (
             <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 16 }}>
@@ -161,8 +162,8 @@ export function AdminJobsPage() {
 function MiniCard({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
     <div style={{ ...cardStyle, textAlign: "center", padding: "10px 18px", minWidth: 80 }}>
-      <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase", fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: color || "#333" }}>{value}</div>
+      <div style={{ fontSize: 11, color: "var(--fg-muted)", textTransform: "uppercase", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: color || "var(--fg)" }}>{value}</div>
     </div>
   );
 }

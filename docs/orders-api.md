@@ -49,6 +49,7 @@ Kündigung bleibt erhalten.
 | `awaiting_provisioning` | bezahlt, Instance fehlt noch (kein Platz), der Tick wiederholt die Bereitstellung |
 | `active` | bezahlt, Instance läuft |
 | `past_due` | Laufzeit abgelaufen, Instance gesperrt und gestoppt, Karenzzeit läuft |
+| `refunded` | voll erstattet (oder Zahlungsstreit verloren): Instance gesperrt, nach `BILLING_GRACE_DAYS` gelöscht (M59) |
 | `cancelled` | offene Bestellung vom Kunden storniert |
 | `expired` | beendet, Instance gelöscht (Tick oder manuelles Löschen der Instance) |
 
@@ -186,11 +187,31 @@ header = f"t={t},v1={sig}"          # als Header "Stripe-Signature" senden
   `awaiting_provisioning`); der Admin stellt später per `mark-paid` bereit.
 - Nur Währungen mit Nachkommastellen werden unterstützt (kein JPY, KRW usw.).
 
+### Erstattungen und Zahlungsstreitigkeiten (M59)
+
+Zusätzlich zu den Zahlungsereignissen wertet Astra diese Stripe-Ereignisse aus (gleicher Webhook, gleiche
+Signaturprüfung, gleiche Idempotenz). Zugeordnet wird über die Zahlungsreferenz (`payment_intent`, auch ältere
+Verlängerungen), ersatzweise über `metadata.order_uuid`.
+
+| Ereignis | Wirkung |
+|---|---|
+| `charge.refunded`, **voll**, für die zuletzt verbuchte Zahlung | Status `refunded`, `refunded_at`, Instance **gesperrt** (Grund „Zahlung erstattet“, nicht gelöscht), Karenzzeit `BILLING_GRACE_DAYS`, danach löscht der Tick die Instance (`expired`); Mail an den Kunden, Event `order:refunded`, Admin-Alert |
+| `charge.refunded`, **teilweise** oder voll für eine **ältere** Zahlung | nur Event `order:refunded` (`full: false`) und Admin-Alert; Bestellung und Server laufen weiter, der Admin entscheidet |
+| `charge.dispute.created` | `disputed` = true, Instance gesperrt (Grund „Zahlung angefochten“), Bestellung bleibt `active`/`past_due`, Event `order:disputed` (`outcome: opened`), Admin-Alert |
+| `charge.dispute.closed`, gewonnen oder ohne Folgen | `disputed` = false, die Sperre aus dem Streit wird aufgehoben (eine Admin- oder Zahlungssperre bleibt), Event `order:disputed` |
+| `charge.dispute.closed`, **verloren** | wie eine Vollerstattung: Status `refunded`, Karenzzeit bis zur Löschung |
+
+Payment-Event-Status ist jeweils `processed` (unbekannte Zahlung: `ignored`). Eine bestehende Sperre (z. B.
+Missbrauch) wird nie überschrieben. `GET /api/client/orders` und die Admin-Liste enthalten `refunded_at` und
+`disputed`. **Manuell bleibt:** die Erstattung selbst (Stripe-Dashboard), die Entscheidung bei Teilerstattungen,
+Beweise für Streitfälle, vorzeitiges Löschen eines erstatteten Servers (Admin) und Rechnungskorrekturen.
+
 ### Einrichtung
 
 1. In Stripe zuerst den **Test-Modus** nutzen (Schlüssel `sk_test_...`).
 2. Webhook-Endpunkt anlegen: URL `https://<PANEL_DOMAIN>/api/payments/stripe`, Ereignisse
-   `checkout.session.completed` und `checkout.session.async_payment_succeeded`. Das Signing-Secret
+   `checkout.session.completed`, `checkout.session.async_payment_succeeded` sowie seit M59 `charge.refunded`,
+   `charge.dispute.created` und `charge.dispute.closed`. Das Signing-Secret
    (`whsec_...`) kopieren.
 3. In der Backend-Umgebung setzen (nicht ins Repository): `PAYMENT_PROVIDER=stripe`, `STRIPE_SECRET_KEY`,
    `STRIPE_WEBHOOK_SECRET`; `FRONTEND_URL` muss die öffentliche Panel-URL sein. Backend neu starten.
@@ -237,11 +258,57 @@ header = f"t={t},v1={sig}"          # als Header "Stripe-Signature" senden
 | `GET/POST /api/admin/products`, `GET/PATCH/DELETE /{id}` | Admin | Pakete verwalten |
 | `GET /api/admin/orders?status=&user_id=`, `/{uuid}` | Admin | alle Bestellungen |
 | `GET /api/admin/billing/status` | Admin | Läuft der Billing-Tick? Letzter Lauf, Alter, Ergebnis, Bestellungen je Status |
+| `GET /api/admin/stats/revenue?days=30` | Admin | Umsatz der letzten `days` Tage (1 bis 365, sonst 400) auf Basis der Zahlungsbelege (`receipts.issued_at`, M62): `{days, since, by_currency: {"EUR": cents}, paid_count (Erstzahlungen), renewals_count, refunded_cents_by_currency}`. Erstattungen (M59) getrennt je Währung, nicht verrechnet; Zahlungen vor M62 und Gratis-Pakete fehlen |
 | `GET /api/admin/payment-events?status=&order_uuid=&limit=` | Admin | Zahlungsereignisse des Anbieters (nur lesen, neueste zuerst, `limit` 1 bis 500); `mismatch` und `unapplied` brauchen Aufmerksamkeit |
 | `POST /api/admin/orders/{uuid}/mark-paid` | Admin | `{payment_reference?}` Zahlung bestätigen und Instance bereitstellen; auf `active`/`past_due` ist die Referenz Pflicht (Verlängerung) |
 
 Activity- und Webhook-Events: `order:created`, `order:paid`, `order:provision_failed`, `order:cancelled`,
-`order:past_due`, `order:renewed`, `order:expired`, `order:reminder`, `order:payment_unapplied`, `order:provisioned`.
+`order:past_due`, `order:renewed`, `order:expired`, `order:reminder`, `order:payment_unapplied`, `order:provisioned`, `order:refunded`, `order:disputed`.
+
+## Zahlungsbelege (M62, Grundlage)
+
+Zu jeder verbuchten **Zahlung** (erste Zahlung, `mark-paid`, Stripe, Verlängerung) stellt Astra einen Beleg mit
+fortlaufender Nummer aus. Kostenlose Pakete und die automatische Gratis-Verlängerung bekommen keinen. Der
+Beleg ist **kein Steuerbeleg**: keine Umsatzsteuer, keine Anschrift des Kunden (siehe unten, was fehlt).
+
+- **Nummer:** `INVOICE_NUMBER_FORMAT` (Standard `AST-{year}-{seq:05d}`, erlaubt sind nur `{year}` und `{seq}`).
+  Die laufende Nummer beginnt jedes Jahr bei 1 und ist lückenlos: Zähler (`invoice_counters`, Zeilensperre
+  auf PostgreSQL) und Beleg werden in einer Transaktion geschrieben, ein Fehler verbraucht keine Nummer.
+  Belege werden **nie gelöscht** (sonst entstünde eine Lücke). Das Format nach dem Start nicht mehr ändern.
+  Ein ungültiges Format meldet der Produktions-Check kritisch; zur Laufzeit gilt dann das Standardformat.
+- **Zeitpunkt:** direkt nach der Buchung, auch wenn die Bereitstellung wartet (kein Platz). Ein Fehler beim
+  Ausstellen blockiert die Zahlung nie (Log `Beleg fuer Bestellung ... fehlgeschlagen`, es fehlt dann ein Beleg;
+  für Zahlungen vor M62 gibt es keine Belege).
+- **Inhalt:** Nummer, Datum (UTC), Kunde (Benutzername, E-Mail), Paket, Servername, Laufzeit in Tagen, Betrag,
+  Zahlungsreferenz, optional Anbieter (`INVOICE_SELLER`) und Fußzeile (`RECEIPT_FOOTER`), jeweils mit `\n` für
+  Zeilenumbrüche. Der Inhalt ist ein Schnappschuss zum Zahlungszeitpunkt.
+
+| Aufruf | Antwort |
+|---|---|
+| `GET /api/client/orders`, `/{uuid}` (und die Admin-Liste) | enthält `receipts: [{number, issued_at, amount_cents, currency}]`, älteste zuerst |
+| `GET /api/client/orders/{uuid}/receipt?number=&format=` | Beleg der eigenen Bestellung. `number` = Belegnummer (Standard: neuester), `format` = `html` (Standard, eigenständige Seite), `text` oder `json` (`number, issued_at, amount_cents, currency, payment_reference, product_name, instance_name, billing_period_days, customer`). 404 bei fremder/unbekannter Bestellung, unbekannter Nummer oder wenn es keinen Beleg gibt; 400 bei falschem `format`; 401 ohne Anmeldung |
+
+Das HTML escaped alle Werte (auch den vom Kunden gewählten Servernamen) und wird mit `nosniff`, einer
+restriktiven Content-Security-Policy und `no-store` ausgeliefert. Ein Link im Browser trägt keinen
+`Authorization`-Header: das Frontend holt den Beleg per `fetch` und zeigt ihn als Blob bzw. rendert `json` selbst.
+
+**Es fehlt für eine echte Rechnung** (Angaben und Entscheidungen des Betreibers): vollständige Anschrift und
+Steuernummer bzw. USt-IdNr. des Anbieters, Anschrift des Kunden, Umsatzsteuer-Ausweis (Netto/Brutto/Satz oder
+Kleinunternehmer-Hinweis), Leistungszeitraum, PDF bzw. revisionssichere Aufbewahrung, Rechnungskorrektur bei
+Erstattungen (Gutschrift) und die rechtliche Prüfung. Bis dahin Rechnungen außerhalb von Astra erstellen.
+
+## Admin-Benachrichtigung (M58)
+
+Astra meldet Störungen aktiv, sobald `ADMIN_ALERT_EMAIL` und/oder `ADMIN_ALERT_WEBHOOK_URL` gesetzt sind (Standard: aus):
+
+| Auslöser | Wann |
+|---|---|
+| `billing_tick` | Tick lief länger als `BILLING_TICK_MAX_AGE_MINUTES` nicht, obwohl Bestellungen auf ihn warten |
+| `billing_errors` | der letzte Tick meldete Fehler |
+| `waiting_orders` | bezahlte Bestellung wartet länger als `BILLING_WAIT_WARN_HOURS` auf einen Node |
+| Zahlungsereignis `mismatch` / `unapplied` | Betrag/Währung weicht ab bzw. Bestellung nicht mehr bezahlbar: Erstattung im Zahlungsanbieter prüfen (einmal je Bestellung und Status) |
+
+Eine Störung wird beim Wechsel auf „gestört“ gemeldet und danach höchstens alle `ADMIN_ALERT_COOLDOWN_MINUTES` (Standard 360) erneut; ist sie behoben, folgt einmalig eine Entwarnung. `python cli.py alert-test` schickt eine Testnachricht, `python cli.py alert-check` prüft alle Auslöser (läuft im Compose-Service `alerts` alle 5 Minuten, unabhängig vom Billing-Tick).
 
 ## Noch nicht enthalten
 

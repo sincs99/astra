@@ -9,55 +9,68 @@
  * - Grau: offline, unknown, inactive, unreachable, none
  */
 
-const STATUS_CONFIG: Record<string, { bg: string; color: string; label?: string }> = {
+import { hasKey, t } from "../../i18n";
+
+const STATUS_CONFIG: Record<string, { bg: string; color: string }> = {
   // Lifecycle
-  ready: { bg: "#e8f5e9", color: "#2e7d32", label: "bereit" },
-  running: { bg: "#e8f5e9", color: "#2e7d32", label: "läuft" },
-  starting: { bg: "#e3f2fd", color: "#1565c0", label: "startet" },
-  stopping: { bg: "#fff3e0", color: "#bf360c", label: "stoppt" },
-  stopped: { bg: "#f5f5f5", color: "#666", label: "gestoppt" },
-  provisioning: { bg: "#e3f2fd", color: "#1565c0", label: "wird eingerichtet" },
-  provision_failed: { bg: "#ffebee", color: "#c62828", label: "Fehler" },
-  reinstalling: { bg: "#e3f2fd", color: "#1565c0", label: "wird neu installiert" },
-  reinstall_failed: { bg: "#ffebee", color: "#c62828", label: "Fehler" },
-  restoring: { bg: "#fff3e0", color: "#bf360c", label: "wird wiederhergestellt" },
-  suspended: { bg: "#f5f5f5", color: "#666", label: "gesperrt" },
-  transferring: { bg: "#e3f2fd", color: "#1565c0", label: "wird verschoben" },
-  transfer_failed: { bg: "#ffebee", color: "#c62828", label: "Transfer Fehler" },
+  ready: { bg: "var(--tint-green)", color: "var(--c-green)" },
+  running: { bg: "var(--tint-green)", color: "var(--c-green)" },
+  starting: { bg: "var(--tint-blue)", color: "var(--c-blue)" },
+  stopping: { bg: "var(--tint-orange)", color: "var(--c-orange)" },
+  stopped: { bg: "var(--bg-subtle)", color: "var(--fg-muted)" },
+  provisioning: { bg: "var(--tint-blue)", color: "var(--c-blue)" },
+  provision_failed: { bg: "var(--tint-red)", color: "var(--c-red)" },
+  reinstalling: { bg: "var(--tint-blue)", color: "var(--c-blue)" },
+  reinstall_failed: { bg: "var(--tint-red)", color: "var(--c-red)" },
+  restoring: { bg: "var(--tint-orange)", color: "var(--c-orange)" },
+  suspended: { bg: "var(--bg-subtle)", color: "var(--fg-muted)" },
+  transferring: { bg: "var(--tint-blue)", color: "var(--c-blue)" },
+  transfer_failed: { bg: "var(--tint-red)", color: "var(--c-red)" },
   // Health
-  healthy: { bg: "#e8f5e9", color: "#2e7d32", label: "gesund" },
-  stale: { bg: "#fff8e1", color: "#bf360c", label: "veraltet" },
-  degraded: { bg: "#ffebee", color: "#c62828", label: "beeinträchtigt" },
-  unreachable: { bg: "#f5f5f5", color: "#666", label: "nicht erreichbar" },
+  healthy: { bg: "var(--tint-green)", color: "var(--c-green)" },
+  stale: { bg: "var(--tint-yellow)", color: "var(--c-orange)" },
+  degraded: { bg: "var(--tint-red)", color: "var(--c-red)" },
+  unreachable: { bg: "var(--bg-subtle)", color: "var(--fg-muted)" },
   // Jobs
-  pending: { bg: "#e3f2fd", color: "#1565c0", label: "ausstehend" },
-  completed: { bg: "#e8f5e9", color: "#2e7d32", label: "abgeschlossen" },
-  failed: { bg: "#ffebee", color: "#c62828", label: "fehlgeschlagen" },
-  retrying: { bg: "#f3e5f5", color: "#7b1fa2", label: "wird wiederholt" },
+  pending: { bg: "var(--tint-blue)", color: "var(--c-blue)" },
+  completed: { bg: "var(--tint-green)", color: "var(--c-green)" },
+  failed: { bg: "var(--tint-red)", color: "var(--c-red)" },
+  retrying: { bg: "var(--tint-purple)", color: "var(--c-purple)" },
   // Bestellungen (Phase 4)
-  pending_payment: { bg: "#e3f2fd", color: "#1565c0", label: "Zahlung ausstehend" },
-  awaiting_provisioning: { bg: "#e3f2fd", color: "#1565c0", label: "wird bereitgestellt" },
-  past_due: { bg: "#fff3e0", color: "#bf360c", label: "überfällig" },
-  cancelled: { bg: "#f5f5f5", color: "#666", label: "gekündigt" },
-  expired: { bg: "#ffebee", color: "#c62828", label: "abgelaufen" },
+  pending_payment: { bg: "var(--tint-blue)", color: "var(--c-blue)" },
+  awaiting_provisioning: { bg: "var(--tint-blue)", color: "var(--c-blue)" },
+  past_due: { bg: "var(--tint-orange)", color: "var(--c-orange)" },
+  cancelled: { bg: "var(--bg-subtle)", color: "var(--fg-muted)" },
+  expired: { bg: "var(--tint-red)", color: "var(--c-red)" },
+  refunded: { bg: "var(--tint-red)", color: "var(--c-red)" },
+  disputed: { bg: "var(--tint-orange)", color: "var(--c-orange)" },
+  // Zahlungsereignisse
+  mismatch: { bg: "var(--tint-red)", color: "var(--c-red)" },
+  unapplied: { bg: "var(--tint-orange)", color: "var(--c-orange)" },
   // Maintenance
-  maintenance: { bg: "#fff3e0", color: "#bf360c", label: "Wartung" },
+  maintenance: { bg: "var(--tint-orange)", color: "var(--c-orange)" },
   // Misc
-  ok: { bg: "#e8f5e9", color: "#2e7d32" },
-  active: { bg: "#e8f5e9", color: "#2e7d32", label: "aktiv" },
-  inactive: { bg: "#f5f5f5", color: "#666", label: "inaktiv" },
-  offline: { bg: "#f5f5f5", color: "#666", label: "offline" },
-  unknown: { bg: "#f5f5f5", color: "#666" },
-  error: { bg: "#ffebee", color: "#c62828" },
-  warning: { bg: "#fff3e0", color: "#bf360c" },
-  info: { bg: "#e3f2fd", color: "#1565c0" },
-  success: { bg: "#e8f5e9", color: "#2e7d32" },
+  ok: { bg: "var(--tint-green)", color: "var(--c-green)" },
+  active: { bg: "var(--tint-green)", color: "var(--c-green)" },
+  inactive: { bg: "var(--bg-subtle)", color: "var(--fg-muted)" },
+  offline: { bg: "var(--bg-subtle)", color: "var(--fg-muted)" },
+  unknown: { bg: "var(--bg-subtle)", color: "var(--fg-muted)" },
+  error: { bg: "var(--tint-red)", color: "var(--c-red)" },
+  warning: { bg: "var(--tint-orange)", color: "var(--c-orange)" },
+  info: { bg: "var(--tint-blue)", color: "var(--c-blue)" },
+  success: { bg: "var(--tint-green)", color: "var(--c-green)" },
 };
+
+/** Übersetzte Bezeichnung (Schlüssel status.<name>); undefined, wenn es keine gibt. */
+function translatedStatus(s: string): string | undefined {
+  const key = `status.${s}`;
+  return hasKey(key) ? t(key) : undefined;
+}
 
 /** Deutsche Bezeichnung eines Status fuer Fliesstexte (Fallback: der Rohwert). */
 export function statusLabel(status: string | null | undefined): string {
   const s = (status || "unknown").toLowerCase();
-  return STATUS_CONFIG[s]?.label ?? s;
+  return translatedStatus(s) ?? s;
 }
 
 interface StatusBadgeProps {
@@ -68,8 +81,8 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, label, size = "md" }: StatusBadgeProps) {
   const s = (status || "unknown").toLowerCase();
-  const cfg = STATUS_CONFIG[s] || { bg: "#f5f5f5", color: "#666" };
-  const displayLabel = label || cfg.label || s;
+  const cfg = STATUS_CONFIG[s] || { bg: "var(--bg-subtle)", color: "var(--fg-muted)" };
+  const displayLabel = label || translatedStatus(s) || s;
 
   const fontSize = size === "sm" ? 10 : 12;
   const padding = size === "sm" ? "1px 6px" : "2px 10px";

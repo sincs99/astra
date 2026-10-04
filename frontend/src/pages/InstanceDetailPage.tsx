@@ -190,7 +190,7 @@ export function InstanceDetailPage() {
       </div>
 
       {instance.description && (
-        <p style={{ color: "#666", marginTop: 4 }}>{instance.description}</p>
+        <p style={{ color: "var(--fg-muted)", marginTop: 4 }}>{instance.description}</p>
       )}
 
       {instance.connection && (
@@ -203,14 +203,14 @@ export function InstanceDetailPage() {
       {instance.status === "suspended" && (
         <div style={{
           padding: "12px 16px", marginBottom: 16,
-          backgroundColor: "#fff3e0", border: "1px solid #ffcc80",
-          borderRadius: 8, color: "#bf360c",
+          backgroundColor: "var(--tint-orange)", border: "1px solid var(--border-orange)",
+          borderRadius: 8, color: "var(--c-orange)",
         }}>
           <strong>Dein Server ist gesperrt</strong>
           {instance.suspended_reason && (
             <span style={{ marginLeft: 8 }}>— {instance.suspended_reason}</span>
           )}
-          <div style={{ fontSize: 12, marginTop: 4, color: "#bf360c" }}>
+          <div style={{ fontSize: 12, marginTop: 4, color: "var(--c-orange)" }}>
             Starten, Dateien, Backups, Datenbanken und Routinen sind bis zur Entsperrung nicht verfügbar.
             Bitte kontaktiere den Support.
           </div>
@@ -239,16 +239,16 @@ export function InstanceDetailPage() {
         </div>
 
         {(status === "provisioning" || status === "reinstalling") && (
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #eee" }}>
-            <p style={{ fontSize: 13, color: "#666", margin: "0 0 8px" }}>
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+            <p style={{ fontSize: 13, color: "var(--fg-muted)", margin: "0 0 8px" }}>
               {status === "reinstalling" ? "⏳ Der Server wird neu installiert…" : "⏳ Der Server wird eingerichtet…"}
             </p>
           </div>
         )}
 
         {(status === "provision_failed" || status === "reinstall_failed") && (
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #eee" }}>
-            <p style={{ fontSize: 13, color: "#d9534f", margin: "0 0 8px" }}>
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+            <p style={{ fontSize: 13, color: "var(--c-red)", margin: "0 0 8px" }}>
               {status === "reinstall_failed" ? "❌ Die Neuinstallation ist fehlgeschlagen." : "❌ Die Einrichtung ist fehlgeschlagen. Du kannst es erneut versuchen."}
             </p>
             {instance.role === "owner" && (
@@ -283,9 +283,9 @@ export function InstanceDetailPage() {
             <ResourceBox label="Uptime" value={formatUptime(resources.uptime_seconds)} />
           </div>
         ) : (
-          <p style={{ color: "#666", marginTop: 8 }}>Runtime-Daten werden geladen...</p>
+          <p style={{ color: "var(--fg-muted)", marginTop: 8 }}>Runtime-Daten werden geladen...</p>
         )}
-        <p style={{ fontSize: 11, color: "#666", marginBottom: 0, marginTop: 8 }}>
+        <p style={{ fontSize: 11, color: "var(--fg-muted)", marginBottom: 0, marginTop: 8 }}>
           Auto-Refresh alle 5 Sekunden
         </p>
       </div>
@@ -296,18 +296,18 @@ export function InstanceDetailPage() {
           <h3 style={{ marginTop: 0 }}>Variablen</h3>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ borderBottom: "2px solid #e0e0e0" }}>
-                <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "#555" }}>Name</th>
-                <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "#555" }}>Wert</th>
+              <tr style={{ borderBottom: "2px solid var(--border)" }}>
+                <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--fg-soft)" }}>Name</th>
+                <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--fg-soft)" }}>Wert</th>
               </tr>
             </thead>
             <tbody>
               {viewableVars.map(v => (
-                <tr key={v.env_var} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                <tr key={v.env_var} style={{ borderBottom: "1px solid var(--bg-subtle)" }}>
                   <td style={{ padding: "8px", verticalAlign: "middle" }}>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{v.name}</div>
-                    {v.description && <div style={{ fontSize: 11, color: "#666" }}>{v.description}</div>}
-                    <code style={{ fontSize: 11, color: "#666" }}>{v.env_var}</code>
+                    {v.description && <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>{v.description}</div>}
+                    <code style={{ fontSize: 11, color: "var(--fg-muted)" }}>{v.env_var}</code>
                   </td>
                   <td style={{ padding: "8px", verticalAlign: "middle" }}>
                     {v.user_editable ? (
@@ -315,7 +315,7 @@ export function InstanceDetailPage() {
                         type="text"
                         value={varEdits[v.env_var] ?? ""}
                         onChange={e => setVarEdits(prev => ({ ...prev, [v.env_var]: e.target.value }))}
-                        style={{ padding: "4px 8px", fontSize: 13, borderRadius: 4, border: "1px solid #ccc", width: "100%" }}
+                        style={{ padding: "4px 8px", fontSize: 13, borderRadius: 4, border: "1px solid var(--border-strong)", width: "100%" }}
                       />
                     ) : (
                       <span style={{ fontSize: 13, fontFamily: "monospace" }}>{varEdits[v.env_var] ?? "–"}</span>
@@ -378,10 +378,10 @@ export function InstanceDetailPage() {
 
       {/* Gefahrenzone: nur Owner */}
       {instance.role === "owner" && (
-        <div style={{ ...cardStyle, borderColor: "#ef9a9a" }}>
-          <h3 style={{ marginTop: 0, color: "#c62828" }}>Server löschen</h3>
+        <div style={{ ...cardStyle, borderColor: "var(--border-red)" }}>
+          <h3 style={{ marginTop: 0, color: "var(--c-red)" }}>Server löschen</h3>
           {instance.status === "suspended" ? (
-            <p style={{ margin: 0, fontSize: 13, color: "#666" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--fg-muted)" }}>
               Gesperrt, bitte Support kontaktieren.
             </p>
           ) : deleting ? (
@@ -398,7 +398,7 @@ export function InstanceDetailPage() {
               }}
             />
           ) : (
-            <button type="button" onClick={startDeleting} style={{ ...btnDefault, color: "#c62828", borderColor: "#ef9a9a" }}>
+            <button type="button" onClick={startDeleting} style={{ ...btnDefault, color: "var(--c-red)", borderColor: "var(--border-red)" }}>
               Server löschen…
             </button>
           )}
@@ -451,10 +451,10 @@ function DetailRow({ label, value, mono }: { label: string; value: string; mono?
 
 function ResourceBox({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div style={{ padding: 12, backgroundColor: "#f8f8f8", borderRadius: 6, textAlign: "center" }}>
-      <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{label}</div>
+    <div style={{ padding: 12, backgroundColor: "var(--bg-subtle)", borderRadius: 6, textAlign: "center" }}>
+      <div style={{ fontSize: 11, color: "var(--fg-muted)", marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 16, fontWeight: 600 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#666" }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>{sub}</div>}
     </div>
   );
 }

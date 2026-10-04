@@ -19,6 +19,7 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { LoadingState } from "../components/ui";
 
 // Admin-Seiten werden erst bei Bedarf geladen (Kunden brauchen sie nie)
+const AdminOverviewPage = lazy(() => import("../pages/AdminOverviewPage").then((m) => ({ default: m.AdminOverviewPage })));
 const AdminAgentsPage = lazy(() => import("../pages/AdminAgentsPage").then((m) => ({ default: m.AdminAgentsPage })));
 const AdminAgentsMonitoringPage = lazy(() => import("../pages/AdminAgentsMonitoringPage").then((m) => ({ default: m.AdminAgentsMonitoringPage })));
 const AdminBlueprintsPage = lazy(() => import("../pages/AdminBlueprintsPage").then((m) => ({ default: m.AdminBlueprintsPage })));
@@ -66,6 +67,7 @@ export function AppRouter() {
         <Route path="/password-reset/confirm" element={<ResetPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminOverviewPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/admin/agents" element={<ProtectedRoute><AdminRoute><AdminAgentsPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/admin/agents/monitoring" element={<ProtectedRoute><AdminRoute><AdminAgentsMonitoringPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/admin/blueprints" element={<ProtectedRoute><AdminRoute><AdminBlueprintsPage /></AdminRoute></ProtectedRoute>} />

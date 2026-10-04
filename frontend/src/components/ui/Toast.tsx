@@ -20,10 +20,10 @@ interface ToastMessage {
 }
 
 const COLORS: Record<ToastType, { bg: string; color: string; border: string }> = {
-  success: { bg: "#e8f5e9", color: "#2e7d32", border: "#a5d6a7" },
-  error: { bg: "#ffebee", color: "#c62828", border: "#ef9a9a" },
-  info: { bg: "#e3f2fd", color: "#1565c0", border: "#90caf9" },
-  warning: { bg: "#fff3e0", color: "#e65100", border: "#ffcc80" },
+  success: { bg: "var(--tint-green)", color: "var(--c-green)", border: "var(--border-green)" },
+  error: { bg: "var(--tint-red)", color: "var(--c-red)", border: "var(--border-red)" },
+  info: { bg: "var(--tint-blue)", color: "var(--c-blue)", border: "var(--border-blue)" },
+  warning: { bg: "var(--tint-orange)", color: "var(--c-orange)", border: "var(--border-orange)" },
 };
 
 let _nextId = 0;

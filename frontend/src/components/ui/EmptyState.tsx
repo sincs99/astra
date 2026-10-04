@@ -1,3 +1,5 @@
+import { t } from "../../i18n";
+
 /** Einheitlicher Leerzustand (M26). */
 
 interface EmptyStateProps {
@@ -5,9 +7,9 @@ interface EmptyStateProps {
   icon?: string;
 }
 
-export function EmptyState({ message = "Keine Daten vorhanden.", icon = "📭" }: EmptyStateProps) {
+export function EmptyState({ message = t("common.empty"), icon = "📭" }: EmptyStateProps) {
   return (
-    <div style={{ padding: 32, textAlign: "center", color: "#666" }}>
+    <div style={{ padding: 32, textAlign: "center", color: "var(--fg-muted)" }}>
       <div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div>
       <div style={{ fontSize: 14 }}>{message}</div>
     </div>

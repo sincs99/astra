@@ -47,6 +47,13 @@ x-backend-env: &backend-env
   BILLING_REMINDER_DAYS: ${BILLING_REMINDER_DAYS:-3}
   BILLING_TICK_MAX_AGE_MINUTES: ${BILLING_TICK_MAX_AGE_MINUTES:-15}
   BILLING_WAIT_WARN_HOURS: ${BILLING_WAIT_WARN_HOURS:-24}
+  ADMIN_ALERT_EMAIL: ${ADMIN_ALERT_EMAIL:-}
+  ADMIN_ALERT_WEBHOOK_URL: ${ADMIN_ALERT_WEBHOOK_URL:-}
+  ADMIN_ALERT_COOLDOWN_MINUTES: ${ADMIN_ALERT_COOLDOWN_MINUTES:-360}
+  ADMIN_ALERT_RECOVERY: ${ADMIN_ALERT_RECOVERY:-true}
+  INVOICE_NUMBER_FORMAT: ${INVOICE_NUMBER_FORMAT:-}  # leer = AST-{year}-{seq:05d}
+  INVOICE_SELLER: ${INVOICE_SELLER:-}
+  RECEIPT_FOOTER: ${RECEIPT_FOOTER:-}
   PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-manual}
   STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
   STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
@@ -158,6 +165,18 @@ services:
         condition: service_started
     # Alle 5 Minuten; Fehler einer Bestellung blockieren die anderen nicht (Exit 1 nur als Signal im Log)
     command: ["sh", "-c", "while true; do python cli.py billing-tick || echo '[billing] Tick mit Fehlern beendet'; sleep ${BILLING_TICK_INTERVAL:-300}; done"]
+
+  # ── Admin-Alerts (M58): prueft unabhaengig vom Billing-Tick, ob dieser noch laeuft ──
+  alerts:
+    image: astra-backend:local
+    restart: always
+    environment:
+      <<: *backend-env
+      AUTO_MIGRATE: "false"
+    depends_on:
+      backend:
+        condition: service_started
+    command: ["sh", "-c", "while true; do python cli.py alert-check || echo '[alerts] alert-check fehlgeschlagen'; sleep ${ALERT_CHECK_INTERVAL:-300}; done"]
 
   # ── Frontend (Nginx: SPA + /api-Proxy zum Backend) ─────
   frontend:

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { t } from "../i18n";
 import { api, type Instance } from "../services/api";
 import { ConnectionAddress } from "../components/ConnectionAddress";
 import { BillingTickCard } from "../components/BillingTickCard";
@@ -34,7 +35,7 @@ export function DashboardPage() {
       const data = await api.getClientInstances();
       setInstances(data);
     } catch (err) {
-      if (!silent) setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      if (!silent) setError(err instanceof Error ? err.message : t("dash.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -47,10 +48,10 @@ export function DashboardPage() {
   const user = useCurrentUser();
 
   return (
-    <PageLayout title="Dashboard" maxWidth={900}>
+    <PageLayout title={t("dash.title")} maxWidth={900}>
       <Toast {...toast} />
-      <p style={{ color: "#666", marginTop: -12, marginBottom: 24, fontSize: 14 }}>
-        Eingeloggt als {user ? user.username : "…"}
+      <p style={{ color: "var(--fg-muted)", marginTop: -12, marginBottom: 24, fontSize: 14 }}>
+        {t("dash.signedInAs", { name: user ? user.username : "…" })}
       </p>
 
       {user?.is_admin && <BillingTickCard onlyWhenUnhealthy />}
@@ -59,7 +60,7 @@ export function DashboardPage() {
       {error && <ErrorState message={error} onRetry={() => load()} />}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-        <h2 style={{ fontSize: 18, margin: 0 }}>Meine Server</h2>
+        <h2 style={{ fontSize: 18, margin: 0 }}>{t("dash.myServers")}</h2>
         <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
       </div>
 
@@ -69,13 +70,13 @@ export function DashboardPage() {
         <div>
           <EmptyState
             message={user?.is_admin
-              ? "Keine Instances vorhanden. Erstelle eine über den Admin-Bereich."
-              : "Du hast noch keinen Server."}
+              ? t("dash.noInstancesAdmin")
+              : t("dash.noServers")}
             icon="📦"
           />
           {!user?.is_admin && (
             <p style={{ textAlign: "center" }}>
-              <Link to="/shop" style={linkStyle}>Zum Shop und Server bestellen</Link>
+              <Link to="/shop" style={linkStyle}>{t("dash.orderServer")}</Link>
             </p>
           )}
         </div>
@@ -86,24 +87,24 @@ export function DashboardPage() {
               key={inst.id}
               onClick={() => navigate(`/instances/${inst.uuid}`)}
               style={{ ...cardStyle, cursor: "pointer", transition: "border-color 0.15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#1976d2")}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e0e0e0")}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--c-blue)")}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <strong style={{ fontSize: 16 }}>{inst.name}</strong>
                   {inst.description && (
-                    <span style={{ color: "#666", marginLeft: 8, fontSize: 14 }}>
+                    <span style={{ color: "var(--fg-muted)", marginLeft: 8, fontSize: 14 }}>
                       {inst.description}
                     </span>
                   )}
                 </div>
                 <StatusBadge status={inst.status ?? "ready"} />
               </div>
-              <div style={{ marginTop: 8, fontSize: 13, color: "#666" }}>
+              <div style={{ marginTop: 8, fontSize: 13, color: "var(--fg-muted)" }}>
                 <code style={{ fontSize: 11 }}>{inst.uuid}</code>
                 <span style={{ marginLeft: 16 }}>
-                  {inst.memory} MB RAM &middot; {inst.disk} MB Disk &middot; {inst.cpu}% CPU
+                  {inst.memory} MB {t("shop.ram")} &middot; {inst.disk} MB Disk &middot; {inst.cpu}% CPU
                 </span>
               </div>
               {inst.connection && (

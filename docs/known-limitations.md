@@ -19,7 +19,7 @@
 - Database-Provisioning (M18) erstellt Metadaten, verbindet sich aber nicht mit echten Datenbankservern.
 
 ### Auth / MFA
-- MFA-Verifizierung ist implementiert, aber kein Recovery-Code-Flow fuer verlorene Authenticator-Apps.
+- MFA mit TOTP und seit M60 mit 10 einmaligen Recovery-Codes (nur Hashes gespeichert, Neu-Erzeugen mit Passwort, siehe `docs/mfa-recovery-codes.md`). Es gibt keinen Reset per E-Mail: wer weder Authenticator noch Codes hat, braucht einen Admin. MFA deaktivieren verlangt kein Passwort.
 - API-Key-Rotation erfordert manuelles Loeschen und Neuerstellen.
 
 ### Agent Maintenance
@@ -27,8 +27,8 @@
 - Der Admin-Transfer zwischen Agents loescht die Instance auf dem alten Node und legt sie auf dem Ziel-Node neu an. **Dateien werden dabei nicht uebertragen** (Datenverlust, wenn vorher keine Sicherung gezogen wurde).
 
 ### Abrechnung und Shop (Phase 4)
-- **Keine Rechnungen, keine Umsatzsteuer:** Astra erstellt keine Rechnungen und weist keine USt aus. Preise sind Betraege in Cent ohne Netto/Brutto-Trennung. Rechnungsstellung muss ausserhalb geregelt werden.
-- **Keine Erstattungen:** Astra erstattet nie automatisch. Erstattungen laufen manuell (Stripe-Dashboard oder Ueberweisung) und werden in Astra nicht nachvollzogen; Stripe-Ereignisse zu Erstattungen und Zahlungsstreitigkeiten (`charge.refunded`, Disputes) werden nicht ausgewertet, ein erstatteter Server bleibt aktiv. Loescht ein Kunde seinen Server selbst oder kuendigt, gibt es keinen anteiligen Rest.
+- **Keine Rechnungen, keine Umsatzsteuer:** Astra erstellt keine Rechnungen und weist keine USt aus. Seit M62 gibt es nur einen einfachen Zahlungsbeleg mit fortlaufender Nummer (HTML/Text/JSON, kein PDF, kein Steuerbeleg, nur für Zahlungen ab M62, keine Gutschrift bei Erstattung; siehe `docs/orders-api.md`). Preise sind Betraege in Cent ohne Netto/Brutto-Trennung. Rechnungsstellung muss ausserhalb geregelt werden.
+- **Erstattungen manuell:** Astra erstattet nie automatisch; die Erstattung läuft im Stripe-Dashboard oder per Überweisung. Seit M59 reagiert Astra auf Stripe-Ereignisse dazu (`charge.refunded`, `charge.dispute.created/closed`): volle Erstattung der letzten Zahlung sperrt den Server und löscht ihn nach der Karenzzeit, Teilerstattungen und ältere Zahlungen lösen nur Alert und Event aus, Streitfälle sperren bis zum Ausgang. Beweise und Entscheidungen im Streitfall bleiben manuell, bei manueller Zahlung (`mark-paid`) und Überweisung gibt es keine Erstattungslogik. Löscht ein Kunde seinen Server selbst oder kündigt, gibt es keinen anteiligen Rest.
 - **Keine Mehrwaehrung:** Jedes Produkt hat eine Waehrung, Astra rechnet nicht um und berichtet nicht ueber Waehrungen hinweg. Fuer Stripe nur Waehrungen mit Nachkommastellen (kein JPY, KRW usw.).
 - **Keine Abonnements:** Stripe wird nur als Einmalzahlung (`mode=payment`) genutzt. Der Kunde verlaengert jede Laufzeit selbst; der Tick erinnert per Mail (`BILLING_REMINDER_DAYS`), sperrt bei Ablauf und loescht nach `BILLING_GRACE_DAYS`. Nur kostenlose Pakete verlaengern sich automatisch.
 - **Stripe nur mit gemockten Aufrufen getestet:** Es gab nie einen echten Stripe-Aufruf. Vor dem Livegang einmal im Test-Modus mit Stripe CLI durchspielen (siehe `docs/orders-api.md`).
@@ -36,12 +36,13 @@
 - **Bestell-Mails:** Mails gibt es bei Zahlungseingang (Server bereit bzw. Hinweis auf Wartezeit), Verlängerung, Erinnerung, Überfälligkeit und Löschung; keine bei Anlegen einer Bestellung und keine bei kostenlosen Paketen. Es sind einfache Textmails ohne Rechnung. Ohne `MAIL_SERVER` werden Mails nur ins Log geschrieben.
 - **Kapazitaet nach Zuweisung:** Die Kapazitaetspruefung rechnet mit den zugewiesenen Ressourcen der Instances (inkl. Overallocation des Agents), nicht mit der tatsaechlichen Auslastung. Die Zeilensperre gegen parallele Erstellungen wirkt nur auf PostgreSQL.
 - **Missbrauchsschutz:** Registrierung hat Rate Limiting und optionale E-Mail-Verifizierung, aber keine Bot-Erkennung (CAPTCHA). Gratis-Pakete sind nur ueber `max_instances_per_user` begrenzt.
-- **Tick-Betrieb:** Der Billing-Tick laeuft als Schleife im Compose-Service `billing`. Faellt er aus, werden weder Ablaeufe durchgesetzt noch Erinnerungen verschickt. Seit M53 erkennt das Panel das (`GET /api/admin/billing/status`, Preflight-Check `billing_tick`, Warnung nach `BILLING_TICK_MAX_AGE_MINUTES`, Standard 15). Es gibt aber keine aktive Benachrichtigung: jemand muss den Status oder den Preflight ansehen bzw. einen externen Monitor darauf richten.
+- **Tick-Betrieb:** Der Billing-Tick laeuft als Schleife im Compose-Service `billing`. Faellt er aus, werden weder Ablaeufe durchgesetzt noch Erinnerungen verschickt. Seit M53 erkennt das Panel das (`GET /api/admin/billing/status`, Preflight-Check `billing_tick`, Warnung nach `BILLING_TICK_MAX_AGE_MINUTES`, Standard 15). Seit M58 meldet Astra Ausfall, Fehler im Tick und lange wartende Bestellungen aktiv per Mail und/oder Webhook (`ADMIN_ALERT_EMAIL`, `ADMIN_ALERT_WEBHOOK_URL`, Container `alerts`). Ohne konfigurierten Kanal (Standard) bleibt es bei Status und Preflight. Die Meldung ist best effort: fällt der Mail-/Webhook-Dienst selbst aus, kommt nichts an; die Entprellung merkt sich nur den Zustand, nicht ob eine Nachricht zugestellt wurde.
 
 ### UI / Frontend
 - Responsive Design: Kundenseiten (Dashboard, Server, Bestellungen, Konto, Shop) sind mobil nutzbar (Hamburger-Menue, Bestellungen als Karten); Admin-Tabellen scrollen auf kleinen Bildschirmen horizontal.
 - File-Upload nur fuer Textdateien bis 1 MB (kein Multipart-Endpoint im Backend).
-- Nicht alle Admin-Seiten verwenden bereits die neuen `PageLayout`/`StatusBadge`-Komponenten (schrittweise Migration).
+- Alle Seiten mit Navigation nutzen `PageLayout` (Tab-Titel, Skip-Link) und `StatusBadge`; Tabellen scrollen auf kleinen Bildschirmen horizontal in einem per Tastatur fokussierbaren Bereich (`ScrollRegion`). Nur die Bestellungen des Kunden werden mobil als Karten dargestellt.
+- Sprachen: Deutsch (Standard) und Englisch fuer die Kundenseiten ausser der Server-Detailseite; Admin-Bereich, Rechtstexte und Backend-Meldungen bleiben deutsch.
 - Keine Echtzeit-Updates via WebSocket fuer Admin-Ansichten; Jobs, Fleet Monitoring, Dashboard und Admin-Instances pollen alle 15s (abschaltbar), andere Seiten nur manuell.
 
 ### Monitoring / Observability
@@ -56,5 +57,6 @@
 ### Sicherheit
 - `/api/admin` ist durch einen Admin-Guard geschuetzt (M35), Agents sprechen nur noch ueber `/api/remote` mit Node-Token. Die Legacy-Routen unter `/api/agent` wurden mit M40 entfernt.
 - Rate Limiting nutzt Redis (`REDIS_URL`); ist Redis nicht erreichbar, faellt es auf einen In-Memory-Zaehler pro Prozess zurueck.
+- **Logout:** `POST /api/auth/logout` sperrt das verwendete Access-Token bis zu seinem Ablauf (Tabelle `revoked_tokens`, Prüfung bei jedem Request per Primärschlüssel-Lookup; kein Redis-Cache, damit ein Redis-Neustart Abmeldungen nicht aufhebt). Andere Geräte bleiben angemeldet (dafür gibt es den Passwortwechsel, M57). Tokens ohne `jti` (vor M61 ausgestellt: alle neuen haben eins) und API-Keys lassen sich nicht sperren. Abgelaufene Einträge räumt `cleanup-jobs` bzw. der nächste Logout auf.
 - CSRF-Schutz ist ueber SameSite Cookies + JWT geloest, kein dedizierter CSRF-Token.
-- Passwortwechsel und -reset machen neu ausgestellte JWTs sofort ungueltig (Claim `pwf`, Fingerabdruck des Passwort-Hashes); das Gerät, das das Passwort ändert, bekommt ein frisches Token. Noch vor M57 ausgestellte Tokens ohne diesen Claim gelten bis zu ihrem Ablauf (24 Stunden). Sonst gibt es weiterhin kein einzelnes Abmelden (kein Logout-Blocklisting) und API-Keys bleiben vom Passwortwechsel unberührt.
+- Passwortwechsel und -reset machen neu ausgestellte JWTs sofort ungueltig (Claim `pwf`, Fingerabdruck des Passwort-Hashes); das Gerät, das das Passwort ändert, bekommt ein frisches Token. Noch vor M57 ausgestellte Tokens ohne diesen Claim gelten bis zu ihrem Ablauf (24 Stunden). API-Keys bleiben vom Passwortwechsel unberührt.

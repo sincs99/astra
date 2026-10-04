@@ -25,6 +25,8 @@ import { cardStyle, inputStyle, labelStyle, btnPrimary, btnDanger, btnDefault, t
 
 ## Farbkonventionen
 
+**Dunkler Modus:** Farben stehen als CSS-Variablen in `frontend/src/theme.css` (`--bg-card`, `--fg-muted`, `--c-green`, `--tint-red`, `--border` usw.) und werden in Komponenten als `var(--...)` verwendet, nicht als Hex. Die Hex-Werte in den Tabellen unten sind die Werte des hellen Designs. Dunkel gilt bei `prefers-color-scheme: dark` oder `data-theme="dark"`; der Nutzer waehlt im Konto "Wie das Gerät", "Hell" oder "Dunkel" (localStorage `astra_theme`). Gesaettigte Flaechen mit weissem Text (Buttons, Power-Buttons) bleiben bewusst feste Hex-Werte, ebenso die Server-Konsole (immer dunkel).
+
 ### Status-Farben
 
 | Farbe | Hex | Verwendung |

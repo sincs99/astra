@@ -113,6 +113,15 @@ class Config:
     # M53: Warnung, wenn der Billing-Tick laenger als so viele Minuten nicht gelaufen ist (Tick laeuft alle ~5 Minuten)
     BILLING_TICK_MAX_AGE_MINUTES = max(int(os.getenv("BILLING_TICK_MAX_AGE_MINUTES", "15")), 1)
     BILLING_WAIT_WARN_HOURS = max(int(os.getenv("BILLING_WAIT_WARN_HOURS", "24")), 1)
+    # M58: aktive Admin-Benachrichtigung (leer = aus); Entprellung in Minuten, Entwarnung einmalig
+    ADMIN_ALERT_EMAIL = os.getenv("ADMIN_ALERT_EMAIL", "").strip()
+    ADMIN_ALERT_WEBHOOK_URL = os.getenv("ADMIN_ALERT_WEBHOOK_URL", "").strip()
+    ADMIN_ALERT_COOLDOWN_MINUTES = max(int(os.getenv("ADMIN_ALERT_COOLDOWN_MINUTES", "360")), 1)
+    ADMIN_ALERT_RECOVERY = os.getenv("ADMIN_ALERT_RECOVERY", "true").lower() == "true"
+    # M62: Belege (Grundlage, kein Steuerbeleg): Nummernformat mit {year} und {seq}, Anbietertext und Fusszeile
+    INVOICE_NUMBER_FORMAT = (os.getenv("INVOICE_NUMBER_FORMAT") or "AST-{year}-{seq:05d}").strip()
+    INVOICE_SELLER = os.getenv("INVOICE_SELLER", "").replace("\\n", "\n").strip()
+    RECEIPT_FOOTER = os.getenv("RECEIPT_FOOTER", "").replace("\\n", "\n").strip()
     # M46: Erinnerungsmail so viele Tage vor Laufzeitende (0 = keine Erinnerung)
     BILLING_REMINDER_DAYS = max(int(os.getenv("BILLING_REMINDER_DAYS", "3")), 0)
     # M48: Zahlungsanbieter: "manual" (Admin bestaetigt Zahlungen) oder "stripe" (Checkout + Webhook)
@@ -173,6 +182,11 @@ class Config:
             issues.append(
                 "KRITISCH: PAYMENT_PROVIDER=stripe, aber STRIPE_SECRET_KEY und/oder STRIPE_WEBHOOK_SECRET fehlen."
             )
+
+        from app.domain.billing.receipts import validate_number_format
+        problem = validate_number_format(cls.INVOICE_NUMBER_FORMAT)
+        if problem:
+            issues.append(f"KRITISCH: INVOICE_NUMBER_FORMAT ist ungueltig: {problem}")
 
         if cls.SQLALCHEMY_DATABASE_URI.startswith("sqlite"):
             issues.append(

@@ -65,7 +65,7 @@ export function BlueprintImport({ onImported, onError }: BlueprintImportProps) {
   return (
     <div style={cardStyle}>
       <h2 style={{ marginTop: 0, fontSize: 18, fontWeight: 700 }}>Blueprint importieren</h2>
-      <p style={{ marginTop: -8, color: "#666", fontSize: 13 }}>
+      <p style={{ marginTop: -8, color: "var(--fg-muted)", fontSize: 13 }}>
         Pterodactyl-Egg als JSON-Datei hochladen oder einfügen.
       </p>
 
@@ -96,10 +96,10 @@ export function BlueprintImport({ onImported, onError }: BlueprintImportProps) {
       {error && <ErrorState message={error} />}
 
       {parsed && (
-        <div style={{ padding: 10, marginBottom: 12, backgroundColor: "#e8f5e9", borderRadius: 6, fontSize: 13 }}>
+        <div style={{ padding: 10, marginBottom: 12, backgroundColor: "var(--tint-green)", borderRadius: 6, fontSize: 13 }}>
           <strong>{parsed.preview.name}</strong>
           {parsed.preview.author && <> von {parsed.preview.author}</>}
-          <div style={{ color: "#555" }}>
+          <div style={{ color: "var(--fg-soft)" }}>
             {parsed.preview.image ? <>Image: <code>{parsed.preview.image}</code> · </> : null}
             {parsed.preview.variableCount} Variable(n)
           </div>

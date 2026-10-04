@@ -5,7 +5,7 @@
  * In Produktion:  VITE_API_BASE_URL oder /api (hinter Nginx)
  */
 
-import { friendlyApiMessage, NETWORK_ERROR_MESSAGE } from "../lib/errors";
+import { friendlyApiMessage, networkErrorMessage } from "../lib/errors";
 
 /** 401 bedeutet hier "falsches Passwort", nicht "Sitzung abgelaufen". */
 const CREDENTIAL_ENDPOINTS = ["/auth/login", "/auth/change-password"];
@@ -84,7 +84,8 @@ export class ApiError extends Error {
 
 async function request<T = unknown>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  asText = false,
 ): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
 
@@ -103,7 +104,7 @@ async function request<T = unknown>(
   try {
     response = await fetch(url, { ...options, headers });
   } catch {
-    throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
+    throw new ApiError(networkErrorMessage(), 0);
   }
 
   if (!response.ok) {
@@ -123,7 +124,7 @@ async function request<T = unknown>(
     );
   }
 
-  return (await response.json()) as T;
+  return (asText ? await response.text() : await response.json()) as T;
 }
 
 // ── SSH-Key-Typen (M28) ────────────────────────────────
@@ -152,6 +153,9 @@ export interface LoginResponse {
   access_token: string;
   token_type: string;
   user: User;
+  /** Gesetzt, wenn statt eines Authenticator-Codes ein Recovery-Code verwendet wurde (M60) */
+  recovery_code_used?: boolean;
+  recovery_codes_remaining?: number;
 }
 
 /** Antwort von /auth/login bei aktivem MFA, solange noch kein Code mitgeschickt wurde. */
@@ -171,6 +175,13 @@ export interface MfaSetupResult {
 export interface MfaEnableResult {
   mfa_enabled: boolean;
   recovery_codes: string[];
+  recovery_codes_remaining?: number;
+  message: string;
+}
+
+export interface RecoveryCodesResult {
+  recovery_codes: string[];
+  recovery_codes_remaining: number;
   message: string;
 }
 
@@ -249,13 +260,23 @@ export type OrderStatus =
   | "active"
   | "past_due"
   | "cancelled"
-  | "expired";
+  | "expired"
+  /** Voll erstattet oder Zahlungsstreit verloren (M59): Server gesperrt, nach der Karenzzeit geloescht */
+  | "refunded";
 
 export interface OrderConnection {
   host: string | null;
   ip?: string;
   port: number;
   address: string;
+}
+
+/** Vereinfachter Zahlungsbeleg (M62), keine Rechnung mit Umsatzsteuer. */
+export interface OrderReceipt {
+  number: string;
+  issued_at: string;
+  amount_cents: number;
+  currency: string;
 }
 
 /** Bestellungen werden ueber `uuid` angesprochen (nicht ueber die numerische id). */
@@ -283,6 +304,12 @@ export interface Order {
   /** Geplante Loeschung: Ende der Karenzzeit bzw. Laufzeitende bei Kuendigung, sonst null */
   scheduled_deletion_at?: string | null;
   cancelled_at: string | null;
+  /** Zahlungsbelege, aelteste zuerst; [] ohne Beleg (M62) */
+  receipts?: OrderReceipt[];
+  /** Zeitpunkt der Erstattung (UTC) bei Status refunded (M59) */
+  refunded_at?: string | null;
+  /** Zahlungsstreit (Dispute) offen: Server gesperrt, Status bleibt active/past_due (M59) */
+  disputed?: boolean;
   created_at: string | null;
   /** Nur Admin-Antworten */
   user_id?: number;
@@ -298,6 +325,8 @@ export interface User {
   is_admin: boolean;
   email_verified?: boolean;
   mfa_enabled?: boolean;
+  /** Noch gueltige Recovery-Codes (0, wenn MFA aus ist) */
+  mfa_recovery_codes_remaining?: number;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -809,6 +838,30 @@ export interface BillingStatus {
   };
 }
 
+/** Exakter Umsatz aus den Belegen (M62); Erstattungen sind getrennt und nicht abgezogen. */
+export interface RevenueStats {
+  days: number;
+  since: string;
+  by_currency: Record<string, number>;
+  paid_count: number;
+  renewals_count: number;
+  refunded_cents_by_currency: Record<string, number>;
+}
+
+export type PaymentEventStatus = "processed" | "ignored" | "unapplied" | "mismatch" | "received";
+
+export interface PaymentEvent {
+  id: number;
+  event_id: string;
+  provider: string;
+  event_type: string;
+  order_uuid: string | null;
+  status: PaymentEventStatus;
+  detail: string | null;
+  received_at: string | null;
+  processed_at: string | null;
+}
+
 // ── System / Version Types (M24) ────────────────────────
 
 export interface SystemVersionInfo {
@@ -853,6 +906,20 @@ export interface PreflightResult {
 // ── API-Methoden ───────────────────────────────────────
 
 export const api = {
+  /**
+   * Meldet das aktuelle Token am Server ab (best effort, M61). Fehler werden ignoriert;
+   * bewusst ohne request(), damit der 401-Handler den Endpunkt nie erneut aufruft.
+   */
+  logoutServer: async (): Promise<void> => {
+    const token = getAccessToken();
+    if (!token) return;
+    try {
+      await fetch(`${BASE_URL}/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+    } catch {
+      // Netzwerkproblem: lokal wird trotzdem abgemeldet
+    }
+  },
+
   // ── Auth ─────────────────────────────────────────────
   register: (username: string, email: string, password: string) =>
     request<RegisterResponse>("/auth/register", {
@@ -904,6 +971,9 @@ export const api = {
   setupMfa: () => request<MfaSetupResult>("/auth/mfa/setup", { method: "POST" }),
   verifyMfa: (code: string) =>
     request<MfaEnableResult>("/auth/mfa/verify", { method: "POST", body: JSON.stringify({ code }) }),
+  /** Neue Recovery-Codes erzeugen (alte werden ungueltig); falsches Passwort -> 403 invalid_password. */
+  regenerateRecoveryCodes: (password: string) =>
+    request<RecoveryCodesResult>("/auth/mfa/recovery-codes", { method: "POST", body: JSON.stringify({ password }) }),
   disableMfa: () => request<{ message: string }>("/auth/mfa/disable", { method: "POST" }),
   getApiKeys: () => request<ApiKeyEntry[]>("/auth/api-keys"),
   createApiKey: (data: { key_type?: "account" | "application"; memo?: string; allowed_ips?: string[] }) =>
@@ -1277,6 +1347,14 @@ export const api = {
   getSystemVersion: () => request<SystemVersionInfo>("/admin/system/version"),
   getUpgradeStatus: () => request<UpgradeStatus>("/admin/system/upgrade-status"),
   getPreflight: () => request<PreflightResult>("/admin/system/preflight"),
+  getRevenueStats: (days = 30) => request<RevenueStats>(`/admin/stats/revenue?days=${days}`),
+  getPaymentEvents: (params?: { status?: PaymentEventStatus; limit?: number }) => {
+    const p = new URLSearchParams();
+    if (params?.status) p.set("status", params.status);
+    if (params?.limit) p.set("limit", String(params.limit));
+    const qs = p.toString();
+    return request<PaymentEvent[]>(`/admin/payment-events${qs ? `?${qs}` : ""}`);
+  },
   getBillingStatus: () => request<BillingStatus>("/admin/billing/status"),
 
   // ── Admin: Agent Maintenance (M25) ────────────────────
@@ -1311,6 +1389,9 @@ export const api = {
       body: JSON.stringify(name ? { product_id: productId, name } : { product_id: productId }),
     }),
   getMyOrders: () => request<Order[]>("/client/orders"),
+  /** Fertig gerenderte HTML-Seite eines Belegs (per Token geholt, ein normaler Link traegt keinen Authorization-Header). */
+  getReceiptHtml: (orderUuid: string, number: string) =>
+    request<string>(`/client/orders/${orderUuid}/receipt?number=${encodeURIComponent(number)}&format=html`, {}, true),
   /** Welcher Zahlungsweg aktiv ist: "manual" (Ueberweisung) oder "stripe" (online). */
   getBillingInfo: () =>
     request<{ payment_provider: "manual" | "stripe" | string; online_payment: boolean }>("/client/billing-info"),

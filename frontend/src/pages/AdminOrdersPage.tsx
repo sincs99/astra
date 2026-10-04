@@ -7,9 +7,10 @@ import { formatPrice } from "../lib/money";
 import {
   PageLayout, StatusBadge, LoadingState, ErrorState, EmptyState, ConfirmButton, Toast, useToast,
   cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, thStyle, tdStyle,
+  ScrollRegion,
 } from "../components/ui";
 
-const STATUS_VALUES = ["pending_payment", "awaiting_provisioning", "active", "past_due", "cancelled", "expired"];
+const STATUS_VALUES = ["pending_payment", "awaiting_provisioning", "active", "past_due", "cancelled", "expired", "refunded"];
 
 const STATUSES: { value: OrderStatus; label: string }[] = [
   { value: "pending_payment", label: "Zahlung ausstehend" },
@@ -18,6 +19,7 @@ const STATUSES: { value: OrderStatus; label: string }[] = [
   { value: "past_due", label: "Überfällig" },
   { value: "cancelled", label: "Gekündigt" },
   { value: "expired", label: "Abgelaufen" },
+  { value: "refunded", label: "Erstattet" },
 ];
 
 /** Admin: Bestellungen filtern, Zahlung bestaetigen (legt die Instance an) oder erneut bereitstellen. */
@@ -103,7 +105,7 @@ export function AdminOrdersPage() {
       </div>
 
       {waiting > 0 && (
-        <div role="status" style={{ padding: "10px 14px", marginBottom: 16, backgroundColor: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, color: "#8d6e00", fontSize: 14 }}>
+        <div role="status" style={{ padding: "10px 14px", marginBottom: 16, backgroundColor: "var(--tint-yellow)", border: "1px solid var(--border-orange)", borderRadius: 8, color: "var(--c-yellow)", fontSize: 14 }}>
           <strong>{waiting} bezahlte Bestellung{waiting === 1 ? "" : "en"} wartet auf Bereitstellung.</strong>{" "}
           Schaffe Platz (Endpoints, Kapazität) und wähle „Erneut bereitstellen“.
         </div>
@@ -115,11 +117,11 @@ export function AdminOrdersPage() {
       ) : orders.length === 0 && !error ? (
         <EmptyState icon="🧾" message="Keine Bestellungen gefunden." />
       ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #e0e0e0" }}>
+        <ScrollRegion label="Bestellungen-Tabelle">
+          <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid var(--border)" }}>
             <caption style={{ position: "absolute", left: -9999 }}>Bestellungen</caption>
             <thead>
-              <tr style={{ backgroundColor: "#f5f5f5" }}>
+              <tr style={{ backgroundColor: "var(--bg-subtle)" }}>
                 <th scope="col" style={thStyle}>#</th>
                 <th scope="col" style={thStyle}>Kunde</th>
                 <th scope="col" style={thStyle}>Produkt</th>
@@ -131,16 +133,19 @@ export function AdminOrdersPage() {
             </thead>
             <tbody>
               {orders.map((o) => (
-                <tr key={o.uuid} style={o.status === "awaiting_provisioning" ? { backgroundColor: "#fff8e1" } : undefined}>
+                <tr key={o.uuid} style={o.status === "awaiting_provisioning" ? { backgroundColor: "var(--tint-yellow)" } : undefined}>
                   <td style={tdStyle}>{o.id}</td>
                   <td style={tdStyle}>{o.username ?? `User #${o.user_id}`}</td>
                   <td style={tdStyle}>
                     {o.product_name ?? `Produkt #${o.product_id}`}
-                    <div style={{ fontSize: 12, color: "#666" }}>{formatPrice(o.price_cents, o.currency, o.billing_period_days)}</div>
+                    <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>{formatPrice(o.price_cents, o.currency, o.billing_period_days)}</div>
                   </td>
                   <td style={tdStyle}>
                     <StatusBadge status={o.status} size="sm" />
-                    {o.payment_reference && <div style={{ fontSize: 11, color: "#666" }}>Ref: {o.payment_reference}</div>}
+                    {o.payment_reference && <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>Ref: {o.payment_reference}</div>}
+                    {o.receipts && o.receipts.length > 0 && (
+                      <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>Belege: {o.receipts.map((r) => r.number).join(", ")}</div>
+                    )}
                   </td>
                   <td style={tdStyle}>
                     {formatDate(o.current_period_end)}
@@ -184,7 +189,7 @@ export function AdminOrdersPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       )}
     </PageLayout>
   );

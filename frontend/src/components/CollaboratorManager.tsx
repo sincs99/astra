@@ -105,7 +105,7 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
     list.includes(perm) ? list.filter((p) => p !== perm) : [...list, perm];
 
   if (!isOwner) {
-    return <p style={{ color: "#666", fontSize: 13 }}>Nur der Owner kann Collaborators verwalten.</p>;
+    return <p style={{ color: "var(--fg-muted)", fontSize: 13 }}>Nur der Owner kann Collaborators verwalten.</p>;
   }
 
   return (
@@ -134,7 +134,7 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
           {ALL_PERMISSIONS.map((p) => (
-            <label key={p} style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 2, padding: "2px 6px", border: "1px solid #ddd", borderRadius: 3, backgroundColor: newPerms.includes(p) ? "#e8f0fe" : "#fff", cursor: "pointer" }}>
+            <label key={p} style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 2, padding: "2px 6px", border: "1px solid var(--border)", borderRadius: 3, backgroundColor: newPerms.includes(p) ? "var(--tint-blue)" : "var(--bg-card)", cursor: "pointer" }}>
               <input type="checkbox" checked={newPerms.includes(p)} onChange={() => setNewPerms(togglePerm(newPerms, p))} style={{ width: 12, height: 12 }} />
               {p}
             </label>
@@ -144,28 +144,28 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
 
       {/* Liste */}
       {loading ? (
-        <p style={{ color: "#666" }}>Wird geladen...</p>
+        <p style={{ color: "var(--fg-muted)" }}>Wird geladen...</p>
       ) : collaborators.length === 0 ? (
-        <p style={{ color: "#666", fontSize: 13 }}>Keine Collaborators vorhanden.</p>
+        <p style={{ color: "var(--fg-muted)", fontSize: 13 }}>Keine Collaborators vorhanden.</p>
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
           {collaborators.map((c) => {
             const user = users.find((u) => u.id === c.user_id);
             const isEditing = editId === c.id;
             return (
-              <div key={c.id} style={{ border: "1px solid #eee", borderRadius: 6, padding: 10 }}>
+              <div key={c.id} style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 10 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <strong style={{ fontSize: 13 }}>{user?.username ?? `User #${c.user_id}`}</strong>
                   <div style={{ display: "flex", gap: 4 }}>
                     {isEditing ? (
                       <>
-                        <button onClick={() => handleUpdate(c.id)} disabled={acting} style={{ ...smBtn, color: "#5cb85c" }}>💾</button>
+                        <button onClick={() => handleUpdate(c.id)} disabled={acting} style={{ ...smBtn, color: "var(--c-green)" }}>💾</button>
                         <button onClick={() => setEditId(null)} style={smBtn}>✕</button>
                       </>
                     ) : (
                       <>
                         <button onClick={() => { setEditId(c.id); setEditPerms([...c.permissions]); }} style={smBtn}>✏️</button>
-                        <button onClick={() => handleDelete(c)} disabled={acting} style={{ ...smBtn, color: "#c00" }}>🗑</button>
+                        <button onClick={() => handleDelete(c)} disabled={acting} style={{ ...smBtn, color: "var(--c-red)" }}>🗑</button>
                       </>
                     )}
                   </div>
@@ -173,14 +173,14 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
                 <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 3 }}>
                   {isEditing ? (
                     ALL_PERMISSIONS.map((p) => (
-                      <label key={p} style={{ fontSize: 10, display: "flex", alignItems: "center", gap: 2, padding: "1px 4px", border: "1px solid #ddd", borderRadius: 2, backgroundColor: editPerms.includes(p) ? "#e8f0fe" : "#fff", cursor: "pointer" }}>
+                      <label key={p} style={{ fontSize: 10, display: "flex", alignItems: "center", gap: 2, padding: "1px 4px", border: "1px solid var(--border)", borderRadius: 2, backgroundColor: editPerms.includes(p) ? "var(--tint-blue)" : "var(--bg-card)", cursor: "pointer" }}>
                         <input type="checkbox" checked={editPerms.includes(p)} onChange={() => setEditPerms(togglePerm(editPerms, p))} style={{ width: 10, height: 10 }} />
                         {p}
                       </label>
                     ))
                   ) : (
                     c.permissions.map((p) => (
-                      <span key={p} style={{ fontSize: 10, padding: "1px 6px", backgroundColor: "#e8f0fe", borderRadius: 3, color: "#336" }}>{p}</span>
+                      <span key={p} style={{ fontSize: 10, padding: "1px 6px", backgroundColor: "var(--tint-blue)", borderRadius: 3, color: "var(--c-blue)" }}>{p}</span>
                     ))
                   )}
                 </div>
@@ -193,7 +193,7 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
   );
 }
 
-const btnS: React.CSSProperties = { padding: "6px 12px", border: "1px solid #ddd", borderRadius: 4, cursor: "pointer", fontSize: 12, backgroundColor: "#fff" };
-const smBtn: React.CSSProperties = { padding: "3px 6px", border: "1px solid #ddd", borderRadius: 3, backgroundColor: "#fff", cursor: "pointer", fontSize: 12 };
-const errStyle: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "#fee", border: "1px solid #c00", borderRadius: 4, color: "#c00", fontSize: 12 };
-const msgStyle: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "#efe", border: "1px solid #0a0", borderRadius: 4, color: "#060", fontSize: 12 };
+const btnS: React.CSSProperties = { padding: "6px 12px", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontSize: 12, backgroundColor: "var(--bg-card)" };
+const smBtn: React.CSSProperties = { padding: "3px 6px", border: "1px solid var(--border)", borderRadius: 3, backgroundColor: "var(--bg-card)", cursor: "pointer", fontSize: 12 };
+const errStyle: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "var(--tint-red)", border: "1px solid var(--c-red)", borderRadius: 4, color: "var(--c-red)", fontSize: 12 };
+const msgStyle: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "var(--tint-green)", border: "1px solid var(--c-green)", borderRadius: 4, color: "var(--c-green)", fontSize: 12 };

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { InstanceConnection } from "../services/api";
 import { btnDefault } from "./ui";
+import { t } from "../i18n";
 
 interface ConnectionAddressProps {
   connection?: InstanceConnection | null;
@@ -26,19 +27,19 @@ export function ConnectionAddress({ connection, compact = false }: ConnectionAdd
 
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-      {!compact && <span style={{ color: "#666", fontSize: 13 }}>Adresse:</span>}
-      <code style={{ fontSize: compact ? 12 : 13, userSelect: "all", background: "#f5f5f5", padding: "2px 6px", borderRadius: 4 }}>
+      {!compact && <span style={{ color: "var(--fg-muted)", fontSize: 13 }}>{t("orders.address")}</span>}
+      <code style={{ fontSize: compact ? 12 : 13, userSelect: "all", background: "var(--bg-subtle)", padding: "2px 6px", borderRadius: 4 }}>
         {connection.address}
       </code>
       <button
         type="button"
         onClick={copy}
-        aria-label={`Adresse ${connection.address} kopieren`}
+        aria-label={t("orders.copyAria", { address: connection.address })}
         style={{ ...btnDefault, padding: "2px 8px", fontSize: 12 }}
       >
-        {copied ? "✓ Kopiert" : "📋 Kopieren"}
+        {copied ? "✓ " + t("orders.copied") : "📋 " + t("orders.copy")}
       </button>
-      <span role="status" style={{ position: "absolute", left: -9999 }}>{copied ? "Adresse kopiert" : ""}</span>
+      <span role="status" style={{ position: "absolute", left: -9999 }}>{copied ? t("orders.copiedStatus") : ""}</span>
     </span>
   );
 }

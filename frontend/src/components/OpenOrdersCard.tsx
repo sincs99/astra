@@ -36,12 +36,12 @@ export function OpenOrdersCard() {
 
   return (
     <section aria-labelledby="open-orders-title"
-      style={{ ...cardStyle, borderColor: total > 0 ? "#ffe082" : "#e0e0e0", backgroundColor: total > 0 ? "#fff8e1" : "#fff" }}>
+      style={{ ...cardStyle, borderColor: total > 0 ? "var(--border-orange)" : "var(--border)", backgroundColor: total > 0 ? "var(--tint-yellow)" : "var(--bg-card)" }}>
       <h2 id="open-orders-title" style={{ margin: "0 0 8px", fontSize: 16 }}>
         Offene Bestellungen: <span data-testid="open-orders-total">{total}</span>
       </h2>
       {total === 0 ? (
-        <p style={{ margin: 0, fontSize: 13, color: "#666" }}>Keine offenen Bestellungen.</p>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--fg-muted)" }}>Keine offenen Bestellungen.</p>
       ) : (
         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14 }}>
           {counts.pending > 0 && (

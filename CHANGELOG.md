@@ -5,6 +5,42 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – Umsatz-Kachel auf `GET /api/admin/stats/revenue`)
+- Admin-Uebersicht: Umsatz der letzten 30 Tage exakt aus den Belegen (je Waehrung, Zahlungen davon Verlaengerungen, "Erstattet im Zeitraum: X (nicht abgezogen)"); bei 404 (aelteres Backend) Rueckfall auf die bisherige Schaetzung aus der Bestellliste mit Hinweis
+
+### Added (Frontend – F7 Zahlungsbelege, M62)
+- Kunden-Bestellungen: pro Bestellung die Belege (Nummer, Datum, Betrag) mit "Anzeigen"; der Beleg wird per fetch mit Token geholt (`GET /api/client/orders/{uuid}/receipt?number=&format=html`) und in einem Dialog mit sandbox-Iframe (ohne Skripte) angezeigt, "Als Datei speichern" laedt ihn als HTML herunter. Hinweis "Vereinfachter Zahlungsbeleg, keine Rechnung mit Umsatzsteuer." Admin-Bestellliste zeigt die Belegnummern als Text
+
+### Added (Frontend – F6 MFA-Recovery-Codes, M60)
+- Nach dem MFA-Setup werden die 10 Recovery-Codes gross angezeigt (Kopieren, "Als Textdatei speichern"); geschlossen wird erst nach der Bestaetigung "Ich habe die Codes gesichert". Konto: Anzeige "noch N von 10", Warnung bei wenigen/keinen Codes, "Neue Codes erzeugen" mit Passwortabfrage (falsches Passwort = 403 `invalid_password`, die Anmeldung bleibt bestehen)
+- Login im MFA-Schritt: Umschalter "Recovery-Code verwenden" (Textfeld statt Ziffernfeld, dasselbe Feld `mfa_code`); nach Nutzung eines Codes einmaliger Hinweis "noch N uebrig", bei N <= 2 als Warnung mit Link ins Konto (`FlashBanner`, `lib/flash.ts`)
+
+### Changed (Frontend – M61 Logout)
+- Der Abmelden-Button sperrt das Token zuerst serverseitig (`POST /api/auth/logout`, best effort, Fehler werden ignoriert) und meldet danach immer lokal ab; der 401-Handler ruft den Endpunkt bewusst nicht auf
+
+### Added (Frontend – F5 Englische Sprachversion)
+- Leichtgewichtiges i18n (`src/i18n`): Deutsch bleibt Standard, Englisch ist per Sprachumschalter (Fusszeile jeder Seite, inkl. Login, und Konto > Darstellung) waehlbar und wird im Browser gemerkt (`astra_lang`). Woerterbuecher `de`/`en` je Namensraum, der Compiler erzwingt gleiche Schluessel, ein Test prueft Platzhalter-Paritaet. Uebersetzt: Login, Registrierung, Passwort-Reset, E-Mail-Bestaetigung, Navigation, Dashboard, Shop, Bestellungen (inkl. Status, Hinweise, Verbindungsadresse), Konto (Passwort, MFA, API-Keys, Darstellung), SSH-Keys, 404, Fehlerseiten, Zeitangaben, Datums- und Waehrungsformate (`en-GB`)
+- Nicht uebersetzt (bewusst/spaeter): Admin-Bereich, Server-Detailseite (Konsole, Dateien, Backups), Rechtstexte (Impressum, Datenschutz, AGB) sowie Meldungen, die das Backend selbst liefert (deutsch)
+- Konto: Hinweis zum Passwortwechsel korrigiert (seit M57 werden andere Geraete abgemeldet)
+- Test `OrdersPage` (Rueckkehr von Stripe) war ein Race und ist stabil
+
+### Added (Frontend – Erstattungen und Zahlungsstreit, M59)
+- Bestellungen: Status `refunded` ("Erstattet", rot) und Felder `refunded_at`/`disputed`; Admin-Statusfilter "Erstattet"; Hinweis "Zahlung erstattet am …, der Server wird am … gelöscht" in Kunden- und Admin-Liste, Badge "Zahlung angefochten" bei offenem Zahlungsstreit; erstattete Bestellungen zaehlen nicht zum Umsatz der Admin-Uebersicht
+
+### Added (Frontend – F4 Dunkler Modus)
+- Farb-Tokens als CSS-Variablen (`src/theme.css`), alle bisher hartkodierten Farben der Seiten und Komponenten (Karten, Tabellen, Status-Badges, Banner, Auslastungsbalken) darauf umgestellt; dunkles Design folgt `prefers-color-scheme: dark` und ist im Konto unter "Darstellung" auf Hell/Dunkel/Wie das Gerät umschaltbar (im Browser gemerkt, ohne Aufblitzen beim Laden). Textfarben im Dunkeln erfuellen WCAG AA: alle 16 Routen im dunklen Design per axe geprueft (0 Verstoesse). Server-Konsole bleibt bewusst dunkel
+
+### Added (Frontend – F3 E2E-Durchlauf)
+- `frontend/e2e/`: Playwright-Durchlauf gegen das echte Backend (SQLite, Stub-Runner, manuelle Zahlung): Registrierung, Login, Bestellung im Shop, Admin markiert als bezahlt, Kunde sieht den Server im Dashboard. `./e2e/run-local.sh` startet Backend und Frontend, fuehrt den Durchlauf aus und raeumt auf (Anleitung in `frontend/e2e/README.md`); `.github/workflows/e2e.yml` fuehrt ihn manuell bzw. bei Aenderungen an den E2E-Dateien aus (lokal verifiziert, auf GitHub noch nicht)
+- Login-Seite: Feldbezeichnung "Benutzername oder E-Mail" statt "Username oder Email"
+
+### Changed (Frontend – F2 Admin-Seiten vereinheitlicht)
+- Alle 16 Routen bei 390 und 1100 px per Browser-Sweep geprueft (Tab-Titel, kein horizontaler Seitenueberlauf, axe WCAG 2 A/AA ohne Verstoesse, kein Absturz). Behoben: Kontrast der Event-Chips in Webhooks und der Auswahlzaehler im Dateimanager, Tabellen-Scrollbereiche der Admin-Seiten sind per Tastatur erreichbar (`ScrollRegion`). Keine Funktionsaenderung
+
+### Added (Frontend – F1 Admin-Uebersicht)
+- Neue Seite `/admin` ("Uebersicht", Navigationspunkt fuer Admins): Kacheln Umsatz der letzten 30 Tage (Naeherung aus `paid_at`/`price_cents` von `GET /api/admin/orders`, clientseitig je Waehrung aggregiert), Bestellungen je Status (pending_payment, awaiting_provisioning, active, past_due, verlinkt auf die gefilterte Liste), Node-Auslastung (aus `GET /api/admin/agents/monitoring`, effektive Kapazitaet inkl. Ueberallokation, Agents ohne Limit ausgewiesen), Billing-Tick und Zahlungsereignisse mit Status `mismatch`/`unapplied` (`GET /api/admin/payment-events`). Jede Kachel faellt einzeln aus; Aktualisierung alle 60 s; mobil einspaltig
+- `formatTimeAgo`: "vor 1 Tag" statt "vor 1 Tagen"
+
 ### Added (Frontend – Betrieb, Barrierefreiheit)
 - Admin-Seiten werden per Code-Splitting nachgeladen (Haupt-Bundle ca. 452 -> 385 KB); fehlt nach einem Deployment eine Seiten-Datei, zeigt die App "Neue Version verfuegbar" mit Reload-Button statt der allgemeinen Fehlerseite
 - Browser-Tab-Titel folgt der Seite ("Meine Bestellungen - Astra"); Skip-Link "Zum Inhalt springen" fuer Tastaturnutzer
@@ -51,6 +87,32 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Der gesamte `/api/admin`-Blueprint verlangt jetzt einen angemeldeten Admin (`before_request`, JWT, API-Key oder in Dev/Test `X-User-Id`). Ausnahme: `GET /api/admin/health`. Ohne Login 401, ohne Admin-Recht 403
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
+
+### Added (M63 – Umsatzstatistik)
+- `GET /api/admin/stats/revenue?days=30` (Admin-Guard, `days` 1 bis 365, sonst 400): Umsatz auf Basis der Zahlungsbelege (`receipts.issued_at`, M62): `{days, since, by_currency, paid_count, renewals_count, refunded_cents_by_currency}`. Erster Beleg einer Bestellung = Erstzahlung, weitere = Verlaengerungen; Erstattungen (Events `order:refunded`, M59) getrennt je Waehrung, nicht verrechnet. Gratis-Pakete und Zahlungen vor M62 fehlen, keine Waehrungsumrechnung. `backend/test_m63.py` (20 Tests)
+
+### Added (M62 – Zahlungsbelege mit fortlaufender Nummer, Grundlage)
+- Jede verbuchte Zahlung (nicht kostenlose Pakete) bekommt einen Beleg mit fortlaufender, lueckenloser Nummer je Jahr (`INVOICE_NUMBER_FORMAT`, Standard `AST-{year}-{seq:05d}`): Zaehler `invoice_counters` mit Zeilensperre (PostgreSQL), Zaehler und Beleg in einer Transaktion, Belege werden nie geloescht. Tabellen `receipts` und `invoice_counters` (Migration `v2q3r4s5t6u7`)
+- `receipts: [{number, issued_at, amount_cents, currency}]` in den Bestellungen (Kunde und Admin); `GET /api/client/orders/{uuid}/receipt?number=&format=html|text|json` (HTML escaped, `nosniff`, CSP, `no-store`). Anbieter-Kopf und Fusszeile ueber `INVOICE_SELLER` und `RECEIPT_FOOTER`. Kein Steuerbeleg, kein PDF, keine Umsatzsteuer; Belege nur fuer Zahlungen ab M62. Ein Fehler beim Ausstellen blockiert die Zahlung nie. `backend/test_m62.py` (42 Tests); Doku in `docs/orders-api.md`, was fuer echte Rechnungen fehlt
+
+### Security (M61 – Logout-Blocklist)
+- `POST /api/auth/logout` sperrt das verwendete Access-Token (`jti`) bis zu seinem Ablauf: neue Tabelle `revoked_tokens` (Migration `u1p2q3r4s5t6`), `get_current_user` prueft die Sperre bei jedem Request (ein Primaerschluessel-Lookup). Antwort enthaelt `token_revoked` (false bei API-Key, Dev-Header oder Token ohne `jti`). Andere Tokens des Kontos bleiben gueltig; ein zweiter Logout mit dem gesperrten Token ist 401
+- Aufraeumen: der naechste Logout loescht abgelaufene Eintraege beilaeufig, `python cli.py cleanup-jobs` (auch `--dry-run`) raeumt mit auf und meldet `revoked_tokens: {matched, deleted}`. Bewusst kein Redis (Neustart/Flush haette Abmeldungen aufgehoben). `backend/test_m61.py` (25 Tests)
+
+### Security (M60 – MFA-Recovery-Codes)
+- Beim Aktivieren von MFA entstehen 10 einmalige Recovery-Codes (`xxxxx-xxxxx`); gespeichert werden nur gesalzene Hashes (vorher 8 Klartext-Codes). Klartext nur in der Antwort von `POST /api/auth/mfa/verify`; Migration `t0o1p2q3r4s5` hasht vorhandene Klartext-Codes (bleiben gueltig)
+- `POST /api/auth/mfa/recovery-codes` `{password}` erzeugt neue Codes (alte ungueltig; falsches Passwort 403 `invalid_password`, MFA aus 409). Login akzeptiert in `mfa_code` (oder `recovery_code`) TOTP oder Recovery-Code; Recovery-Login liefert `recovery_code_used` und `recovery_codes_remaining`, schickt dem Kontoinhaber eine Mail und das Event `auth:mfa_recovery_used`. `mfa_recovery_codes_remaining` in `/api/auth/me` und im `user`-Objekt
+- Einmalnutzung per Zeilensperre (PostgreSQL). `backend/test_m60.py` (28 Tests), `test_m19.py` angepasst, Doku `docs/mfa-recovery-codes.md`
+
+### Added (M59 – Stripe-Erstattungen und Zahlungsstreitigkeiten)
+- Webhook wertet `charge.refunded`, `charge.dispute.created` und `charge.dispute.closed` aus (bestehender Pfad, gleiche Signatur und Idempotenz). Zuordnung ueber die Zahlungsreferenz (auch aeltere Verlaengerungen), ersatzweise `metadata.order_uuid`
+- Volle Erstattung der letzten Zahlung: neuer Status `refunded` (Spalte `refunded_at`), Instance gesperrt (Grund "Zahlung erstattet"), nach `BILLING_GRACE_DAYS` loescht der Tick sie (`expired`); Teilerstattung oder aeltere Zahlung: nur Event und Alert. Streit eroeffnet: Flag `disputed_at`, Instance gesperrt ("Zahlung angefochten"); gewonnen: Sperre aufgehoben; verloren: wie Vollerstattung. Bestehende Sperren werden nie ueberschrieben
+- Activity-Events `order:refunded` und `order:disputed` (auch im Webhook-Katalog), Mail an den Kunden bei Vollerstattung, Admin-Alert (M58). API: `refunded_at` und `disputed` in den Bestellungen. Migration `s9n0o1p2q3r4` (zwei Spalten, Up/Down geprueft). `backend/test_m59.py` (38 Tests). Im Stripe-Dashboard die drei Ereignisse zum Webhook hinzufuegen
+
+### Added (M58 – Aktive Admin-Benachrichtigung)
+- Neue Kanaele `ADMIN_ALERT_EMAIL` (kommagetrennt) und `ADMIN_ALERT_WEBHOOK_URL` (JSON-POST mit `content`, `text`, `subject`; Discord/Slack-kompatibel), beide leer = aus. Ausloeser: Billing-Tick ausgefallen (`billing_tick`), Fehler im letzten Tick (`billing_errors`), bezahlte Bestellungen warten zu lange (`waiting_orders`, M56) und Zahlungsereignisse mit Status `mismatch`/`unapplied` (je Bestellung und Status einmal)
+- Entprellen ueber `system_state` (Schluessel `alert:<ausloeser>`): Meldung beim Wechsel gesund -> gestoert, danach hoechstens alle `ADMIN_ALERT_COOLDOWN_MINUTES` (Standard 360); einmalige Entwarnung (`ADMIN_ALERT_RECOVERY`). Versand best effort, stoert weder Tick noch Webhook; Webhook-URL wird nie geloggt
+- Der Billing-Tick prueft vor und nach dem Lauf; neuer Compose-Service `alerts` ruft `python cli.py alert-check` unabhaengig davon alle `ALERT_CHECK_INTERVAL` Sekunden auf (erkennt auch einen toten Tick-Container). `python cli.py alert-test` schickt eine Testnachricht (Exit 1 ohne Kanal oder bei Fehler). `backend/test_m58.py` (26 Tests)
 
 ### Security (M57 – Tokens nach Passwortwechsel ungueltig)
 - Access-Tokens enthalten den Claim `pwf` (Fingerabdruck des Passwort-Hashes). Nach Passwortwechsel oder -reset sind alle bisherigen Tokens des Kontos sofort ungueltig (401). `POST /api/auth/change-password` liefert zusaetzlich ein frisches `access_token`, das Frontend (`api.changePassword`) uebernimmt es, damit das aendernde Geraet angemeldet bleibt. Tokens ohne den Claim (vor diesem Update ausgestellt) gelten bis zu ihrem Ablauf. API-Keys sind nicht betroffen. `backend/test_m57.py` (11 Tests)

@@ -5,6 +5,7 @@ import { formatPrice } from "../lib/money";
 import {
   PageLayout, StatusBadge, LoadingState, EmptyState, ErrorState, ConfirmButton, Toast, useToast,
   cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, thStyle, tdStyle,
+  ScrollRegion,
 } from "../components/ui";
 
 export function AdminProductsPage() {
@@ -133,8 +134,8 @@ export function AdminProductsPage() {
               onChange={(e) => set("description", e.target.value)} style={{ ...inputStyle, resize: "vertical" }} />
           </div>
 
-          <fieldset style={{ border: "1px solid #e0e0e0", borderRadius: 6, marginTop: 12, padding: "8px 12px" }}>
-            <legend style={{ fontSize: 13, fontWeight: 600, color: "#555", padding: "0 4px" }}>Ressourcen der Instance</legend>
+          <fieldset style={{ border: "1px solid var(--border)", borderRadius: 6, marginTop: 12, padding: "8px 12px" }}>
+            <legend style={{ fontSize: 13, fontWeight: 600, color: "var(--fg-soft)", padding: "0 4px" }}>Ressourcen der Instance</legend>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
               {numberField("memory", "Memory (MB)", "memory", 1)}
               {numberField("disk", "Disk (MB)", "disk", 1)}
@@ -163,11 +164,11 @@ export function AdminProductsPage() {
       ) : products.length === 0 ? (
         <EmptyState icon="🛒" message="Noch keine Produkte vorhanden." />
       ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #e0e0e0" }}>
+        <ScrollRegion label="Produkte-Tabelle">
+          <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid var(--border)" }}>
             <caption style={{ position: "absolute", left: -9999 }}>Produkte</caption>
             <thead>
-              <tr style={{ backgroundColor: "#f5f5f5" }}>
+              <tr style={{ backgroundColor: "var(--bg-subtle)" }}>
                 <th scope="col" style={thStyle}>Name</th>
                 <th scope="col" style={thStyle}>Blueprint</th>
                 <th scope="col" style={thStyle}>Ressourcen</th>
@@ -181,7 +182,7 @@ export function AdminProductsPage() {
                 <tr key={p.id}>
                   <td style={tdStyle}>
                     <strong>{p.name}</strong>
-                    {p.description && <div style={{ fontSize: 12, color: "#666" }}>{p.description}</div>}
+                    {p.description && <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>{p.description}</div>}
                   </td>
                   <td style={tdStyle}>{blueprints.find((b) => b.id === p.blueprint_id)?.name ?? `#${p.blueprint_id}`}</td>
                   <td style={{ ...tdStyle, fontSize: 12 }}>{p.resources.memory} MB RAM · {p.resources.disk} MB Disk · {p.resources.cpu}% CPU</td>
@@ -206,7 +207,7 @@ export function AdminProductsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       )}
     </PageLayout>
   );

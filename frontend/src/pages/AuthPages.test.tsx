@@ -25,14 +25,14 @@ const type = (label: RegExp | string, value: string) =>
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 const submit = (name: RegExp | string) => fireEvent.click(screen.getByRole("button", { name }));
 
-beforeEach(() => { localStorage.clear(); vi.restoreAllMocks(); });
+beforeEach(() => { localStorage.clear(); sessionStorage.clear(); vi.restoreAllMocks(); });
 afterEach(() => { cleanup(); });
 
 describe("LoginPage", () => {
   it("meldet an, speichert das Token und leitet zum Dashboard", async () => {
     vi.spyOn(api, "login").mockResolvedValue({ access_token: "tok", token_type: "Bearer", user: {} } as never);
     mount("/login");
-    type("Username oder Email", " alice ");
+    type("Benutzername oder E-Mail", " alice ");
     type("Passwort", "geheim123");
     submit("Anmelden");
     expect(await screen.findByText("Dashboard")).toBeTruthy();
@@ -45,7 +45,7 @@ describe("LoginPage", () => {
       .mockResolvedValueOnce({ requires_mfa: true, message: "MFA-Code erforderlich" })
       .mockResolvedValueOnce({ access_token: "mfa-tok", token_type: "Bearer", user: {} } as never);
     mount("/login");
-    type("Username oder Email", "alice");
+    type("Benutzername oder E-Mail", "alice");
     type("Passwort", "geheim123");
     submit("Anmelden");
     const codeField = await screen.findByLabelText("Authenticator-Code");
@@ -59,10 +59,49 @@ describe("LoginPage", () => {
     expect(getAccessToken()).toBe("mfa-tok");
   });
 
+  it("erlaubt im MFA-Schritt den Wechsel zum Recovery-Code und sendet ihn im selben Feld", async () => {
+    const login = vi.spyOn(api, "login")
+      .mockResolvedValueOnce({ requires_mfa: true, message: "MFA-Code erforderlich" })
+      .mockResolvedValueOnce({ access_token: "rc-tok", token_type: "Bearer", user: {}, recovery_code_used: true, recovery_codes_remaining: 7 } as never);
+    mount("/login");
+    type("Benutzername oder E-Mail", "alice");
+    type("Passwort", "geheim123");
+    submit("Anmelden");
+    const field = await screen.findByLabelText("Authenticator-Code");
+    expect(field.getAttribute("inputmode")).toBe("numeric");
+    fireEvent.click(screen.getByRole("button", { name: "Recovery-Code verwenden" }));
+    const recoveryField = screen.getByLabelText("Recovery-Code");
+    expect(recoveryField.getAttribute("inputmode")).toBe("text");
+    fireEvent.change(recoveryField, { target: { value: " ABCDE-FGHIJ " } });
+    submit("Bestätigen");
+    expect(await screen.findByText("Dashboard")).toBeTruthy();
+    expect(login).toHaveBeenLastCalledWith("alice", "geheim123", "ABCDE-FGHIJ");
+    const flash = JSON.parse(sessionStorage.getItem("astra_flash") ?? "null");
+    expect(flash).toMatchObject({ kind: "info", text: "Recovery-Code verwendet, noch 7 übrig." });
+  });
+
+  it("warnt mit Link ins Konto, wenn nach einem Recovery-Code nur noch 2 oder weniger uebrig sind", async () => {
+    vi.spyOn(api, "login")
+      .mockResolvedValueOnce({ requires_mfa: true, message: "x" })
+      .mockResolvedValueOnce({ access_token: "rc-tok", token_type: "Bearer", user: {}, recovery_code_used: true, recovery_codes_remaining: 2 } as never);
+    mount("/login");
+    type("Benutzername oder E-Mail", "alice");
+    type("Passwort", "geheim123");
+    submit("Anmelden");
+    await screen.findByLabelText("Authenticator-Code");
+    fireEvent.click(screen.getByRole("button", { name: "Recovery-Code verwenden" }));
+    fireEvent.change(screen.getByLabelText("Recovery-Code"), { target: { value: "abcde-fghij" } });
+    submit("Bestätigen");
+    await screen.findByText("Dashboard");
+    const flash = JSON.parse(sessionStorage.getItem("astra_flash") ?? "null");
+    expect(flash.kind).toBe("warning");
+    expect(flash.link).toEqual({ to: "/account", label: "Zum Konto" });
+  });
+
   it("fuehrt nach dem Login zum angegebenen internen Ziel zurueck", async () => {
     vi.spyOn(api, "login").mockResolvedValue({ access_token: "tok", token_type: "Bearer", user: {} } as never);
     mount("/login?redirect=%2Fshop");
-    type("Username oder Email", "alice");
+    type("Benutzername oder E-Mail", "alice");
     type("Passwort", "geheim123");
     submit("Anmelden");
     expect(await screen.findByText("Shop")).toBeTruthy();
@@ -76,7 +115,7 @@ describe("LoginPage", () => {
   it("ignoriert externe Weiterleitungsziele (Open Redirect)", async () => {
     vi.spyOn(api, "login").mockResolvedValue({ access_token: "tok", token_type: "Bearer", user: {} } as never);
     mount("/login?redirect=https%3A%2F%2Fevil.example");
-    type("Username oder Email", "alice");
+    type("Benutzername oder E-Mail", "alice");
     type("Passwort", "geheim123");
     submit("Anmelden");
     expect(await screen.findByText("Dashboard")).toBeTruthy();
@@ -94,7 +133,7 @@ describe("LoginPage", () => {
     vi.spyOn(api, "login").mockRejectedValue(new ApiError("E-Mail nicht bestätigt", 403, "email_not_verified"));
     const resend = vi.spyOn(api, "resendVerification").mockResolvedValue({ message: "ok" } as never);
     mount("/login");
-    type("Username oder Email", "alice");
+    type("Benutzername oder E-Mail", "alice");
     type("Passwort", "geheim123");
     submit("Anmelden");
     fireEvent.click(await screen.findByRole("button", { name: /Bestätigungs-Mail erneut senden/ }));

@@ -41,6 +41,27 @@ describe("AdminOrdersPage", () => {
     expect((screen.getByLabelText("Status") as HTMLSelectElement).value).toBe("awaiting_provisioning");
   });
 
+  it("bietet den Filter 'Erstattet' und zeigt erstattete Bestellungen ohne Aktion", async () => {
+    const refunded = { ...pending, id: 9, uuid: "r1", username: "carol", status: "refunded" as const, refunded_at: "2026-10-02T09:00:00Z", scheduled_deletion_at: "2026-10-09T09:00:00Z" };
+    const list = vi.spyOn(api, "getAdminOrders").mockResolvedValue([refunded]);
+    mount("/admin/orders?status=refunded");
+    await screen.findByText("carol");
+    expect(list).toHaveBeenCalledWith("refunded");
+    expect(screen.getByRole("option", { name: "Erstattet" })).toBeTruthy();
+    expect(screen.getByText(/Zahlung erstattet am 2\.10\.2026/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Als bezahlt markieren" })).toBeNull();
+  });
+
+  it("zeigt Belegnummern als Text", async () => {
+    const withReceipts = { ...pending, id: 11, uuid: "rc", username: "dora", receipts: [
+      { number: "R-2026-0003", issued_at: "2026-10-01T10:00:00Z", amount_cents: 999, currency: "EUR" },
+      { number: "R-2026-0009", issued_at: "2026-10-31T10:00:00Z", amount_cents: 999, currency: "EUR" },
+    ] };
+    vi.spyOn(api, "getAdminOrders").mockResolvedValue([withReceipts]);
+    mount("/admin/orders");
+    expect(await screen.findByText("Belege: R-2026-0003, R-2026-0009")).toBeTruthy();
+  });
+
   it("ignoriert unbekannte Statuswerte in der URL", async () => {
     const list = vi.spyOn(api, "getAdminOrders").mockResolvedValue([pending]);
     mount("/admin/orders?status=hacked");

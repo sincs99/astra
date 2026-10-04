@@ -215,15 +215,15 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <button onClick={() => loadFiles("/")} style={smBtn} title="Root">🏠</button>
         {directory !== "/" && <button onClick={navigateUp} style={smBtn} title="Zurück">⬆</button>}
-        <code style={{ fontSize: 13, color: "#555" }}>{directory}</code>
+        <code style={{ fontSize: 13, color: "var(--fg-soft)" }}>{directory}</code>
         <button onClick={() => loadFiles(directory)} style={smBtn} title="Aktualisieren">🔄</button>
         {selected.size > 0 && (
-          <span style={{ fontSize: 12, color: "#1976d2", fontWeight: 600 }}>{selected.size} ausgewählt</span>
+          <span style={{ fontSize: 12, color: "var(--c-blue)", fontWeight: 600 }}>{selected.size} ausgewählt</span>
         )}
       </div>
 
       {error && (
-        <div style={{ padding: 8, marginBottom: 8, backgroundColor: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 4, color: "#c62828", fontSize: 12 }}>
+        <div style={{ padding: 8, marginBottom: 8, backgroundColor: "var(--tint-red)", border: "1px solid var(--border-red)", borderRadius: 4, color: "var(--c-red)", fontSize: 12 }}>
           {error}
         </div>
       )}
@@ -232,13 +232,13 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
         {/* Dateiliste */}
         <div>
           {loading ? (
-            <p style={{ color: "#666", fontSize: 13 }}>Wird geladen...</p>
+            <p style={{ color: "var(--fg-muted)", fontSize: 13 }}>Wird geladen...</p>
           ) : entries.length === 0 ? (
-            <p style={{ color: "#666", fontSize: 13 }}>Verzeichnis leer</p>
+            <p style={{ color: "var(--fg-muted)", fontSize: 13 }}>Verzeichnis leer</p>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr style={{ borderBottom: "2px solid #e0e0e0" }}>
+                <tr style={{ borderBottom: "2px solid var(--border)" }}>
                   <th style={{ ...thS, width: 24 }}></th>
                   <th style={thS}>Name</th>
                   <th style={thS}>Grösse</th>
@@ -250,8 +250,8 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
                   <tr
                     key={entry.path}
                     style={{
-                      borderBottom: "1px solid #f0f0f0",
-                      backgroundColor: selected.has(entry.path) ? "#e3f2fd" : selectedFile === entry.path ? "#f0f8ff" : undefined,
+                      borderBottom: "1px solid var(--bg-subtle)",
+                      backgroundColor: selected.has(entry.path) ? "var(--tint-blue)" : selectedFile === entry.path ? "var(--tint-blue)" : undefined,
                     }}
                   >
                     <td style={{ padding: "4px 4px 4px 8px" }}>
@@ -267,7 +267,7 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
                       {entry.is_directory ? "📁 " : "📄 "}
                       {entry.name}
                     </td>
-                    <td style={{ padding: 6, color: "#666", fontSize: 12 }}>
+                    <td style={{ padding: 6, color: "var(--fg-muted)", fontSize: 12 }}>
                       {entry.is_file ? formatSize(entry.size) : "–"}
                     </td>
                     <td style={{ padding: 6 }}>
@@ -275,7 +275,7 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
                         {entry.is_file && isArchive(entry.name) && (
                           <button onClick={e => { e.stopPropagation(); handleDecompress(entry.path); }} style={smBtn} title="Entpacken">📦</button>
                         )}
-                        <button onClick={e => { e.stopPropagation(); handleDelete(entry.path); }} style={{ ...smBtn, color: "#d32f2f" }} title="Löschen">🗑</button>
+                        <button onClick={e => { e.stopPropagation(); handleDelete(entry.path); }} style={{ ...smBtn, color: "var(--c-red)" }} title="Löschen">🗑</button>
                       </div>
                     </td>
                   </tr>
@@ -297,7 +297,7 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
             <button onClick={() => fileInputRef.current?.click()} disabled={uploading} style={smBtn}>
               {uploading ? "Wird hochgeladen..." : "⬆ Hochladen"}
             </button>
-            <small style={{ color: "#666", fontSize: 11 }}>nur Textdateien, max. 1 MB</small>
+            <small style={{ color: "var(--fg-muted)", fontSize: 11 }}>nur Textdateien, max. 1 MB</small>
           </div>
 
           <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -315,8 +315,8 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
           </div>
 
           {/* ── Compress-Bereich ── */}
-          <div style={{ marginTop: 12, padding: 10, border: "1px solid #c8d8f0", borderRadius: 6, backgroundColor: "#f0f5ff" }}>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: "#1565c0" }}>Komprimieren</div>
+          <div style={{ marginTop: 12, padding: 10, border: "1px solid var(--border)", borderRadius: 6, backgroundColor: "var(--tint-blue)" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: "var(--c-blue)" }}>Komprimieren</div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <input type="text" value={archiveName} onChange={e => setArchiveName(e.target.value)} placeholder="archiv.tar.gz" style={actionInput} />
               <button
@@ -329,7 +329,7 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
               <input type="text" value={decompressTarget} onChange={e => setDecompressTarget(e.target.value)} placeholder={`Ziel: ${directory}`} style={{ ...actionInput, width: 200 }} />
-              <small style={{ color: "#666", fontSize: 11 }}>Zielverzeichnis für 📦-Entpacken</small>
+              <small style={{ color: "var(--fg-muted)", fontSize: 11 }}>Zielverzeichnis für 📦-Entpacken</small>
             </div>
           </div>
         </div>
@@ -338,15 +338,15 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
         {selectedFile && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <code style={{ fontSize: 12, color: "#555" }}>{selectedFile}</code>
+              <code style={{ fontSize: 12, color: "var(--fg-soft)" }}>{selectedFile}</code>
               <div style={{ display: "flex", gap: 4 }}>
                 <button
                   onClick={saveFile}
                   disabled={editContent === fileContent}
                   style={{
                     ...smBtn,
-                    backgroundColor: editContent !== fileContent ? "#4caf50" : "#e0e0e0",
-                    color: editContent !== fileContent ? "#fff" : "#666",
+                    backgroundColor: editContent !== fileContent ? "#2e7d32" : "var(--bg-subtle)",
+                    color: editContent !== fileContent ? "#fff" : "var(--fg-muted)",
                     cursor: editContent !== fileContent ? "pointer" : "default",
                   }}
                 >
@@ -360,8 +360,8 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
               onChange={e => setEditContent(e.target.value)}
               style={{
                 width: "100%", minHeight: 300, fontFamily: "monospace", fontSize: 12,
-                padding: 8, border: "1px solid #e0e0e0", borderRadius: 6,
-                boxSizing: "border-box", backgroundColor: "#fafafa", resize: "vertical",
+                padding: 8, border: "1px solid var(--border)", borderRadius: 6,
+                boxSizing: "border-box", backgroundColor: "var(--bg-page)", resize: "vertical",
               }}
             />
           </div>
@@ -378,15 +378,15 @@ function formatSize(bytes: number): string {
 }
 
 const smBtn: React.CSSProperties = {
-  padding: "4px 8px", border: "1px solid #ddd", borderRadius: 4,
-  backgroundColor: "#fff", cursor: "pointer", fontSize: 12,
+  padding: "4px 8px", border: "1px solid var(--border)", borderRadius: 4,
+  backgroundColor: "var(--bg-card)", cursor: "pointer", fontSize: 12,
 };
 
 const actionInput: React.CSSProperties = {
   padding: "4px 8px", fontSize: 12, borderRadius: 4,
-  border: "1px solid #ccc", width: 130,
+  border: "1px solid var(--border-strong)", width: 130,
 };
 
 const thS: React.CSSProperties = {
-  padding: 6, textAlign: "left", fontSize: 12, fontWeight: 600, color: "#555",
+  padding: 6, textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--fg-soft)",
 };

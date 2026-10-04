@@ -189,6 +189,12 @@ in der Agents-Ansicht. Details: `docs/wings-remote-api.md`.
 | `BILLING_REMINDER_DAYS` | Tage vor Laufzeitende für die Erinnerungsmail, 0 = aus (Billing-Tick) | 3 |
 | `BILLING_TICK_MAX_AGE_MINUTES` | Warnung (Preflight, `/api/admin/billing/status`), wenn der Billing-Tick so lange nicht gelaufen ist | 15 |
 | `BILLING_WAIT_WARN_HOURS` | Warnung (Preflight, `/api/admin/billing/status`), wenn eine bezahlte Bestellung so lange auf einen freien Node wartet | 24 |
+| `ADMIN_ALERT_EMAIL` | Adresse(n), kommagetrennt, für Admin-Alerts (leer = aus; braucht `MAIL_SERVER`) | – |
+| `ADMIN_ALERT_WEBHOOK_URL` | Webhook für Admin-Alerts, JSON mit `content` (Discord) und `text` (Slack); enthält oft ein Geheimnis (leer = aus) | – |
+| `ADMIN_ALERT_COOLDOWN_MINUTES` | Eine anhaltende Störung wird frühestens nach so vielen Minuten erneut gemeldet | 360 |
+| `ADMIN_ALERT_RECOVERY` | Einmalige Entwarnung, wenn die Störung behoben ist | true |
+| `INVOICE_NUMBER_FORMAT` | Format der Belegnummer (`{year}`, `{seq}`), nach dem Start nicht mehr ändern | `AST-{year}-{seq:05d}` |
+| `INVOICE_SELLER` / `RECEIPT_FOOTER` | Anbieter-Kopf und Fußzeile der Zahlungsbelege (`\n` = Zeilenumbruch) | – |
 | `BILLING_GRACE_DAYS` | Tage von überfälliger Zahlung bis zur Löschung der Instance (Billing-Tick) | 7 |
 | `REGISTRATION_ENABLED` | Selbstregistrierung erlauben | false |
 | `EMAIL_VERIFICATION_REQUIRED` | Login erst nach bestaetigter E-Mail (braucht funktionierendes SMTP) | false |

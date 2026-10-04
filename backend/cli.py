@@ -118,10 +118,11 @@ def cmd_billing_tick(args):
 
 
 def cmd_cleanup_jobs(args):
-    """Loescht alte, beendete Job-Eintraege (completed/failed)."""
+    """Loescht alte, beendete Job-Eintraege (completed/failed) und abgelaufene Logout-Sperren."""
     import json
 
     from app import create_app
+    from app.domain.auth.blocklist import cleanup_revoked_tokens
     from app.infrastructure.jobs.cleanup import cleanup_jobs
 
     app = create_app()
@@ -131,7 +132,40 @@ def cmd_cleanup_jobs(args):
         except ValueError as e:
             print(f"Fehler: {e}")
             return 2
+        summary["revoked_tokens"] = cleanup_revoked_tokens(dry_run=args.dry_run)
     print(json.dumps(summary, ensure_ascii=False))
+    return 0
+
+
+def cmd_alert_test(args):
+    """Schickt eine Testnachricht an die konfigurierten Admin-Kanaele (ADMIN_ALERT_EMAIL, ADMIN_ALERT_WEBHOOK_URL)."""
+    import json
+
+    from app import create_app
+    from app.domain.system.alerts import configured_channels, send_admin_alert
+
+    app = create_app()
+    with app.app_context():
+        channels = configured_channels()
+        if not channels["email"] and not channels["webhook"]:
+            print("Kein Kanal konfiguriert (ADMIN_ALERT_EMAIL und ADMIN_ALERT_WEBHOOK_URL sind leer).")
+            return 1
+        result = send_admin_alert("Astra: Testnachricht", "Das ist eine Testnachricht der Admin-Benachrichtigung.")
+    print(json.dumps(result))
+    return 0 if all(v is not False for v in result.values()) else 1
+
+
+def cmd_alert_check(args):
+    """Prueft die Betriebsausloeser und meldet Stoerungen (unabhaengig vom Billing-Tick, z.B. per Cron)."""
+    import json
+
+    from app import create_app
+    from app.domain.system.alerts import check_alerts
+
+    app = create_app()
+    with app.app_context():
+        result = check_alerts()
+    print(json.dumps(result))
     return 0
 
 
@@ -274,6 +308,12 @@ def main():
     p_cleanup.add_argument("--days", type=int, default=30, help="Aufbewahrung in Tagen (Standard 30)")
     p_cleanup.add_argument("--dry-run", action="store_true", help="Nur zaehlen, nichts loeschen")
 
+    # ── alert-test / alert-check ─────────────────────────
+    subparsers.add_parser("alert-test", help="Testnachricht an die Admin-Benachrichtigungskanaele senden")
+    subparsers.add_parser(
+        "alert-check", help="Betriebsausloeser pruefen und melden (z.B. per Cron, unabhaengig vom Billing-Tick)"
+    )
+
     # ── check-config ────────────────────────────────────
     subparsers.add_parser("check-config", help="Prueft die Konfiguration")
 
@@ -310,6 +350,8 @@ def main():
         "import-blueprint": cmd_import_blueprint,
         "billing-tick": cmd_billing_tick,
         "cleanup-jobs": cmd_cleanup_jobs,
+        "alert-test": cmd_alert_test,
+        "alert-check": cmd_alert_check,
         "check-config": cmd_check_config,
         "db-init": cmd_db_init,
         "db-status": cmd_db_status,

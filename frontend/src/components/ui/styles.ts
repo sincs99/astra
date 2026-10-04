@@ -3,11 +3,11 @@
  */
 
 export const cardStyle: React.CSSProperties = {
-  border: "1px solid #e0e0e0",
+  border: "1px solid var(--border)",
   borderRadius: 8,
   padding: 16,
   marginBottom: 16,
-  backgroundColor: "#fff",
+  backgroundColor: "var(--bg-card)",
 };
 
 export const inputStyle: React.CSSProperties = {
@@ -15,7 +15,7 @@ export const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
   width: "100%",
   borderRadius: 6,
-  border: "1px solid #ccc",
+  border: "1px solid var(--border-strong)",
   fontSize: 14,
   lineHeight: 1.5,
 };
@@ -25,7 +25,7 @@ export const labelStyle: React.CSSProperties = {
   marginBottom: 4,
   fontWeight: 600,
   fontSize: 13,
-  color: "#555",
+  color: "var(--fg-soft)",
 };
 
 export const btnPrimary: React.CSSProperties = {
@@ -57,9 +57,9 @@ export const btnDefault: React.CSSProperties = {
   cursor: "pointer",
   whiteSpace: "nowrap",
   borderRadius: 6,
-  border: "1px solid #ccc",
-  backgroundColor: "#f8f8f8",
-  color: "#333",
+  border: "1px solid var(--border-strong)",
+  backgroundColor: "var(--bg-subtle)",
+  color: "var(--fg)",
   fontSize: 14,
   fontWeight: 500,
 };
@@ -67,21 +67,21 @@ export const btnDefault: React.CSSProperties = {
 export const thStyle: React.CSSProperties = {
   padding: 10,
   textAlign: "left",
-  borderBottom: "2px solid #e0e0e0",
+  borderBottom: "2px solid var(--border)",
   fontSize: 13,
   fontWeight: 600,
-  color: "#555",
+  color: "var(--fg-soft)",
   whiteSpace: "nowrap",
 };
 
 export const tdStyle: React.CSSProperties = {
   padding: 10,
   verticalAlign: "middle",
-  borderBottom: "1px solid #f0f0f0",
+  borderBottom: "1px solid var(--bg-subtle)",
 };
 
 export const linkStyle: React.CSSProperties = {
-  color: "#1565c0",
+  color: "var(--c-blue)",
   textDecoration: "none",
   fontWeight: 500,
 };

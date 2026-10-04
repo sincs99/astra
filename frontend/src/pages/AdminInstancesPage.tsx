@@ -14,6 +14,7 @@ import {
   PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState,
   Toast, useToast, ConfirmButton,
   cardStyle, inputStyle, labelStyle, btnPrimary, thStyle, tdStyle,
+  ScrollRegion,
 } from "../components/ui";
 
 export function AdminInstancesPage() {
@@ -164,11 +165,11 @@ export function AdminInstancesPage() {
                 {freeEndpoints.map(ep => <option key={ep.id} value={ep.id}>{ep.ip}:{ep.port}</option>)}
               </select>
               {freeEndpoints.length === 0 && (
-                <small style={{ color: "#c62828" }}>Keine freien Endpoints auf diesem Agent verfügbar.</small>
+                <small style={{ color: "var(--c-red)" }}>Keine freien Endpoints auf diesem Agent verfügbar.</small>
               )}
             </div>
           ) : (
-            <p style={{ margin: "12px 0 0", fontSize: 12, color: "#666" }}>
+            <p style={{ margin: "12px 0 0", fontSize: 12, color: "var(--fg-muted)" }}>
               Astra wählt den Agent mit freiem Endpoint und genug Kapazität und weist den Endpoint automatisch zu.
             </p>
           )}
@@ -205,10 +206,10 @@ export function AdminInstancesPage() {
       ) : instances.length === 0 ? (
         <EmptyState icon="🖥️" message="Noch keine Instances vorhanden." />
       ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #e0e0e0" }}>
+        <ScrollRegion label="Instances-Tabelle">
+          <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid var(--border)" }}>
             <thead>
-              <tr style={{ backgroundColor: "#f5f5f5" }}>
+              <tr style={{ backgroundColor: "var(--bg-subtle)" }}>
                 <th style={thStyle}>Name</th>
                 <th style={thStyle}>UUID</th>
                 <th style={thStyle}>Status</th>
@@ -230,7 +231,7 @@ export function AdminInstancesPage() {
                   <tr>
                     <td style={tdStyle}>
                       <strong>{inst.name}</strong>
-                      {inst.description && <div style={{ fontSize: 12, color: "#666" }}>{inst.description}</div>}
+                      {inst.description && <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>{inst.description}</div>}
                     </td>
                     <td style={tdStyle}>
                       <code style={{ fontSize: 11 }}>{inst.uuid.substring(0, 8)}…</code>
@@ -242,7 +243,7 @@ export function AdminInstancesPage() {
                     <td style={tdStyle}>{agent?.name ?? "–"}</td>
                     <td style={tdStyle}>{ep ? `${ep.ip}:${ep.port}` : "–"}</td>
                     <td style={tdStyle}>
-                      <small style={{ color: "#666" }}>
+                      <small style={{ color: "var(--fg-muted)" }}>
                         {inst.memory}MB / {inst.disk}MB / {inst.cpu}%
                       </small>
                     </td>
@@ -250,7 +251,7 @@ export function AdminInstancesPage() {
                         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                           <button
                             onClick={() => { setTransferringUuid(inst.uuid); setDeletingUuid(null); }}
-                            style={{ padding: "4px 10px", fontSize: 12, border: "1px solid #ccc", borderRadius: 4, cursor: "pointer", backgroundColor: "#fff" }}
+                            style={{ padding: "4px 10px", fontSize: 12, border: "1px solid var(--border-strong)", borderRadius: 4, cursor: "pointer", backgroundColor: "var(--bg-card)" }}
                             title="Instance transferieren"
                           >
                             ⇄ Transfer
@@ -282,7 +283,7 @@ export function AdminInstancesPage() {
                           <button
                             type="button"
                             onClick={() => { setDeletingUuid(inst.uuid); setTransferringUuid(null); }}
-                            style={{ padding: "4px 10px", fontSize: 12, border: "1px solid #ef9a9a", borderRadius: 4, cursor: "pointer", backgroundColor: "#fff", color: "#c62828" }}
+                            style={{ padding: "4px 10px", fontSize: 12, border: "1px solid var(--border-red)", borderRadius: 4, cursor: "pointer", backgroundColor: "var(--bg-card)", color: "var(--c-red)" }}
                             title="Instance löschen"
                           >
                             🗑 Löschen
@@ -292,7 +293,7 @@ export function AdminInstancesPage() {
                   </tr>
                   {isTransferring && (
                     <tr>
-                      <td colSpan={9} style={{ ...tdStyle, backgroundColor: "#fff8f8" }}>
+                      <td colSpan={9} style={{ ...tdStyle, backgroundColor: "var(--tint-red)" }}>
                         <TransferInstanceForm
                           instanceUuid={inst.uuid}
                           instanceName={inst.name}
@@ -306,7 +307,7 @@ export function AdminInstancesPage() {
                   )}
                   {deletingUuid === inst.uuid && (
                     <tr>
-                      <td colSpan={9} style={{ ...tdStyle, backgroundColor: "#fff8f8" }}>
+                      <td colSpan={9} style={{ ...tdStyle, backgroundColor: "var(--tint-red)" }}>
                         <DeleteInstanceForm
                           name={inst.name}
                           status={inst.status}
@@ -332,7 +333,7 @@ export function AdminInstancesPage() {
               })}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       )}
     </PageLayout>
   );

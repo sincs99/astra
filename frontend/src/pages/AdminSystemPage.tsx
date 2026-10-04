@@ -120,8 +120,8 @@ function InfoRow({ label, value, mono, status }: {
   status?: string;
 }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #f0f0f0", fontSize: 14 }}>
-      <span style={{ fontWeight: 600, color: "#555" }}>{label}</span>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid var(--bg-subtle)", fontSize: 14 }}>
+      <span style={{ fontWeight: 600, color: "var(--fg-soft)" }}>{label}</span>
       <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span style={mono ? { fontFamily: "monospace", fontSize: 13 } : {}}>{value}</span>
         {status && <StatusBadge status={status} size="sm" />}

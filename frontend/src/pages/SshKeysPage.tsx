@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { t } from "../i18n";
 import { api, SshKeyEntry } from "../services/api";
 import { PageLayout } from "../components/ui/PageLayout";
 import { LoadingState } from "../components/ui/LoadingState";
@@ -43,7 +44,7 @@ export function SshKeysPage() {
       const data = await api.getSshKeys();
       setKeys(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Laden fehlgeschlagen");
+      setError(e instanceof Error ? e.message : t("ssh.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -56,18 +57,18 @@ export function SshKeysPage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim() || !formKey.trim()) {
-      toast.error("Name und Public Key sind erforderlich");
+      toast.error(t("ssh.required"));
       return;
     }
     setSubmitting(true);
     try {
       await api.createSshKey({ name: formName.trim(), public_key: formKey.trim() });
-      toast.success(`SSH-Key "${formName}" hinzugefügt`);
+      toast.success(t("ssh.added", { name: formName }));
       setFormName("");
       setFormKey("");
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Fehler beim Hinzufügen");
+      toast.error(e instanceof Error ? e.message : t("ssh.addFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -76,10 +77,10 @@ export function SshKeysPage() {
   const handleDelete = async (key: SshKeyEntry) => {
     try {
       await api.deleteSshKey(key.id);
-      toast.success(`SSH-Key "${key.name}" gelöscht`);
+      toast.success(t("ssh.deleted", { name: key.name }));
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Fehler beim Löschen");
+      toast.error(e instanceof Error ? e.message : t("ssh.deleteFailed"));
     }
   };
 
@@ -93,21 +94,22 @@ export function SshKeysPage() {
   };
 
   return (
-    <PageLayout title="SSH Keys">
+    <PageLayout title={t("ssh.title")}>
       <Toast {...toast} />
 
       {/* Neuen Key hinzufügen */}
       <div style={{ ...cardStyle, marginBottom: 28 }}>
         <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700 }}>
-          Neuen SSH-Key hinzufügen
+          {t("ssh.addTitle")}
         </h2>
         <form onSubmit={handleAdd}>
           <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 2fr", marginBottom: 12 }}>
             <div>
-              <label style={labelStyle}>Name</label>
+              <label htmlFor="ssh-name" style={labelStyle}>{t("ssh.name")}</label>
               <input
+                id="ssh-name"
                 style={inputStyle}
-                placeholder="z.B. MacBook Pro"
+                placeholder={t("ssh.namePh")}
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 disabled={submitting}
@@ -115,10 +117,11 @@ export function SshKeysPage() {
               />
             </div>
             <div>
-              <label style={labelStyle}>Public Key</label>
+              <label htmlFor="ssh-key" style={labelStyle}>{t("ssh.publicKey")}</label>
               <input
+                id="ssh-key"
                 style={inputStyle}
-                placeholder="ssh-ed25519 AAAA... oder ssh-rsa AAAA..."
+                placeholder={t("ssh.keyPh")}
                 value={formKey}
                 onChange={(e) => setFormKey(e.target.value)}
                 disabled={submitting}
@@ -130,7 +133,7 @@ export function SshKeysPage() {
             disabled={submitting}
             style={{ ...btnPrimary, opacity: submitting ? 0.6 : 1, cursor: submitting ? "not-allowed" : "pointer" }}
           >
-            {submitting ? "Wird hinzugefügt..." : "Key hinzufügen"}
+            {submitting ? t("ssh.adding") : t("ssh.add")}
           </button>
         </form>
       </div>
@@ -141,36 +144,36 @@ export function SshKeysPage() {
       ) : error ? (
         <ErrorState message={error} onRetry={load} />
       ) : keys.length === 0 ? (
-        <EmptyState message="Keine SSH-Keys vorhanden. Füge deinen ersten Key oben hinzu." />
+        <EmptyState message={t("ssh.none")} />
       ) : (
         <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ backgroundColor: "#fafafa" }}>
-                <th style={thStyle}>Name</th>
-                <th style={thStyle}>Fingerprint</th>
-                <th style={thStyle}>Public Key</th>
-                <th style={thStyle}>Erstellt</th>
-                <th style={{ ...thStyle, textAlign: "right" }}></th>
+              <tr style={{ backgroundColor: "var(--bg-page)" }}>
+                <th style={thStyle}>{t("ssh.name")}</th>
+                <th style={thStyle}>{t("ssh.fingerprint")}</th>
+                <th style={thStyle}>{t("ssh.publicKey")}</th>
+                <th style={thStyle}>{t("ssh.created")}</th>
+                <th style={{ ...thStyle, textAlign: "right" }}><span style={{ position: "absolute", left: -9999 }}>{t("ssh.actions")}</span></th>
               </tr>
             </thead>
             <tbody>
               {keys.map((key) => (
                 <tr key={key.id}>
                   <td style={{ ...tdStyle, fontWeight: 600 }}>{key.name}</td>
-                  <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: 12, color: "#555" }}>
+                  <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: 12, color: "var(--fg-soft)" }}>
                     {key.fingerprint}
                   </td>
-                  <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: 11, color: "#777" }}>
+                  <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: 11, color: "var(--fg-muted)" }}>
                     {truncateKey(key.public_key)}
                   </td>
-                  <td style={{ ...tdStyle, fontSize: 13, color: "#777", whiteSpace: "nowrap" }}>
+                  <td style={{ ...tdStyle, fontSize: 13, color: "var(--fg-muted)", whiteSpace: "nowrap" }}>
                     {formatDate(key.created_at)}
                   </td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>
                     <ConfirmButton
-                      label="Löschen"
-                      confirmMessage={`SSH-Key "${key.name}" wirklich löschen?`}
+                      label={t("ssh.delete")}
+                      confirmMessage={t("ssh.deleteConfirm", { name: key.name })}
                       onConfirm={() => handleDelete(key)}
                       danger
                       size="sm"
@@ -186,16 +189,15 @@ export function SshKeysPage() {
       {/* Info-Box */}
       <div style={{
         marginTop: 24, padding: "12px 16px",
-        backgroundColor: "#e3f2fd", borderRadius: 8,
-        border: "1px solid #90caf9", fontSize: 13, color: "#1565c0",
+        backgroundColor: "var(--tint-blue)", borderRadius: 8,
+        border: "1px solid var(--border-blue)", fontSize: 13, color: "var(--c-blue)",
       }}>
-        <strong>SFTP-Zugriff mit SSH Keys:</strong> Die hier verwalteten Keys werden für die
-        schlüsselbasierte SFTP-Authentifizierung verwendet. Unterstützte Formate:{" "}
+        <strong>{t("ssh.infoTitle")}</strong> {t("ssh.infoText")}{" "}
         <code>ssh-ed25519</code>, <code>ssh-rsa</code>, <code>ecdsa-sha2-nistp256/384/521</code>.
         <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
-          <li>Als <strong>Owner</strong> einer Instance: SFTP-Zugriff automatisch erlaubt.</li>
-          <li>Als <strong>Collaborator</strong>: Berechtigung <code>file.sftp</code> erforderlich.</li>
-          <li>Suspendierte Instances blockieren den SFTP-Zugriff.</li>
+          <li>{t("ssh.infoOwner")}</li>
+          <li>{t("ssh.infoCollab")}</li>
+          <li>{t("ssh.infoSuspended")}</li>
         </ul>
       </div>
     </PageLayout>

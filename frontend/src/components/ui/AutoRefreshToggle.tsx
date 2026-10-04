@@ -1,3 +1,5 @@
+import { t } from "../../i18n";
+
 interface AutoRefreshToggleProps {
   enabled: boolean;
   onChange: (value: boolean) => void;
@@ -6,9 +8,9 @@ interface AutoRefreshToggleProps {
 
 export function AutoRefreshToggle({ enabled, onChange, intervalSeconds }: AutoRefreshToggleProps) {
   return (
-    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#555", alignSelf: "flex-end", paddingBottom: 8 }}>
+    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--fg-soft)", alignSelf: "flex-end", paddingBottom: 8 }}>
       <input type="checkbox" checked={enabled} onChange={(e) => onChange(e.target.checked)} />
-      Auto-Refresh ({intervalSeconds}s)
+      {t("common.autoRefresh", { seconds: intervalSeconds })}
     </label>
   );
 }
