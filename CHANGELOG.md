@@ -5,6 +5,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – Betrieb, Barrierefreiheit)
+- Admin-Seiten werden per Code-Splitting nachgeladen (Haupt-Bundle ca. 452 -> 385 KB); fehlt nach einem Deployment eine Seiten-Datei, zeigt die App "Neue Version verfuegbar" mit Reload-Button statt der allgemeinen Fehlerseite
+- Browser-Tab-Titel folgt der Seite ("Meine Bestellungen - Astra"); Skip-Link "Zum Inhalt springen" fuer Tastaturnutzer
+- Admin-System: Karte "Billing-Tick" (Ampel, letzter Lauf relativ, Bestellungen je Status, Warnung "Container billing pruefen"); bezahlte Bestellungen ohne freien Node mit Warnung "Kapazitaet pruefen". Auf dem Admin-Dashboard erscheint die Karte nur bei Stoerung
+- Bestellungen: Nach der Stripe-Rueckkehr Hinweis auf die Bestaetigungsmail (M54)
+
 ### Added (Phase 2 – Produktions-Deployment)
 - GitHub Actions `.github/workflows/backend.yml`: alle Testskripte plus Migrations-Roundtrip auf SQLite bei Push/PR
 - `POST /api/client/orders/{uuid}/checkout`: 409-Antworten tragen `code` (`manual`, `invalid_status`), `PaymentError.code`
