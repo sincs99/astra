@@ -134,6 +134,7 @@ class Order(db.Model):
     user = db.relationship("User", lazy=True)
     product = db.relationship("Product", lazy=True)
     instance = db.relationship("Instance", lazy=True)
+    receipts = db.relationship("Receipt", lazy="selectin", order_by="Receipt.id", viewonly=True)
 
     def scheduled_deletion_at(self):
         """Zeitpunkt, zu dem der Server geloescht wird (None, wenn nichts ansteht)."""
@@ -177,6 +178,7 @@ class Order(db.Model):
             "cancelled_at": iso_utc(self.cancelled_at),
             "refunded_at": iso_utc(self.refunded_at),
             "disputed": self.disputed_at is not None,
+            "receipts": [r.to_summary() for r in self.receipts],
             "created_at": iso_utc(self.created_at),
         }
         if include_user:
@@ -212,3 +214,34 @@ class PaymentEvent(db.Model):
             "received_at": iso_utc(self.received_at),
             "processed_at": iso_utc(self.processed_at),
         }
+
+
+class InvoiceCounter(db.Model):
+    """Fortlaufender Zaehler der Belegnummern je Jahr (M62). Die Vergabe sperrt die Zeile (PostgreSQL)."""
+    __tablename__ = "invoice_counters"
+
+    scope = db.Column(db.String(16), primary_key=True)  # Jahr, z.B. "2026"
+    last_number = db.Column(db.Integer, nullable=False, default=0)
+
+
+class Receipt(db.Model):
+    """Zahlungsbeleg mit fortlaufender Nummer (M62). Pro verbuchter Zahlung hoechstens einer, wird nie geloescht."""
+    __tablename__ = "receipts"
+    __table_args__ = (db.UniqueConstraint("order_id", "payment_reference", name="uq_receipts_order_payment"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    number = db.Column(db.String(64), unique=True, nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, index=True)
+    payment_reference = db.Column(db.String(191), nullable=True)
+    amount_cents = db.Column(db.Integer, nullable=False)
+    currency = db.Column(db.String(3), nullable=False)
+    issued_at = db.Column(db.DateTime, nullable=False, default=_now)  # naive UTC
+    # Schnappschuss zum Zeitpunkt der Zahlung: product_name, instance_name, billing_period_days, customer
+    snapshot = db.Column(db.JSON, nullable=False)
+
+    def to_summary(self) -> dict:
+        return {"number": self.number, "issued_at": iso_utc(self.issued_at),
+                "amount_cents": self.amount_cents, "currency": self.currency}
+
+    def to_dict(self) -> dict:
+        return {**self.to_summary(), "payment_reference": self.payment_reference, **(self.snapshot or {})}
