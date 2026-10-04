@@ -143,6 +143,12 @@ docker compose exec backend python cli.py check-config
 ./scripts/smoke-test.sh https://<PANEL_DOMAIN> admin '<passwort>'
 ```
 
+Alte Job-Eintraege (`completed`/`failed`) wachsen unbegrenzt. Gelegentlich aufraeumen, z.B. woechentlich per Cron:
+
+```bash
+docker compose exec backend python cli.py cleanup-jobs --days 30   # --dry-run zeigt nur die Zahl
+```
+
 ---
 
 ## Konfiguration
