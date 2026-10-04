@@ -41,4 +41,9 @@ export const aorders = {
   "aorders.searchPlaceholder": "Verwendungszweck, Server, Kunde oder UUID",
   "aorders.searchClear": "Suche leeren",
   "aorders.noMatches": "Keine Treffer für „{q}“.",
+  "aorders.remind": "Erinnerung senden",
+  "aorders.remindAria": "Erinnerung für Bestellung #{id} senden",
+  "aorders.reminded": "Erinnerung gesendet",
+  "aorders.remindCooldown": "Zuletzt vor kurzem gesendet, wieder möglich in {n} h",
+  "aorders.remindFailed": "Erinnerung konnte nicht gesendet werden",
 } as const;

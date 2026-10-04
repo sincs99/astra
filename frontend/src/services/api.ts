@@ -74,11 +74,14 @@ export function getSimulatedUserId(): number {
 export class ApiError extends Error {
   status: number;
   code?: string;
-  constructor(message: string, status: number, code?: string) {
+  /** Rohe Fehlerantwort des Servers (z.B. retry_after_seconds bei 429) */
+  data?: Record<string, unknown>;
+  constructor(message: string, status: number, code?: string, data?: Record<string, unknown>) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.data = data;
   }
 }
 
@@ -121,6 +124,7 @@ async function request<T = unknown>(
       friendlyApiMessage(response.status, error.error || `Request failed: ${response.status}`),
       response.status,
       error.code,
+      error,
     );
   }
 
@@ -1432,6 +1436,9 @@ export const api = {
     return request<Order[]>(`/admin/orders${qs ? `?${qs}` : ""}`);
   },
   /** Bei awaiting_provisioning erneut bereitstellen (Zahlung wird nicht doppelt verbucht). */
+  /** Zahlungserinnerung an den Kunden senden (M69); 429 reminder_cooldown mit retry_after_seconds, 409 wenn nicht moeglich */
+  remindOrder: (uuid: string) =>
+    request<{ sent_at: string; kind: string }>(`/admin/orders/${uuid}/remind`, { method: "POST", body: JSON.stringify({}) }),
   markOrderPaid: (uuid: string, paymentReference?: string) =>
     request<Order>(`/admin/orders/${uuid}/mark-paid`, {
       method: "POST",

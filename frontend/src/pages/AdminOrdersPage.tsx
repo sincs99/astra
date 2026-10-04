@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Icon } from "../components/ui/Icon";
+import { RemindButton } from "../components/admin/RemindButton";
 import { api, type Order, type OrderStatus } from "../services/api";
 import { OrderNotice } from "../components/OrderNotice";
 import { formatDate } from "../lib/dates";
@@ -248,9 +249,12 @@ export function AdminOrdersPage() {
                       </td>
                       <td data-label={t("aorders.colActions")}>
                         {o.status === "pending_payment" || isRenewal(o) ? (
-                          <button type="button" className="btn btn-sm" onClick={() => setPaying(o)}>
-                            {isRenewal(o) ? t("aorders.renewAction") : t("aorders.markPaid")}
-                          </button>
+                          <div className="row-actions">
+                            <button type="button" className="btn btn-sm" onClick={() => setPaying(o)}>
+                              {isRenewal(o) ? t("aorders.renewAction") : t("aorders.markPaid")}
+                            </button>
+                            <RemindButton order={o} />
+                          </div>
                         ) : o.status === "awaiting_provisioning" ? (
                           <ConfirmButton label={t("aorders.reprovision")} size="sm"
                             confirmMessage={t("aorders.reprovisionConfirm", { id: o.id })}

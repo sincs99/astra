@@ -41,4 +41,9 @@ export const aorders = {
   "aorders.searchPlaceholder": "Payment reference, server, customer or UUID",
   "aorders.searchClear": "Clear search",
   "aorders.noMatches": "No matches for “{q}”.",
+  "aorders.remind": "Send reminder",
+  "aorders.remindAria": "Send reminder for order #{id}",
+  "aorders.reminded": "Reminder sent",
+  "aorders.remindCooldown": "Sent recently, possible again in {n} h",
+  "aorders.remindFailed": "Reminder could not be sent",
 } as const;

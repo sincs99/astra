@@ -3,6 +3,7 @@ import { StatusBadge } from "../ui/StatusBadge";
 import { t } from "../../i18n";
 import { formatDateTime } from "../../lib/dates";
 import { formatMoney } from "../../lib/money";
+import { RemindButton } from "./RemindButton";
 import type { Order, PaymentEvent } from "../../services/api";
 
 export function PaymentsPanel({ events, due }: { events: PaymentEvent[] | null; due: Order[] }) {
@@ -47,7 +48,7 @@ export function PaymentsPanel({ events, due }: { events: PaymentEvent[] | null; 
           {due.length === 0
             ? t("aover.noneDue")
             : <>{t("aover.dueIn24")} {due.slice(0, 5).map((o, i) => (
-              <span key={o.uuid}>{i > 0 && ", "}<Link to="/admin/orders?status=active" className="mono">#{o.id}</Link></span>
+              <span key={o.uuid} style={{ display: "inline-flex", gap: 6, alignItems: "flex-start", marginRight: 8 }}>{i > 0 && ","}<Link to="/admin/orders?status=active" className="mono">#{o.id}</Link><RemindButton order={o} /></span>
             ))}{due.length > 5 ? ` ${t("aover.andMore", { n: due.length - 5 })}` : ""}</>}
         </span>
       </div>
