@@ -73,3 +73,13 @@ class ApiKey(db.Model):
 
     def __repr__(self):
         return f"<ApiKey {self.identifier} (user={self.user_id})>"
+
+
+class RevokedToken(db.Model):
+    """Per Logout widerrufene Access-Tokens (M61): `jti` bleibt bis zum Ablauf des Tokens gesperrt."""
+    __tablename__ = "revoked_tokens"
+
+    jti = db.Column(db.String(64), primary_key=True)
+    user_id = db.Column(db.Integer, nullable=True, index=True)
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)  # naive UTC: ab da ist der Eintrag ueberfluessig
+    revoked_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
