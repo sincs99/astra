@@ -258,7 +258,7 @@ Beweise für Streitfälle, vorzeitiges Löschen eines erstatteten Servers (Admin
 | `GET/POST /api/admin/products`, `GET/PATCH/DELETE /{id}` | Admin | Pakete verwalten |
 | `GET /api/admin/orders?status=&user_id=`, `/{uuid}` | Admin | alle Bestellungen |
 | `GET /api/admin/billing/status` | Admin | Läuft der Billing-Tick? Letzter Lauf, Alter, Ergebnis, Bestellungen je Status |
-| `GET /api/admin/stats/revenue?days=30` | Admin | Umsatz der letzten `days` Tage (1 bis 3650) aus den tatsächlichen Zahlungen: `{days, since, by_currency: {"EUR": cents}, paid_count, renewals_count, refunded_count}`; je Währung getrennt, Erstattungen nicht abgezogen |
+| `GET /api/admin/stats/revenue?days=30` | Admin | Umsatz der letzten `days` Tage (1 bis 365, sonst 400) auf Basis der Zahlungsbelege (`receipts.issued_at`, M62): `{days, since, by_currency: {"EUR": cents}, paid_count (Erstzahlungen), renewals_count, refunded_cents_by_currency}`. Erstattungen (M59) getrennt je Währung, nicht verrechnet; Zahlungen vor M62 und Gratis-Pakete fehlen |
 | `GET /api/admin/payment-events?status=&order_uuid=&limit=` | Admin | Zahlungsereignisse des Anbieters (nur lesen, neueste zuerst, `limit` 1 bis 500); `mismatch` und `unapplied` brauchen Aufmerksamkeit |
 | `POST /api/admin/orders/{uuid}/mark-paid` | Admin | `{payment_reference?}` Zahlung bestätigen und Instance bereitstellen; auf `active`/`past_due` ist die Referenz Pflicht (Verlängerung) |
 

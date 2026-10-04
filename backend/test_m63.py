@@ -1,4 +1,4 @@
-"""M63 – Umsatzstatistik GET /api/admin/stats/revenue."""
+"""M63 – Umsatzstatistik GET /api/admin/stats/revenue (auf Basis der Belege, Erstattungen getrennt)."""
 
 import os
 import sys
@@ -10,6 +10,7 @@ os.environ["APP_ENV"] = "testing"
 from app import create_app
 from app.extensions import db
 from app.domain.activity.models import ActivityLog
+from app.domain.billing.models import Receipt
 from app.domain.agents.models import Agent
 from app.domain.billing import service as billing
 from app.domain.billing.models import Order
@@ -20,6 +21,7 @@ from app.domain.instances.models import Instance
 from app.domain.users.models import User
 from app.infrastructure import mail
 from app.domain.activity.models import ActivityLog
+from app.domain.billing.models import Receipt
 from unittest import mock
 import json, subprocess, sqlite3, tempfile
 from app.domain.billing import receipts
@@ -85,14 +87,15 @@ def stats(q=""):
     return c.get("/api/admin/stats/revenue" + q, headers=AH)
 
 
-def backdate(event, days, order_uuid=None):
-    """Datiert die Ereignisse eines Typs (optional einer Bestellung) zurueck."""
+def backdate(order_uuid, days, ref=None):
+    """Datiert die Belege einer Bestellung (optional nur den zur Referenz) zurueck."""
     with app.app_context():
-        q = ActivityLog.query.filter_by(event=event)
-        if order_uuid:
-            q = q.filter_by(subject_id=Order.query.filter_by(uuid=order_uuid).first().id)
-        for e in q.all():
-            e.created_at = datetime.utcnow() - timedelta(days=days)
+        oid = Order.query.filter_by(uuid=order_uuid).first().id
+        q = Receipt.query.filter_by(order_id=oid)
+        if ref:
+            q = q.filter_by(payment_reference=ref)
+        for rc in q.all():
+            rc.issued_at = datetime.utcnow() - timedelta(days=days)
         db.session.commit()
 
 
@@ -104,16 +107,16 @@ free = product(100, "Gratis", 0)
 print("Leer")
 r = stats()
 check("ohne Zahlungen: leere Summen, Standard 30 Tage", r.status_code == 200 and r.json["days"] == 30 and r.json["by_currency"] == {}
-      and r.json["paid_count"] == 0 and r.json["renewals_count"] == 0 and r.json["refunded_count"] == 0, str(r.json))
+      and r.json["paid_count"] == 0 and r.json["renewals_count"] == 0 and r.json["refunded_cents_by_currency"] == {}, str(r.json))
 check("since mit UTC-Suffix", r.json["since"].endswith("+00:00"))
 
-print("Zahlungen")
+print("Zahlungen (Belege)")
 o1 = new_order(small); pay(o1, "p1")
 o2 = new_order(mid); pay(o2, "p2")
 o3 = new_order(usd); pay(o3, "p3")
 o4 = new_order(free)
 pay(o1, "p1-renew")     # Verlaengerung (499)
-pay(o1, "p1-renew")     # Wiederholung: zaehlt nicht doppelt
+pay(o1, "p1-renew")     # Wiederholung: kein zweiter Beleg, zaehlt nicht doppelt
 r = stats().json
 check("Summen je Waehrung (499+1000+499 EUR, 250 USD)", r["by_currency"] == {"EUR": 1998, "USD": 250}, str(r))
 check("3 Erstzahlungen, 1 Verlaengerung", r["paid_count"] == 3 and r["renewals_count"] == 1, str(r))
@@ -122,26 +125,44 @@ with app.app_context():
 check("Gratis-Paket und Gratis-Auto-Verlaengerung zaehlen nicht", stats().json["by_currency"] == {"EUR": 1998, "USD": 250})
 
 print("Zeitraum")
-backdate("order:paid", 40, o2)
+backdate(o2, 40)
 r = stats().json
-check("Zahlung vor 40 Tagen faellt aus den 30 Tagen", r["by_currency"] == {"EUR": 998, "USD": 250} and r["paid_count"] == 2, str(r))
+check("Beleg von vor 40 Tagen faellt aus den 30 Tagen", r["by_currency"] == {"EUR": 998, "USD": 250} and r["paid_count"] == 2, str(r))
 r = stats("?days=60").json
-check("days=60 enthaelt sie wieder", r["by_currency"]["EUR"] == 1998 and r["paid_count"] == 3 and r["days"] == 60, str(r))
-backdate("order:renewed", 3, o1)
-check("days=2: nur Ereignisse der letzten 2 Tage", stats("?days=2").json["renewals_count"] == 0 and stats("?days=2").json["paid_count"] == 2)
+check("days=60 enthaelt ihn wieder", r["by_currency"]["EUR"] == 1998 and r["paid_count"] == 3 and r["days"] == 60, str(r))
+backdate(o1, 3, ref="p1-renew")
+r = stats("?days=2").json
+check("days=2: nur Belege der letzten 2 Tage", r["renewals_count"] == 0 and r["paid_count"] == 2, str(r))
 check("days=7: Verlaengerung von vor 3 Tagen zaehlt", stats("?days=7").json["renewals_count"] == 1)
+backdate(o1, 20, ref="p1")
+backdate(o1, 40, ref="p1-renew")
+r = stats("?days=30").json
+check("Erstzahlung im Zeitraum, Verlaengerung davor: paid 2 (o1, o3), renewals 0", r["paid_count"] == 2 and r["renewals_count"] == 0, str(r))
+check("Verlaengerung im Zeitraum, Erstzahlung davor: zaehlt als Verlaengerung", (backdate(o1, 20, ref="p1-renew"), backdate(o1, 40, ref="p1"),
+      stats("?days=30").json["renewals_count"] == 1 and stats("?days=30").json["paid_count"] == 1)[-1])
 
-print("Erstattungen")
+print("Erstattungen getrennt")
 with app.app_context():
     from app.domain.activity.service import log_event
-    log_event(event="order:refunded", actor_id=None, subject_id=Order.query.filter_by(uuid=o3).first().id, subject_type="order")
-check("refunded_count zaehlt, zieht aber nichts ab", stats().json["refunded_count"] == 1 and stats().json["by_currency"]["USD"] == 250)
+    oid3 = Order.query.filter_by(uuid=o3).first().id
+    log_event(event="order:refunded", actor_id=None, subject_id=oid3, subject_type="order",
+              properties={"refunded_cents": 100, "amount_cents": 250, "currency": "USD", "full": False})
+    log_event(event="order:refunded", actor_id=None, subject_id=oid3, subject_type="order",
+              properties={"amount_cents": 250, "currency": "USD", "full": True})
+    log_event(event="order:refunded", actor_id=None, subject_id=oid3, subject_type="order", properties={"full": True})  # ohne Betrag: ignoriert
+r = stats().json
+check("Erstattungen je Waehrung (100 + 250 USD), nicht verrechnet", r["refunded_cents_by_currency"] == {"USD": 350} and r["by_currency"]["USD"] == 250, str(r))
+with app.app_context():
+    for e in ActivityLog.query.filter_by(event="order:refunded").all():
+        e.created_at = datetime.utcnow() - timedelta(days=100)
+    db.session.commit()
+check("alte Erstattungen ausserhalb des Zeitraums zaehlen nicht", stats().json["refunded_cents_by_currency"] == {})
 
 print("Eingabe und Rechte")
 check("days=abc: 400", stats("?days=abc").status_code == 400)
 check("days=0: 400", stats("?days=0").status_code == 400)
-check("days=99999: 400", stats("?days=99999").status_code == 400)
-check("days=3650: ok", stats("?days=3650").status_code == 200)
+check("days=366: 400", stats("?days=366").status_code == 400)
+check("days=365: ok", stats("?days=365").status_code == 200)
 app.config["ADMIN_GUARD_ENABLED"] = True
 check("ohne Anmeldung: 401", c.get("/api/admin/stats/revenue").status_code == 401)
 check("Kunde: 403", c.get("/api/admin/stats/revenue", headers=U1).status_code == 403)

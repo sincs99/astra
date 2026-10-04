@@ -79,7 +79,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
 ### Added (M63 – Umsatzstatistik)
-- `GET /api/admin/stats/revenue?days=30` (Admin-Guard, `days` 1 bis 3650, sonst 400): Umsatz aus den tatsaechlichen Zahlungen (Activity-Events `order:paid`/`order:renewed`, je Zahlung eines, auch vor M62; Betrag = Preis der Bestellung), `{days, since, by_currency, paid_count, renewals_count, refunded_count}`. Kostenlose Pakete zaehlen nicht, Erstattungen werden nicht abgezogen, keine Waehrungsumrechnung. `backend/test_m63.py` (17 Tests)
+- `GET /api/admin/stats/revenue?days=30` (Admin-Guard, `days` 1 bis 365, sonst 400): Umsatz auf Basis der Zahlungsbelege (`receipts.issued_at`, M62): `{days, since, by_currency, paid_count, renewals_count, refunded_cents_by_currency}`. Erster Beleg einer Bestellung = Erstzahlung, weitere = Verlaengerungen; Erstattungen (Events `order:refunded`, M59) getrennt je Waehrung, nicht verrechnet. Gratis-Pakete und Zahlungen vor M62 fehlen, keine Waehrungsumrechnung. `backend/test_m63.py` (20 Tests)
 
 ### Added (M62 – Zahlungsbelege mit fortlaufender Nummer, Grundlage)
 - Jede verbuchte Zahlung (nicht kostenlose Pakete) bekommt einen Beleg mit fortlaufender, lueckenloser Nummer je Jahr (`INVOICE_NUMBER_FORMAT`, Standard `AST-{year}-{seq:05d}`): Zaehler `invoice_counters` mit Zeilensperre (PostgreSQL), Zaehler und Beleg in einer Transaktion, Belege werden nie geloescht. Tabellen `receipts` und `invoice_counters` (Migration `v2q3r4s5t6u7`)

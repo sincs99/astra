@@ -416,33 +416,39 @@ def log_orders_expired(order_ids: list[int], reason: str) -> None:
 
 
 def revenue_stats(days: int = 30, now: datetime | None = None) -> dict:
-    """Umsatz der letzten `days` Tage aus den tatsaechlichen Zahlungen (Activity-Events `order:paid` und
-    `order:renewed`, je Zahlung ein Ereignis, auch fuer Zahlungen vor M62). Betrag = Preis der Bestellung.
+    """Umsatz der letzten `days` Tage auf Basis der Zahlungsbelege (M62, `receipts.issued_at`).
 
-    Kostenlose Bestellungen zaehlen nicht. Erstattungen werden nicht abgezogen (`refunded_count` zeigt, wie viele
-    Erstattungen im Zeitraum eintrafen). Die Summen sind nach Waehrung getrennt (keine Umrechnung).
+    Je verbuchter Zahlung gibt es einen Beleg; der erste Beleg einer Bestellung ist die Erstzahlung
+    (`paid_count`), weitere sind Verlaengerungen (`renewals_count`). Kostenlose Pakete haben keine Belege.
+    Zahlungen vor M62 haben keinen Beleg und fehlen. Erstattungen (M59, Events `order:refunded`) werden
+    getrennt je Waehrung ausgewiesen (`refunded_cents_by_currency`) und nicht verrechnet; fehlt im Event
+    der erstattete Betrag, zaehlt der Betrag der Zahlung. Keine Waehrungsumrechnung.
     """
     from app.domain.activity.models import ActivityLog
+    from app.domain.billing.models import Receipt
     now = _utc_naive(now) or _now()
     since = now - timedelta(days=days)
-    rows = (db.session.query(ActivityLog.event, Order.price_cents, Order.currency)
-            .join(Order, db.and_(ActivityLog.subject_type == "order", ActivityLog.subject_id == Order.id))
-            .filter(ActivityLog.event.in_(("order:paid", "order:renewed")), ActivityLog.created_at >= since,
-                    Order.price_cents > 0)
-            .all())
+    first_ids = {rid for (rid,) in db.session.query(db.func.min(Receipt.id)).group_by(Receipt.order_id).all()}
     by_currency: dict[str, int] = {}
     paid = renewals = 0
-    for event, cents, currency in rows:
+    for rid, cents, currency in (db.session.query(Receipt.id, Receipt.amount_cents, Receipt.currency)
+                                 .filter(Receipt.issued_at >= since, Receipt.issued_at <= now).all()):
         by_currency[currency] = by_currency.get(currency, 0) + cents
-        if event == "order:paid":
+        if rid in first_ids:
             paid += 1
         else:
             renewals += 1
-    refunded = (db.session.query(db.func.count(ActivityLog.id))
-                .filter(ActivityLog.event == "order:refunded", ActivityLog.created_at >= since)
-                .scalar()) or 0
+    refunded: dict[str, int] = {}
+    for (props,) in db.session.query(ActivityLog.properties).filter(
+            ActivityLog.event == "order:refunded", ActivityLog.created_at >= since).all():
+        props = props or {}
+        cents = props.get("refunded_cents") if isinstance(props.get("refunded_cents"), int) else props.get("amount_cents")
+        currency = props.get("currency")
+        if isinstance(cents, int) and currency:
+            refunded[currency] = refunded.get(currency, 0) + cents
     return {"days": days, "since": iso_utc(since), "by_currency": dict(sorted(by_currency.items())),
-            "paid_count": paid, "renewals_count": renewals, "refunded_count": refunded}
+            "paid_count": paid, "renewals_count": renewals,
+            "refunded_cents_by_currency": dict(sorted(refunded.items()))}
 
 
 # ── Betriebszustand des Billing-Ticks (M53) ─────────────
