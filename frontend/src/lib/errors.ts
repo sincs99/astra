@@ -1,5 +1,5 @@
 import { fixUmlauts } from "./umlauts";
-import { t } from "../i18n";
+import { getLang, t } from "../i18n";
 
 /** Allgemeine Meldungen, wenn das Backend nur einen technischen Statuscode liefert ("Request failed: 500"). */
 function genericMessage(status: number): string {
@@ -10,13 +10,17 @@ function genericMessage(status: number): string {
   return t("error.generic");
 }
 
-/** Übersetzt technische API-Fehler in verständliche Meldungen für Nutzer. */
+/**
+ * Fehlermeldung für Nutzer: Der Server-Text gewinnt (er kommt in der Sprache der Oberfläche, M72); nur technische
+ * Statuscodes ("Request failed: 500") werden durch die Frontend-Übersetzung ersetzt. Die ASCII-Umlaut-Korrekturen
+ * (deutsche Altmeldungen) gelten nur in der deutschen Oberfläche.
+ */
 export function friendlyApiMessage(status: number, message: string): string {
   if (status === 403 && /^Admin-Berechtigung erforderlich/i.test(message)) {
     return t("error.adminOnly");
   }
   if (/^Request failed: \d+$/.test(message)) return genericMessage(status);
-  return fixUmlauts(message);
+  return getLang() === "de" ? fixUmlauts(message) : message;
 }
 
 /** Meldung bei Netzwerkfehlern (Funktion, damit die aktuelle Sprache gilt). */
