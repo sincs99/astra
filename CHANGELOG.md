@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – M64-Nachtraege)
+- Spielname und Verwendungszweck aus M64: Unterzeile "Spiel · Paket" an Server- und Bestellkarten (ohne Spielname nur das Paket), Verwendungszweck (`payment_purpose`, Monospace mit Kopieren-Button) in der Dashboard-Bestellkarte bei offener Ueberweisung, neben dem Zahlungshinweis auf der Bestellungen-Seite und als Zeile in der Admin-Bestellliste
+
 ### Added (Frontend – D7 Landingpage)
 - Oeffentliche Startseite `/` nach `design/mockups/Landing.html` (ausgeloggt; angemeldet zeigt `/` weiter das Dashboard "Meine Server"): Kopf mit Logo, Anker-Navigation und "Anmelden"/"Jetzt bestellen" (mobil Menue), Hero, Pakete aus `GET /api/client/products` (Preis, RAM/CPU, Speicher, Spiel; "Jetzt bestellen" fuehrt zu `/shop?plan=<id>` und waehlt das Paket vor), Spiele nur aus den Blueprint-Namen der Pakete, "So funktioniert's" passend zum Zahlungsweg, Fuss mit Rechtslinks und Sprachumschalter. DE/EN. Der Shop liest `?plan=` zur Vorauswahl
 - Aus dem Mockup bewusst nicht uebernommen, weil nicht belegbar: "Server in Deutschland", "Taegliche Backups", Spielerzahlen, Backup-Anzahl je Paket, "Beliebt"-Marke, MwSt-Hinweis, feste Spieleliste. Die Ueberschrift "In drei Minuten online" ist Mockup-Text und vom Betreiber zu bestaetigen

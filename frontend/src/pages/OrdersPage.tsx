@@ -180,7 +180,10 @@ export function OrdersPage() {
   const action = (o: Order) => {
     // Bei überfälliger Zahlung ist der Server gesperrt: Bezahl-Button rot hervorheben
     const payButton = (label: string, urgent = false) => manualPayment ? (
-      <span style={{ fontSize: 12, color: "var(--fg-muted)", maxWidth: 220 }}>{manualPaymentNotice()}</span>
+      <span style={{ fontSize: 12, color: "var(--fg-muted)", maxWidth: 220 }}>
+        {manualPaymentNotice()}
+        {o.payment_purpose && <> {t("dash.rowPurpose")}: <strong className="mono" style={{ userSelect: "all" }}>{o.payment_purpose}</strong></>}
+      </span>
     ) : (
       <button type="button" onClick={() => pay(o)} disabled={paying === o.uuid}
         style={{ ...(urgent ? btnDanger : btnPrimary), padding: "4px 12px", fontSize: 12, opacity: paying === o.uuid ? 0.6 : 1 }}>

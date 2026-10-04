@@ -3,6 +3,7 @@ import { StatusBadge } from "../ui/StatusBadge";
 import { ConfirmButton } from "../ui/ConfirmButton";
 import { AddressRow } from "./AddressRow";
 import { formatMoney, formatPeriod } from "../../lib/money";
+import { gamePackageLabel } from "../../lib/subtitle";
 import { t } from "../../i18n";
 import type { Order } from "../../services/api";
 
@@ -22,12 +23,19 @@ export function OrderCard({ order, onlinePayment, paying, onPay, onCancel }: Ord
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
           <span id={`ord-${order.uuid}`} className="card-title">{order.instance_name}</span>
-          {order.product_name && <span className="card-sub">{order.product_name}</span>}
+          {gamePackageLabel(order.blueprint_name, order.product_name) && <span className="card-sub">{gamePackageLabel(order.blueprint_name, order.product_name)}</span>}
         </div>
         <StatusBadge status={order.status} />
       </div>
 
       <AddressRow placeholder={awaitingPayment ? t("dash.addressAfterPayment") : t("dash.addressAfterSetup")} />
+
+      {awaitingPayment && !onlinePayment && order.payment_purpose && (
+        <div className="kv-list">
+          <div className="kv"><span>{t("dash.rowPurpose")}</span></div>
+          <AddressRow address={order.payment_purpose} />
+        </div>
+      )}
 
       <div className="kv-list">
         <div className="kv"><span>{t("dash.rowOrder")}</span><span className="mono">#{order.id}</span></div>

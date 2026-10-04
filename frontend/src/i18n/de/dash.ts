@@ -24,6 +24,7 @@ export const dash = {
   "dash.rowOrder": "Bestellung",
   "dash.rowAmount": "Betrag",
   "dash.rowTerm": "Laufzeit",
+  "dash.rowPurpose": "Verwendungszweck",
   "dash.stop": "Stop",
   "dash.start": "Start",
   "dash.restart": "Neustart",
