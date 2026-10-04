@@ -19,7 +19,7 @@
 - Database-Provisioning (M18) erstellt Metadaten, verbindet sich aber nicht mit echten Datenbankservern.
 
 ### Auth / MFA
-- MFA-Verifizierung ist implementiert, aber kein Recovery-Code-Flow fuer verlorene Authenticator-Apps.
+- MFA mit TOTP und seit M60 mit 10 einmaligen Recovery-Codes (nur Hashes gespeichert, Neu-Erzeugen mit Passwort, siehe `docs/mfa-recovery-codes.md`). Es gibt keinen Reset per E-Mail: wer weder Authenticator noch Codes hat, braucht einen Admin. MFA deaktivieren verlangt kein Passwort.
 - API-Key-Rotation erfordert manuelles Loeschen und Neuerstellen.
 
 ### Agent Maintenance
@@ -57,5 +57,6 @@
 ### Sicherheit
 - `/api/admin` ist durch einen Admin-Guard geschuetzt (M35), Agents sprechen nur noch ueber `/api/remote` mit Node-Token. Die Legacy-Routen unter `/api/agent` wurden mit M40 entfernt.
 - Rate Limiting nutzt Redis (`REDIS_URL`); ist Redis nicht erreichbar, faellt es auf einen In-Memory-Zaehler pro Prozess zurueck.
+- **Logout:** `POST /api/auth/logout` sperrt das verwendete Access-Token bis zu seinem Ablauf (Tabelle `revoked_tokens`, Prüfung bei jedem Request per Primärschlüssel-Lookup; kein Redis-Cache, damit ein Redis-Neustart Abmeldungen nicht aufhebt). Andere Geräte bleiben angemeldet (dafür gibt es den Passwortwechsel, M57). Tokens ohne `jti` (vor M61 ausgestellt: alle neuen haben eins) und API-Keys lassen sich nicht sperren. Abgelaufene Einträge räumt `cleanup-jobs` bzw. der nächste Logout auf.
 - CSRF-Schutz ist ueber SameSite Cookies + JWT geloest, kein dedizierter CSRF-Token.
-- Passwortwechsel und -reset machen neu ausgestellte JWTs sofort ungueltig (Claim `pwf`, Fingerabdruck des Passwort-Hashes); das Gerät, das das Passwort ändert, bekommt ein frisches Token. Noch vor M57 ausgestellte Tokens ohne diesen Claim gelten bis zu ihrem Ablauf (24 Stunden). Sonst gibt es weiterhin kein einzelnes Abmelden (kein Logout-Blocklisting) und API-Keys bleiben vom Passwortwechsel unberührt.
+- Passwortwechsel und -reset machen neu ausgestellte JWTs sofort ungueltig (Claim `pwf`, Fingerabdruck des Passwort-Hashes); das Gerät, das das Passwort ändert, bekommt ein frisches Token. Noch vor M57 ausgestellte Tokens ohne diesen Claim gelten bis zu ihrem Ablauf (24 Stunden). API-Keys bleiben vom Passwortwechsel unberührt.

@@ -75,6 +75,15 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Security (M61 – Logout-Blocklist)
+- `POST /api/auth/logout` sperrt das verwendete Access-Token (`jti`) bis zu seinem Ablauf: neue Tabelle `revoked_tokens` (Migration `u1p2q3r4s5t6`), `get_current_user` prueft die Sperre bei jedem Request (ein Primaerschluessel-Lookup). Antwort enthaelt `token_revoked` (false bei API-Key, Dev-Header oder Token ohne `jti`). Andere Tokens des Kontos bleiben gueltig; ein zweiter Logout mit dem gesperrten Token ist 401
+- Aufraeumen: der naechste Logout loescht abgelaufene Eintraege beilaeufig, `python cli.py cleanup-jobs` (auch `--dry-run`) raeumt mit auf und meldet `revoked_tokens: {matched, deleted}`. Bewusst kein Redis (Neustart/Flush haette Abmeldungen aufgehoben). `backend/test_m61.py` (25 Tests)
+
+### Security (M60 – MFA-Recovery-Codes)
+- Beim Aktivieren von MFA entstehen 10 einmalige Recovery-Codes (`xxxxx-xxxxx`); gespeichert werden nur gesalzene Hashes (vorher 8 Klartext-Codes). Klartext nur in der Antwort von `POST /api/auth/mfa/verify`; Migration `t0o1p2q3r4s5` hasht vorhandene Klartext-Codes (bleiben gueltig)
+- `POST /api/auth/mfa/recovery-codes` `{password}` erzeugt neue Codes (alte ungueltig; falsches Passwort 403 `invalid_password`, MFA aus 409). Login akzeptiert in `mfa_code` (oder `recovery_code`) TOTP oder Recovery-Code; Recovery-Login liefert `recovery_code_used` und `recovery_codes_remaining`, schickt dem Kontoinhaber eine Mail und das Event `auth:mfa_recovery_used`. `mfa_recovery_codes_remaining` in `/api/auth/me` und im `user`-Objekt
+- Einmalnutzung per Zeilensperre (PostgreSQL). `backend/test_m60.py` (28 Tests), `test_m19.py` angepasst, Doku `docs/mfa-recovery-codes.md`
+
 ### Added (M59 – Stripe-Erstattungen und Zahlungsstreitigkeiten)
 - Webhook wertet `charge.refunded`, `charge.dispute.created` und `charge.dispute.closed` aus (bestehender Pfad, gleiche Signatur und Idempotenz). Zuordnung ueber die Zahlungsreferenz (auch aeltere Verlaengerungen), ersatzweise `metadata.order_uuid`
 - Volle Erstattung der letzten Zahlung: neuer Status `refunded` (Spalte `refunded_at`), Instance gesperrt (Grund "Zahlung erstattet"), nach `BILLING_GRACE_DAYS` loescht der Tick sie (`expired`); Teilerstattung oder aeltere Zahlung: nur Event und Alert. Streit eroeffnet: Flag `disputed_at`, Instance gesperrt ("Zahlung angefochten"); gewonnen: Sperre aufgehoben; verloren: wie Vollerstattung. Bestehende Sperren werden nie ueberschrieben

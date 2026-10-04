@@ -49,3 +49,4 @@ Ohne Docker: Anleitung in [backend/README.md](backend/README.md) und [frontend/R
 - [docs/release-plan.md](docs/release-plan.md) – Roadmap und Go-Live-Kriterien
 - [docs/agent-maintenance.md](docs/agent-maintenance.md) – Wartung der Agents
 - [docs/ssh-sftp-auth.md](docs/ssh-sftp-auth.md) – SSH-Keys und SFTP-Authentifizierung
+- [docs/mfa-recovery-codes.md](docs/mfa-recovery-codes.md) – MFA-Recovery-Codes

@@ -50,8 +50,10 @@ def login():
         }), 403
 
     # MFA-Check
+    recovery_remaining = None  # gesetzt, wenn ein Recovery-Code den Login freigegeben hat
     if user.mfa_enabled:
-        mfa_code = data.get("mfa_code")
+        # Der zweite Faktor ist ein TOTP-Code oder ein einmaliger Recovery-Code (Feld `mfa_code` oder `recovery_code`)
+        mfa_code = data.get("mfa_code") or data.get("recovery_code")
         if not mfa_code:
             return jsonify({
                 "requires_mfa": True,
@@ -59,21 +61,31 @@ def login():
                 "user_id": user.id,
             }), 200
 
-        from app.domain.auth.mfa_service import verify_totp
-        if not verify_totp(user, mfa_code):
+        from app.domain.auth.mfa_service import recovery_codes_remaining, verify_mfa_login
+        method = verify_mfa_login(user, mfa_code)
+        if method is None:
             _log_auth_event("auth:login_failed", user.id,
                             f"MFA-Verifikation fehlgeschlagen für {user.username}")
             return jsonify({"error": "Ungültiger MFA-Code"}), 401
+        if method == "recovery":
+            recovery_remaining = recovery_codes_remaining(user)
+            _log_auth_event("auth:mfa_recovery_used", user.id,
+                            f"Recovery-Code verwendet: {user.username}", {"remaining": recovery_remaining})
+            _notify_recovery_used(user, recovery_remaining)
 
     token = issue_access_token(user)
     _log_auth_event("auth:login_success", user.id,
                     f"Login erfolgreich: {user.username}")
 
-    return jsonify({
+    body = {
         "access_token": token,
         "token_type": "Bearer",
         "user": user.to_dict(),
-    })
+    }
+    if recovery_remaining is not None:
+        body["recovery_code_used"] = True
+        body["recovery_codes_remaining"] = recovery_remaining
+    return jsonify(body)
 
 
 # ── Registrierung / Passwort-Reset ───────────────────────
@@ -177,13 +189,18 @@ def change_password_endpoint():
 
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
-    """Logout – Server-seitig nur Activity-Log, Token-Invalidierung ist clientseitig."""
+    """Logout: das verwendete Access-Token wird bis zu seinem Ablauf gesperrt (M61).
+
+    Andere Tokens des Kontos (andere Geraete) bleiben gueltig. API-Keys und der Dev-Header X-User-Id haben
+    kein Token, das sich sperren liesse.
+    """
     user, err = require_auth()
     if err:
         return err
 
+    revoked = _revoke_current_token(user)
     _log_auth_event("auth:logout", user.id, f"Logout: {user.username}")
-    return jsonify({"message": "Erfolgreich ausgeloggt"})
+    return jsonify({"message": "Erfolgreich ausgeloggt", "token_revoked": revoked})
 
 
 @auth_bp.route("/me", methods=["GET"])
@@ -302,7 +319,62 @@ def mfa_disable():
         return jsonify({"error": e.message}), e.status_code
 
 
+@auth_bp.route("/mfa/recovery-codes", methods=["POST"])
+def mfa_recovery_codes():
+    """Erzeugt neue Recovery-Codes (alte werden ungueltig). Body: {password}. Klartext nur in dieser Antwort."""
+    user, err = require_auth()
+    if err:
+        return err
+
+    data = request.get_json(silent=True) or {}
+    from app.domain.auth.mfa_service import regenerate_recovery_codes, MfaError
+    try:
+        result = regenerate_recovery_codes(user, data.get("password"))
+    except MfaError as e:
+        body = {"error": e.message}
+        if e.status_code == 403:
+            body["code"] = "invalid_password"
+        return jsonify(body), e.status_code
+    return jsonify(result)
+
+
 # ── Hilfsfunktionen ─────────────────────────────────────
+
+
+def _revoke_current_token(user) -> bool:
+    """Sperrt das JWT des aktuellen Requests. False, wenn keins verwendet wurde (API-Key, Dev-Header) oder es fehlschlug."""
+    header = request.headers.get("Authorization", "")
+    if not header.startswith("Bearer ") or header[7:].startswith("astra_"):
+        return False
+    try:
+        from datetime import datetime, timezone
+        from flask_jwt_extended import decode_token
+        from app.domain.auth.blocklist import revoke_token
+        decoded = decode_token(header[7:])
+        jti, exp = decoded.get("jti"), decoded.get("exp")
+        if not jti or exp is None:
+            return False  # Token ohne jti (aelter): bleibt bis zum Ablauf gueltig
+        revoke_token(jti, datetime.fromtimestamp(exp, tz=timezone.utc), user.id)
+        return True
+    except Exception:  # Logout darf nie scheitern: der Client verwirft das Token trotzdem
+        current_app.logger.exception("Logout: Token konnte nicht gesperrt werden")
+        return False
+
+
+def _notify_recovery_used(user, remaining: int) -> None:
+    """Mail an den Kontoinhaber, wenn ein Recovery-Code den Login freigegeben hat (best effort)."""
+    try:
+        from app.infrastructure.mail import send_mail
+        if user.email:
+            warn = " Erzeuge bald neue Codes in den Kontoeinstellungen." if remaining <= 2 else ""
+            send_mail(
+                current_app, user.email, "Astra: Recovery-Code verwendet",
+                f"Hallo,\n\nbei der Anmeldung für '{user.username}' wurde ein MFA-Recovery-Code verwendet. "
+                f"Es sind noch {remaining} Codes übrig.{warn}\n"
+                "Warst du das nicht, ändere sofort dein Passwort.\n",
+            )
+    except Exception:  # pragma: no cover - Mail darf den Login nie stoeren
+        pass
 
 
 def _log_auth_event(event: str, actor_id: int | None, description: str,
