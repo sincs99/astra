@@ -66,4 +66,5 @@ export const aover = {
   "aover.andMore": "und {n} weitere",
   "aover.trend": "{c}{percent} % zum Vorzeitraum",
   "aover.trendNone": "{c}kein Vergleich",
+  "aover.colAmount": "Betrag",
 } as const;

@@ -221,6 +221,27 @@ def _current_db_user():
     return user, None
 
 
+@client_bp.route("/account", methods=["PATCH"])
+def update_my_account():
+    """Aendert Kontoeinstellungen des eingeloggten Nutzers. Body: {"locale": "de"|"en"} (Sprache der Mails und Belege).
+
+    Andere Werte fuer `locale` ergeben 400. Antwort: das Nutzerobjekt (wie /api/auth/me).
+    """
+    from app.i18n import validate_locale
+    user, err = _current_db_user()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    if "locale" not in data:
+        return jsonify({"error": "Nichts zu ändern (erlaubt: locale)"}), 400
+    locale = validate_locale(data["locale"])
+    if locale is None:
+        return jsonify({"error": "Ungültige Sprache (erlaubt: de, en)", "code": "invalid_locale"}), 400
+    user.locale = locale
+    db.session.commit()
+    return jsonify(user.to_dict())
+
+
 @client_bp.route("/orders", methods=["GET"])
 def list_my_orders():
     from sqlalchemy.orm import joinedload

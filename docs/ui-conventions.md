@@ -66,6 +66,11 @@ rot (`danger`) für Fehler/überfällig/gesperrt/**nicht erreichbar**, grau (`ne
 - Platzhalter `{name}`; **keine „(en)“-Plurale**, sondern getrennte Schlüssel (`…One`/`…Other`) mit `Intl.PluralRules(dateLocale())` (siehe `plural()` in `lib/adminOverview.ts`).
 - Datum, Zahl, Währung, Relativzeit nur über `formatDateTime`/`formatMoney`/`formatTimeAgo`/`Intl`, nie feste `de-DE`-Strings.
 - Texte vom Server (Fehlermeldungen, Backup-/Restore-Antworten, Aktivitätsbeschreibungen) bleiben deutsch und werden unverändert angezeigt.
+- **Servertexte folgen `users.locale` (M67):** Mails (Bestätigung, Passwort-Reset, Zahlung, Server bereit, Erinnerung, Sperre, Löschhinweis, Beendet, Erstattung,
+  Recovery-Code) und Zahlungsbelege (HTML/Text) rendert das Backend in der Sprache des Kunden (`de` Standard, `en`). Das Frontend setzt sie mit
+  `PATCH /api/client/account {locale}` (beim Sprachwechsel im Konto mitsenden; `/api/auth/me` liefert `locale`) und bei der Registrierung optional mit `locale` im Body.
+  Admin-Alerts, Fehlermeldungen der API und Activity-Beschreibungen bleiben deutsch. Neue Servertexte gehören in `backend/app/i18n/messages.py` (gleiche Schlüssel und
+  Platzhalter in `de` und `en`, ein Test prüft das).
 - Wortstellung mit eingebettetem Element (z. B. `<code>`) über einen Platzhalter und Split (siehe `ui/TypeName.tsx`).
 
 ## Theme

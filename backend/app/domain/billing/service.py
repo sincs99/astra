@@ -39,10 +39,12 @@ _CURRENCY_RE = re.compile(r"^[A-Z]{3}$")
 
 
 class BillingError(Exception):
-    def __init__(self, message: str, status_code: int = 400):
+    def __init__(self, message: str, status_code: int = 400, code: str | None = None, extra: dict | None = None):
         super().__init__(message)
         self.message = message
         self.status_code = status_code
+        self.code = code        # maschinenlesbarer Fehlercode (optional)
+        self.extra = extra or {}  # zusaetzliche Felder fuer die Fehlerantwort
 
 
 def _now() -> datetime:
@@ -282,12 +284,7 @@ def mark_order_paid(order: Order, payment_reference: str | None = None, actor_id
         order = fulfill_order(order, now)
     except BillingError:
         if first_payment:
-            _mail_order(
-                order, "Astra: Zahlung eingegangen",
-                f"Hallo,\n\ndeine Zahlung für '{order.instance_name}' ist eingegangen. Aktuell ist auf unseren "
-                f"Servern kein Platz frei; dein Server wird automatisch bereitgestellt, sobald wieder Platz da ist. "
-                f"Die Laufzeit beginnt erst dann.\nBestellung: {order.uuid}\n",
-            )
+            _mail_order(order, "payment_waiting")
         raise
     if order.price_cents > 0:
         _mail_server_ready(order, paid_now=first_payment)
@@ -339,11 +336,7 @@ def renew_order(order: Order, payment_reference: str | None, actor_id: int | Non
           "current_period_end": iso_utc(order.current_period_end)})
     _issue_receipt(order, payment_reference, now)
     if order.price_cents > 0:
-        _mail_order(
-            order, "Astra: Zahlung eingegangen, Server verlängert",
-            f"Hallo,\n\ndeine Zahlung ist eingegangen. Dein Server '{order.instance_name}' läuft jetzt bis "
-            f"{order.current_period_end:%d.%m.%Y %H:%M} UTC.\nBestellung: {order.uuid}\n",
-        )
+        _mail_order(order, "renewed", end=order.current_period_end)
     return order
 
 
@@ -537,28 +530,43 @@ def get_tick_status(now: datetime | None = None) -> dict:
 # ── Billing-Tick (M46) ──────────────────────────────────
 
 
-def _mail_order(order: Order, subject: str, body: str) -> None:
+def _mail_order(order: Order, name: str, **fmt) -> bool:
+    """Mail an den Kunden in seiner Sprache (users.locale, M67). Texte stehen in app/i18n/messages.py unter
+    `mail.<name>.subject/body`. Datumswerte (datetime) und `price_cents` werden je Sprache formatiert."""
     try:
+        from datetime import datetime as _dt
         from flask import current_app
+        from app.i18n import format_datetime, format_money, tr
+        from app.i18n.messages import MESSAGES
         from app.infrastructure.mail import send_mail
         user = db.session.get(User, order.user_id)
         if user and user.email:
-            send_mail(current_app, user.email, subject, body)
+            loc = user.locale
+            values = {"instance_name": order.instance_name, "uuid": order.uuid, "purpose": order.payment_purpose}
+            for key, value in fmt.items():
+                values[key] = format_datetime(loc, value) if isinstance(value, _dt) else value
+            if "price_cents" in values:
+                values["price"] = format_money(loc, values["price_cents"], order.currency)
+            if "reason_key" in values:
+                key = f"expire_reason.{values['reason_key']}"
+                values["reason"] = tr(loc, key if key in MESSAGES["de"] else "expire_reason.default")
+            send_mail(current_app, user.email, tr(loc, f"mail.{name}.subject"), tr(loc, f"mail.{name}.body", **values))
+            return True
     except Exception:  # pragma: no cover - Mail darf den Tick nie stoppen
         logger.exception("Mail zur Bestellung %s fehlgeschlagen", order.uuid)
+    return False
 
 
 def _mail_server_ready(order: Order, paid_now: bool = False) -> None:
     """Mail "Server ist bereit" mit Verbindungsadresse (falls schon bekannt)."""
+    from app.i18n import tr
+    user = db.session.get(User, order.user_id)
+    loc = user.locale if user else None
     instance = db.session.get(Instance, order.instance_id) if order.instance_id else None
     info = instance.connection_info() if instance else None
-    address = f"\nVerbindungsadresse: {info['address']}\n" if info else ""
-    intro = "deine Zahlung ist eingegangen und dein Server" if paid_now else "dein Server"
-    _mail_order(
-        order, "Astra: Dein Server ist bereit",
-        f"Hallo,\n\n{intro} '{order.instance_name}' wurde bereitgestellt und kann jetzt genutzt werden.\n"
-        f"{address}Bestellung: {order.uuid}\n",
-    )
+    address_block = tr(loc, "mail.server_ready.address", address=info["address"]) if info else ""
+    intro = tr(loc, "mail.server_ready.intro_paid" if paid_now else "mail.server_ready.intro_plain")
+    _mail_order(order, "server_ready", intro=intro, address_block=address_block)
 
 
 def _blocking_status(instance: Instance) -> bool:
@@ -566,10 +574,69 @@ def _blocking_status(instance: Instance) -> bool:
     return instance.status in _DELETE_BLOCKING_STATUSES
 
 
-_EXPIRE_REASON_TEXT = {
-    "cancelled_at_period_end": "Kündigung zum Laufzeitende",
-    "refunded": "Zahlung erstattet",
-}
+MANUAL_REMINDER_COOLDOWN = timedelta(hours=24)
+
+
+def send_manual_reminder(order: Order, actor_id: int | None, now: datetime | None = None) -> dict:
+    """Admin schickt dem Kunden eine Zahlungserinnerung (M69). Rueckgabe: {"sent_at", "kind"}.
+
+    - active: Erinnerung vor Laufzeitende (`expiry_reminder`), past_due: "Zahlung ueberfaellig" mit der verbleibenden Frist
+      (`past_due`), pending_payment: "Zahlung noch offen" (`payment_open`)
+    - kostenlos, gekuendigt, bezahlt/bereitzustellen, beendet, storniert, erstattet: 409; ohne E-Mail-Adresse 409
+    - hoechstens eine manuelle Erinnerung je Bestellung in 24 Stunden (429, `retry_after_seconds`), gelesen aus dem
+      Activity-Log (Events `order:reminder` mit `kind=manual`); die Zeilensperre verhindert Doppelversand durch
+      parallele Klicks (PostgreSQL)
+    Die automatischen Erinnerungen des Ticks bleiben unberuehrt.
+    """
+    from app.domain.activity.models import ActivityLog
+    now = _utc_naive(now) or _now()
+    order = db.session.query(Order).filter_by(id=order.id).with_for_update().one()
+
+    if order.status not in (ORDER_ACTIVE, ORDER_PAST_DUE, ORDER_PENDING_PAYMENT):
+        db.session.rollback()
+        raise BillingError(f"Für eine Bestellung im Status '{order.status}' gibt es nichts zu erinnern", 409,
+                           code="invalid_status")
+    if order.price_cents <= 0:
+        db.session.rollback()
+        raise BillingError("Kostenlose Bestellung: nichts zu bezahlen", 409, code="nothing_to_pay")
+    if order.status == ORDER_ACTIVE and order.cancel_at_period_end:
+        db.session.rollback()
+        raise BillingError("Bestellung ist gekündigt: es wird nichts mehr bezahlt", 409, code="cancelled")
+    user = db.session.get(User, order.user_id)
+    if not user or not user.email:
+        db.session.rollback()
+        raise BillingError("Der Kunde hat keine E-Mail-Adresse", 409, code="no_email")
+
+    window_start = now - MANUAL_REMINDER_COOLDOWN
+    recent = (ActivityLog.query
+              .filter(ActivityLog.event == "order:reminder", ActivityLog.subject_type == "order",
+                      ActivityLog.subject_id == order.id, ActivityLog.created_at >= window_start)
+              .order_by(ActivityLog.id.desc()).all())
+    manual = [e.created_at for e in recent if isinstance(e.properties, dict) and e.properties.get("kind") == "manual"]
+    if manual:
+        last = _utc_naive(max(manual))
+        retry = max(int((last + MANUAL_REMINDER_COOLDOWN - now).total_seconds()), 1)
+        db.session.rollback()
+        raise BillingError("Es wurde bereits vor kurzem manuell erinnert", 429, code="reminder_cooldown",
+                           extra={"retry_after_seconds": retry})
+
+    from flask import current_app
+    if order.status == ORDER_ACTIVE:
+        kind, mail_name, fmt = "expiry_reminder", "expiry_reminder", {
+            "end": order.current_period_end, "price_cents": order.price_cents, "period_days": order.billing_period_days}
+    elif order.status == ORDER_PAST_DUE:
+        grace = timedelta(days=current_app.config.get("BILLING_GRACE_DAYS", 7))
+        left = ((order.past_due_at or now) + grace) - now
+        days_left = max(-(-int(left.total_seconds()) // 86400), 1)  # aufrunden, mindestens 1
+        kind, mail_name, fmt = "past_due", "past_due", {"days": days_left}
+    else:
+        kind, mail_name, fmt = "payment_open", "payment_open", {"price_cents": order.price_cents}
+
+    # erst vermerken (gibt die Sperre frei), dann senden: bei einem Fehler lieber keine Mail als doppelte
+    _log("order:reminder", order, actor_id, "Zahlungserinnerung manuell verschickt",
+         {"kind": "manual", "mail": kind})
+    _mail_order(order, mail_name, **fmt)
+    return {"sent_at": iso_utc(now), "kind": kind}
 
 
 def _expire_order(order: Order, instance: Instance | None, reason: str) -> None:
@@ -586,12 +653,7 @@ def _expire_order(order: Order, instance: Instance | None, reason: str) -> None:
         order.past_due_at = None
         db.session.commit()
         log_orders_expired([order.id], reason)
-    _mail_order(
-        order, "Astra: Dein Server wurde beendet",
-        f"Hallo,\n\ndein Server '{order.instance_name}' wurde beendet und gelöscht "
-        f"({_EXPIRE_REASON_TEXT.get(reason, 'Zahlung nicht eingegangen')}).\n"
-        f"Bestellung: {order.uuid}\n",
-    )
+    _mail_order(order, "expired", reason_key=reason)
 
 
 def _suspend_for_payment(order: Order, instance: Instance, now: datetime) -> bool:
@@ -620,12 +682,7 @@ def _suspend_for_payment(order: Order, instance: Instance, now: datetime) -> boo
          {"suspended": newly_suspended, "current_period_end": iso_utc(order.current_period_end)})
     from flask import current_app
     days = current_app.config.get("BILLING_GRACE_DAYS", 7)
-    _mail_order(
-        order, "Astra: Zahlung überfällig – dein Server wurde gesperrt",
-        f"Hallo,\n\ndie Laufzeit deines Servers '{order.instance_name}' ist abgelaufen, der Server wurde gesperrt.\n"
-        f"Bitte begleiche die Zahlung innerhalb von {days} Tagen, sonst wird er gelöscht.\n"
-        f"Verwendungszweck: {order.payment_purpose}\nBestellung: {order.uuid}\n",
-    )
+    _mail_order(order, "past_due", days=days)
     return True
 
 
@@ -652,20 +709,10 @@ def _remind_if_due(order: Order, end: datetime, now: datetime, reminder: timedel
          "Löschhinweis vor Laufzeitende verschickt" if cancelled else "Erinnerung vor Laufzeitende verschickt",
          {"current_period_end": iso_utc(end), "kind": "deletion_notice" if cancelled else "expiry_reminder"})
     if cancelled:
-        _mail_order(
-            order, "Astra: Dein Server wird bald gelöscht",
-            f"Hallo,\n\nwegen deiner Kündigung wird dein Server '{order.instance_name}' am "
-            f"{end:%d.%m.%Y %H:%M} UTC gelöscht. Sichere vorher deine Dateien.\n"
-            f"Bestellung: {order.uuid}\n",
-        )
+        _mail_order(order, "deletion_notice", end=end)
     else:
-        _mail_order(
-            order, "Astra: Die Laufzeit deines Servers endet bald",
-            f"Hallo,\n\ndie Laufzeit deines Servers '{order.instance_name}' endet am {end:%d.%m.%Y %H:%M} UTC.\n"
-            f"Bitte veranlasse rechtzeitig die Zahlung ({order.price_cents / 100:.2f} {order.currency} für "
-            f"{order.billing_period_days} Tage), sonst wird der Server gesperrt und nach der Karenzzeit gelöscht.\n"
-            f"Verwendungszweck: {order.payment_purpose}\nBestellung: {order.uuid}\n",
-        )
+        _mail_order(order, "expiry_reminder", end=end, price_cents=order.price_cents,
+                    period_days=order.billing_period_days)
     return True
 
 
@@ -838,7 +885,8 @@ def process_payment_events(provider: str, events: list) -> list[dict]:
             continue
         if row is None:
             row = PaymentEventRow(event_id=ev.event_id, provider=provider, event_type=ev.type,
-                                  order_uuid=ev.order_uuid, status="received")
+                                  order_uuid=ev.order_uuid, status="received",
+                                  amount_cents=_event_amount(ev), currency=(ev.currency or None))
             db.session.add(row)
             try:
                 db.session.commit()
@@ -853,12 +901,21 @@ def process_payment_events(provider: str, events: list) -> list[dict]:
         row = PaymentEventRow.query.filter_by(event_id=ev.event_id).first()
         row.status = status
         row.detail = detail
+        if row.amount_cents is None:  # Zeile aus einer frueheren Zustellung (vor M68) nachziehen
+            row.amount_cents, row.currency = _event_amount(ev), (ev.currency or row.currency)
         row.processed_at = _now()
         db.session.commit()
         if status in ("mismatch", "unapplied"):
             _alert_payment_problem(ev, status, detail)
         results.append({"event_id": ev.event_id, "status": status, "duplicate": False})
     return results
+
+
+def _event_amount(ev) -> int | None:
+    """Betrag des Ereignisses fuer payment_events (M68): bei Erstattungen der erstattete Betrag, sonst der Betrag."""
+    if ev.kind == "refunded" and isinstance(ev.refunded_cents, int):
+        return ev.refunded_cents
+    return ev.amount_cents if isinstance(ev.amount_cents, int) else None
 
 
 def _alert_refund_or_dispute(order: Order, ev, detail: str) -> None:
@@ -947,12 +1004,7 @@ def _apply_refund(order: Order, ev, now: datetime, source: str) -> str:
          {**amount, "full": True, "service_ended": True, "suspended": suspended})
     from flask import current_app
     days = current_app.config.get("BILLING_GRACE_DAYS", 7)
-    _mail_order(
-        order, "Astra: Zahlung erstattet – dein Server wurde gesperrt",
-        f"Hallo,\n\ndeine Zahlung wurde erstattet, daher wurde dein Server '{order.instance_name}' gesperrt. "
-        f"Er wird nach {days} Tagen gelöscht; sichere vorher deine Dateien oder melde dich beim Support.\n"
-        f"Bestellung: {order.uuid}\n",
-    )
+    _mail_order(order, "refunded", days=days)
     return "voll erstattet, Instance gesperrt"
 
 

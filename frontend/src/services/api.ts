@@ -74,11 +74,14 @@ export function getSimulatedUserId(): number {
 export class ApiError extends Error {
   status: number;
   code?: string;
-  constructor(message: string, status: number, code?: string) {
+  /** Rohe Fehlerantwort des Servers (z.B. retry_after_seconds bei 429) */
+  data?: Record<string, unknown>;
+  constructor(message: string, status: number, code?: string, data?: Record<string, unknown>) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.data = data;
   }
 }
 
@@ -121,6 +124,7 @@ async function request<T = unknown>(
       friendlyApiMessage(response.status, error.error || `Request failed: ${response.status}`),
       response.status,
       error.code,
+      error,
     );
   }
 
@@ -331,6 +335,8 @@ export interface User {
   mfa_enabled?: boolean;
   /** Noch gueltige Recovery-Codes (0, wenn MFA aus ist) */
   mfa_recovery_codes_remaining?: number;
+  /** Sprache fuer Mails und Belege (M67); null = Deutsch, fehlt bei aelterem Backend */
+  locale?: "de" | "en" | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -871,6 +877,9 @@ export interface PaymentEvent {
   detail: string | null;
   received_at: string | null;
   processed_at: string | null;
+  /** Betrag des Ereignisses (M68): gezahlt, bei mismatch der tatsaechlich gezahlte, erstattet oder angefochten; null bei Altbestand/ignoriert, fehlt bei aelterem Backend */
+  amount_cents?: number | null;
+  currency?: string | null;
 }
 
 // ── System / Version Types (M24) ────────────────────────
@@ -932,11 +941,15 @@ export const api = {
   },
 
   // ── Auth ─────────────────────────────────────────────
-  register: (username: string, email: string, password: string) =>
+  register: (username: string, email: string, password: string, locale?: "de" | "en") =>
     request<RegisterResponse>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify(locale ? { username, email, password, locale } : { username, email, password }),
     }),
+
+  /** Sprache fuer Mails und Belege speichern (M67); aeltere Backends antworten mit 404/400 */
+  updateAccountLocale: (locale: "de" | "en") =>
+    request<unknown>("/client/account", { method: "PATCH", body: JSON.stringify({ locale }) }),
 
   verifyEmail: (token: string) =>
     request<{ message: string }>("/auth/verify-email", {
@@ -1423,6 +1436,9 @@ export const api = {
     return request<Order[]>(`/admin/orders${qs ? `?${qs}` : ""}`);
   },
   /** Bei awaiting_provisioning erneut bereitstellen (Zahlung wird nicht doppelt verbucht). */
+  /** Zahlungserinnerung an den Kunden senden (M69); 429 reminder_cooldown mit retry_after_seconds, 409 wenn nicht moeglich */
+  remindOrder: (uuid: string) =>
+    request<{ sent_at: string; kind: string }>(`/admin/orders/${uuid}/remind`, { method: "POST", body: JSON.stringify({}) }),
   markOrderPaid: (uuid: string, paymentReference?: string) =>
     request<Order>(`/admin/orders/${uuid}/mark-paid`, {
       method: "POST",

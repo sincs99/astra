@@ -69,6 +69,7 @@ export const account = {
   "account.keys.never": "nie",
   "account.delete": "Löschen",
   "account.keys.deleteConfirm": "API-Key {id} wirklich löschen? Programme, die ihn nutzen, verlieren den Zugriff.",
+  "account.mailLanguageHint": "Mails und Belege kommen in dieser Sprache.",
   "account.language": "Sprache",
   "account.languageHint": "Meldungen des Servers erscheinen teilweise weiterhin auf Deutsch.",
   "account.mfa.fileHeader": "Astra Recovery-Codes – jeder Code gilt einmal. Bewahre die Datei sicher auf.",

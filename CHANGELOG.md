@@ -5,6 +5,15 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – M69 Zahlungserinnerung, vorbereitet)
+- "Erinnerung senden" je Bestellung (active/past_due/pending_payment) auf der Admin-Bestellseite und bei den bald ablaufenden Bestellungen in der Admin-Uebersicht: `POST /admin/orders/<uuid>/remind`; 200 -> "Erinnerung gesendet", 429 `reminder_cooldown` -> "wieder moeglich in N h" (aus `retry_after_seconds`), 409 -> Button ausgeblendet. `ApiError.data` enthaelt die rohe Fehlerantwort
+
+### Added (Frontend – M68)
+- Admin-Uebersicht, "Auffaellige Zahlungen": Spalte "Betrag" (Monospace, `formatMoney`, "–" bei null), nur wenn das Backend `amount_cents`/`currency` am Zahlungsereignis liefert
+
+### Added (Frontend – M67 Sprache fuer Mails und Belege)
+- Beim Registrieren wird die aktuelle UI-Sprache als `locale` mitgesendet; nach dem Login wird eine am Konto gespeicherte Sprache uebernommen (null/fehlend: Auswahl des Browsers bleibt). Beim Umschalten im Nutzermenue oder unter Konto wird zusaetzlich `PATCH /client/account {locale}` gesendet (nur angemeldet, Fehler still ignoriert, auch bei Backend ohne das Feld). Kontoseite: Hinweis "Mails und Belege kommen in dieser Sprache"
+
 ### Added (Frontend – M65/M66)
 - Admin-Bestellungen: Suchfeld (verzoegert ~300 ms, `?q=` in der URL, Escape/Leeren-Button, "Keine Treffer fuer ...") ueber `GET /admin/orders?q=`
 - Admin-Uebersicht: Umsatz-Kachel mit Trend je Waehrung zum gleich langen Vorzeitraum ("+12 % zum Vorzeitraum", gruen/rot ueber Tokens); nur bei Vorzeitraum > 0, sonst "kein Vergleich", bei Backend ohne `prev_*` keine Trendzeile
@@ -143,6 +152,16 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Der gesamte `/api/admin`-Blueprint verlangt jetzt einen angemeldeten Admin (`before_request`, JWT, API-Key oder in Dev/Test `X-User-Id`). Ausnahme: `GET /api/admin/health`. Ohne Login 401, ohne Admin-Recht 403
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
+
+### Added (M69 – Manuelle Zahlungserinnerung)
+- `POST /api/admin/orders/{uuid}/remind`: Admin schickt dem Kunden die zum Status passende Zahlungsmail in dessen Sprache (`active`: Erinnerung vor Laufzeitende, `past_due`: Zahlung ueberfaellig mit verbleibender Frist, `pending_payment`: neue Mail "Zahlung noch offen" mit Betrag und Verwendungszweck, DE/EN). Antwort `200 {sent_at, kind}`; 409 bei beendet/storniert/erstattet/wartend, kostenlos, gekuendigt oder ohne E-Mail (je mit `code`); 429 `reminder_cooldown` mit `retry_after_seconds` (hoechstens eine manuelle Erinnerung je Bestellung und 24 Stunden, gelesen aus dem Activity-Log, keine Migration). Event `order:reminder` mit `kind=manual` und Akteur. `BillingError` traegt optional `code` und Zusatzfelder, `_mail_order` liefert, ob gesendet wurde. `backend/test_m69.py` (28 Tests)
+
+### Added (M68 – Betrag je Zahlungsereignis)
+- `payment_events.amount_cents` und `payment_events.currency` (Migration `x4s5t6u7v8w9`, Inspector-Guard, Up/Down geprueft): Betrag laut Anbieter-Ereignis, bei `mismatch` der tatsaechlich gezahlte (nicht der erwartete) Betrag, bei Erstattungen der erstattete Betrag, bei Streitfaellen der angefochtene; NULL bei Altbestand und Ereignissen ohne Betrag. `GET /api/admin/payment-events` liefert beide Felder. Eine Wiederzustellung eines unfertigen Altereignisses zieht den Betrag nach. `backend/test_m68.py` (16 Tests)
+
+### Added (M67 – Sprache des Kunden fuer Servertexte)
+- `users.locale` (`de`/`en`, NULL = Deutsch; Migration `w3r4s5t6u7v8`, Inspector-Guard, Up/Down geprueft). `PATCH /api/client/account {locale}` (ungueltig: 400 `invalid_locale`), optionales `locale` bei der Registrierung, `locale` im Nutzerobjekt
+- Neues Modul `app/i18n` (`tr(locale, key, **fmt)`, Fallback Deutsch, Betrags- und Datumsformat je Sprache): alle Kunden-Mails (Bestaetigung, Passwort-Reset, Zahlung, Server bereit, Verlaengerung, Erinnerung, Sperre, Loeschhinweis, Beendet, Erstattung, Recovery-Code) und die Zahlungsbelege werden in der Sprache des Kunden gerendert. Deutsch unveraendert (bis auf das Betragsformat der Erinnerung: `4,99 EUR` statt `4.99 EUR`); Admin-Alerts, API-Fehlertexte und Activity-Beschreibungen bleiben deutsch. `backend/test_m67.py` (59 Tests, u.a. gleiche Schluessel und Platzhalter in DE und EN), Doku in `docs/orders-api.md` und `docs/ui-conventions.md`
 
 ### Added (M63 – Umsatzstatistik)
 - `GET /api/admin/stats/revenue?days=30` (Admin-Guard, `days` 1 bis 365, sonst 400): Umsatz auf Basis der Zahlungsbelege (`receipts.issued_at`, M62): `{days, since, by_currency, paid_count, renewals_count, refunded_cents_by_currency}`. Erster Beleg einer Bestellung = Erstzahlung, weitere = Verlaengerungen; Erstattungen (Events `order:refunded`, M59) getrennt je Waehrung, nicht verrechnet. Gratis-Pakete und Zahlungen vor M62 fehlen, keine Waehrungsumrechnung. `backend/test_m63.py` (20 Tests)
