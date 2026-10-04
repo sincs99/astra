@@ -203,7 +203,36 @@ in der Agents-Ansicht. Details: `docs/wings-remote-api.md`.
 | `FRONTEND_URL` | Basis-URL fuer Links in Mails | http://localhost:3000 |
 | `MAIL_SERVER` / `MAIL_PORT` / `MAIL_USE_TLS` | SMTP-Server (leer = kein Versand, nur Log) | – / 587 / true |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_FROM` | SMTP-Zugang und Absender | – / – / astra@localhost |
-| `RATELIMIT_AUTH_PER_MINUTE` | Max Login-Versuche/Min | 20 |
+| `RATELIMIT_AUTH_PER_MINUTE` | Max Anfragen/Min je IP für die übrigen Auth-Routen (Passwort ändern, E-Mail bestätigen, Reset bestätigen) | 20 |
+| `RATELIMIT_REGISTER_PER_HOUR` | Registrierungen je IP und Stunde | 5 |
+| `RATELIMIT_LOGIN_PER_MINUTE` | Login-Versuche je IP und Minute | 10 |
+| `RATELIMIT_LOGIN_FAILURES_PER_HOUR` | Fehlversuche je Konto und Stunde, danach gesperrt | 20 |
+| `RATELIMIT_PASSWORD_RESET_PER_HOUR` | Passwort-Reset-Anfragen je IP und Stunde | 3 |
+| `CAPTCHA_PROVIDER` | `none`, `turnstile` oder `hcaptcha` (Registrierung und Passwort-Reset-Anfrage) | none |
+| `CAPTCHA_SITE_KEY` / `CAPTCHA_SECRET` | Schlüssel des Anbieters (Site-Key öffentlich, Secret nur im Backend) | – |
+
+### Registrierungsschutz (M71)
+
+Die Selbstregistrierung (`REGISTRATION_ENABLED=true`) ist gegen Bots in drei Schichten geschützt:
+
+1. **Rate-Limits** (`RATELIMIT_ENABLED=true`, in Produktion Standard; Redis wird mitgenutzt, sonst zählt jeder Prozess für sich):
+   Registrierung 5 pro Stunde je IP, Login 10 pro Minute je IP, Passwort-Reset-Anfrage 3 pro Stunde je IP. Zusätzlich sperrt der Login ein
+   **Konto** nach 20 Fehlversuchen in einer Stunde (auch für das richtige Passwort; erfolgreiche Logins zählen nicht). Vorsicht: wer einen
+   Benutzernamen kennt, kann ihn so für eine Stunde sperren; der Preis dafür ist der Schutz vor Passwort-Raten, die Sperre läuft von selbst ab und
+   steht im Activity-Log (`auth:login_blocked`). Antwort 429 `{error, code: "rate_limited", retry_after_seconds}` mit `Retry-After`-Header.
+   Die IP kommt aus `request.remote_addr`; hinter Proxys setzt ProxyFix (`PROXY_FIX_ENABLED`, `PROXY_FIX_X_FOR` = Anzahl der Proxys, im Compose-Stack 2:
+   Caddy und Frontend-Nginx) die echte Adresse aus `X-Forwarded-For`. Mehr Hops anzugeben als Proxys vorhanden sind, macht die IP fälschbar; ohne ProxyFix
+   wird `X-Forwarded-For` ignoriert. Ist ProxyFix hinter einem Proxy nicht aktiv, sieht das Backend nur dessen Adresse und alle Kunden teilen sich ein Limit.
+2. **CAPTCHA** (`CAPTCHA_PROVIDER=turnstile` oder `hcaptcha`, Standard `none`): `GET /api/auth/captcha` liefert `{provider, site_key}`, das Frontend zeigt das Widget
+   und sendet `captcha_token` bei `POST /api/auth/register` und `POST /api/auth/password-reset/request`. Der Server prüft per siteverify (Timeout 5 Sekunden):
+   fehlend oder ungültig `400 {code: "captcha_failed"}`, Dienst nicht erreichbar oder Secret fehlt `503 {code: "captcha_unavailable"}` (Registrierung und Reset
+   sind dann nicht nutzbar, Login bleibt unberührt). Der Produktions-Check warnt bei gesetztem Anbieter ohne Keys.
+   **Datenschutz:** das Widget lädt Skripte vom Anbieter (Cloudflare bzw. Intuition Machines) und überträgt dabei Daten des Besuchers; das gehört in die
+   Datenschutzerklärung (und ggf. in die Einwilligung), bevor `CAPTCHA_PROVIDER` aktiviert wird.
+3. **Honigtopf:** ein verstecktes Formularfeld `website` im Registrierungs-Body. Ist es ausgefüllt, antwortet die API `400 {code: "invalid_request"}`, legt kein Konto an und
+   fragt auch den CAPTCHA-Dienst nicht. Das Frontend darf das Feld nie befüllen (unsichtbar, `tabindex=-1`, `autocomplete=off`).
+
+Mit `RATELIMIT_ENABLED=false` (nur Tests) gibt es weder Limits noch Kontosperre.
 
 ### Reverse Proxy
 
