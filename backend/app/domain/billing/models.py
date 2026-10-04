@@ -278,7 +278,9 @@ class Receipt(db.Model):
 
     def to_summary(self) -> dict:
         return {"number": self.number, "kind": self.kind, "issued_at": iso_utc(self.issued_at),
-                "amount_cents": self.amount_cents, "currency": self.currency}
+                "amount_cents": self.amount_cents, "currency": self.currency,
+                # Gutschrift: Nummer der Rechnung, auf die sie sich bezieht (null bei Rechnungen)
+                "references_number": self.references.number if self.references else (self.snapshot or {}).get("references_number")}
 
     def to_dict(self) -> dict:
         snap = self.snapshot or {}

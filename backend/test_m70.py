@@ -300,6 +300,10 @@ with app.app_context():
     props = [e.properties for e in ActivityLog.query.filter_by(event="order:refunded").all()]
 check("Activity-Properties enthalten credit_note", any(p.get("credit_note") == cn[0]["number"] for p in props))
 check("Rechnung bleibt unveraendert (kein Storno der Rechnung selbst)", doc(inv["number"])["gross_cents"] == 499 and doc(inv["number"])["kind"] == "invoice")
+summary = c.get(f"/api/client/orders/{o5}", headers=U1).json["receipts"]
+check("Kurzform Order.receipts[]: Rechnung mit references_number null, Gutschriften mit der Rechnungsnummer (ohne Zusatzabruf)",
+      summary[0]["references_number"] is None and all(x["references_number"] == inv["number"] for x in summary[1:]) and len(summary) == 4, str(summary))
+check("Admin-Bestellliste traegt dieselbe Kurzform", any(x["references_number"] == inv["number"] for o in c.get("/api/admin/orders", headers=AH).json for x in o["receipts"]))
 check("Kunde sieht Gutschriften in der Bestellung (kind), Standardabruf liefert die Rechnung", [x["kind"] for x in c.get(f"/api/client/orders/{o5}", headers=U1).json["receipts"]] == ["invoice"] + ["credit_note"] * 3
       and "RECHNUNG" in text_of(o5) and "GUTSCHRIFT" not in text_of(o5))
 o6, pi6 = paid_order()

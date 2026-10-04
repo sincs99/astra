@@ -158,7 +158,7 @@ check("ungueltiges Format: Standardformat statt Fehler", fallback == f"AST-{YEAR
 print("Sichtbarkeit in der Bestellung")
 d = c.get(f"/api/client/orders/{o2}", headers=U1).json
 check("Kunde sieht receipts mit Nummer, Datum, Betrag", d["receipts"] == [{"number": f"AST-{YEAR}-00003", "issued_at": d["receipts"][0]["issued_at"],
-                                                                         "amount_cents": 499, "currency": "EUR", "kind": "invoice"}] and d["receipts"][0]["issued_at"].endswith("+00:00"), str(d["receipts"]))
+                                                                         "amount_cents": 499, "currency": "EUR", "kind": "invoice", "references_number": None}] and d["receipts"][0]["issued_at"].endswith("+00:00"), str(d["receipts"]))
 check("Liste enthaelt receipts je Bestellung", all("receipts" in x for x in c.get("/api/client/orders", headers=U1).json))
 check("Admin-Liste enthaelt receipts", all("receipts" in x for x in c.get("/api/admin/orders", headers=AH).json))
 
