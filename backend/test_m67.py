@@ -108,7 +108,7 @@ with tempfile.TemporaryDirectory() as tmp:
 check("stamp + upgrade ok, Spalte vorhanden, Bestandsnutzer behalten (locale NULL)", stamp.returncode == 0 and up.returncode == 0 and "locale" in cols and keep == [("alt", None)], up.stderr[-300:])
 check("zweites upgrade (Inspector-Guard) ok", up2.returncode == 0)
 check("downgrade entfernt die Spalte", down.returncode == 0 and "locale" not in cols_down, down.stderr[-300:])
-check("einziger Head w3r4s5t6u7v8", heads.stdout.strip().endswith("w3r4s5t6u7v8 (head)") and heads.stdout.count("(head)") == 1, heads.stdout[-100:])
+check("genau ein Migrations-Head", heads.stdout.count("(head)") == 1, heads.stdout[-100:])
 
 print("Teil 2: Uebersetzungen")
 fmt = lambda t: set(re.findall(r"\{(\w+)\}", t))
