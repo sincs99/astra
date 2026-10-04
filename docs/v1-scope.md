@@ -174,7 +174,7 @@ Diese Einschränkungen sind bekannt, dokumentiert und für v1.0 akzeptiert:
 | SQLite in Dev/Test | PostgreSQL für Produktion empfohlen |
 | Rate Limiting mit In-Memory-Fallback | Redis-Zähler aktiv, Fallback nur wenn Redis fehlt |
 | Kein automatisches Agent-Drain bei Maintenance | Manuelle Prozedur dokumentiert |
-| MFA ohne Recovery-Code-Flow | Fallback via Admin-Reset möglich |
+| MFA-Recovery-Codes (M60 nachgeliefert) | siehe docs/mfa-recovery-codes.md; Reset per E-Mail fehlt weiterhin |
 | Fleet Monitoring DB-basiert, kein Live-Stream | Ausreichend für Betrieb; Prometheus optional |
 | Kein Kubernetes-Manifest | Docker/Compose ist vorbereitet |
 | Responsive Design nicht Mobile-optimiert | Primär Desktop-Tool |

@@ -243,9 +243,8 @@ with app.app_context():
     check("verify_totp falsch", not verify_totp(user, "000000"))
 
     # Recovery-Code verwenden
-    if user.mfa_recovery_codes:
-        recovery = user.mfa_recovery_codes[0]
-        check("Recovery-Code OK", verify_totp(user, recovery))
+    recovery = result["recovery_codes"][0]  # Klartext gibt es nur in der Antwort (M60: gespeichert werden Hashes)
+    check("Recovery-Code OK", verify_totp(user, recovery))
 
     # Doppeltes Setup -> Fehler
     try:

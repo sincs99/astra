@@ -254,7 +254,7 @@ from alembic.script import ScriptDirectory
 cfg = Config()
 cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "migrations"))
 sd = ScriptDirectory.from_config(cfg)
-check("genau ein Migrations-Head: s9n0o1p2q3r4", sd.get_heads() == ["s9n0o1p2q3r4"], str(sd.get_heads()))
+check("genau ein Migrations-Head, M59-Migration ist Teil der Kette", len(sd.get_heads()) == 1 and sd.get_revision("s9n0o1p2q3r4") is not None, str(sd.get_heads()))
 
 print(f"\n{passed} OK, {failed} FAIL")
 sys.exit(1 if failed else 0)
