@@ -16,7 +16,7 @@ from app.extensions import db
 from app.domain.billing.models import (
     Order, Product,
     ORDER_PENDING_PAYMENT, ORDER_AWAITING_PROVISIONING, ORDER_ACTIVE,
-    ORDER_PAST_DUE, ORDER_CANCELLED, ORDER_EXPIRED, ORDER_COUNTING_STATUSES,
+    ORDER_PAST_DUE, ORDER_CANCELLED, ORDER_EXPIRED, ORDER_REFUNDED, ORDER_COUNTING_STATUSES,
 )
 from app.domain.blueprints.models import Blueprint
 from app.domain.instances.models import Instance
@@ -29,6 +29,9 @@ MAX_PENDING_ORDERS_PER_USER = 5
 # Suspendierungsgrund bei ueberfaelliger Zahlung: nur Suspensions mit genau diesem Grund hebt eine
 # Verlaengerung wieder auf (eine Admin-Sperre z.B. wegen Missbrauch bleibt bestehen)
 PAYMENT_SUSPEND_REASON = "Zahlung überfällig"
+# M59: Sperrgruende bei Erstattung bzw. offenem Zahlungsstreit
+REFUND_SUSPEND_REASON = "Zahlung erstattet"
+DISPUTE_SUSPEND_REASON = "Zahlung angefochten"
 # So lange wartet der Tick bei laufender Installation/Transfer/Wiederherstellung, bevor er trotzdem sperrt
 # (ein Install-Callback wuerde eine zu frueh gesetzte Sperre sonst stillschweigend aufheben)
 BLOCKED_STATUS_WAIT = timedelta(days=1)
@@ -383,7 +386,7 @@ def detach_orders_from_instance(instance_id: int) -> list[int]:
     expired = []
     for order in Order.query.filter_by(instance_id=instance_id).all():
         order.instance_id = None
-        if order.status in (ORDER_ACTIVE, ORDER_PAST_DUE):
+        if order.status in (ORDER_ACTIVE, ORDER_PAST_DUE, ORDER_REFUNDED):
             order.status = ORDER_EXPIRED
             order.past_due_at = None
             expired.append(order.id)
@@ -400,7 +403,7 @@ def log_orders_expired(order_ids: list[int], reason: str) -> None:
 # ── Betriebszustand des Billing-Ticks (M53) ─────────────
 
 TICK_STATE_KEY = "billing_tick"
-_LIVE_STATUSES = (ORDER_ACTIVE, ORDER_PAST_DUE, ORDER_AWAITING_PROVISIONING)
+_LIVE_STATUSES = (ORDER_ACTIVE, ORDER_PAST_DUE, ORDER_AWAITING_PROVISIONING, ORDER_REFUNDED)
 
 
 def _record_tick(summary: dict, now: datetime) -> None:
@@ -500,6 +503,12 @@ def _blocking_status(instance: Instance) -> bool:
     return instance.status in _DELETE_BLOCKING_STATUSES
 
 
+_EXPIRE_REASON_TEXT = {
+    "cancelled_at_period_end": "Kündigung zum Laufzeitende",
+    "refunded": "Zahlung erstattet",
+}
+
+
 def _expire_order(order: Order, instance: Instance | None, reason: str) -> None:
     """Beendet eine Bestellung: Instance loeschen (falls vorhanden), Status expired, Mail."""
     if instance is not None:
@@ -517,7 +526,7 @@ def _expire_order(order: Order, instance: Instance | None, reason: str) -> None:
     _mail_order(
         order, "Astra: Dein Server wurde beendet",
         f"Hallo,\n\ndein Server '{order.instance_name}' wurde beendet und gelöscht "
-        f"({'Kündigung zum Laufzeitende' if reason == 'cancelled_at_period_end' else 'Zahlung nicht eingegangen'}).\n"
+        f"({_EXPIRE_REASON_TEXT.get(reason, 'Zahlung nicht eingegangen')}).\n"
         f"Bestellung: {order.uuid}\n",
     )
 
@@ -602,14 +611,26 @@ def _process_order(order_id: int, now: datetime, grace: timedelta, reminder: tim
     reminder = reminder if reminder is not None else timedelta(0)
     # Zeilensperre und Statuspruefung: ein parallel laufender Tick oder eine Zahlung darf nicht ueberfahren werden
     order = db.session.query(Order).filter_by(id=order_id).with_for_update().one()
-    if order.status not in (ORDER_ACTIVE, ORDER_PAST_DUE):
+    if order.status not in (ORDER_ACTIVE, ORDER_PAST_DUE, ORDER_REFUNDED):
         db.session.rollback()
         return None
 
     instance = db.session.get(Instance, order.instance_id) if order.instance_id else None
     if instance is None:
-        _expire_order(order, None, "instance_missing")
+        _expire_order(order, None, "refunded" if order.status == ORDER_REFUNDED else "instance_missing")
         return "expired"
+
+    if order.status == ORDER_REFUNDED:
+        # Erstattet: Instance ist gesperrt; nach der Karenzzeit (seit past_due_at) wird sie geloescht
+        if order.past_due_at is None:
+            order.past_due_at = now
+            db.session.commit()
+            return None
+        if order.past_due_at + grace <= now:
+            _expire_order(order, instance, "refunded")
+            return "expired"
+        db.session.rollback()
+        return None
 
     end = order.current_period_end
     if end is None:
@@ -694,7 +715,7 @@ def run_billing_tick(now: datetime | None = None) -> dict:
     _check_admin_alerts(now)
 
     ids = [oid for (oid,) in db.session.query(Order.id)
-           .filter(Order.status.in_((ORDER_ACTIVE, ORDER_PAST_DUE))).order_by(Order.id).all()]
+           .filter(Order.status.in_((ORDER_ACTIVE, ORDER_PAST_DUE, ORDER_REFUNDED))).order_by(Order.id).all()]
     waiting = [oid for (oid,) in db.session.query(Order.id)
                .filter(Order.status == ORDER_AWAITING_PROVISIONING, Order.instance_id.is_(None))
                .order_by(Order.paid_at, Order.id).all()]
@@ -777,6 +798,21 @@ def process_payment_events(provider: str, events: list) -> list[dict]:
     return results
 
 
+def _alert_refund_or_dispute(order: Order, ev, detail: str) -> None:
+    """Admin-Alert (M58) zu Erstattung/Streit, best effort."""
+    try:
+        from app.domain.system.alerts import alert_payment_problem
+        if ev.kind == "refunded":
+            label = "refunded"
+        elif ev.kind == "dispute_created":
+            label = "disputed"
+        else:
+            label = {"won": "dispute_won", "lost": "dispute_lost"}.get(ev.dispute_status or "", "dispute_closed")
+        alert_payment_problem(order.uuid, label, detail, ev.event_id)
+    except Exception:  # pragma: no cover
+        logger.exception("Admin-Alert zu %s fehlgeschlagen", ev.type)
+
+
 def _alert_payment_problem(ev, status: str, detail: str | None) -> None:
     """Admin-Alert (M58), best effort: darf die Webhook-Verarbeitung nie stoeren."""
     try:
@@ -787,7 +823,136 @@ def _alert_payment_problem(ev, status: str, detail: str | None) -> None:
         logger.exception("Admin-Alert zum Zahlungsereignis %s fehlgeschlagen", ev.event_id)
 
 
+def _find_order_for_event(ev) -> Order | None:
+    """Bestellung zu einem Ereignis: ueber die Zahlungsreferenz (auch aeltere Verlaengerungen), sonst order_uuid."""
+    ref = (ev.payment_reference or "").strip()
+    if ref:
+        order = Order.query.filter_by(payment_reference=ref).first()
+        if order is None:
+            # payment_references ist eine JSON-Liste: Stripe-IDs sind alphanumerisch (+ "_"), das Suchmuster ist sicher
+            safe = "".join(ch for ch in ref if ch.isalnum() or ch in "_-")
+            if safe == ref:
+                order = Order.query.filter(
+                    db.cast(Order.payment_references, db.String).like(f'%"{safe}"%')).first()
+        if order is not None:
+            return order
+    return Order.query.filter_by(uuid=ev.order_uuid).first() if ev.order_uuid else None
+
+
+def _suspend_for(order: Order, instance: Instance | None, reason: str) -> bool:
+    """Sperrt die Instance mit einem Grund (best effort fuer Wings). True = neu gesperrt."""
+    if instance is None:
+        return False
+    from app.domain.instances.service import STATUS_SUSPENDED, suspend_instance, sync_instance, send_power_action
+    if instance.status == STATUS_SUSPENDED:
+        return False  # bestehende Sperre (Admin, Zahlung) nicht ueberschreiben
+    suspend_instance(instance, None, reason)
+    _best_effort(sync_instance, instance)
+    _best_effort(send_power_action, instance, "kill")
+    return True
+
+
+def _apply_refund(order: Order, ev, now: datetime, source: str) -> str:
+    """Erstattung: voll (nur fuer die zuletzt verbuchte Zahlung) beendet den Dienst, sonst nur Hinweis."""
+    refs = list(order.payment_references or [])
+    latest = (refs[-1] if refs else order.payment_reference)
+    is_latest = ev.payment_reference is not None and ev.payment_reference == latest
+    amount = {"refunded_cents": ev.refunded_cents, "amount_cents": ev.amount_cents, "currency": ev.currency,
+              "payment_reference": ev.payment_reference, "source": source}
+
+    if not ev.full_refund or not is_latest:
+        why = "teilweise erstattet" if not ev.full_refund else "ältere Zahlung vollständig erstattet"
+        _log("order:refunded", order, None, f"Zahlung {why}: Dienst läuft weiter, manuell prüfen",
+             {**amount, "full": False, "service_ended": False})
+        return f"{why}; Bestellung bleibt bestehen (Status {order.status})"
+
+    if order.status == ORDER_REFUNDED:
+        return "bereits als erstattet vermerkt"
+    if order.status in (ORDER_CANCELLED, ORDER_EXPIRED):
+        _log("order:refunded", order, None, "Zahlung einer bereits beendeten Bestellung erstattet",
+             {**amount, "full": True, "service_ended": True})
+        return f"Bestellung war bereits '{order.status}'"
+
+    instance = db.session.get(Instance, order.instance_id) if order.instance_id else None
+    suspended = _suspend_for(order, instance, REFUND_SUSPEND_REASON)
+    order.status = ORDER_REFUNDED
+    order.refunded_at = now
+    order.past_due_at = now      # Beginn der Karenzzeit bis zur Loeschung
+    order.cancel_at_period_end = False
+    db.session.commit()
+    _log("order:refunded", order, None, "Zahlung voll erstattet: Instance gesperrt, Karenzzeit bis zur Löschung",
+         {**amount, "full": True, "service_ended": True, "suspended": suspended})
+    from flask import current_app
+    days = current_app.config.get("BILLING_GRACE_DAYS", 7)
+    _mail_order(
+        order, "Astra: Zahlung erstattet – dein Server wurde gesperrt",
+        f"Hallo,\n\ndeine Zahlung wurde erstattet, daher wurde dein Server '{order.instance_name}' gesperrt. "
+        f"Er wird nach {days} Tagen gelöscht; sichere vorher deine Dateien oder melde dich beim Support.\n"
+        f"Bestellung: {order.uuid}\n",
+    )
+    return "voll erstattet, Instance gesperrt"
+
+
+def _apply_dispute(order: Order, ev, now: datetime) -> str:
+    base = {"payment_reference": ev.payment_reference, "amount_cents": ev.amount_cents, "currency": ev.currency,
+            "dispute_status": ev.dispute_status, "reason": ev.dispute_reason}
+    instance = db.session.get(Instance, order.instance_id) if order.instance_id else None
+
+    if ev.kind == "dispute_created":
+        if order.disputed_at is None:
+            order.disputed_at = now
+            db.session.commit()
+        suspended = False
+        if order.status in (ORDER_ACTIVE, ORDER_PAST_DUE):
+            suspended = _suspend_for(order, instance, DISPUTE_SUSPEND_REASON)
+        _log("order:disputed", order, None, "Zahlungsstreit eröffnet: Instance gesperrt, Dienst nicht gelöscht",
+             {**base, "outcome": "opened", "suspended": suspended})
+        return "Streitfall eröffnet" + ("; Instance gesperrt" if suspended else "")
+
+    # dispute_closed
+    if ev.dispute_status == "lost":
+        # Streit verloren: Geld ist weg wie bei einer Erstattung (unabhaengig davon, welche Zahlung betroffen war)
+        if order.status not in (ORDER_REFUNDED, ORDER_CANCELLED, ORDER_EXPIRED):
+            suspended = _suspend_for(order, instance, REFUND_SUSPEND_REASON)
+            order.status = ORDER_REFUNDED
+            order.refunded_at = now
+            order.past_due_at = now
+            order.cancel_at_period_end = False
+            db.session.commit()
+            _log("order:disputed", order, None, "Zahlungsstreit verloren: Instance gesperrt, Karenzzeit bis zur Löschung",
+                 {**base, "outcome": "lost", "suspended": suspended})
+            return "Streit verloren; wie erstattet behandelt (Karenzzeit bis zur Löschung)"
+        _log("order:disputed", order, None, "Zahlungsstreit verloren", {**base, "outcome": "lost"})
+        return f"Streit verloren (Bestellung bereits '{order.status}')"
+
+    # gewonnen oder ohne Folgen geschlossen (z.B. warning_closed): Sperre aufheben, die der Streit gesetzt hat
+    lifted = False
+    if order.disputed_at is not None:
+        order.disputed_at = None
+        db.session.commit()
+    from app.domain.instances.service import STATUS_SUSPENDED, unsuspend_instance, sync_instance
+    if (instance is not None and instance.status == STATUS_SUSPENDED
+            and instance.suspended_reason == DISPUTE_SUSPEND_REASON):
+        unsuspend_instance(instance, None)
+        _best_effort(sync_instance, instance)
+        lifted = True
+    _log("order:disputed", order, None, "Zahlungsstreit beendet (gewonnen)" if lifted or ev.dispute_status == "won"
+         else "Zahlungsstreit ohne Folgen geschlossen", {**base, "outcome": ev.dispute_status or "closed", "unsuspended": lifted})
+    return "Streit beendet" + ("; Instance entsperrt" if lifted else "")
+
+
 def _apply_payment_event(ev) -> tuple[str, str | None]:
+    if ev.kind in ("refunded", "dispute_created", "dispute_closed"):
+        order = _find_order_for_event(ev)
+        if order is None:
+            logger.warning("%s ohne passende Bestellung (Referenz %s)", ev.type, ev.payment_reference)
+            return "ignored", f"Bestellung nicht gefunden (Referenz {ev.payment_reference})"
+        order = db.session.query(Order).filter_by(id=order.id).with_for_update().one()
+        now = _now()
+        detail = (_apply_refund(order, ev, now, "refund") if ev.kind == "refunded"
+                  else _apply_dispute(order, ev, now))
+        _alert_refund_or_dispute(order, ev, detail)
+        return "processed", detail
     if ev.kind != "paid":
         return "ignored", None
 

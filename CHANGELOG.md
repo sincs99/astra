@@ -52,6 +52,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M59 – Stripe-Erstattungen und Zahlungsstreitigkeiten)
+- Webhook wertet `charge.refunded`, `charge.dispute.created` und `charge.dispute.closed` aus (bestehender Pfad, gleiche Signatur und Idempotenz). Zuordnung ueber die Zahlungsreferenz (auch aeltere Verlaengerungen), ersatzweise `metadata.order_uuid`
+- Volle Erstattung der letzten Zahlung: neuer Status `refunded` (Spalte `refunded_at`), Instance gesperrt (Grund "Zahlung erstattet"), nach `BILLING_GRACE_DAYS` loescht der Tick sie (`expired`); Teilerstattung oder aeltere Zahlung: nur Event und Alert. Streit eroeffnet: Flag `disputed_at`, Instance gesperrt ("Zahlung angefochten"); gewonnen: Sperre aufgehoben; verloren: wie Vollerstattung. Bestehende Sperren werden nie ueberschrieben
+- Activity-Events `order:refunded` und `order:disputed` (auch im Webhook-Katalog), Mail an den Kunden bei Vollerstattung, Admin-Alert (M58). API: `refunded_at` und `disputed` in den Bestellungen. Migration `s9n0o1p2q3r4` (zwei Spalten, Up/Down geprueft). `backend/test_m59.py` (38 Tests). Im Stripe-Dashboard die drei Ereignisse zum Webhook hinzufuegen
+
 ### Added (M58 – Aktive Admin-Benachrichtigung)
 - Neue Kanaele `ADMIN_ALERT_EMAIL` (kommagetrennt) und `ADMIN_ALERT_WEBHOOK_URL` (JSON-POST mit `content`, `text`, `subject`; Discord/Slack-kompatibel), beide leer = aus. Ausloeser: Billing-Tick ausgefallen (`billing_tick`), Fehler im letzten Tick (`billing_errors`), bezahlte Bestellungen warten zu lange (`waiting_orders`, M56) und Zahlungsereignisse mit Status `mismatch`/`unapplied` (je Bestellung und Status einmal)
 - Entprellen ueber `system_state` (Schluessel `alert:<ausloeser>`): Meldung beim Wechsel gesund -> gestoert, danach hoechstens alle `ADMIN_ALERT_COOLDOWN_MINUTES` (Standard 360); einmalige Entwarnung (`ADMIN_ALERT_RECOVERY`). Versand best effort, stoert weder Tick noch Webhook; Webhook-URL wird nie geloggt

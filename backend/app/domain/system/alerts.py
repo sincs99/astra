@@ -68,9 +68,18 @@ def send_admin_alert(subject: str, message: str) -> dict:
     return result
 
 
+def _state_key(key: str) -> str:
+    """Schluessel in system_state (String(64)): lange Schluessel werden auf einen Hash gekuerzt."""
+    full = STATE_PREFIX + key
+    if len(full) <= 64:
+        return full
+    import hashlib
+    return STATE_PREFIX + "h:" + hashlib.sha1(key.encode()).hexdigest()[:40]
+
+
 def _load(key: str) -> dict:
     from app.domain.system.models import SystemState
-    state = db.session.get(SystemState, STATE_PREFIX + key)
+    state = db.session.get(SystemState, _state_key(key))
     return dict(state.value) if state and isinstance(state.value, dict) else {}
 
 
@@ -78,9 +87,9 @@ def _store(key: str, value: dict) -> None:
     from sqlalchemy.exc import IntegrityError
     from app.domain.system.models import SystemState
     for _ in range(2):
-        state = db.session.get(SystemState, STATE_PREFIX + key)
+        state = db.session.get(SystemState, _state_key(key))
         if state is None:
-            db.session.add(SystemState(key=STATE_PREFIX + key, value=value))
+            db.session.add(SystemState(key=_state_key(key), value=value))
         else:
             state.value = value
         try:
@@ -171,9 +180,15 @@ def check_alerts(now: datetime | None = None) -> dict:
 
 def alert_payment_problem(order_uuid: str | None, status: str, detail: str | None, event_id: str) -> bool:
     """Meldet ein Zahlungsereignis mit Status mismatch/unapplied (entprellt pro Bestellung und Status)."""
-    label = {"mismatch": "Zahlung weicht von der Bestellung ab", "unapplied": "Zahlung nicht verbucht"}.get(status, status)
+    label = {
+        "mismatch": "Zahlung weicht von der Bestellung ab", "unapplied": "Zahlung nicht verbucht",
+        "refunded": "Zahlung erstattet", "disputed": "Zahlungsstreit eröffnet",
+        "dispute_won": "Zahlungsstreit gewonnen", "dispute_lost": "Zahlungsstreit verloren",
+        "dispute_closed": "Zahlungsstreit beendet",
+    }.get(status, status)
     return raise_alert(
         f"payment:{order_uuid or event_id}:{status}", f"Astra: {label}",
         f"{detail or ''}\nBestellung: {order_uuid or '-'}\nZahlungsereignis: {event_id}\n"
-        f"Erstattung im Zahlungsanbieter prüfen; Details unter GET /api/admin/payment-events.",
+        f"Details unter GET /api/admin/payment-events"
+        + ("; Erstattung im Zahlungsanbieter prüfen." if status in ("mismatch", "unapplied") else "."),
     )

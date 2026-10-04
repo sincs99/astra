@@ -18,14 +18,15 @@ ORDER_ACTIVE = "active"                            # bezahlt, Instance laeuft
 ORDER_PAST_DUE = "past_due"                        # Laufzeit abgelaufen, Instance suspendiert
 ORDER_CANCELLED = "cancelled"                      # vom Kunden storniert
 ORDER_EXPIRED = "expired"                          # beendet (Instance geloescht)
+ORDER_REFUNDED = "refunded"                        # voll erstattet (oder Streit verloren), Instance gesperrt, Karenzzeit
 
 ALL_ORDER_STATUSES = (
     ORDER_PENDING_PAYMENT, ORDER_AWAITING_PROVISIONING, ORDER_ACTIVE,
-    ORDER_PAST_DUE, ORDER_CANCELLED, ORDER_EXPIRED,
+    ORDER_PAST_DUE, ORDER_CANCELLED, ORDER_EXPIRED, ORDER_REFUNDED,
 )
 # Bestellungen, die gegen max_instances_per_user zaehlen (belegen oder reservieren einen Platz)
 ORDER_COUNTING_STATUSES = (
-    ORDER_PENDING_PAYMENT, ORDER_AWAITING_PROVISIONING, ORDER_ACTIVE, ORDER_PAST_DUE,
+    ORDER_PENDING_PAYMENT, ORDER_AWAITING_PROVISIONING, ORDER_ACTIVE, ORDER_PAST_DUE, ORDER_REFUNDED,
 )
 
 
@@ -123,6 +124,9 @@ class Order(db.Model):
     # Fuer welches Laufzeitende die Erinnerungsmail schon verschickt wurde (hoechstens eine pro Periode)
     reminded_for_period_end = db.Column(db.DateTime, nullable=True)
     cancelled_at = db.Column(db.DateTime, nullable=True)
+    # M59: voll erstattet (Beginn der Karenzzeit ist past_due_at) bzw. Zahlungsstreit offen
+    refunded_at = db.Column(db.DateTime, nullable=True)
+    disputed_at = db.Column(db.DateTime, nullable=True)
 
     created_at = db.Column(db.DateTime, default=_now)
     updated_at = db.Column(db.DateTime, default=_now, onupdate=_now)
@@ -135,6 +139,9 @@ class Order(db.Model):
         """Zeitpunkt, zu dem der Server geloescht wird (None, wenn nichts ansteht)."""
         if self.status == ORDER_ACTIVE and self.cancel_at_period_end:
             return self.current_period_end
+        if self.status == ORDER_REFUNDED and self.past_due_at:
+            from flask import current_app
+            return self.past_due_at + timedelta(days=current_app.config.get("BILLING_GRACE_DAYS", 7))
         if self.status == ORDER_PAST_DUE:
             if self.cancel_at_period_end:
                 return self.current_period_end
@@ -168,6 +175,8 @@ class Order(db.Model):
             "past_due_at": iso_utc(self.past_due_at),
             "scheduled_deletion_at": iso_utc(deletion),
             "cancelled_at": iso_utc(self.cancelled_at),
+            "refunded_at": iso_utc(self.refunded_at),
+            "disputed": self.disputed_at is not None,
             "created_at": iso_utc(self.created_at),
         }
         if include_user:
