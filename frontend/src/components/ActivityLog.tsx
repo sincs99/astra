@@ -30,7 +30,7 @@ export function ActivityLog({ instanceUuid }: ActivityLogProps) {
   if (logs.length === 0) return <div className="card-empty">{t("susers.logEmpty")}</div>;
 
   return (
-    <div className="panel" style={{ overflowX: "auto" }}>
+    <div className="panel" style={{ overflowX: "auto" }} role="region" tabIndex={0} aria-label={t("srv.activity")}>
       <table className="tbl">
         <thead>
           <tr>

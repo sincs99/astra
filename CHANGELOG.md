@@ -5,6 +5,10 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – D8b Server-Unterkomponenten)
+- Konsole, Dateien, Backups, Routinen, Mitbenutzer und Aktivitaet im neuen Look-and-Feel (nur Tokens und `ui.css`-Klassen, keine Emojis, Icon-Buttons mit `aria-label`, Tabellen mit `scope=col`, Fehler `role=alert`), funktionsgleich; alle Texte DE/EN (Namespaces `sconsole`, `sfiles`, `sbackups`, `sroutines`, `susers`). Konsolenzeilen tragen ihre Art (`kind`) statt eines Textpraefixes, die Farbe haengt nicht mehr am uebersetzten Text. Neue Tests je Komponente. Toast auf direkte Tokens umgestellt
+- Nicht uebersetzt bleiben Texte vom Server (Backup-/Restore-Antworten, Aktivitaets-Ereigniscodes und -beschreibungen). Farbige Ereignis-Badges im Aktivitaetslog entfallen (neutrales Badge)
+
 ### Added (Frontend – M64-Nachtraege)
 - Spielname und Verwendungszweck aus M64: Unterzeile "Spiel · Paket" an Server- und Bestellkarten (ohne Spielname nur das Paket), Verwendungszweck (`payment_purpose`, Monospace mit Kopieren-Button) in der Dashboard-Bestellkarte bei offener Ueberweisung, neben dem Zahlungshinweis auf der Bestellungen-Seite und als Zeile in der Admin-Bestellliste
 

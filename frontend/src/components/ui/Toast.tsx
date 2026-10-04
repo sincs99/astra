@@ -20,7 +20,7 @@ interface ToastMessage {
 }
 
 const COLORS: Record<ToastType, { bg: string; color: string; border: string }> = {
-  success: { bg: "var(--ok-soft)", color: "var(--ok)", border: "var(--ok-border)" },
+  success: { bg: "color-mix(in srgb, var(--ok) 12%, transparent)", color: "var(--ok)", border: "color-mix(in srgb, var(--ok) 40%, transparent)" },
   error: { bg: "var(--danger-soft)", color: "var(--danger)", border: "var(--danger-border)" },
   info: { bg: "var(--accent-soft)", color: "var(--accent)", border: "var(--border)" },
   warning: { bg: "var(--warn-soft)", color: "var(--warn)", border: "var(--warn-border)" },
