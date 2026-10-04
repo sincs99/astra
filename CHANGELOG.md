@@ -150,6 +150,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M68 – Betrag je Zahlungsereignis)
+- `payment_events.amount_cents` und `payment_events.currency` (Migration `x4s5t6u7v8w9`, Inspector-Guard, Up/Down geprueft): Betrag laut Anbieter-Ereignis, bei `mismatch` der tatsaechlich gezahlte (nicht der erwartete) Betrag, bei Erstattungen der erstattete Betrag, bei Streitfaellen der angefochtene; NULL bei Altbestand und Ereignissen ohne Betrag. `GET /api/admin/payment-events` liefert beide Felder. Eine Wiederzustellung eines unfertigen Altereignisses zieht den Betrag nach. `backend/test_m68.py` (16 Tests)
+
+### Added (M67 – Sprache des Kunden fuer Servertexte)
+- `users.locale` (`de`/`en`, NULL = Deutsch; Migration `w3r4s5t6u7v8`, Inspector-Guard, Up/Down geprueft). `PATCH /api/client/account {locale}` (ungueltig: 400 `invalid_locale`), optionales `locale` bei der Registrierung, `locale` im Nutzerobjekt
+- Neues Modul `app/i18n` (`tr(locale, key, **fmt)`, Fallback Deutsch, Betrags- und Datumsformat je Sprache): alle Kunden-Mails (Bestaetigung, Passwort-Reset, Zahlung, Server bereit, Verlaengerung, Erinnerung, Sperre, Loeschhinweis, Beendet, Erstattung, Recovery-Code) und die Zahlungsbelege werden in der Sprache des Kunden gerendert. Deutsch unveraendert (bis auf das Betragsformat der Erinnerung: `4,99 EUR` statt `4.99 EUR`); Admin-Alerts, API-Fehlertexte und Activity-Beschreibungen bleiben deutsch. `backend/test_m67.py` (59 Tests, u.a. gleiche Schluessel und Platzhalter in DE und EN), Doku in `docs/orders-api.md` und `docs/ui-conventions.md`
+
 ### Added (M63 – Umsatzstatistik)
 - `GET /api/admin/stats/revenue?days=30` (Admin-Guard, `days` 1 bis 365, sonst 400): Umsatz auf Basis der Zahlungsbelege (`receipts.issued_at`, M62): `{days, since, by_currency, paid_count, renewals_count, refunded_cents_by_currency}`. Erster Beleg einer Bestellung = Erstzahlung, weitere = Verlaengerungen; Erstattungen (Events `order:refunded`, M59) getrennt je Waehrung, nicht verrechnet. Gratis-Pakete und Zahlungen vor M62 fehlen, keine Waehrungsumrechnung. `backend/test_m63.py` (20 Tests)
 

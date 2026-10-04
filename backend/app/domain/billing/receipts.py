@@ -15,14 +15,13 @@ from flask import current_app
 
 from app.extensions import db
 from app.domain.billing.models import InvoiceCounter, Order, Receipt
+from app.i18n import format_date, format_money, normalize_locale, tr
 from app.utils.timeutil import iso_utc
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_NUMBER_FORMAT = "AST-{year}-{seq:05d}"
 MAX_NUMBER_LENGTH = 64
-_DISCLAIMER = ("Dies ist ein Zahlungsbeleg und keine Rechnung im Sinne des Umsatzsteuergesetzes; "
-               "er enthält keine Umsatzsteuerangaben.")
 
 
 def validate_number_format(fmt: str) -> str | None:
@@ -114,8 +113,11 @@ def issue_receipt(order: Order, payment_reference: str | None, now: datetime | N
 # ── Darstellung ─────────────────────────────────────────
 
 
-def _money(cents: int, currency: str) -> str:
-    return f"{cents / 100:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") + f" {currency}"
+def _locale_of(receipt: Receipt) -> str | None:
+    """Sprache des Kunden (users.locale), Standard Deutsch. Der Beleg wird beim Abruf in dieser Sprache gerendert."""
+    order = db.session.get(Order, receipt.order_id)
+    user = order.user if order else None
+    return user.locale if user else None
 
 
 def _seller_lines() -> list[str]:
@@ -126,47 +128,51 @@ def _footer_lines() -> list[str]:
     return [ln.strip() for ln in (current_app.config.get("RECEIPT_FOOTER") or "").splitlines() if ln.strip()]
 
 
-def _fields(receipt: Receipt) -> list[tuple[str, str]]:
+def _fields(receipt: Receipt, loc) -> list[tuple[str, str]]:
     snap = receipt.snapshot or {}
     cust = snap.get("customer") or {}
     rows = [
-        ("Belegnummer", receipt.number),
-        ("Datum", receipt.issued_at.strftime("%d.%m.%Y") + " (UTC)"),
-        ("Kunde", f"{cust.get('username') or '-'}" + (f" ({cust['email']})" if cust.get("email") else "")),
-        ("Leistung", f"Gameserver-Paket {snap.get('product_name') or '-'}"
-                     + (f" ({snap['blueprint_name']})" if snap.get("blueprint_name") else "")
-                     + f", Server '{snap.get('instance_name') or '-'}'"),
-        ("Laufzeit", f"{snap.get('billing_period_days')} Tage"),
-        ("Betrag", _money(receipt.amount_cents, receipt.currency)),
+        (tr(loc, "receipt.number"), receipt.number),
+        (tr(loc, "receipt.date"), format_date(loc, receipt.issued_at) + " (UTC)"),
+        (tr(loc, "receipt.customer"), f"{cust.get('username') or '-'}" + (f" ({cust['email']})" if cust.get("email") else "")),
+        (tr(loc, "receipt.service"), tr(
+            loc, "receipt.service_value", product=snap.get("product_name") or "-",
+            blueprint=f" ({snap['blueprint_name']})" if snap.get("blueprint_name") else "",
+            instance_name=snap.get("instance_name") or "-")),
+        (tr(loc, "receipt.term"), tr(loc, "receipt.term_value", days=snap.get("billing_period_days"))),
+        (tr(loc, "receipt.amount"), format_money(loc, receipt.amount_cents, receipt.currency)),
     ]
     if snap.get("payment_purpose"):
-        rows.append(("Verwendungszweck", snap["payment_purpose"]))
+        rows.append((tr(loc, "receipt.purpose"), snap["payment_purpose"]))
     if receipt.payment_reference:
-        rows.append(("Zahlungsreferenz", receipt.payment_reference))
+        rows.append((tr(loc, "receipt.reference"), receipt.payment_reference))
     return rows
 
 
-def render_text(receipt: Receipt) -> str:
+def render_text(receipt: Receipt, locale: str | None = None) -> str:
+    loc = locale or _locale_of(receipt)
     lines = _seller_lines() + ([""] if _seller_lines() else [])
-    lines.append("ZAHLUNGSBELEG")
+    lines.append(tr(loc, "receipt.title_text"))
     lines.append("")
-    lines += [f"{k}: {v}" for k, v in _fields(receipt)]
-    lines += ["", _DISCLAIMER] + _footer_lines()
+    lines += [f"{k}: {v}" for k, v in _fields(receipt, loc)]
+    lines += ["", tr(loc, "receipt.disclaimer")] + _footer_lines()
     return "\n".join(lines) + "\n"
 
 
-def render_html(receipt: Receipt) -> str:
+def render_html(receipt: Receipt, locale: str | None = None) -> str:
     """Eigenstaendige HTML-Seite. Alle Werte (auch der vom Kunden gewaehlte Servername) sind escaped."""
+    loc = locale or _locale_of(receipt)
     e = html.escape
     seller = "".join(f"<div>{e(ln)}</div>" for ln in _seller_lines())
-    rows = "".join(f"<tr><th>{e(k)}</th><td>{e(v)}</td></tr>" for k, v in _fields(receipt))
+    rows = "".join(f"<tr><th>{e(k)}</th><td>{e(v)}</td></tr>" for k, v in _fields(receipt, loc))
     foot = "".join(f"<p>{e(ln)}</p>" for ln in _footer_lines())
+    title = tr(loc, "receipt.title")
     return (
-        "<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">"
-        f"<title>Zahlungsbeleg {e(receipt.number)}</title>"
+        f"<!doctype html><html lang=\"{normalize_locale(loc)}\"><head><meta charset=\"utf-8\">"
+        f"<title>{e(title)} {e(receipt.number)}</title>"
         "<style>body{font-family:system-ui,sans-serif;max-width:640px;margin:2rem auto;padding:0 1rem;color:#111}"
         "table{border-collapse:collapse;width:100%}th{text-align:left;padding:.4rem .8rem .4rem 0;width:11rem;vertical-align:top}"
         "td{padding:.4rem 0}small,p{color:#444}</style></head><body>"
-        f"<div>{seller}</div><h1>Zahlungsbeleg</h1><table>{rows}</table>"
-        f"<p><small>{e(_DISCLAIMER)}</small></p>{foot}</body></html>"
+        f"<div>{seller}</div><h1>{e(title)}</h1><table>{rows}</table>"
+        f"<p><small>{e(tr(loc, 'receipt.disclaimer'))}</small></p>{foot}</body></html>"
     )

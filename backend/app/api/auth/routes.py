@@ -98,7 +98,7 @@ def register():
 
     data = request.get_json() or {}
     try:
-        user = register_user(data.get("username"), data.get("email"), data.get("password"))
+        user = register_user(data.get("username"), data.get("email"), data.get("password"), data.get("locale"))
     except AccountError as e:
         return jsonify({"error": e.message}), e.status_code
 
@@ -364,14 +364,13 @@ def _revoke_current_token(user) -> bool:
 def _notify_recovery_used(user, remaining: int) -> None:
     """Mail an den Kontoinhaber, wenn ein Recovery-Code den Login freigegeben hat (best effort)."""
     try:
+        from app.i18n import tr
         from app.infrastructure.mail import send_mail
         if user.email:
-            warn = " Erzeuge bald neue Codes in den Kontoeinstellungen." if remaining <= 2 else ""
+            warn = tr(user.locale, "mail.recovery_used.warn") if remaining <= 2 else ""
             send_mail(
-                current_app, user.email, "Astra: Recovery-Code verwendet",
-                f"Hallo,\n\nbei der Anmeldung für '{user.username}' wurde ein MFA-Recovery-Code verwendet. "
-                f"Es sind noch {remaining} Codes übrig.{warn}\n"
-                "Warst du das nicht, ändere sofort dein Passwort.\n",
+                current_app, user.email, tr(user.locale, "mail.recovery_used.subject"),
+                tr(user.locale, "mail.recovery_used.body", username=user.username, remaining=remaining, warn=warn),
             )
     except Exception:  # pragma: no cover - Mail darf den Login nie stoeren
         pass

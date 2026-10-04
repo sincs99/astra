@@ -230,6 +230,10 @@ class PaymentEvent(db.Model):
     # processed | ignored | unapplied (Geld da, Bestellung nicht mehr bezahlbar) | mismatch (Betrag/Waehrung weicht ab)
     status = db.Column(db.String(32), nullable=False, default="received")
     detail = db.Column(db.Text, nullable=True)
+    # M68: Betrag laut Anbieter-Ereignis (Zahlung, bei Erstattungen der erstattete Betrag), NULL bei Altbestand
+    # und bei Ereignissen ohne Betrag
+    amount_cents = db.Column(db.Integer, nullable=True)
+    currency = db.Column(db.String(3), nullable=True)
     received_at = db.Column(db.DateTime, default=_now)
     processed_at = db.Column(db.DateTime, nullable=True)
 
@@ -238,6 +242,7 @@ class PaymentEvent(db.Model):
             "id": self.id, "event_id": self.event_id, "provider": self.provider,
             "event_type": self.event_type, "order_uuid": self.order_uuid, "status": self.status,
             "detail": self.detail,
+            "amount_cents": self.amount_cents, "currency": self.currency,
             "received_at": iso_utc(self.received_at),
             "processed_at": iso_utc(self.processed_at),
         }
