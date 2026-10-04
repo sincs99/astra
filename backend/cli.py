@@ -117,6 +117,24 @@ def cmd_billing_tick(args):
     return 1 if summary["errors"] else 0
 
 
+def cmd_cleanup_jobs(args):
+    """Loescht alte, beendete Job-Eintraege (completed/failed)."""
+    import json
+
+    from app import create_app
+    from app.infrastructure.jobs.cleanup import cleanup_jobs
+
+    app = create_app()
+    with app.app_context():
+        try:
+            summary = cleanup_jobs(days=args.days, dry_run=args.dry_run)
+        except ValueError as e:
+            print(f"Fehler: {e}")
+            return 2
+    print(json.dumps(summary, ensure_ascii=False))
+    return 0
+
+
 def cmd_check_config(args):
     """Prueft die aktuelle Konfiguration auf Probleme."""
     from app import create_app
@@ -249,6 +267,13 @@ def main():
         "billing-tick", help="Billing-Tick: Laufzeiten durchsetzen (idempotent, alle paar Minuten ausfuehren)"
     )
 
+    # ── cleanup-jobs ────────────────────────────────────
+    p_cleanup = subparsers.add_parser(
+        "cleanup-jobs", help="Loescht beendete Job-Eintraege (completed/failed), die aelter als N Tage sind"
+    )
+    p_cleanup.add_argument("--days", type=int, default=30, help="Aufbewahrung in Tagen (Standard 30)")
+    p_cleanup.add_argument("--dry-run", action="store_true", help="Nur zaehlen, nichts loeschen")
+
     # ── check-config ────────────────────────────────────
     subparsers.add_parser("check-config", help="Prueft die Konfiguration")
 
@@ -284,6 +309,7 @@ def main():
         "bootstrap": cmd_bootstrap,
         "import-blueprint": cmd_import_blueprint,
         "billing-tick": cmd_billing_tick,
+        "cleanup-jobs": cmd_cleanup_jobs,
         "check-config": cmd_check_config,
         "db-init": cmd_db_init,
         "db-status": cmd_db_status,

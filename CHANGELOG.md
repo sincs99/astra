@@ -46,6 +46,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M55 – Job-Cleanup)
+- `python cli.py cleanup-jobs [--days 30] [--dry-run]` loescht beendete Job-Eintraege (`completed`, `failed`), die vor mehr als N Tagen endeten; wartende, laufende und wiederholte Jobs bleiben immer. `--days` unter 1 ergibt Exit 2. Funktion `cleanup_jobs` in `app/infrastructure/jobs/cleanup.py`, `backend/test_m55.py` (10 Tests)
+
 ### Added (M54 – Bestaetigungsmails bei Zahlung)
 - Zahlungseingang loest Mails aus: erste Zahlung mit Platz "Dein Server ist bereit" (mit Verbindungsadresse), ohne Platz "Zahlung eingegangen" mit Hinweis auf die automatische Bereitstellung, Verlaengerung "Zahlung eingegangen, Server verlaengert" mit neuem Laufzeitende. Keine Mails bei Wiederholung derselben Zahlungsreferenz und bei kostenlosen Paketen; Mailfehler brechen die Zahlung nicht ab
 - `backend/test_m54.py` (11 Tests); `test_m46.py` zaehlt Zahlungsmails nicht mehr als Erinnerungen; Doku in `docs/orders-api.md`, `docs/known-limitations.md`
