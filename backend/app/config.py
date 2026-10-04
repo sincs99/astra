@@ -101,6 +101,15 @@ class Config:
     # ── Rate Limiting ───────────────────────────────────
     RATELIMIT_ENABLED = os.getenv("RATELIMIT_ENABLED", "true").lower() == "true"
     RATELIMIT_AUTH_PER_MINUTE = int(os.getenv("RATELIMIT_AUTH_PER_MINUTE", "20"))
+    # M71: Registrierungsschutz (je IP bzw. Konto); die uebrigen Auth-Routen nutzen RATELIMIT_AUTH_PER_MINUTE
+    RATELIMIT_REGISTER_PER_HOUR = int(os.getenv("RATELIMIT_REGISTER_PER_HOUR", "5"))
+    RATELIMIT_LOGIN_PER_MINUTE = int(os.getenv("RATELIMIT_LOGIN_PER_MINUTE", "10"))
+    RATELIMIT_LOGIN_FAILURES_PER_HOUR = int(os.getenv("RATELIMIT_LOGIN_FAILURES_PER_HOUR", "20"))
+    RATELIMIT_PASSWORD_RESET_PER_HOUR = int(os.getenv("RATELIMIT_PASSWORD_RESET_PER_HOUR", "3"))
+    # M71: CAPTCHA fuer Registrierung und Passwort-Reset-Anfrage: none | turnstile | hcaptcha
+    CAPTCHA_PROVIDER = os.getenv("CAPTCHA_PROVIDER", "none").strip().lower()
+    CAPTCHA_SITE_KEY = os.getenv("CAPTCHA_SITE_KEY", "").strip()
+    CAPTCHA_SECRET = os.getenv("CAPTCHA_SECRET", "").strip()
 
     # ── Admin-Guard (M35) ───────────────────────────────
     # Nur fuer Tests abschaltbar; in Dev/Prod immer aktiv.
@@ -181,6 +190,16 @@ class Config:
         if cls.PAYMENT_PROVIDER == "stripe" and not (cls.STRIPE_SECRET_KEY and cls.STRIPE_WEBHOOK_SECRET):
             issues.append(
                 "KRITISCH: PAYMENT_PROVIDER=stripe, aber STRIPE_SECRET_KEY und/oder STRIPE_WEBHOOK_SECRET fehlen."
+            )
+
+        if cls.CAPTCHA_PROVIDER not in ("none", "turnstile", "hcaptcha"):
+            issues.append(
+                f"KRITISCH: CAPTCHA_PROVIDER '{cls.CAPTCHA_PROVIDER}' ist unbekannt (erlaubt: none, turnstile, hcaptcha)."
+            )
+        elif cls.CAPTCHA_PROVIDER != "none" and not (cls.CAPTCHA_SITE_KEY and cls.CAPTCHA_SECRET):
+            issues.append(
+                f"WARNUNG: CAPTCHA_PROVIDER={cls.CAPTCHA_PROVIDER}, aber CAPTCHA_SITE_KEY und/oder CAPTCHA_SECRET fehlen: "
+                "Registrierung und Passwort-Reset sind dann nicht nutzbar (503 captcha_unavailable)."
             )
 
         from app.domain.billing.receipts import validate_number_format
