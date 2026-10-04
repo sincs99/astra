@@ -52,6 +52,10 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M62 – Zahlungsbelege mit fortlaufender Nummer, Grundlage)
+- Jede verbuchte Zahlung (nicht kostenlose Pakete) bekommt einen Beleg mit fortlaufender, lueckenloser Nummer je Jahr (`INVOICE_NUMBER_FORMAT`, Standard `AST-{year}-{seq:05d}`): Zaehler `invoice_counters` mit Zeilensperre (PostgreSQL), Zaehler und Beleg in einer Transaktion, Belege werden nie geloescht. Tabellen `receipts` und `invoice_counters` (Migration `v2q3r4s5t6u7`)
+- `receipts: [{number, issued_at, amount_cents, currency}]` in den Bestellungen (Kunde und Admin); `GET /api/client/orders/{uuid}/receipt?number=&format=html|text|json` (HTML escaped, `nosniff`, CSP, `no-store`). Anbieter-Kopf und Fusszeile ueber `INVOICE_SELLER` und `RECEIPT_FOOTER`. Kein Steuerbeleg, kein PDF, keine Umsatzsteuer; Belege nur fuer Zahlungen ab M62. Ein Fehler beim Ausstellen blockiert die Zahlung nie. `backend/test_m62.py` (42 Tests); Doku in `docs/orders-api.md`, was fuer echte Rechnungen fehlt
+
 ### Security (M61 – Logout-Blocklist)
 - `POST /api/auth/logout` sperrt das verwendete Access-Token (`jti`) bis zu seinem Ablauf: neue Tabelle `revoked_tokens` (Migration `u1p2q3r4s5t6`), `get_current_user` prueft die Sperre bei jedem Request (ein Primaerschluessel-Lookup). Antwort enthaelt `token_revoked` (false bei API-Key, Dev-Header oder Token ohne `jti`). Andere Tokens des Kontos bleiben gueltig; ein zweiter Logout mit dem gesperrten Token ist 401
 - Aufraeumen: der naechste Logout loescht abgelaufene Eintraege beilaeufig, `python cli.py cleanup-jobs` (auch `--dry-run`) raeumt mit auf und meldet `revoked_tokens: {matched, deleted}`. Bewusst kein Redis (Neustart/Flush haette Abmeldungen aufgehoben). `backend/test_m61.py` (25 Tests)
