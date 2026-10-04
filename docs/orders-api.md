@@ -49,6 +49,7 @@ Kündigung bleibt erhalten.
 | `awaiting_provisioning` | bezahlt, Instance fehlt noch (kein Platz), der Tick wiederholt die Bereitstellung |
 | `active` | bezahlt, Instance läuft |
 | `past_due` | Laufzeit abgelaufen, Instance gesperrt und gestoppt, Karenzzeit läuft |
+| `refunded` | voll erstattet (oder Zahlungsstreit verloren): Instance gesperrt, nach `BILLING_GRACE_DAYS` gelöscht (M59) |
 | `cancelled` | offene Bestellung vom Kunden storniert |
 | `expired` | beendet, Instance gelöscht (Tick oder manuelles Löschen der Instance) |
 
@@ -186,11 +187,31 @@ header = f"t={t},v1={sig}"          # als Header "Stripe-Signature" senden
   `awaiting_provisioning`); der Admin stellt später per `mark-paid` bereit.
 - Nur Währungen mit Nachkommastellen werden unterstützt (kein JPY, KRW usw.).
 
+### Erstattungen und Zahlungsstreitigkeiten (M59)
+
+Zusätzlich zu den Zahlungsereignissen wertet Astra diese Stripe-Ereignisse aus (gleicher Webhook, gleiche
+Signaturprüfung, gleiche Idempotenz). Zugeordnet wird über die Zahlungsreferenz (`payment_intent`, auch ältere
+Verlängerungen), ersatzweise über `metadata.order_uuid`.
+
+| Ereignis | Wirkung |
+|---|---|
+| `charge.refunded`, **voll**, für die zuletzt verbuchte Zahlung | Status `refunded`, `refunded_at`, Instance **gesperrt** (Grund „Zahlung erstattet“, nicht gelöscht), Karenzzeit `BILLING_GRACE_DAYS`, danach löscht der Tick die Instance (`expired`); Mail an den Kunden, Event `order:refunded`, Admin-Alert |
+| `charge.refunded`, **teilweise** oder voll für eine **ältere** Zahlung | nur Event `order:refunded` (`full: false`) und Admin-Alert; Bestellung und Server laufen weiter, der Admin entscheidet |
+| `charge.dispute.created` | `disputed` = true, Instance gesperrt (Grund „Zahlung angefochten“), Bestellung bleibt `active`/`past_due`, Event `order:disputed` (`outcome: opened`), Admin-Alert |
+| `charge.dispute.closed`, gewonnen oder ohne Folgen | `disputed` = false, die Sperre aus dem Streit wird aufgehoben (eine Admin- oder Zahlungssperre bleibt), Event `order:disputed` |
+| `charge.dispute.closed`, **verloren** | wie eine Vollerstattung: Status `refunded`, Karenzzeit bis zur Löschung |
+
+Payment-Event-Status ist jeweils `processed` (unbekannte Zahlung: `ignored`). Eine bestehende Sperre (z. B.
+Missbrauch) wird nie überschrieben. `GET /api/client/orders` und die Admin-Liste enthalten `refunded_at` und
+`disputed`. **Manuell bleibt:** die Erstattung selbst (Stripe-Dashboard), die Entscheidung bei Teilerstattungen,
+Beweise für Streitfälle, vorzeitiges Löschen eines erstatteten Servers (Admin) und Rechnungskorrekturen.
+
 ### Einrichtung
 
 1. In Stripe zuerst den **Test-Modus** nutzen (Schlüssel `sk_test_...`).
 2. Webhook-Endpunkt anlegen: URL `https://<PANEL_DOMAIN>/api/payments/stripe`, Ereignisse
-   `checkout.session.completed` und `checkout.session.async_payment_succeeded`. Das Signing-Secret
+   `checkout.session.completed`, `checkout.session.async_payment_succeeded` sowie seit M59 `charge.refunded`,
+   `charge.dispute.created` und `charge.dispute.closed`. Das Signing-Secret
    (`whsec_...`) kopieren.
 3. In der Backend-Umgebung setzen (nicht ins Repository): `PAYMENT_PROVIDER=stripe`, `STRIPE_SECRET_KEY`,
    `STRIPE_WEBHOOK_SECRET`; `FRONTEND_URL` muss die öffentliche Panel-URL sein. Backend neu starten.
@@ -241,7 +262,7 @@ header = f"t={t},v1={sig}"          # als Header "Stripe-Signature" senden
 | `POST /api/admin/orders/{uuid}/mark-paid` | Admin | `{payment_reference?}` Zahlung bestätigen und Instance bereitstellen; auf `active`/`past_due` ist die Referenz Pflicht (Verlängerung) |
 
 Activity- und Webhook-Events: `order:created`, `order:paid`, `order:provision_failed`, `order:cancelled`,
-`order:past_due`, `order:renewed`, `order:expired`, `order:reminder`, `order:payment_unapplied`, `order:provisioned`.
+`order:past_due`, `order:renewed`, `order:expired`, `order:reminder`, `order:payment_unapplied`, `order:provisioned`, `order:refunded`, `order:disputed`.
 
 ## Admin-Benachrichtigung (M58)
 
