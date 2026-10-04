@@ -1,0 +1,26 @@
+import type { shop as de } from "../de/shop";
+
+export const shop: Record<keyof typeof de, string> = {
+  "shop.loadFailed": "Products could not be loaded",
+  "shop.orderFailed": "Order failed",
+  "shop.title": "Shop",
+  "shop.placed": "Order received.",
+  "shop.placed.active": "Your server has been provisioned.",
+  "shop.placed.awaiting": "Your server will be provisioned automatically as soon as capacity is available.",
+  "shop.placed.pending": "Your server will be activated once payment is received.",
+  "shop.toOrders": "Go to my orders",
+  "shop.loading": "Loading products...",
+  "shop.none": "No products are currently available.",
+  "shop.ram": "RAM",
+  "shop.serverName": "Server name (optional)",
+  "shop.serverNamePh": "assigned automatically if empty",
+  "shop.confirm": "Place binding order",
+  "shop.cancel": "Cancel",
+  "shop.orderLoginAria": "Order {name} (sign-in required)",
+  "shop.loginToOrder": "Sign in and order",
+  "shop.orderAria": "Order {name}",
+  "shop.order": "Order",
+  "shop.nf.title": "Page not found",
+  "shop.nf.text": "This page does not exist.",
+  "shop.nf.home": "Go to dashboard",
+};

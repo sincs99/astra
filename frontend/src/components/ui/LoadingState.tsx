@@ -1,10 +1,12 @@
+import { t } from "../../i18n";
+
 /** Einheitlicher Ladezustand (M26). */
 
 interface LoadingStateProps {
   message?: string;
 }
 
-export function LoadingState({ message = "Wird geladen..." }: LoadingStateProps) {
+export function LoadingState({ message = t("common.loading") }: LoadingStateProps) {
   return (
     <div role="status" aria-busy="true" style={{ padding: 32, textAlign: "center", color: "var(--fg-muted)" }}>
       <div style={{ fontSize: 24, marginBottom: 8 }}>&#8987;</div>

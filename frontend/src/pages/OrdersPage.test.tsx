@@ -271,7 +271,7 @@ describe("OrdersPage", () => {
       vi.spyOn(api, "getMyOrders").mockResolvedValue([pending]);
       mount("/orders?cancelled=o-2");
       expect(await screen.findByText("Zahlung abgebrochen.")).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Jetzt bezahlen" })).toBeTruthy();
+      expect(await screen.findByRole("button", { name: "Jetzt bezahlen" })).toBeTruthy();
     });
   });
 

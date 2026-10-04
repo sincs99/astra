@@ -1,3 +1,5 @@
+import { moneyLocale, t } from "../i18n";
+
 /** Preise werden im Backend in Cent gespeichert; im UI als Euro mit 2 Dezimalstellen bearbeitet. */
 
 /**
@@ -22,7 +24,7 @@ export function centsToEuroInput(cents: number): string {
 /** "9,99 €" (Waehrung nach ISO-Code, Standard EUR). */
 export function formatMoney(cents: number, currency = "EUR"): string {
   try {
-    return new Intl.NumberFormat("de-DE", { style: "currency", currency }).format(cents / 100);
+    return new Intl.NumberFormat(moneyLocale(), { style: "currency", currency }).format(cents / 100);
   } catch {
     return `${centsToEuroInput(cents).replace(".", ",")} ${currency}`;
   }
@@ -30,7 +32,7 @@ export function formatMoney(cents: number, currency = "EUR"): string {
 
 /** "30 Tage" / "1 Tag" */
 export function formatPeriod(days: number): string {
-  return days === 1 ? "1 Tag" : `${days} Tage`;
+  return days === 1 ? t("orders.day") : t("orders.days", { n: days });
 }
 
 /** "9,99 € / 30 Tage" */

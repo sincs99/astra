@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { t } from "../i18n";
 import { api, MIN_PASSWORD_LENGTH } from "../services/api";
 import { inputStyle, labelStyle, btnPrimary, linkStyle } from "../components/ui";
 import { AuthCard, AuthMessage } from "../components/AuthCard";
@@ -15,10 +16,10 @@ export function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <AuthCard title="Passwort zurücksetzen">
-        <AuthMessage kind="error">Der Link ist ungültig, es fehlt der Token.</AuthMessage>
+      <AuthCard title={t("auth.reset.titleInvalid")}>
+        <AuthMessage kind="error">{t("auth.reset.noToken")}</AuthMessage>
         <p style={{ textAlign: "center", fontSize: 14 }}>
-          <Link to="/password-reset" style={linkStyle}>Neuen Link anfordern</Link>
+          <Link to="/password-reset" style={linkStyle}>{t("auth.reset.newLink")}</Link>
         </p>
       </AuthCard>
     );
@@ -27,11 +28,11 @@ export function ResetPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Das Passwort muss mindestens ${MIN_PASSWORD_LENGTH} Zeichen lang sein`);
+      setError(t("auth.reset.tooShort", { n: MIN_PASSWORD_LENGTH }));
       return;
     }
     if (password !== confirm) {
-      setError("Die Passwörter stimmen nicht überein");
+      setError(t("auth.pwMismatch"));
       return;
     }
     try {
@@ -40,30 +41,30 @@ export function ResetPasswordPage() {
       await api.confirmPasswordReset(token, password);
       navigate("/login?reset=1");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Zurücksetzen fehlgeschlagen");
+      setError(err instanceof Error ? err.message : t("auth.reset.failed"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthCard title="Neues Passwort setzen">
+    <AuthCard title={t("auth.reset.title")}>
       <form onSubmit={handleSubmit} noValidate>
         {error && <AuthMessage kind="error">{error}</AuthMessage>}
         <div style={{ marginBottom: 16 }}>
-          <label htmlFor="password" style={labelStyle}>Neues Passwort</label>
+          <label htmlFor="password" style={labelStyle}>{t("auth.reset.newPw")}</label>
           <input id="password" type="password" autoComplete="new-password" autoFocus value={password}
             onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
-          <small style={{ color: "var(--fg-muted)", fontSize: 12 }}>Mindestens {MIN_PASSWORD_LENGTH} Zeichen</small>
+          <small style={{ color: "var(--fg-muted)", fontSize: 12 }}>{t("auth.minLength", { n: MIN_PASSWORD_LENGTH })}</small>
         </div>
         <div style={{ marginBottom: 20 }}>
-          <label htmlFor="confirm" style={labelStyle}>Passwort wiederholen</label>
+          <label htmlFor="confirm" style={labelStyle}>{t("auth.pwRepeat")}</label>
           <input id="confirm" type="password" autoComplete="new-password" value={confirm}
             onChange={(e) => setConfirm(e.target.value)} style={inputStyle} />
         </div>
         <button type="submit" disabled={loading}
           style={{ ...btnPrimary, width: "100%", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1 }}>
-          {loading ? "Wird gespeichert..." : "Passwort speichern"}
+          {loading ? t("auth.reset.busy") : t("auth.reset.submit")}
         </button>
       </form>
     </AuthCard>

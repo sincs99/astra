@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { t } from "../i18n";
 import { api, ApiError, isAuthenticated, setAccessToken } from "../services/api";
 import { SiteFooter } from "../components/SiteFooter";
 import { safeRedirectPath } from "../lib/redirect";
@@ -26,11 +27,11 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!login.trim() || !password.trim()) {
-      setError("Bitte Benutzername/E-Mail und Passwort eingeben");
+      setError(t("auth.login.missing"));
       return;
     }
     if (mfaRequired && !mfaCode.trim()) {
-      setError("Bitte den Code aus deiner Authenticator-App eingeben");
+      setError(t("auth.login.missingCode"));
       return;
     }
 
@@ -49,7 +50,7 @@ export function LoginPage() {
       navigate(redirectTo);
     } catch (err) {
       if (err instanceof ApiError && err.code === "email_not_verified") setUnverified(true);
-      setError(err instanceof Error ? err.message : "Anmeldung fehlgeschlagen");
+      setError(err instanceof Error ? err.message : t("auth.login.failed"));
     } finally {
       setLoading(false);
     }
@@ -57,14 +58,14 @@ export function LoginPage() {
 
   return (
     <div style={{ maxWidth: 400, margin: "clamp(24px, 10vh, 80px) auto", padding: 24 }}>
-      <h1 style={{ textAlign: "center", marginBottom: 24 }}>Astra Login</h1>
+      <h1 style={{ textAlign: "center", marginBottom: 24 }}>{t("auth.login.title")}</h1>
 
       {resetDone && !error && (
         <div role="status" style={{
           padding: "10px 14px", backgroundColor: "var(--tint-green)", color: "var(--c-green)",
           borderRadius: 6, marginBottom: 16, fontSize: 14,
         }}>
-          Dein Passwort wurde geändert. Bitte melde dich jetzt an.
+          {t("auth.login.resetDone")}
         </div>
       )}
 
@@ -73,7 +74,7 @@ export function LoginPage() {
           padding: "10px 14px", backgroundColor: "var(--tint-orange)", color: "var(--c-orange)",
           borderRadius: 6, marginBottom: 16, fontSize: 14,
         }}>
-          Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.
+          {t("auth.login.expired")}
         </div>
       )}
 
@@ -89,12 +90,12 @@ export function LoginPage() {
           {error}
           {unverified && (
             <div style={{ marginTop: 8 }}>
-              {resent ? "Wir haben dir eine neue Bestätigungs-Mail geschickt." : (
+              {resent ? t("auth.login.resentOk") : (
                 <button type="button" style={{ ...linkStyle, background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}
                   onClick={async () => {
                     try { await api.resendVerification(login.trim()); setResent(true); } catch { /* neutral */ }
                   }}>
-                  Bestätigungs-Mail erneut senden
+                  {t("auth.login.resend")}
                 </button>
               )}
             </div>
@@ -105,7 +106,7 @@ export function LoginPage() {
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: 16 }}>
           <label htmlFor="login" style={labelStyle}>
-            Benutzername oder E-Mail
+            {t("auth.login.user")}
           </label>
           <input
             id="login"
@@ -121,7 +122,7 @@ export function LoginPage() {
 
         <div style={{ marginBottom: 20 }}>
           <label htmlFor="password" style={labelStyle}>
-            Passwort
+            {t("auth.password")}
           </label>
           <input
             id="password"
@@ -136,7 +137,7 @@ export function LoginPage() {
 
         {mfaRequired && (
           <div style={{ marginBottom: 20 }}>
-            <label htmlFor="mfa" style={labelStyle}>Authenticator-Code</label>
+            <label htmlFor="mfa" style={labelStyle}>{t("auth.login.mfaLabel")}</label>
             <input
               id="mfa"
               type="text"
@@ -149,7 +150,7 @@ export function LoginPage() {
               style={inputStyle}
             />
             <small style={{ color: "var(--fg-muted)", fontSize: 12 }}>
-              6-stelliger Code aus deiner App, oder ein Recovery-Code.
+              {t("auth.login.mfaHint")}
             </small>
           </div>
         )}
@@ -164,12 +165,12 @@ export function LoginPage() {
             cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Wird angemeldet..." : mfaRequired ? "Bestätigen" : "Anmelden"}
+          {loading ? t("auth.login.busy") : mfaRequired ? t("auth.login.confirm") : t("auth.login.submit")}
         </button>
 
         <p style={{ display: "flex", justifyContent: "space-between", fontSize: 14, marginTop: 16 }}>
-          <Link to="/password-reset" style={linkStyle}>Passwort vergessen?</Link>
-          <Link to={redirectTo === "/" ? "/register" : `/register?redirect=${encodeURIComponent(redirectTo)}`} style={linkStyle}>Konto erstellen</Link>
+          <Link to="/password-reset" style={linkStyle}>{t("auth.login.forgot")}</Link>
+          <Link to={redirectTo === "/" ? "/register" : `/register?redirect=${encodeURIComponent(redirectTo)}`} style={linkStyle}>{t("auth.login.register")}</Link>
         </p>
       </form>
       <SiteFooter />
