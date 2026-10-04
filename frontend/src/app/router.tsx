@@ -31,6 +31,7 @@ const AdminWebhooksPage = lazy(() => import("../pages/AdminWebhooksPage").then((
 const AdminJobsPage = lazy(() => import("../pages/AdminJobsPage").then((m) => ({ default: m.AdminJobsPage })));
 const AdminSystemPage = lazy(() => import("../pages/AdminSystemPage").then((m) => ({ default: m.AdminSystemPage })));
 const AdminProductsPage = lazy(() => import("../pages/AdminProductsPage").then((m) => ({ default: m.AdminProductsPage })));
+const AdminInvoicesPage = lazy(() => import("../pages/AdminInvoicesPage").then((m) => ({ default: m.AdminInvoicesPage })));
 const AdminOrdersPage = lazy(() => import("../pages/AdminOrdersPage").then((m) => ({ default: m.AdminOrdersPage })));
 
 /**
@@ -87,6 +88,7 @@ export function AppRouter() {
         <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
         <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
         <Route path="/admin/products" element={<ProtectedRoute><AdminRoute><AdminProductsPage /></AdminRoute></ProtectedRoute>} />
+        <Route path="/admin/invoices" element={<ProtectedRoute><AdminRoute><AdminInvoicesPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/admin/orders" element={<ProtectedRoute><AdminRoute><AdminOrdersPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
         <Route path="/account/ssh-keys" element={<ProtectedRoute><SshKeysPage /></ProtectedRoute>} />

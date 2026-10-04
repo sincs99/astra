@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, ApiError, type Order } from "../services/api";
+import { api, ApiError, type Order, type ReceiptKind } from "../services/api";
 import { formatDate } from "../lib/dates";
 import { formatMoney, formatPrice } from "../lib/money";
 import { manualPaymentNotice } from "../legal/payment";
@@ -30,7 +30,7 @@ export function OrdersPage() {
   const [manualPayment, setManualPayment] = useState(false);
   const handledReturn = useRef(false);
   // Geöffneter Beleg (HTML vom Server); lädt per fetch mit Token, weil ein normaler Link keinen Authorization-Header trägt
-  const [receipt, setReceipt] = useState<{ number: string; html: string } | null>(null);
+  const [receipt, setReceipt] = useState<{ number: string; html: string; kind?: ReceiptKind } | null>(null);
   const [openingReceipt, setOpeningReceipt] = useState<string | null>(null);
 
   // Stilles Nachladen, damit Kunden z.B. den Wechsel auf "aktiv" ohne Neuladen sehen
@@ -121,10 +121,10 @@ export function OrdersPage() {
     }
   };
 
-  const showReceipt = async (order: Order, number: string) => {
+  const showReceipt = async (order: Order, number: string, kind?: ReceiptKind) => {
     try {
       setOpeningReceipt(number);
-      setReceipt({ number, html: await api.getReceiptHtml(order.uuid, number) });
+      setReceipt({ number, html: await api.getReceiptHtml(order.uuid, number), kind });
     } catch (err) {
       toast.error(err instanceof Error && err.message ? err.message : t("orders.receiptFailed"));
     } finally {
@@ -144,9 +144,15 @@ export function OrdersPage() {
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 4 }}>
             {o.receipts.map((r) => (
               <li key={r.number} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                <span>{r.number} · {formatDate(r.issued_at)} · {formatMoney(r.amount_cents, r.currency)}</span>
-                <button type="button" onClick={() => showReceipt(o, r.number)} disabled={openingReceipt === r.number}
-                  aria-label={t("orders.receiptShowAria", { number: r.number })}
+                <span>
+                  {r.kind && <strong>{t(r.kind === "credit_note" ? "orders.kindCreditNote" : "orders.kindInvoice")} </strong>}
+                  {r.number} · {formatDate(r.issued_at)} · {formatMoney(r.amount_cents, r.currency)}
+                  {r.kind === "credit_note" && r.references_number && <> · {t("orders.creditNoteRef", { number: r.references_number })}</>}
+                </span>
+                <button type="button" onClick={() => showReceipt(o, r.number, r.kind)} disabled={openingReceipt === r.number}
+                  aria-label={r.kind
+                    ? t("orders.receiptShowKindAria", { kind: t(r.kind === "credit_note" ? "orders.kindCreditNote" : "orders.kindInvoice"), number: r.number })
+                    : t("orders.receiptShowAria", { number: r.number })}
                   style={{ ...btnDefault, padding: "1px 8px", fontSize: 12 }}>
                   {t("orders.receiptShow")}
                 </button>
@@ -281,10 +287,10 @@ export function OrdersPage() {
         </div>
         )
       )}
-      {orders.some((o) => (o.receipts?.length ?? 0) > 0) && (
+      {orders.some((o) => o.receipts?.some((r) => !r.kind)) && (
         <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 12 }}>{t("orders.receiptNote")}</p>
       )}
-      {receipt && <ReceiptViewer number={receipt.number} html={receipt.html} onClose={() => setReceipt(null)} />}
+      {receipt && <ReceiptViewer number={receipt.number} html={receipt.html} kind={receipt.kind} onClose={() => setReceipt(null)} />}
     </PageLayout>
   );
 }

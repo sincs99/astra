@@ -87,4 +87,12 @@ export const account = {
   "account.mfa.regenerateWrongPw": "Das Passwort ist falsch.",
   "account.mfa.regenerated": "Neue Recovery-Codes erzeugt.",
   "account.mfa.regenerateCancel": "Abbrechen",
+  "account.billing.title": "Rechnungsadresse",
+  "account.billing.name": "Name oder Firma",
+  "account.billing.address": "Anschrift",
+  "account.billing.hint": "Optional. Erscheint auf deinen Rechnungen.",
+  "account.billing.save": "Speichern",
+  "account.billing.saving": "Wird gespeichert…",
+  "account.billing.saved": "Rechnungsadresse gespeichert",
+  "account.billing.failed": "Die Rechnungsadresse konnte nicht gespeichert werden",
 } as const;

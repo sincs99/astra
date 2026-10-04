@@ -5,6 +5,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – M70 Rechnungen)
+- Konto: Abschnitt "Rechnungsadresse" (Name/Firma, mehrzeilige Anschrift, optional, "Erscheint auf deinen Rechnungen") ueber `PATCH /client/account`; wird ausgeblendet, wenn das Backend die Felder nicht liefert
+- Bestellungen: Belegliste nennt "Rechnung" bzw. "Gutschrift" (mit Verweis "zu Rechnung ...", falls `references_number` in der Uebersicht steht), der Dialog traegt den passenden Titel und Dateinamen (`rechnung-...`/`gutschrift-...`); der Hinweis "Vereinfachter Zahlungsbeleg" erscheint nur noch bei Belegen ohne `kind`
+- Admin: neue Seite "Rechnungen" (Verkauf) mit Monatsauswahl, Tabelle (Nummer, Art, Datum, Kunde, Netto, USt., Brutto, Waehrung; mobil als Karten) aus `GET /admin/invoices?format=json` und CSV-Download (`format=csv`, Blob). `/account` und `/admin/invoices` sind Teil der automatischen Barrierefreiheitspruefung
+
 ### Added (Frontend – M71 Registrierungsschutz)
 - Registrierung und "Passwort vergessen" laden `GET /auth/captcha` (404/Netzfehler = kein Captcha) und rendern bei Turnstile/hCaptcha das Widget; das Script wird nur dann und nur von `challenges.cloudflare.com` bzw. `js.hcaptcha.com` geladen (Theme aus `data-theme`, Sprache aus `astra_lang`), ohne Anbieter gibt es keinen externen Aufruf. Das Token geht als `captcha_token` in den Body, nach einem Fehlversuch wird das Widget zurueckgesetzt. Datenschutzhinweis unter dem Formular (Text in `legal/captcha.ts` anpassbar)
 - Honeypot-Feld `website` (ausserhalb des Bildschirms, nicht per Tab erreichbar, `aria-hidden`); ist es gefuellt, wird nichts gesendet

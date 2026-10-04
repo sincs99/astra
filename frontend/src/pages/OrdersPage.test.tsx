@@ -102,6 +102,22 @@ describe("OrdersPage", () => {
       expect(screen.getByText("Vereinfachter Zahlungsbeleg, keine Rechnung mit Umsatzsteuer.")).toBeTruthy();
     });
 
+    it("nennt Rechnung und Gutschrift (mit Verweis), öffnet sie mit passendem Dialogtitel und blendet den Hinweis ohne alte Belege aus", async () => {
+      const inv = { ...r1, kind: "invoice" as const };
+      const cn = { number: "G-2026-0001", issued_at: "2026-11-02T10:00:00Z", amount_cents: -999, currency: "EUR", kind: "credit_note" as const, references_number: "R-2026-0001" };
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([makeOrder({ uuid: "ord-5", status: "refunded", receipts: [inv, cn] })]);
+      vi.spyOn(api, "getReceiptHtml").mockResolvedValue("<h1>G</h1>");
+      mount();
+      await screen.findByText(/R-2026-0001 · 1\.10\.2026/);
+      expect(screen.getByText("Rechnung")).toBeTruthy();
+      expect(screen.getByText("Gutschrift")).toBeTruthy();
+      expect(screen.getByText(/zu Rechnung R-2026-0001/)).toBeTruthy();
+      expect(screen.queryByText(/Vereinfachter Zahlungsbeleg/)).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Gutschrift G-2026-0001 anzeigen" }));
+      const dialog = await screen.findByRole("dialog", { name: "Gutschrift G-2026-0001" });
+      expect(within(dialog).getByTitle("Gutschrift G-2026-0001")).toBeTruthy();
+    });
+
     it("zeigt ohne Belege keinen Hinweis", async () => {
       vi.spyOn(api, "getMyOrders").mockResolvedValue([makeOrder({ status: "active", receipts: [] })]);
       mount();

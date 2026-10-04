@@ -276,11 +276,44 @@ export interface OrderConnection {
   address: string;
 }
 
-/** Vereinfachter Zahlungsbeleg (M62), keine Rechnung mit Umsatzsteuer. */
+/** Beleg zur Bestellung: Rechnung oder Gutschrift (M70); aeltere Belege ohne `kind` sind vereinfachte Zahlungsbelege (M62). */
+export type ReceiptKind = "invoice" | "credit_note";
+
 export interface OrderReceipt {
   number: string;
   issued_at: string;
   amount_cents: number;
+  currency: string;
+  kind?: ReceiptKind;
+  /** Bei einer Gutschrift: Nummer der Rechnung, auf die sie sich bezieht (falls in der Uebersicht geliefert) */
+  references_number?: string | null;
+}
+
+/** Beleg als JSON (`?format=json`, M70). */
+export interface ReceiptDetail extends OrderReceipt {
+  net_cents: number;
+  vat_cents: number;
+  vat_rate: number;
+  gross_cents: number;
+  period_start: string | null;
+  period_end: string | null;
+  customer_billing: { name: string | null; address: string | null } | null;
+  seller: { lines: string[]; vat_id: string | null };
+  references_number: string | null;
+}
+
+/** Zeile der Rechnungsliste fuer die Buchhaltung (`GET /admin/invoices`, M70). */
+export interface InvoiceRow {
+  number: string;
+  kind: ReceiptKind;
+  issued_at: string;
+  /** Rechnungsname des Kunden, sonst Benutzername; die API kann verschiedene Felder liefern */
+  customer_name?: string | null;
+  customer?: string | null;
+  username?: string | null;
+  net_cents: number;
+  vat_cents: number;
+  gross_cents: number;
   currency: string;
 }
 
@@ -338,6 +371,9 @@ export interface User {
   mfa_recovery_codes_remaining?: number;
   /** Sprache fuer Mails und Belege (M67); null = Deutsch, fehlt bei aelterem Backend */
   locale?: "de" | "en" | null;
+  /** Rechnungsadresse (M70); fehlt bei aelterem Backend */
+  billing_name?: string | null;
+  billing_address?: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -953,6 +989,12 @@ export const api = {
     request<unknown>("/auth/captcha").then(normalizeCaptchaConfig, () => NO_CAPTCHA),
 
   /** Sprache fuer Mails und Belege speichern (M67); aeltere Backends antworten mit 404/400 */
+  /** Rechnungsadresse speichern (M70); leere Werte loeschen sie */
+  updateBillingAddress: (billingName: string, billingAddress: string) =>
+    request<User>("/client/account", {
+      method: "PATCH",
+      body: JSON.stringify({ billing_name: billingName.trim() || null, billing_address: billingAddress.trim() || null }),
+    }),
   updateAccountLocale: (locale: "de" | "en") =>
     request<unknown>("/client/account", { method: "PATCH", body: JSON.stringify({ locale }) }),
 
@@ -1419,6 +1461,15 @@ export const api = {
     }),
   getMyOrders: () => request<Order[]>("/client/orders"),
   /** Fertig gerenderte HTML-Seite eines Belegs (per Token geholt, ein normaler Link traegt keinen Authorization-Header). */
+  getReceiptJson: (orderUuid: string, number: string) =>
+    request<ReceiptDetail>(`/client/orders/${orderUuid}/receipt?number=${encodeURIComponent(number)}&format=json`),
+  /** Rechnungen und Gutschriften eines Zeitraums (Datum JJJJ-MM-TT, M70) */
+  getInvoices: (from: string, to: string) =>
+    request<InvoiceRow[] | { items: InvoiceRow[] }>(`/admin/invoices?from=${from}&to=${to}&format=json`)
+      .then((res) => (Array.isArray(res) ? res : res.items ?? [])),
+  /** Dieselbe Liste als CSV-Text (zum Speichern als Datei) */
+  getInvoicesCsv: (from: string, to: string) =>
+    request<string>(`/admin/invoices?from=${from}&to=${to}&format=csv`, {}, true),
   getReceiptHtml: (orderUuid: string, number: string) =>
     request<string>(`/client/orders/${orderUuid}/receipt?number=${encodeURIComponent(number)}&format=html`, {}, true),
   /** Welcher Zahlungsweg aktiv ist: "manual" (Ueberweisung) oder "stripe" (online). */

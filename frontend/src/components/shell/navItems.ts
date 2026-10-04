@@ -29,6 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "System", href: "/admin/system", icon: "settings", group: "Operations", adminOnly: true },
   { label: "Produkte", href: "/admin/products", icon: "tag", group: "Verkauf", adminOnly: true },
   { label: "Bestellungen", href: "/admin/orders", icon: "clipboard", group: "Verkauf", adminOnly: true },
+  { label: "Rechnungen", href: "/admin/invoices", icon: "orders", group: "Verkauf", adminOnly: true },
   { label: "Webhooks", href: "/admin/webhooks", icon: "zap", group: "Integrations", adminOnly: true },
 ];
 
