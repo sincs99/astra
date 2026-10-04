@@ -5,6 +5,10 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – D2 App-Shell)
+- Neue App-Shell nach `design/mockups`: Seitenleiste links (240 px, einklappbar auf 56 px nur Icons mit `aria-label`/`title`, Zustand in localStorage), Logo (SVG-Stern in `--accent`, Satellit in `--text`), Navigation mit Icon + Text und aktivem Eintrag in `--accent-soft` (laengster Pfadpraefix), Admin-Gruppen nur fuer Admins, unten Nutzermenue (Avatar-Initialen, Sprache, Design, Konto, Abmelden). Mobil ab 760 px: Kopfzeile mit Logo, Avatar und 44-px-Hamburger sowie Vollbild-Overlay-Menue. Seitenkopf mit Titel, optionalem Untertitel und Aktionen (`PageLayout` Props `subtitle`, `actions`). Skip-Link und Tab-Titel bleiben; Sprachumschalter in der Fusszeile nur noch ausgeloggt
+- Design-Darstellung im Konto: "Wie das Geraet" heisst jetzt "System"
+
 ### Changed (Frontend – D1 Design-Tokens)
 - `design/tokens.css` ist die Quelle der Farben, Schrift und Maße; `frontend/src/styles/tokens.css` ist eine Kopie (Docker-Build-Kontext ist `frontend/`), `npm run sync:tokens` aktualisiert sie, ein Test prueft die Gleichheit. `src/theme.css` bindet sie ein und liefert Kompatibilitaets-Aliase fuer die bisherigen Variablennamen. Dunkel ist Standard, hell ueber `data-theme="light"`; `lib/theme.ts` setzt `data-theme` immer explizit (System-Praeferenz wird erkannt und verfolgt)
 - Schrift Geist / Geist Mono selbst gehostet (`@fontsource/geist`, `@fontsource/geist-mono`, nur Latin-Subsets, kein externer Abruf wegen DSGVO)

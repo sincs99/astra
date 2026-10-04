@@ -1,0 +1,94 @@
+/* App-Shell nach design/DESIGN.md: Seitenleiste, Kopfzeile mobil, Navigation. Nur Token-Variablen. */
+.shell { min-height: 100vh; display: flex; background: var(--bg); color: var(--text); }
+.sb {
+  flex: 0 0 var(--sidebar-w); width: var(--sidebar-w); box-sizing: border-box; background: var(--surface);
+  border-right: 1px solid var(--border); padding: 16px 12px; display: flex; flex-direction: column; gap: 2px;
+  position: sticky; top: 0; height: 100vh; overflow: hidden; transition: width var(--dur) var(--ease), flex-basis var(--dur) var(--ease);
+}
+.sb.sb-collapsed { flex-basis: var(--sidebar-w-collapsed); width: var(--sidebar-w-collapsed); padding: 16px 8px; }
+.sb-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px 16px; gap: 4px; }
+.sb-collapsed .sb-head { flex-direction: column; padding: 4px 0 12px; gap: 12px; }
+.sb-brand { display: flex; align-items: center; text-decoration: none; color: var(--text); border-radius: var(--radius-btn); }
+.sb-brand:hover { color: var(--text); }
+.sb-label {
+  font-size: var(--fs-hint); font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3);
+  padding: 14px 10px 4px;
+}
+.sb-link {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-btn);
+  text-decoration: none; color: var(--text-2); font-size: var(--fs-base); min-height: 20px;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.sb-link:hover { background: var(--surface-2); color: var(--text); }
+.sb-link[aria-current="page"] { color: var(--text); background: var(--accent-soft); font-weight: 500; }
+.sb-link[aria-current="page"] svg { color: var(--accent); }
+.sb-collapsed .sb-link { justify-content: center; padding: 10px 0; }
+.sb-collapsed .sb-text, .sb-collapsed .sb-label { display: none; }
+.sb-spacer { flex: 1 1 auto; min-height: 24px; }
+.sb-sep { height: 1px; background: var(--border); margin: 6px 4px 10px; }
+.icon-btn {
+  font: inherit; border: 0; background: transparent; color: var(--text-3); cursor: pointer; padding: 4px;
+  border-radius: var(--radius-btn); display: inline-flex; align-items: center; justify-content: center;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.icon-btn:hover { background: var(--surface-2); color: var(--text); }
+.avatar {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--border);
+  display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-hint); font-weight: 600;
+  color: var(--text-2); flex: 0 0 auto;
+}
+.user-btn {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 8px; border: 0; background: transparent;
+  color: var(--text); font: inherit; text-align: left; cursor: pointer; border-radius: var(--radius-btn);
+}
+.user-btn:hover { background: var(--surface-2); }
+.sb-collapsed .user-btn { justify-content: center; padding: 6px 0; }
+.sb-collapsed .user-btn .sb-text { display: none; }
+.user-menu {
+  position: absolute; left: 8px; right: 8px; bottom: 100%; margin-bottom: 6px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-dialog); padding: 8px;
+  display: flex; flex-direction: column; gap: 8px; z-index: 50; min-width: 200px;
+}
+.sb-collapsed .user-menu { left: 8px; right: auto; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-btn); overflow: hidden; }
+.seg button {
+  font: inherit; font-size: var(--fs-small); border: 0; background: transparent; color: var(--text-2); cursor: pointer;
+  padding: 0 10px; height: var(--control-h-sm); transition: background var(--dur) var(--ease);
+}
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--text); font-weight: 500; }
+.seg button:hover { background: var(--surface-2); }
+.menu-row { display: flex; flex-direction: column; gap: 4px; }
+.menu-row > span { font-size: var(--fs-hint); color: var(--text-3); }
+.menu-item {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--control-h-sm); padding: 0 8px; border: 0;
+  background: transparent; color: var(--text); font: inherit; font-size: var(--fs-small); cursor: pointer; text-align: left;
+  border-radius: var(--radius-btn); text-decoration: none; box-sizing: border-box;
+}
+.menu-item:hover { background: var(--surface-2); color: var(--text); }
+.shell-main { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+.shell-content { flex: 1 1 auto; width: 100%; overflow-x: auto; box-sizing: border-box; margin: 0 auto; padding: var(--space-page); outline: none; }
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.page-title { margin: 0; font-size: var(--fs-title); font-weight: 600; letter-spacing: -0.02em; line-height: 1.25; }
+.page-sub { margin: 2px 0 0; color: var(--text-2); }
+.page-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* Mobil: Kopfzeile statt Seitenleiste, Vollbild-Overlay-Menü */
+.m-shell { min-height: 100vh; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+.m-head {
+  display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 10px 16px;
+  border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 40;
+}
+.m-btn {
+  width: var(--control-h-touch); height: var(--control-h-touch); border-radius: var(--radius-btn); border: 0;
+  background: transparent; color: var(--text); cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+}
+.m-btn:hover { background: var(--surface-2); }
+.m-overlay {
+  position: fixed; inset: 0; z-index: 100; background: var(--bg); display: flex; flex-direction: column; overflow-y: auto;
+}
+.m-overlay .sb-link { min-height: var(--control-h-touch); box-sizing: border-box; font-size: 16px; }
+.m-overlay-body { padding: 12px 16px 24px; display: flex; flex-direction: column; gap: 2px; }
+
+.sb-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; margin: 0 -4px; padding: 0 4px; }
+.seg button { white-space: nowrap; }
