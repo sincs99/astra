@@ -574,10 +574,10 @@ def billing_status():
 
 @admin_bp.route("/stats/revenue", methods=["GET"])
 def revenue_stats_route():
-    """Umsatz der letzten ?days=30 Tage (1 bis 3650) aus den tatsaechlichen Zahlungen, je Waehrung getrennt.
+    """Umsatz der letzten ?days=30 Tage (1 bis 365) auf Basis der Zahlungsbelege (M62), je Waehrung getrennt.
 
     Antwort: {days, since, by_currency: {"EUR": cents}, paid_count (Erstzahlungen), renewals_count,
-    refunded_count}. Erstattungen werden nicht abgezogen.
+    refunded_cents_by_currency}. Erstattungen werden getrennt ausgewiesen, nicht abgezogen.
     """
     from app.domain.billing.service import revenue_stats
     raw = request.args.get("days", "30")
@@ -585,8 +585,8 @@ def revenue_stats_route():
         days = int(raw)
     except ValueError:
         return jsonify({"error": "days muss eine ganze Zahl sein"}), 400
-    if not 1 <= days <= 3650:
-        return jsonify({"error": "days muss zwischen 1 und 3650 liegen"}), 400
+    if not 1 <= days <= 365:
+        return jsonify({"error": "days muss zwischen 1 und 365 liegen"}), 400
     return jsonify(revenue_stats(days))
 
 
