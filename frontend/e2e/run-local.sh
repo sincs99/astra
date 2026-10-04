@@ -38,16 +38,16 @@ pids+=($!)
 cd "$ROOT/frontend"
 npm run build >/dev/null
 echo "[e2e] Frontend starten (Port $FRONTEND_PORT)"
-npx vite preview --port "$FRONTEND_PORT" --strictPort >"$WORK/frontend.log" 2>&1 &
+npx vite preview --host 127.0.0.1 --port "$FRONTEND_PORT" --strictPort >"$WORK/frontend.log" 2>&1 &
 pids+=($!)
 
 for url in "http://127.0.0.1:$BACKEND_PORT/health" "http://127.0.0.1:$FRONTEND_PORT/"; do
-  for _ in $(seq 1 60); do
+  for _ in $(seq 1 120); do
     curl -fsS "$url" >/dev/null 2>&1 && break
     sleep 0.5
   done
-  curl -fsS "$url" >/dev/null || { echo "[e2e] $url nicht erreichbar"; tail -20 "$WORK"/*.log; exit 1; }
+  curl -fsS "$url" >/dev/null || { echo "[e2e] $url nicht erreichbar"; tail -n 20 "$WORK"/*.log; exit 1; }
 done
 
-E2E_BASE_URL="http://localhost:$FRONTEND_PORT" E2E_API_URL="http://localhost:$BACKEND_PORT/api" \
+E2E_BASE_URL="http://127.0.0.1:$FRONTEND_PORT" E2E_API_URL="http://127.0.0.1:$BACKEND_PORT/api" \
 E2E_ADMIN_PASSWORD="$ADMIN_PASSWORD" node e2e/flow.mjs || { echo "[e2e] FEHLGESCHLAGEN, Backend-Log:"; tail -30 "$WORK/backend.log"; exit 1; }

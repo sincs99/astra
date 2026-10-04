@@ -28,3 +28,5 @@ Das Skript legt eine temporäre Datenbank an, startet Backend (Port 5000) und Fr
 `.github/workflows/e2e.yml` führt denselben Durchlauf aus (manuell und bei Änderungen an `frontend/e2e/**`).
 Der Job wurde lokal, aber noch nicht auf GitHub-Runnern verifiziert. Läuft er dort nicht stabil, bleibt der lokale Lauf der
 Referenzweg und der Job kann auf `workflow_dispatch` beschränkt oder entfernt werden.
+
+Hinweis: Preview, Proxy-Ziel und Test-URLs sind bewusst auf `127.0.0.1` festgelegt. Mit `localhost` bindet der Preview-Server auf manchen Runnern (Node 20, GitHub Actions) nur an IPv6, und der Erreichbarkeits-Check über IPv4 schlägt fehl.
