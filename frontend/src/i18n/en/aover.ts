@@ -66,4 +66,5 @@ export const aover = {
   "aover.andMore": "and {n} more",
   "aover.trend": "{c}{percent}% vs. previous period",
   "aover.trendNone": "{c}no comparison",
+  "aover.colAmount": "Amount",
 } as const;

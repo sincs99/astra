@@ -873,6 +873,9 @@ export interface PaymentEvent {
   detail: string | null;
   received_at: string | null;
   processed_at: string | null;
+  /** Betrag des Ereignisses (M68): gezahlt, bei mismatch der tatsaechlich gezahlte, erstattet oder angefochten; null bei Altbestand/ignoriert, fehlt bei aelterem Backend */
+  amount_cents?: number | null;
+  currency?: string | null;
 }
 
 // ── System / Version Types (M24) ────────────────────────

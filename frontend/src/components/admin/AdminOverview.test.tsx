@@ -155,6 +155,21 @@ describe("AdminOverview", () => {
     expect((await screen.findByTestId("revenue-trend-EUR")).textContent).toBe("+12% vs. previous period");
   });
 
+  it("zeigt in 'Auffällige Zahlungen' eine Betragsspalte, wenn das Backend den Betrag liefert ('–' bei null), sonst nicht", async () => {
+    mockAll();
+    vi.mocked(api.getPaymentEvents).mockImplementation(async (p) =>
+      p?.status === "mismatch" ? [{ ...ev(1, "mismatch", "Betrag 5.00 statt 9.99"), amount_cents: 500, currency: "EUR" }] : [{ ...ev(2, "unapplied", "x"), amount_cents: null, currency: null }]);
+    mount();
+    expect(await screen.findByRole("columnheader", { name: "Betrag" })).toBeTruthy();
+    expect(screen.getByTestId("event-amount-1").textContent).toMatch(/5,00/);
+    expect(screen.getByTestId("event-amount-2").textContent).toBe("–");
+    cleanup();
+    mockAll();
+    mount();
+    await screen.findByText(/Betrag 5.00 statt 9.99/);
+    expect(screen.queryByRole("columnheader", { name: "Betrag" })).toBeNull();
+  });
+
   it("lässt eine ausgefallene Datenquelle nur ihre Kachel betreffen", async () => {
     mockAll();
     vi.mocked(api.getAgentsMonitoring).mockRejectedValue(new Error("boom"));

@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – M68)
+- Admin-Uebersicht, "Auffaellige Zahlungen": Spalte "Betrag" (Monospace, `formatMoney`, "–" bei null), nur wenn das Backend `amount_cents`/`currency` am Zahlungsereignis liefert
+
 ### Added (Frontend – M67 Sprache fuer Mails und Belege)
 - Beim Registrieren wird die aktuelle UI-Sprache als `locale` mitgesendet; nach dem Login wird eine am Konto gespeicherte Sprache uebernommen (null/fehlend: Auswahl des Browsers bleibt). Beim Umschalten im Nutzermenue oder unter Konto wird zusaetzlich `PATCH /client/account {locale}` gesendet (nur angemeldet, Fehler still ignoriert, auch bei Backend ohne das Feld). Kontoseite: Hinweis "Mails und Belege kommen in dieser Sprache"
 

@@ -2,9 +2,12 @@ import { Link } from "react-router-dom";
 import { StatusBadge } from "../ui/StatusBadge";
 import { t } from "../../i18n";
 import { formatDateTime } from "../../lib/dates";
+import { formatMoney } from "../../lib/money";
 import type { Order, PaymentEvent } from "../../services/api";
 
 export function PaymentsPanel({ events, due }: { events: PaymentEvent[] | null; due: Order[] }) {
+  // Betrag nur anzeigen, wenn das Backend das Feld liefert (M68)
+  const showAmount = !!events?.some((e) => e.amount_cents !== undefined);
   return (
     <section className="panel" aria-labelledby="pay-title">
       <div className="panel-head">
@@ -18,7 +21,7 @@ export function PaymentsPanel({ events, due }: { events: PaymentEvent[] | null; 
       ) : (
         <div style={{ overflowX: "auto" }} role="region" aria-label={t("aover.paymentsTable")} tabIndex={0}>
           <table className="tbl">
-            <thead><tr><th scope="col">{t("aover.colTime")}</th><th scope="col">{t("aover.colRef")}</th><th scope="col">{t("aover.colStatus")}</th><th scope="col">{t("aover.colNote")}</th></tr></thead>
+            <thead><tr><th scope="col">{t("aover.colTime")}</th><th scope="col">{t("aover.colRef")}</th><th scope="col">{t("aover.colStatus")}</th>{showAmount && <th scope="col">{t("aover.colAmount")}</th>}<th scope="col">{t("aover.colNote")}</th></tr></thead>
             <tbody>
               {events.slice(0, 5).map((e) => (
                 <tr key={e.id}>
@@ -27,6 +30,11 @@ export function PaymentsPanel({ events, due }: { events: PaymentEvent[] | null; 
                     {e.order_uuid ? <Link to="/admin/orders">{e.order_uuid.slice(0, 8)}</Link> : e.event_id.slice(0, 12)}
                   </td>
                   <td><StatusBadge status={e.status} size="sm" /></td>
+                  {showAmount && (
+                    <td className="mono" style={{ whiteSpace: "nowrap" }} data-testid={`event-amount-${e.id}`}>
+                      {e.amount_cents != null && e.currency ? formatMoney(e.amount_cents, e.currency) : "–"}
+                    </td>
+                  )}
                   <td style={{ color: "var(--text-2)", overflowWrap: "anywhere" }}>{e.detail ?? "–"}</td>
                 </tr>
               ))}
