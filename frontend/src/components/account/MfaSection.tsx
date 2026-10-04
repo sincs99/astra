@@ -54,7 +54,7 @@ export function MfaSection({ enabled, onChanged }: MfaSectionProps) {
       {error && <ErrorState message={error} />}
 
       {recovery && (
-        <div role="alert" style={{ padding: 12, marginBottom: 12, background: "#fff3e0", border: "1px solid #ffcc80", borderRadius: 8 }}>
+        <div role="alert" style={{ padding: 12, marginBottom: 12, background: "var(--tint-orange)", border: "1px solid var(--border-orange)", borderRadius: 8 }}>
           <strong>Recovery-Codes – jetzt sichern!</strong>
           <p style={{ margin: "4px 0 8px", fontSize: 13 }}>
             Jeder Code funktioniert einmal, falls du keinen Zugriff auf die App hast. Sie werden nicht erneut angezeigt.
@@ -92,8 +92,8 @@ export function MfaSection({ enabled, onChanged }: MfaSectionProps) {
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
             <QrCode value={setup.provisioning_uri} alt="QR-Code zum Einrichten der Authenticator-App" />
             <div>
-              <div style={{ fontSize: 13, color: "#555" }}>Secret</div>
-              <code style={{ userSelect: "all", background: "#f5f5f5", padding: "2px 6px", borderRadius: 4 }}>{setup.secret}</code>
+              <div style={{ fontSize: 13, color: "var(--fg-soft)" }}>Secret</div>
+              <code style={{ userSelect: "all", background: "var(--bg-subtle)", padding: "2px 6px", borderRadius: 4 }}>{setup.secret}</code>
             </div>
           </div>
           <form onSubmit={verify} noValidate style={{ maxWidth: 260 }}>

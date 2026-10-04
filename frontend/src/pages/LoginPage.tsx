@@ -61,7 +61,7 @@ export function LoginPage() {
 
       {resetDone && !error && (
         <div role="status" style={{
-          padding: "10px 14px", backgroundColor: "#e8f5e9", color: "#2e7d32",
+          padding: "10px 14px", backgroundColor: "var(--tint-green)", color: "var(--c-green)",
           borderRadius: 6, marginBottom: 16, fontSize: 14,
         }}>
           Dein Passwort wurde geändert. Bitte melde dich jetzt an.
@@ -70,7 +70,7 @@ export function LoginPage() {
 
       {expired && !error && (
         <div role="status" style={{
-          padding: "10px 14px", backgroundColor: "#fff3e0", color: "#e65100",
+          padding: "10px 14px", backgroundColor: "var(--tint-orange)", color: "var(--c-orange)",
           borderRadius: 6, marginBottom: 16, fontSize: 14,
         }}>
           Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.
@@ -80,8 +80,8 @@ export function LoginPage() {
       {error && (
         <div role="alert" style={{
           padding: "10px 14px",
-          backgroundColor: "#fce4e4",
-          color: "#c0392b",
+          backgroundColor: "var(--tint-red)",
+          color: "var(--c-red)",
           borderRadius: 6,
           marginBottom: 16,
           fontSize: 14,
@@ -148,7 +148,7 @@ export function LoginPage() {
               placeholder="123456"
               style={inputStyle}
             />
-            <small style={{ color: "#666", fontSize: 12 }}>
+            <small style={{ color: "var(--fg-muted)", fontSize: 12 }}>
               6-stelliger Code aus deiner App, oder ein Recovery-Code.
             </small>
           </div>

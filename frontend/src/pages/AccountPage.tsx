@@ -5,6 +5,7 @@ import { PageLayout, LoadingState, ErrorState, Toast, useToast, cardStyle, linkS
 import { PasswordSection } from "../components/account/PasswordSection";
 import { MfaSection } from "../components/account/MfaSection";
 import { ApiKeysSection } from "../components/account/ApiKeysSection";
+import { ThemeSection } from "../components/account/ThemeSection";
 
 /** Konto-Seite für alle eingeloggten Nutzer. */
 export function AccountPage() {
@@ -30,15 +31,16 @@ export function AccountPage() {
           <section style={cardStyle} aria-labelledby="profile-title">
             <h2 id="profile-title" style={{ marginTop: 0, fontSize: 18 }}>Profil</h2>
             <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "max-content 1fr", gap: "4px 16px" }}>
-              <dt style={{ color: "#555" }}>Benutzername</dt><dd style={{ margin: 0 }}>{user.username}</dd>
-              <dt style={{ color: "#555" }}>E-Mail</dt><dd style={{ margin: 0 }}>{user.email}</dd>
-              <dt style={{ color: "#555" }}>Rolle</dt><dd style={{ margin: 0 }}>{user.is_admin ? "Administrator" : "Kunde"}</dd>
+              <dt style={{ color: "var(--fg-soft)" }}>Benutzername</dt><dd style={{ margin: 0 }}>{user.username}</dd>
+              <dt style={{ color: "var(--fg-soft)" }}>E-Mail</dt><dd style={{ margin: 0 }}>{user.email}</dd>
+              <dt style={{ color: "var(--fg-soft)" }}>Rolle</dt><dd style={{ margin: 0 }}>{user.is_admin ? "Administrator" : "Kunde"}</dd>
             </dl>
             <p style={{ marginBottom: 0 }}>
               <Link to="/account/ssh-keys" style={linkStyle}>SSH-Keys verwalten →</Link>
             </p>
           </section>
 
+          <ThemeSection />
           <PasswordSection onChanged={toast.success} />
           <MfaSection
             enabled={!!user.mfa_enabled}

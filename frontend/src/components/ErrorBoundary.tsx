@@ -27,7 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div role="alert" style={{ maxWidth: 480, margin: "15vh auto", padding: 24, textAlign: "center" }}>
           <h1 style={{ fontSize: 22 }}>Neue Version verfügbar</h1>
-          <p style={{ color: "#444" }}>
+          <p style={{ color: "var(--fg)" }}>
             Astra wurde aktualisiert. Bitte lade die Seite neu, um mit der neuen Version weiterzuarbeiten.
           </p>
           <button style={btnPrimary} onClick={() => window.location.reload()}>Seite neu laden</button>
@@ -37,11 +37,11 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div role="alert" style={{ maxWidth: 480, margin: "15vh auto", padding: 24, textAlign: "center" }}>
         <h1 style={{ fontSize: 22 }}>Etwas ist schiefgelaufen</h1>
-        <p style={{ color: "#444" }}>
+        <p style={{ color: "var(--fg)" }}>
           Das tut uns leid. Bitte lade die Seite neu oder gehe zur Startseite. Wenn das Problem bleibt,
           melde dich beim Support und nenne die technischen Details unten.
         </p>
-        <details style={{ margin: "12px 0", color: "#666", fontSize: 13, textAlign: "left" }}>
+        <details style={{ margin: "12px 0", color: "var(--fg-muted)", fontSize: 13, textAlign: "left" }}>
           <summary style={{ cursor: "pointer" }}>Technische Details</summary>
           <code style={{ display: "block", marginTop: 8, wordBreak: "break-word" }}>{this.state.error.message}</code>
         </details>

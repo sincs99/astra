@@ -11,7 +11,7 @@ export function OrderNotice({ order }: { order: Order }) {
 
   if (order.status === "past_due") {
     return (
-      <div role="alert" style={{ marginTop: 4, fontSize: 12, color: "#c62828", fontWeight: 600 }}>
+      <div role="alert" style={{ marginTop: 4, fontSize: 12, color: "var(--c-red)", fontWeight: 600 }}>
         <div>Gesperrt seit {formatDateTime(order.past_due_at)}</div>
         {deletion && <div>Server wird am {formatDate(deletion)} gelöscht</div>}
       </div>
@@ -20,7 +20,7 @@ export function OrderNotice({ order }: { order: Order }) {
 
   if (order.status === "active" && order.cancel_at_period_end) {
     return (
-      <div style={{ marginTop: 4, fontSize: 12, color: "#bf360c" }}>
+      <div style={{ marginTop: 4, fontSize: 12, color: "var(--c-orange)" }}>
         Läuft bis {formatDate(deletion ?? order.current_period_end)}, wird dann gelöscht
       </div>
     );

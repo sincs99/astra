@@ -119,7 +119,7 @@ export function OrdersPage() {
   const productCell = (o: Order) => (
     <div>
       <strong>{o.product_name ?? `Produkt #${o.product_id}`}</strong>
-      <div style={{ fontSize: 12, color: "#666" }}>
+      <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
         {formatPrice(o.price_cents, o.currency, o.billing_period_days)}
       </div>
     </div>
@@ -147,7 +147,7 @@ export function OrdersPage() {
   const action = (o: Order) => {
     // Bei überfälliger Zahlung ist der Server gesperrt: Bezahl-Button rot hervorheben
     const payButton = (label: string, urgent = false) => manualPayment ? (
-      <span style={{ fontSize: 12, color: "#666", maxWidth: 220 }}>{MANUAL_PAYMENT_NOTICE}</span>
+      <span style={{ fontSize: 12, color: "var(--fg-muted)", maxWidth: 220 }}>{MANUAL_PAYMENT_NOTICE}</span>
     ) : (
       <button type="button" onClick={() => pay(o)} disabled={paying === o.uuid}
         style={{ ...(urgent ? btnDanger : btnPrimary), padding: "4px 12px", fontSize: 12, opacity: paying === o.uuid ? 0.6 : 1 }}>
@@ -177,7 +177,7 @@ export function OrdersPage() {
       );
     }
     if (o.status === "awaiting_provisioning") {
-      return <span style={{ fontSize: 12, color: "#666" }}>Bezahlt. Dein Server wird automatisch bereitgestellt, sobald Platz frei ist.</span>;
+      return <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>Bezahlt. Dein Server wird automatisch bereitgestellt, sobald Platz frei ist.</span>;
     }
     return "–";
   };
@@ -208,9 +208,9 @@ export function OrdersPage() {
                   <StatusBadge status={o.status} size="sm" />
                 </div>
                 <dl style={{ margin: "12px 0", display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px 12px", fontSize: 14 }}>
-                  <dt style={{ color: "#555" }}>Laufzeitende</dt>
+                  <dt style={{ color: "var(--fg-soft)" }}>Laufzeitende</dt>
                   <dd style={{ margin: 0 }}>{endCell(o)}</dd>
-                  <dt style={{ color: "#555" }}>Server</dt>
+                  <dt style={{ color: "var(--fg-soft)" }}>Server</dt>
                   <dd style={{ margin: 0 }}>{serverCell(o)}</dd>
                 </dl>
                 {action(o) !== "–" && <div>{action(o)}</div>}
@@ -222,7 +222,7 @@ export function OrdersPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <caption style={{ position: "absolute", left: -9999 }}>Meine Bestellungen</caption>
             <thead>
-              <tr style={{ backgroundColor: "#f5f5f5" }}>
+              <tr style={{ backgroundColor: "var(--bg-subtle)" }}>
                 <th scope="col" style={thStyle}>Produkt</th>
                 <th scope="col" style={thStyle}>Status</th>
                 <th scope="col" style={thStyle}>Laufzeitende</th>

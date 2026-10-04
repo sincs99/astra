@@ -173,7 +173,7 @@ export function AdminWebhooksPage() {
 
           <div style={{ marginBottom: 12 }}>
             <label style={labelStyle}>Events * ({selectedEvents.length} ausgewählt)</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: 10, border: "1px solid #e0e0e0", borderRadius: 6, backgroundColor: "#fafafa" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: 10, border: "1px solid var(--border)", borderRadius: 6, backgroundColor: "var(--bg-page)" }}>
               {availableEvents.map(ev => (
                 <label
                   key={ev.event}
@@ -181,10 +181,10 @@ export function AdminWebhooksPage() {
                   style={{
                     display: "flex", alignItems: "center", gap: 4, cursor: "pointer",
                     padding: "3px 8px", borderRadius: 4, fontSize: 12,
-                    backgroundColor: selectedEvents.includes(ev.event) ? "#e3f2fd" : "#f0f0f0",
-                    color: selectedEvents.includes(ev.event) ? "#1565c0" : "#555",
+                    backgroundColor: selectedEvents.includes(ev.event) ? "var(--tint-blue)" : "var(--bg-subtle)",
+                    color: selectedEvents.includes(ev.event) ? "var(--c-blue)" : "var(--fg-soft)",
                     fontWeight: selectedEvents.includes(ev.event) ? 600 : 400,
-                    border: `1px solid ${selectedEvents.includes(ev.event) ? "#90caf9" : "#ddd"}`,
+                    border: `1px solid ${selectedEvents.includes(ev.event) ? "var(--border-blue)" : "var(--border)"}`,
                   }}
                 >
                   <input
@@ -209,7 +209,7 @@ export function AdminWebhooksPage() {
                 placeholder="Wird automatisch generiert"
                 style={{ ...inputStyle, width: "100%" }}
               />
-              <small style={{ color: "#666", fontSize: 11 }}>Leer lassen für automatische Generierung</small>
+              <small style={{ color: "var(--fg-muted)", fontSize: 11 }}>Leer lassen für automatische Generierung</small>
             </div>
             <div>
               <label style={labelStyle}>Status</label>
@@ -245,9 +245,9 @@ export function AdminWebhooksPage() {
         <EmptyState icon="🔗" message="Noch keine Webhooks vorhanden." />
       ) : (
         <ScrollRegion label="Webhooks-Tabelle">
-          <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #e0e0e0" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid var(--border)" }}>
             <thead>
-              <tr style={{ backgroundColor: "#f5f5f5" }}>
+              <tr style={{ backgroundColor: "var(--bg-subtle)" }}>
                 <th style={thStyle}>URL</th>
                 <th style={thStyle}>Beschreibung</th>
                 <th style={thStyle}>Events</th>
@@ -267,7 +267,7 @@ export function AdminWebhooksPage() {
                   <td style={tdStyle}>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                       {(wh.events || []).map(ev => (
-                        <span key={ev} style={{ display: "inline-block", padding: "2px 6px", borderRadius: 4, backgroundColor: "#e3f2fd", color: "#1565c0", fontSize: 11, fontFamily: "monospace" }}>
+                        <span key={ev} style={{ display: "inline-block", padding: "2px 6px", borderRadius: 4, backgroundColor: "var(--tint-blue)", color: "var(--c-blue)", fontSize: 11, fontFamily: "monospace" }}>
                           {ev}
                         </span>
                       ))}
@@ -306,6 +306,6 @@ export function AdminWebhooksPage() {
 }
 
 const actionBtn: React.CSSProperties = {
-  padding: "4px 8px", borderRadius: 4, border: "1px solid #ddd",
-  backgroundColor: "#fff", cursor: "pointer", fontSize: 13,
+  padding: "4px 8px", borderRadius: 4, border: "1px solid var(--border)",
+  backgroundColor: "var(--bg-card)", cursor: "pointer", fontSize: 13,
 };

@@ -120,9 +120,9 @@ export function AdminAgentsMonitoringPage() {
         <EmptyState icon="🖥️" message="Keine Agents gefunden." />
       ) : (
         <ScrollRegion label="Agents-Tabelle">
-          <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #e0e0e0", marginTop: 8 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid var(--border)", marginTop: 8 }}>
             <thead>
-              <tr style={{ backgroundColor: "#f5f5f5" }}>
+              <tr style={{ backgroundColor: "var(--bg-subtle)" }}>
                 <th style={{ ...thStyle, cursor: "pointer" }} onClick={() => toggleSort("name")}>Agent{sortIndicator("name")}</th>
                 <th style={thStyle}>Status</th>
                 <th style={{ ...thStyle, cursor: "pointer" }} onClick={() => toggleSort("last_seen_at")}>Zuletzt gesehen{sortIndicator("last_seen_at")}</th>
@@ -187,9 +187,9 @@ function FleetSummaryCards({ summary }: { summary: FleetSummary }) {
 function SummaryCard({ label, value, detail, color }: { label: string; value: string | number; detail?: string; color?: string }) {
   return (
     <div style={{ ...cardStyle, textAlign: "center", padding: 14 }}>
-      <div style={{ fontSize: 12, color: "#666", textTransform: "uppercase", fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: color || "#333", marginTop: 4 }}>{value}</div>
-      {detail && <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>{detail}</div>}
+      <div style={{ fontSize: 12, color: "var(--fg-muted)", textTransform: "uppercase", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: color || "var(--fg)", marginTop: 4 }}>{value}</div>
+      {detail && <div style={{ fontSize: 11, color: "var(--fg-muted)", marginTop: 4 }}>{detail}</div>}
     </div>
   );
 }
@@ -202,11 +202,11 @@ function AgentRow({ agent, onRefresh }: { agent: AgentMonitoringEntry; onRefresh
   const ep = agent.endpoint_summary;
 
   return (
-    <tr style={{ borderBottom: "1px solid #eee" }}>
+    <tr style={{ borderBottom: "1px solid var(--border)" }}>
       <td style={tdStyle}>
         <div>
           <strong>{agent.name}</strong>
-          <div style={{ fontSize: 11, color: "#666" }}>{agent.fqdn}</div>
+          <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>{agent.fqdn}</div>
         </div>
       </td>
       <td style={tdStyle}>
@@ -219,7 +219,7 @@ function AgentRow({ agent, onRefresh }: { agent: AgentMonitoringEntry; onRefresh
         {agent.last_seen_at ? (
           <span title={agent.last_seen_at}>{formatTimeAgo(agent.last_seen_at)}</span>
         ) : (
-          <span style={{ color: "#666" }}>nie</span>
+          <span style={{ color: "var(--fg-muted)" }}>nie</span>
         )}
       </td>
       <td style={{ ...tdStyle, textAlign: "center" }}>{agent.instance_count}</td>
@@ -234,9 +234,9 @@ function AgentRow({ agent, onRefresh }: { agent: AgentMonitoringEntry; onRefresh
       </td>
       <td style={{ ...tdStyle, fontSize: 12 }}>
         {ep.total > 0 ? (
-          <span>{ep.assigned}/{ep.total}{ep.locked > 0 && <span style={{ color: "#666" }}> (🔒{ep.locked})</span>}</span>
+          <span>{ep.assigned}/{ep.total}{ep.locked > 0 && <span style={{ color: "var(--fg-muted)" }}> (🔒{ep.locked})</span>}</span>
         ) : (
-          <span style={{ color: "#666" }}>-</span>
+          <span style={{ color: "var(--fg-muted)" }}>-</span>
         )}
       </td>
       <td style={{ ...tdStyle, textAlign: "center" }}>
@@ -276,7 +276,7 @@ function MaintenanceToggle({ agent, onRefresh }: { agent: AgentMonitoringEntry; 
         <StatusBadge status="maintenance" size="sm" />
       )}
       {agent.maintenance_reason && (
-        <div style={{ fontSize: 10, color: "#666", marginTop: 2 }} title={agent.maintenance_reason}>
+        <div style={{ fontSize: 10, color: "var(--fg-muted)", marginTop: 2 }} title={agent.maintenance_reason}>
           {agent.maintenance_reason.substring(0, 30)}
         </div>
       )}
@@ -285,8 +285,8 @@ function MaintenanceToggle({ agent, onRefresh }: { agent: AgentMonitoringEntry; 
         disabled={toggling}
         style={{
           marginTop: 4, padding: "2px 8px", fontSize: 11, cursor: "pointer",
-          border: "1px solid #ddd", borderRadius: 4,
-          backgroundColor: agent.maintenance_mode ? "#e8f5e9" : "#fff3e0",
+          border: "1px solid var(--border)", borderRadius: 4,
+          backgroundColor: agent.maintenance_mode ? "var(--tint-green)" : "var(--tint-orange)",
         }}
       >
         {toggling ? "..." : agent.maintenance_mode ? "Deaktivieren" : "Aktivieren"}

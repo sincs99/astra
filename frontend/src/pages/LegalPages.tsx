@@ -6,7 +6,7 @@ import { OPERATOR, isPlaceholder } from "../legal/operator";
 function Value({ children }: { children: string }) {
   if (!isPlaceholder(children)) return <>{children}</>;
   return (
-    <mark style={{ background: "#fff8e1", color: "#6d4c00", padding: "0 4px", borderRadius: 3 }}>{children}</mark>
+    <mark style={{ background: "var(--tint-yellow)", color: "var(--c-yellow)", padding: "0 4px", borderRadius: 3 }}>{children}</mark>
   );
 }
 
@@ -14,14 +14,14 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section style={{ marginBottom: 24 }}>
       <h2 style={{ fontSize: 18, margin: "0 0 8px" }}>{title}</h2>
-      <div style={{ fontSize: 14, lineHeight: 1.6, color: "#333" }}>{children}</div>
+      <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--fg)" }}>{children}</div>
     </section>
   );
 }
 
 function Notice() {
   return (
-    <div role="note" style={{ padding: "12px 16px", marginBottom: 24, backgroundColor: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, color: "#6d4c00", fontSize: 14 }}>
+    <div role="note" style={{ padding: "12px 16px", marginBottom: 24, backgroundColor: "var(--tint-yellow)", border: "1px solid var(--border-orange)", borderRadius: 8, color: "var(--c-yellow)", fontSize: 14 }}>
       <strong>Vom Betreiber auszufüllen.</strong> Dieser Text ist nur eine Struktur mit Platzhaltern und ersetzt keine
       Rechtsberatung. Die Angaben trägt der Betreiber in <code>frontend/src/legal/operator.ts</code> ein; die Texte
       müssen vor dem Echtbetrieb rechtlich geprüft und angepasst werden.
@@ -34,7 +34,7 @@ function LegalLayout({ title, children }: { title: string; children: ReactNode }
     <PageLayout title={title} maxWidth={800}>
       <Notice />
       {children}
-      <p style={{ fontSize: 12, color: "#666" }}>Stand: <Value>{OPERATOR.lastUpdated}</Value></p>
+      <p style={{ fontSize: 12, color: "var(--fg-muted)" }}>Stand: <Value>{OPERATOR.lastUpdated}</Value></p>
     </PageLayout>
   );
 }

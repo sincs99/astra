@@ -20,9 +20,9 @@ export function AuthCard({ title, children }: AuthCardProps) {
 
 export function AuthMessage({ kind, children }: { kind: "error" | "success" | "warning"; children: ReactNode }) {
   const colors = {
-    error: { bg: "#fce4e4", fg: "#c0392b" },
-    success: { bg: "#e8f5e9", fg: "#2e7d32" },
-    warning: { bg: "#fff3e0", fg: "#e65100" },
+    error: { bg: "var(--tint-red)", fg: "var(--c-red)" },
+    success: { bg: "var(--tint-green)", fg: "var(--c-green)" },
+    warning: { bg: "var(--tint-orange)", fg: "var(--c-orange)" },
   }[kind];
   return (
     <div

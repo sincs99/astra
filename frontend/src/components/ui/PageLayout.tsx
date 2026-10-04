@@ -83,10 +83,10 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
   // Ausgeloggt (z.B. öffentlicher Shop): schlanke Leiste ohne Konto-Navigation
   if (!isAuthenticated()) {
     return (
-      <div style={{ minHeight: "100vh", backgroundColor: "#fafafa" }}>
+      <div style={{ minHeight: "100vh", backgroundColor: "var(--bg-page)" }}>
         <SkipLink />
         <nav aria-label="Hauptnavigation" style={{
-          backgroundColor: "#fff", borderBottom: "1px solid #e0e0e0",
+          backgroundColor: "var(--bg-card)", borderBottom: "1px solid var(--border)",
           padding: "0 clamp(12px, 4vw, 24px)", position: "sticky", top: 0, zIndex: 100,
         }}>
           <div style={{ maxWidth, margin: "0 auto", display: "flex", alignItems: "center", gap: 16, height: 48 }}>
@@ -108,12 +108,12 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
   }
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#fafafa" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--bg-page)" }}>
       <SkipLink />
       {/* Navigation */}
       <nav aria-label="Hauptnavigation" style={{
-        backgroundColor: "#fff",
-        borderBottom: "1px solid #e0e0e0",
+        backgroundColor: "var(--bg-card)",
+        borderBottom: "1px solid var(--border)",
         padding: "0 clamp(12px, 4vw, 24px)",
         position: "sticky",
         top: 0,
@@ -152,8 +152,8 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
                   borderRadius: 6,
                   fontSize: 13,
                   fontWeight: currentPath === item.href ? 700 : 400,
-                  backgroundColor: currentPath === item.href ? "#e3f2fd" : "transparent",
-                  color: currentPath === item.href ? "#1565c0" : "#555",
+                  backgroundColor: currentPath === item.href ? "var(--tint-blue)" : "transparent",
+                  color: currentPath === item.href ? "var(--c-blue)" : "var(--fg-soft)",
                   whiteSpace: "nowrap",
                 }}
               >
@@ -176,7 +176,7 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
           <div id="mobile-menu" style={{ paddingBottom: 12, maxHeight: "calc(100vh - 48px)", overflowY: "auto" }}>
             {groups.map((group) => (
               <div key={group} style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, color: "#666", padding: "4px 10px" }}>
+                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--fg-muted)", padding: "4px 10px" }}>
                   {group}
                 </div>
                 {navItems.filter((i) => i.group === group).map((item) => (
@@ -191,8 +191,8 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
                       borderRadius: 6,
                       fontSize: 15,
                       fontWeight: currentPath === item.href ? 700 : 400,
-                      backgroundColor: currentPath === item.href ? "#e3f2fd" : "transparent",
-                      color: currentPath === item.href ? "#1565c0" : "#333",
+                      backgroundColor: currentPath === item.href ? "var(--tint-blue)" : "transparent",
+                      color: currentPath === item.href ? "var(--c-blue)" : "var(--fg)",
                     }}
                   >
                     {item.label}

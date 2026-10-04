@@ -57,7 +57,7 @@ export function ShopPage() {
       <Toast {...toast} />
 
       {placed && (
-        <div role="status" style={{ padding: "12px 16px", marginBottom: 16, backgroundColor: "#e8f5e9", color: "#2e7d32", borderRadius: 8 }}>
+        <div role="status" style={{ padding: "12px 16px", marginBottom: 16, backgroundColor: "var(--tint-green)", color: "var(--c-green)", borderRadius: 8 }}>
           <strong>Bestellung eingegangen.</strong>{" "}
           {placed.status === "active"
             ? "Dein Server wurde bereitgestellt."
@@ -78,12 +78,12 @@ export function ShopPage() {
           {products.map((p) => (
             <article key={p.id} style={{ ...cardStyle, marginBottom: 0, display: "flex", flexDirection: "column" }} aria-labelledby={`product-${p.id}`}>
               <h2 id={`product-${p.id}`} style={{ margin: "0 0 4px", fontSize: 18 }}>{p.name}</h2>
-              {p.blueprint_name && <div style={{ fontSize: 12, color: "#666" }}>{p.blueprint_name}</div>}
-              {p.description && <p style={{ fontSize: 13, color: "#444" }}>{p.description}</p>}
+              {p.blueprint_name && <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>{p.blueprint_name}</div>}
+              {p.description && <p style={{ fontSize: 13, color: "var(--fg)" }}>{p.description}</p>}
               <div style={{ fontSize: 22, fontWeight: 700, margin: "8px 0" }}>
                 {formatPrice(p.price_cents, p.currency, p.billing_period_days)}
               </div>
-              <ul style={{ margin: "0 0 12px", paddingLeft: 18, fontSize: 13, color: "#444" }}>
+              <ul style={{ margin: "0 0 12px", paddingLeft: 18, fontSize: 13, color: "var(--fg)" }}>
                 <li>{p.resources.memory} MB RAM</li>
                 <li>{p.resources.disk} MB Disk</li>
                 <li>{p.resources.cpu}% CPU</li>

@@ -14,5 +14,5 @@ export function QrCode({ value, size = 180, alt }: { value: string; size?: numbe
   }, [value, size]);
 
   if (!src) return null;
-  return <img src={src} width={size} height={size} alt={alt} style={{ border: "1px solid #e0e0e0", borderRadius: 6 }} />;
+  return <img src={src} width={size} height={size} alt={alt} style={{ border: "1px solid var(--border)", borderRadius: 6 }} />;
 }

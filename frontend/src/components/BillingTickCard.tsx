@@ -34,7 +34,7 @@ export function BillingTickCard({ onlyWhenUnhealthy = false }: { onlyWhenUnhealt
         </span>
       </div>
       {!status.healthy && (
-        <p role="alert" style={{ color: "#c62828", fontWeight: 600, margin: "12px 0 0" }}>
+        <p role="alert" style={{ color: "var(--c-red)", fontWeight: 600, margin: "12px 0 0" }}>
           Container billing prüfen: {status.orders_needing_tick} Bestellung(en) warten auf den Billing-Tick,
           der letzte Lauf ist älter als {status.max_age_minutes} Minuten oder fehlt.
         </p>
@@ -46,7 +46,7 @@ export function BillingTickCard({ onlyWhenUnhealthy = false }: { onlyWhenUnhealt
         </p>
       )}
       {tooLong && (
-        <p role="alert" style={{ color: "#c62828", fontWeight: 600, margin: "8px 0 0" }}>
+        <p role="alert" style={{ color: "var(--c-red)", fontWeight: 600, margin: "8px 0 0" }}>
           Kapazität prüfen: Eine bezahlte Bestellung wartet länger als {waiting!.warn_after_hours} Stunden auf einen Node.{" "}
           <Link to="/admin/agents" style={linkStyle}>Zu den Agents</Link>
         </p>

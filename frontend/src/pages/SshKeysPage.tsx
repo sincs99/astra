@@ -146,7 +146,7 @@ export function SshKeysPage() {
         <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ backgroundColor: "#fafafa" }}>
+              <tr style={{ backgroundColor: "var(--bg-page)" }}>
                 <th style={thStyle}>Name</th>
                 <th style={thStyle}>Fingerprint</th>
                 <th style={thStyle}>Public Key</th>
@@ -158,13 +158,13 @@ export function SshKeysPage() {
               {keys.map((key) => (
                 <tr key={key.id}>
                   <td style={{ ...tdStyle, fontWeight: 600 }}>{key.name}</td>
-                  <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: 12, color: "#555" }}>
+                  <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: 12, color: "var(--fg-soft)" }}>
                     {key.fingerprint}
                   </td>
-                  <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: 11, color: "#777" }}>
+                  <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: 11, color: "var(--fg-muted)" }}>
                     {truncateKey(key.public_key)}
                   </td>
-                  <td style={{ ...tdStyle, fontSize: 13, color: "#777", whiteSpace: "nowrap" }}>
+                  <td style={{ ...tdStyle, fontSize: 13, color: "var(--fg-muted)", whiteSpace: "nowrap" }}>
                     {formatDate(key.created_at)}
                   </td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>
@@ -186,8 +186,8 @@ export function SshKeysPage() {
       {/* Info-Box */}
       <div style={{
         marginTop: 24, padding: "12px 16px",
-        backgroundColor: "#e3f2fd", borderRadius: 8,
-        border: "1px solid #90caf9", fontSize: 13, color: "#1565c0",
+        backgroundColor: "var(--tint-blue)", borderRadius: 8,
+        border: "1px solid var(--border-blue)", fontSize: 13, color: "var(--c-blue)",
       }}>
         <strong>SFTP-Zugriff mit SSH Keys:</strong> Die hier verwalteten Keys werden für die
         schlüsselbasierte SFTP-Authentifizierung verwendet. Unterstützte Formate:{" "}

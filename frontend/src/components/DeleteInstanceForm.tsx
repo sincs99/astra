@@ -48,7 +48,7 @@ export function DeleteInstanceForm({ name, status, allowForce = false, notice, o
         Routinen dieses Servers werden gelöscht, die Endpoints werden freigegeben.
       </p>
       {notice && (
-        <p style={{ margin: "0 0 12px", fontSize: 13, color: "#c62828", fontWeight: 600 }}>{notice}</p>
+        <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--c-red)", fontWeight: 600 }}>{notice}</p>
       )}
       <label htmlFor={`${idPrefix}-confirm`} style={labelStyle}>
         Zur Bestätigung den Namen <code>{name}</code> eingeben
@@ -62,7 +62,7 @@ export function DeleteInstanceForm({ name, status, allowForce = false, notice, o
         </label>
       )}
       {!allowForce && blocked && (
-        <p style={{ fontSize: 12, color: "#c62828", margin: "8px 0 0" }}>
+        <p style={{ fontSize: 12, color: "var(--c-red)", margin: "8px 0 0" }}>
           Der Server ist gerade „{statusLabel(status)}“. Löschen ist erst danach möglich.
         </p>
       )}

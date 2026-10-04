@@ -18,7 +18,7 @@ function Tile({ id, title, children }: { id: string; title: string; children: Re
   );
 }
 
-const muted = { margin: 0, fontSize: 13, color: "#666" } as const;
+const muted = { margin: 0, fontSize: 13, color: "var(--fg-muted)" } as const;
 const bigNumber = { fontSize: 28, fontWeight: 700, margin: "0 0 4px" } as const;
 
 /** Hook: laedt eine Quelle, aktualisiert alle 60 s und faengt Fehler pro Kachel ab. */
@@ -123,12 +123,12 @@ export function PaymentEventsTile({ events }: { events: PaymentEvent[] | null })
             <li key={e.id} style={{ fontSize: 13 }}>
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <StatusBadge status={e.status} size="sm" />
-                <span style={{ color: "#666" }}>{formatDateTime(e.received_at)}</span>
+                <span style={{ color: "var(--fg-muted)" }}>{formatDateTime(e.received_at)}</span>
                 {e.order_uuid && (
                   <Link to={`/admin/orders`} style={linkStyle}>Bestellung {e.order_uuid.slice(0, 8)}</Link>
                 )}
               </div>
-              {e.detail && <div style={{ color: "#444", marginTop: 2, wordBreak: "break-word" }}>{e.detail}</div>}
+              {e.detail && <div style={{ color: "var(--fg)", marginTop: 2, wordBreak: "break-word" }}>{e.detail}</div>}
             </li>
           ))}
         </ul>
