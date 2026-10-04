@@ -16,6 +16,7 @@ export { EmptyState } from "./EmptyState";
 export { ConfirmButton } from "./ConfirmButton";
 export { Toast, useToast } from "./Toast";
 export { PageLayout } from "./PageLayout";
+export { ScrollRegion } from "./ScrollRegion";
 export { AutoRefreshToggle } from "./AutoRefreshToggle";
 export {
   cardStyle,

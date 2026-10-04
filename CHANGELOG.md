@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – F2 Admin-Seiten vereinheitlicht)
+- Alle 16 Routen bei 390 und 1100 px per Browser-Sweep geprueft (Tab-Titel, kein horizontaler Seitenueberlauf, axe WCAG 2 A/AA ohne Verstoesse, kein Absturz). Behoben: Kontrast der Event-Chips in Webhooks und der Auswahlzaehler im Dateimanager, Tabellen-Scrollbereiche der Admin-Seiten sind per Tastatur erreichbar (`ScrollRegion`). Keine Funktionsaenderung
+
 ### Added (Frontend – F1 Admin-Uebersicht)
 - Neue Seite `/admin` ("Uebersicht", Navigationspunkt fuer Admins): Kacheln Umsatz der letzten 30 Tage (Naeherung aus `paid_at`/`price_cents` von `GET /api/admin/orders`, clientseitig je Waehrung aggregiert), Bestellungen je Status (pending_payment, awaiting_provisioning, active, past_due, verlinkt auf die gefilterte Liste), Node-Auslastung (aus `GET /api/admin/agents/monitoring`, effektive Kapazitaet inkl. Ueberallokation, Agents ohne Limit ausgewiesen), Billing-Tick und Zahlungsereignisse mit Status `mismatch`/`unapplied` (`GET /api/admin/payment-events`). Jede Kachel faellt einzeln aus; Aktualisierung alle 60 s; mobil einspaltig
 - `formatTimeAgo`: "vor 1 Tag" statt "vor 1 Tagen"

@@ -4,6 +4,7 @@ import {
   PageLayout, StatusBadge, LoadingState, EmptyState, ErrorState, ConfirmButton,
   Toast, useToast,
   cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, thStyle, tdStyle,
+  ScrollRegion,
 } from "../components/ui";
 
 export function AdminWebhooksPage() {
@@ -181,7 +182,7 @@ export function AdminWebhooksPage() {
                     display: "flex", alignItems: "center", gap: 4, cursor: "pointer",
                     padding: "3px 8px", borderRadius: 4, fontSize: 12,
                     backgroundColor: selectedEvents.includes(ev.event) ? "#e3f2fd" : "#f0f0f0",
-                    color: selectedEvents.includes(ev.event) ? "#1976d2" : "#555",
+                    color: selectedEvents.includes(ev.event) ? "#1565c0" : "#555",
                     fontWeight: selectedEvents.includes(ev.event) ? 600 : 400,
                     border: `1px solid ${selectedEvents.includes(ev.event) ? "#90caf9" : "#ddd"}`,
                   }}
@@ -243,7 +244,7 @@ export function AdminWebhooksPage() {
       ) : webhooks.length === 0 ? (
         <EmptyState icon="🔗" message="Noch keine Webhooks vorhanden." />
       ) : (
-        <div style={{ overflowX: "auto" }}>
+        <ScrollRegion label="Webhooks-Tabelle">
           <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #e0e0e0" }}>
             <thead>
               <tr style={{ backgroundColor: "#f5f5f5" }}>
@@ -266,7 +267,7 @@ export function AdminWebhooksPage() {
                   <td style={tdStyle}>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                       {(wh.events || []).map(ev => (
-                        <span key={ev} style={{ display: "inline-block", padding: "2px 6px", borderRadius: 4, backgroundColor: "#e3f2fd", color: "#1976d2", fontSize: 11, fontFamily: "monospace" }}>
+                        <span key={ev} style={{ display: "inline-block", padding: "2px 6px", borderRadius: 4, backgroundColor: "#e3f2fd", color: "#1565c0", fontSize: 11, fontFamily: "monospace" }}>
                           {ev}
                         </span>
                       ))}
@@ -298,7 +299,7 @@ export function AdminWebhooksPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       )}
     </PageLayout>
   );

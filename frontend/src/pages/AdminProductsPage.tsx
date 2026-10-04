@@ -5,6 +5,7 @@ import { formatPrice } from "../lib/money";
 import {
   PageLayout, StatusBadge, LoadingState, EmptyState, ErrorState, ConfirmButton, Toast, useToast,
   cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, thStyle, tdStyle,
+  ScrollRegion,
 } from "../components/ui";
 
 export function AdminProductsPage() {
@@ -163,7 +164,7 @@ export function AdminProductsPage() {
       ) : products.length === 0 ? (
         <EmptyState icon="🛒" message="Noch keine Produkte vorhanden." />
       ) : (
-        <div style={{ overflowX: "auto" }}>
+        <ScrollRegion label="Produkte-Tabelle">
           <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #e0e0e0" }}>
             <caption style={{ position: "absolute", left: -9999 }}>Produkte</caption>
             <thead>
@@ -206,7 +207,7 @@ export function AdminProductsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       )}
     </PageLayout>
   );

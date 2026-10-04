@@ -6,6 +6,7 @@ import { api, type AgentMonitoringEntry, type FleetSummary } from "../services/a
 import {
   PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState,
   cardStyle, inputStyle, labelStyle, btnDefault, thStyle, tdStyle,
+  ScrollRegion,
 } from "../components/ui";
 import { formatTimeAgo } from "../lib/dates";
 
@@ -118,7 +119,7 @@ export function AdminAgentsMonitoringPage() {
       ) : sortedAgents.length === 0 ? (
         <EmptyState icon="🖥️" message="Keine Agents gefunden." />
       ) : (
-        <div style={{ overflowX: "auto" }}>
+        <ScrollRegion label="Agents-Tabelle">
           <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #e0e0e0", marginTop: 8 }}>
             <thead>
               <tr style={{ backgroundColor: "#f5f5f5" }}>
@@ -139,7 +140,7 @@ export function AdminAgentsMonitoringPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       )}
     </PageLayout>
   );

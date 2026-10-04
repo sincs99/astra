@@ -218,7 +218,7 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
         <code style={{ fontSize: 13, color: "#555" }}>{directory}</code>
         <button onClick={() => loadFiles(directory)} style={smBtn} title="Aktualisieren">🔄</button>
         {selected.size > 0 && (
-          <span style={{ fontSize: 12, color: "#1976d2", fontWeight: 600 }}>{selected.size} ausgewählt</span>
+          <span style={{ fontSize: 12, color: "#1565c0", fontWeight: 600 }}>{selected.size} ausgewählt</span>
         )}
       </div>
 
