@@ -64,4 +64,6 @@ export const aover = {
   "aover.noneDue": "No order expires within the next 24 h.",
   "aover.dueIn24": "Expires within 24 h:",
   "aover.andMore": "and {n} more",
+  "aover.trend": "{c}{percent}% vs. previous period",
+  "aover.trendNone": "{c}no comparison",
 } as const;

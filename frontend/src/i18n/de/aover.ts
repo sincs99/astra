@@ -64,4 +64,6 @@ export const aover = {
   "aover.noneDue": "Keine Bestellung läuft in den nächsten 24 h ab.",
   "aover.dueIn24": "Läuft in 24 h ab:",
   "aover.andMore": "und {n} weitere",
+  "aover.trend": "{c}{percent} % zum Vorzeitraum",
+  "aover.trendNone": "{c}kein Vergleich",
 } as const;

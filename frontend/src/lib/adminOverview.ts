@@ -9,6 +9,20 @@ export function plural(n: number, one: MessageKey, other: MessageKey, params: Re
   return t(form === "one" ? one : other, { n, ...params });
 }
 
+export interface RevenueTrend {
+  /** "none": kein Vergleich moeglich (Vorzeitraum 0 oder nicht vorhanden) */
+  kind: "up" | "down" | "flat" | "none";
+  /** Gerundete Veraenderung in Prozent (vorzeichenbehaftet) */
+  percent: number;
+}
+
+/** Veraenderung zum gleich langen Vorzeitraum; ohne Vorzeitraum-Umsatz (> 0) gibt es keinen Vergleich. */
+export function revenueTrend(current: number, previous: number | undefined): RevenueTrend {
+  if (previous === undefined || !(previous > 0)) return { kind: "none", percent: 0 };
+  const percent = Math.round(((current - previous) / previous) * 100);
+  return { kind: percent > 0 ? "up" : percent < 0 ? "down" : "flat", percent };
+}
+
 const DAY_MS = 86_400_000;
 
 export interface RevenueSummary {

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError, type AgentMonitoringEntry, type BillingStatus, type Instance, type Order, type PaymentEvent, type RevenueStats } from "../../services/api";
-import { t } from "../../i18n";
+import { t, dateLocale } from "../../i18n";
 import { formatMoney } from "../../lib/money";
 import { formatDateTime, formatTimeAgo } from "../../lib/dates";
-import { dueWithin, plural, instanceCounts, mergeEvents, ordersInPeriod, problemNodes, revenueLastDays, type RevenueSummary } from "../../lib/adminOverview";
+import { dueWithin, plural, instanceCounts, mergeEvents, ordersInPeriod, problemNodes, revenueLastDays, revenueTrend, type RevenueSummary } from "../../lib/adminOverview";
 import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 import { NodesPanel } from "./NodesPanel";
 import { PaymentsPanel } from "./PaymentsPanel";
@@ -73,6 +73,17 @@ export function RevenueTile({ view, days, failed }: { view: RevenueView | null; 
             <span key={c} className="big" data-testid={`revenue-${c}`}>{formatMoney(byCurrency[c], c)}</span>
           ))}
           <span className="lbl">{t("aover.revenue", { n: days })}</span>
+          {view.kind === "exact" && view.stats.prev_by_currency !== undefined && currencies.map((c) => {
+            const trend = revenueTrend(byCurrency[c], view.stats.prev_by_currency?.[c]);
+            const percent = new Intl.NumberFormat(dateLocale(), { signDisplay: "exceptZero" }).format(trend.percent);
+            return (
+              <span key={c} className={`sub trend-${trend.kind}`} data-testid={`revenue-trend-${c}`}>
+                {trend.kind === "none"
+                  ? t("aover.trendNone", { c: currencies.length > 1 ? `${c}: ` : "" })
+                  : t("aover.trend", { c: currencies.length > 1 ? `${c}: ` : "", percent })}
+              </span>
+            );
+          })}
           <span className="sub">
             {view.kind === "exact"
               ? plural(view.stats.paid_count, "aover.paymentsOne", "aover.paymentsOther", { r: view.stats.renewals_count })

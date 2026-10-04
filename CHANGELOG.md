@@ -5,6 +5,10 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – M65/M66)
+- Admin-Bestellungen: Suchfeld (verzoegert ~300 ms, `?q=` in der URL, Escape/Leeren-Button, "Keine Treffer fuer ...") ueber `GET /admin/orders?q=`
+- Admin-Uebersicht: Umsatz-Kachel mit Trend je Waehrung zum gleich langen Vorzeitraum ("+12 % zum Vorzeitraum", gruen/rot ueber Tokens); nur bei Vorzeitraum > 0, sonst "kein Vergleich", bei Backend ohne `prev_*` keine Trendzeile
+
 ### Added (Frontend – D11)
 - `frontend/e2e/a11y.mjs`: automatische Barrierefreiheitspruefung mit axe-core (devDependency, kein CDN) gegen Preview und echtes Backend: Landing, Login, Dashboard, Shop, Bestellungen, Server-Detail, Admin-Uebersicht, Admin-Bestellungen, dunkel/hell, 390/1100 px; Verstoesse (WCAG A/AA) oder horizontales Scrollen beenden den Lauf mit Exit 1. Laeuft in `e2e/run-local.sh` nach `flow.mjs` und im Workflow `e2e.yml` (jetzt auch bei Aenderungen an `frontend/src/**` und den Tokens); gemeinsame Helfer in `e2e/lib.mjs`
 - `docs/ui-conventions.md` neu: Checkliste fuer Seiten, Tokens/`sync:tokens`, `ui.css`-Bausteine, Status-Regeln, i18n-Namespaces und Plural-Konvention, Theme, Mobil-Regeln, bewusst nicht uebernommene Mockup-Inhalte

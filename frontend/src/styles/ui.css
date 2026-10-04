@@ -57,8 +57,11 @@ a.card-title:hover { color: var(--accent); }
 .row-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 2px; }
 .row-actions .push { margin-left: auto; }
 .hint { font-size: var(--fs-small); color: var(--text-3); margin: 0; }
+.text-ok { color: var(--ok); }
 .text-warn { color: var(--warn); }
 .text-danger { color: var(--danger); }
+.tile .trend-up { color: var(--ok); }
+.tile .trend-down { color: var(--danger); }
 
 /* Touch-Ziele mobil mindestens 44 px (DESIGN.md) */
 @media (max-width: 760px) {

@@ -89,8 +89,8 @@ rot (`danger`) für Fehler/überfällig/gesperrt/**nicht erreichbar**, grau (`ne
 
 ## Bewusst nicht aus den Mockups übernommen
 
-Alles, was die API nicht belegt, bleibt weg („nichts erfunden“):
-Spielerzahlen, RAM-Auslastung im Dashboard, Trend „+12 % zum Vormonat“, Betrag je Zahlungsereignis, „Erinnerung senden“, nächster Tick-Lauf;
+Alles, was die API nicht belegt, bleibt weg („nichts erfunden“). Der Umsatztrend erscheint nur, wenn `/admin/stats/revenue` einen Vorzeitraum > 0 liefert (sonst „kein Vergleich“, bei älterem Backend keine Zeile):
+Spielerzahlen, RAM-Auslastung im Dashboard, Betrag je Zahlungsereignis, „Erinnerung senden“, nächster Tick-Lauf;
 auf der Landingpage „Server in Deutschland“, „Tägliche Backups“, „Beliebt“-Marke, MwSt-Hinweis, feste Spieleliste (nur aus Blueprint-Namen), „monatlich kündbar“;
 IBAN/Verwendungszweck stehen nur, wo das Backend sie liefert (`payment_purpose`) bzw. der Betreiber sie in `legal/payment.ts` pflegt.
 Die Überschrift „In drei Minuten online, ohne Linux“ ist Mockup-Text und vom Betreiber zu bestätigen.

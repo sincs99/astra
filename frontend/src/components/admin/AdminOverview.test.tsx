@@ -115,6 +115,46 @@ describe("AdminOverview", () => {
     expect(rev).toHaveBeenCalledWith(90);
   });
 
+  const withPrev = (prev: Record<string, number> | undefined) => {
+    mockAll();
+    vi.mocked(api.getRevenueStats).mockResolvedValue({
+      days: 30, since: "", by_currency: { EUR: 112000 }, paid_count: 24, renewals_count: 6, refunded_cents_by_currency: {},
+      ...(prev ? { prev_since: "", prev_by_currency: prev, prev_paid_count: 20, prev_renewals_count: 4 } : {}),
+    });
+  };
+
+  it("zeigt den Umsatztrend zum Vorzeitraum (Anstieg, Rueckgang), nur wenn der Vorzeitraum > 0 war", async () => {
+    withPrev({ EUR: 100000 });
+    mount();
+    const up = await screen.findByTestId("revenue-trend-EUR");
+    expect(up.textContent).toBe("+12 % zum Vorzeitraum");
+    expect(up.className).toContain("trend-up");
+    cleanup();
+    withPrev({ EUR: 160000 });
+    mount();
+    const down = await screen.findByTestId("revenue-trend-EUR");
+    expect(down.textContent).toMatch(/^[-\u2212]30 % zum Vorzeitraum$/);
+    expect(down.className).toContain("trend-down");
+  });
+
+  it("zeigt 'kein Vergleich' ohne Umsatz im Vorzeitraum und keine Trendzeile bei aelterem Backend", async () => {
+    withPrev({ EUR: 0 });
+    mount();
+    expect((await screen.findByTestId("revenue-trend-EUR")).textContent).toBe("kein Vergleich");
+    cleanup();
+    withPrev(undefined);
+    mount();
+    await screen.findByTestId("revenue-EUR");
+    expect(screen.queryByTestId("revenue-trend-EUR")).toBeNull();
+  });
+
+  it("beschriftet den Trend auf Englisch", async () => {
+    setLang("en");
+    withPrev({ EUR: 100000 });
+    mount();
+    expect((await screen.findByTestId("revenue-trend-EUR")).textContent).toBe("+12% vs. previous period");
+  });
+
   it("lässt eine ausgefallene Datenquelle nur ihre Kachel betreffen", async () => {
     mockAll();
     vi.mocked(api.getAgentsMonitoring).mockRejectedValue(new Error("boom"));
