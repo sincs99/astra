@@ -2,17 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError, type Order } from "../services/api";
 import { formatDate } from "../lib/dates";
-import { formatPrice } from "../lib/money";
+import { formatMoney, formatPrice } from "../lib/money";
 import { manualPaymentNotice } from "../legal/payment";
 import { t } from "../i18n";
 import { isManualPayment, readPaymentReturn, safeCheckoutUrl } from "../lib/checkout";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { OrderNotice } from "../components/OrderNotice";
+import { ReceiptViewer } from "../components/ReceiptViewer";
 import { ConnectionAddress } from "../components/ConnectionAddress";
 import {
   PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, ErrorState, EmptyState, ConfirmButton, Toast, useToast,
-  cardStyle, thStyle, tdStyle, linkStyle, btnPrimary, btnDanger,
+  cardStyle, thStyle, tdStyle, linkStyle, btnPrimary, btnDanger, btnDefault,
 } from "../components/ui";
 
 /** Meine Bestellungen (Kunde). */
@@ -28,6 +29,9 @@ export function OrdersPage() {
   // Sobald der Checkout mit 409 "manual" antwortet, wird nicht online bezahlt: Button ausblenden
   const [manualPayment, setManualPayment] = useState(false);
   const handledReturn = useRef(false);
+  // Geöffneter Beleg (HTML vom Server); lädt per fetch mit Token, weil ein normaler Link keinen Authorization-Header trägt
+  const [receipt, setReceipt] = useState<{ number: string; html: string } | null>(null);
+  const [openingReceipt, setOpeningReceipt] = useState<string | null>(null);
 
   // Stilles Nachladen, damit Kunden z.B. den Wechsel auf "aktiv" ohne Neuladen sehen
   const [autoRefresh, setAutoRefresh] = useAutoRefreshSetting("orders");
@@ -117,12 +121,40 @@ export function OrdersPage() {
     }
   };
 
+  const showReceipt = async (order: Order, number: string) => {
+    try {
+      setOpeningReceipt(number);
+      setReceipt({ number, html: await api.getReceiptHtml(order.uuid, number) });
+    } catch (err) {
+      toast.error(err instanceof Error && err.message ? err.message : t("orders.receiptFailed"));
+    } finally {
+      setOpeningReceipt(null);
+    }
+  };
+
   const productCell = (o: Order) => (
     <div>
       <strong>{o.product_name ?? t("orders.productN", { id: o.product_id })}</strong>
       <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
         {formatPrice(o.price_cents, o.currency, o.billing_period_days)}
       </div>
+      {o.receipts && o.receipts.length > 0 && (
+        <div style={{ marginTop: 6, fontSize: 12 }}>
+          <div style={{ color: "var(--fg-soft)", fontWeight: 600 }}>{t("orders.receipts")}</div>
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 4 }}>
+            {o.receipts.map((r) => (
+              <li key={r.number} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                <span>{r.number} · {formatDate(r.issued_at)} · {formatMoney(r.amount_cents, r.currency)}</span>
+                <button type="button" onClick={() => showReceipt(o, r.number)} disabled={openingReceipt === r.number}
+                  aria-label={t("orders.receiptShowAria", { number: r.number })}
+                  style={{ ...btnDefault, padding: "1px 8px", fontSize: 12 }}>
+                  {t("orders.receiptShow")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 
@@ -246,6 +278,10 @@ export function OrdersPage() {
         </div>
         )
       )}
+      {orders.some((o) => (o.receipts?.length ?? 0) > 0) && (
+        <p style={{ fontSize: 12, color: "var(--fg-muted)", marginTop: 12 }}>{t("orders.receiptNote")}</p>
+      )}
+      {receipt && <ReceiptViewer number={receipt.number} html={receipt.html} onClose={() => setReceipt(null)} />}
     </PageLayout>
   );
 }

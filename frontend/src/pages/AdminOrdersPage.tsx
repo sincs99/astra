@@ -143,6 +143,9 @@ export function AdminOrdersPage() {
                   <td style={tdStyle}>
                     <StatusBadge status={o.status} size="sm" />
                     {o.payment_reference && <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>Ref: {o.payment_reference}</div>}
+                    {o.receipts && o.receipts.length > 0 && (
+                      <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>Belege: {o.receipts.map((r) => r.number).join(", ")}</div>
+                    )}
                   </td>
                   <td style={tdStyle}>
                     {formatDate(o.current_period_end)}

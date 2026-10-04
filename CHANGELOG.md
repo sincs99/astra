@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – F7 Zahlungsbelege, M62)
+- Kunden-Bestellungen: pro Bestellung die Belege (Nummer, Datum, Betrag) mit "Anzeigen"; der Beleg wird per fetch mit Token geholt (`GET /api/client/orders/{uuid}/receipt?number=&format=html`) und in einem Dialog mit sandbox-Iframe (ohne Skripte) angezeigt, "Als Datei speichern" laedt ihn als HTML herunter. Hinweis "Vereinfachter Zahlungsbeleg, keine Rechnung mit Umsatzsteuer." Admin-Bestellliste zeigt die Belegnummern als Text
+
 ### Added (Frontend – F6 MFA-Recovery-Codes, M60)
 - Nach dem MFA-Setup werden die 10 Recovery-Codes gross angezeigt (Kopieren, "Als Textdatei speichern"); geschlossen wird erst nach der Bestaetigung "Ich habe die Codes gesichert". Konto: Anzeige "noch N von 10", Warnung bei wenigen/keinen Codes, "Neue Codes erzeugen" mit Passwortabfrage (falsches Passwort = 403 `invalid_password`, die Anmeldung bleibt bestehen)
 - Login im MFA-Schritt: Umschalter "Recovery-Code verwenden" (Textfeld statt Ziffernfeld, dasselbe Feld `mfa_code`); nach Nutzung eines Codes einmaliger Hinweis "noch N uebrig", bei N <= 2 als Warnung mit Link ins Konto (`FlashBanner`, `lib/flash.ts`)

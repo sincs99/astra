@@ -39,4 +39,12 @@ export const orders = {
   "orders.copied": "Kopiert",
   "orders.copy": "Kopieren",
   "orders.copiedStatus": "Adresse kopiert",
+  "orders.receiptDialog": "Beleg {number}",
+  "orders.receiptFrame": "Zahlungsbeleg {number}",
+  "orders.receiptSave": "Als Datei speichern",
+  "orders.receipts": "Belege",
+  "orders.receiptShow": "Anzeigen",
+  "orders.receiptShowAria": "Beleg {number} anzeigen",
+  "orders.receiptFailed": "Beleg konnte nicht geladen werden",
+  "orders.receiptNote": "Vereinfachter Zahlungsbeleg, keine Rechnung mit Umsatzsteuer.",
 } as const;

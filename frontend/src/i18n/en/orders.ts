@@ -41,4 +41,12 @@ export const orders: Record<keyof typeof de, string> = {
   "orders.copied": "Copied",
   "orders.copy": "Copy",
   "orders.copiedStatus": "Address copied",
+  "orders.receiptDialog": "Receipt {number}",
+  "orders.receiptFrame": "Payment receipt {number}",
+  "orders.receiptSave": "Save as file",
+  "orders.receipts": "Receipts",
+  "orders.receiptShow": "Show",
+  "orders.receiptShowAria": "Show receipt {number}",
+  "orders.receiptFailed": "The receipt could not be loaded",
+  "orders.receiptNote": "Simplified payment receipt, not an invoice with VAT.",
 };
