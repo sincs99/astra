@@ -8,6 +8,11 @@ import { nav } from "./en/nav";
 import { orders } from "./en/orders";
 import { shop } from "./en/shop";
 import { srv } from "./en/srv";
+import { susers } from "./en/susers";
+import { sroutines } from "./en/sroutines";
+import { sbackups } from "./en/sbackups";
+import { sfiles } from "./en/sfiles";
+import { sconsole } from "./en/sconsole";
 import { ssh } from "./en/ssh";
 
 export const en: Record<MessageKey, string> = {
@@ -20,5 +25,10 @@ export const en: Record<MessageKey, string> = {
   ...orders,
   ...shop,
   ...srv,
+  ...susers,
+  ...sroutines,
+  ...sbackups,
+  ...sfiles,
+  ...sconsole,
   ...ssh,
 };
