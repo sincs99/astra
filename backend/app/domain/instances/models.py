@@ -92,6 +92,7 @@ class Instance(db.Model):
             "owner_id": self.owner_id,
             "agent_id": self.agent_id,
             "blueprint_id": self.blueprint_id,
+            "blueprint_name": self.blueprint.name if self.blueprint else None,
             "primary_endpoint_id": self.primary_endpoint_id,
             "connection": self.connection_info(),
             "status": self.status,

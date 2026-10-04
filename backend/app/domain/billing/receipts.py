@@ -90,6 +90,8 @@ def issue_receipt(order: Order, payment_reference: str | None, now: datetime | N
                 amount_cents=order.price_cents, currency=order.currency, issued_at=now,
                 snapshot={
                     "product_name": (order.snapshot or {}).get("product_name"),
+                    "blueprint_name": order.blueprint_name,
+                    "payment_purpose": order.payment_purpose,
                     "instance_name": order.instance_name,
                     "billing_period_days": order.billing_period_days,
                     "customer": {"username": customer.username if customer else None,
@@ -131,10 +133,14 @@ def _fields(receipt: Receipt) -> list[tuple[str, str]]:
         ("Belegnummer", receipt.number),
         ("Datum", receipt.issued_at.strftime("%d.%m.%Y") + " (UTC)"),
         ("Kunde", f"{cust.get('username') or '-'}" + (f" ({cust['email']})" if cust.get("email") else "")),
-        ("Leistung", f"Gameserver-Paket {snap.get('product_name') or '-'}, Server '{snap.get('instance_name') or '-'}'"),
+        ("Leistung", f"Gameserver-Paket {snap.get('product_name') or '-'}"
+                     + (f" ({snap['blueprint_name']})" if snap.get("blueprint_name") else "")
+                     + f", Server '{snap.get('instance_name') or '-'}'"),
         ("Laufzeit", f"{snap.get('billing_period_days')} Tage"),
         ("Betrag", _money(receipt.amount_cents, receipt.currency)),
     ]
+    if snap.get("payment_purpose"):
+        rows.append(("Verwendungszweck", snap["payment_purpose"]))
     if receipt.payment_reference:
         rows.append(("Zahlungsreferenz", receipt.payment_reference))
     return rows

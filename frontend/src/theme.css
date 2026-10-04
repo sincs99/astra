@@ -11,23 +11,6 @@
 :root { color-scheme: dark; }
 html[data-theme="light"] { color-scheme: light; }
 
-/*
- * WCAG-AA-Korrekturen gegenüber design/tokens.css (axe-geprüft, Verhältnisse in Klammern). Vorgeschlagen zur Übernahme
- * in design/tokens.css; danach entfallen diese Überschreibungen.
- *  dunkel: --text-3 auf --surface-2 (4,34 -> 5,02), Text auf Gefahr-Flächen dunkel statt weiß (3,35 -> 5,66)
- *  hell:   --text-3 (4,36/3,85 -> 5,34/4,71), --accent auf --accent-soft (4,03 -> 4,87), --ok auf grüner Fläche (4,33 -> 5,19)
- */
-:root {
-  --text-3: #8892a0;
-  --on-danger: var(--on-accent);
-}
-html[data-theme="light"] {
-  --text-3: #616c7a;
-  --accent: #09707f;
-  --ok: #177034;
-  --on-danger: #ffffff;
-}
-
 :root {
   /* Alias -> Token */
   --bg-page: var(--bg);

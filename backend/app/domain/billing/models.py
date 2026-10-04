@@ -152,6 +152,31 @@ class Order(db.Model):
                 return self.past_due_at + timedelta(days=days)
         return None
 
+    @property
+    def payment_purpose(self) -> str | None:
+        """Kurzer Verwendungszweck fuer die Ueberweisung (M64), z.B. "ASTRA-0042-7F".
+
+        Laufende Nummer plus zwei Zeichen der UUID als Pruefzeichen: kurz genug fuer das
+        Ueberweisungsformular, eindeutig genug, dass der Admin die Bestellung sicher zuordnet.
+        None, solange die Bestellung noch keine ID hat.
+        """
+        if self.id is None or not self.uuid:
+            return None
+        return f"ASTRA-{self.id:04d}-{self.uuid.replace('-', '')[:2].upper()}"
+
+    @property
+    def blueprint_name(self) -> str | None:
+        """Name der Spiel-Vorlage (M64): aus dem Produkt, sonst aus dem Schnappschuss."""
+        product = self.product
+        if product is not None and product.blueprint is not None:
+            return product.blueprint.name
+        bp_id = (self.snapshot or {}).get("blueprint_id")
+        if bp_id is None:
+            return None
+        from app.domain.blueprints.models import Blueprint
+        bp = db.session.get(Blueprint, bp_id)
+        return bp.name if bp else None
+
     def to_dict(self, include_user: bool = False) -> dict:
         inst = self.instance
         deletion = self.scheduled_deletion_at()
@@ -161,6 +186,8 @@ class Order(db.Model):
             "status": self.status,
             "product_id": self.product_id,
             "product_name": (self.snapshot or {}).get("product_name"),
+            "blueprint_name": self.blueprint_name,
+            "payment_purpose": self.payment_purpose,
             "instance_name": self.instance_name,
             "instance_uuid": inst.uuid if inst else None,
             "instance_status": inst.status if inst else None,

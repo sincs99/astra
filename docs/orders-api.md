@@ -286,7 +286,9 @@ Beleg ist **kein Steuerbeleg**: keine Umsatzsteuer, keine Anschrift des Kunden (
 | Aufruf | Antwort |
 |---|---|
 | `GET /api/client/orders`, `/{uuid}` (und die Admin-Liste) | enthält `receipts: [{number, issued_at, amount_cents, currency}]`, älteste zuerst |
-| `GET /api/client/orders/{uuid}/receipt?number=&format=` | Beleg der eigenen Bestellung. `number` = Belegnummer (Standard: neuester), `format` = `html` (Standard, eigenständige Seite), `text` oder `json` (`number, issued_at, amount_cents, currency, payment_reference, product_name, instance_name, billing_period_days, customer`). 404 bei fremder/unbekannter Bestellung, unbekannter Nummer oder wenn es keinen Beleg gibt; 400 bei falschem `format`; 401 ohne Anmeldung |
+| `GET /api/client/orders`, `/{uuid}` (und die Admin-Liste) | enthält `blueprint_name` (Spiel-Vorlage des Produkts) und `payment_purpose` (M64): kurzer Verwendungszweck für die Überweisung, Form `ASTRA-NNNN-XX` (laufende Bestell-ID plus zwei Prüfzeichen aus der UUID), stabil pro Bestellung. Steht auch in der Erinnerungs- und Sperr-Mail sowie im Beleg; der Admin ordnet den Zahlungseingang damit zu und trägt die Bankreferenz bei `mark-paid` ein |
+| `GET /api/client/instances`, `/{uuid}` (und die Admin-Liste) | enthält `blueprint_name` (M64), z. B. für die Unterzeile „Minecraft (Paper 1.21) · Crew“ |
+| `GET /api/client/orders/{uuid}/receipt?number=&format=` | Beleg der eigenen Bestellung. `number` = Belegnummer (Standard: neuester), `format` = `html` (Standard, eigenständige Seite), `text` oder `json` (`number, issued_at, amount_cents, currency, payment_reference, product_name, blueprint_name, payment_purpose, instance_name, billing_period_days, customer`). 404 bei fremder/unbekannter Bestellung, unbekannter Nummer oder wenn es keinen Beleg gibt; 400 bei falschem `format`; 401 ohne Anmeldung |
 
 Das HTML escaped alle Werte (auch den vom Kunden gewählten Servernamen) und wird mit `nosniff`, einer
 restriktiven Content-Security-Policy und `no-store` ausgeliefert. Ein Link im Browser trägt keinen
