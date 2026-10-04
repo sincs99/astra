@@ -71,6 +71,7 @@ export const account: Record<keyof typeof de, string> = {
   "account.keys.never": "never",
   "account.delete": "Delete",
   "account.keys.deleteConfirm": "Really delete API key {id}? Programs using it will lose access.",
+  "account.mailLanguageHint": "Emails and receipts are sent in this language.",
   "account.language": "Language",
   "account.languageHint": "Some messages from the server may still appear in German.",
   "account.mfa.fileHeader": "Astra recovery codes – each code works once. Keep this file safe.",

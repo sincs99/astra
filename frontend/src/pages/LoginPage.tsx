@@ -4,6 +4,7 @@ import { t } from "../i18n";
 import { api, ApiError, isAuthenticated, setAccessToken } from "../services/api";
 import { SiteFooter } from "../components/SiteFooter";
 import { setFlash } from "../lib/flash";
+import { adoptUserLocale } from "../lib/locale";
 import { safeRedirectPath } from "../lib/redirect";
 import { inputStyle, labelStyle, btnPrimary, linkStyle } from "../components/ui";
 
@@ -49,6 +50,7 @@ export function LoginPage() {
         return;
       }
       setAccessToken(result.access_token);
+      adoptUserLocale(result.user);
       if (result.recovery_code_used) {
         // Einmaliger Hinweis nach dem Login: wie viele Codes noch übrig sind (bei wenigen mit Link ins Konto)
         const left = result.recovery_codes_remaining ?? 0;

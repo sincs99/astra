@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – M67 Sprache fuer Mails und Belege)
+- Beim Registrieren wird die aktuelle UI-Sprache als `locale` mitgesendet; nach dem Login wird eine am Konto gespeicherte Sprache uebernommen (null/fehlend: Auswahl des Browsers bleibt). Beim Umschalten im Nutzermenue oder unter Konto wird zusaetzlich `PATCH /client/account {locale}` gesendet (nur angemeldet, Fehler still ignoriert, auch bei Backend ohne das Feld). Kontoseite: Hinweis "Mails und Belege kommen in dieser Sprache"
+
 ### Added (Frontend – M65/M66)
 - Admin-Bestellungen: Suchfeld (verzoegert ~300 ms, `?q=` in der URL, Escape/Leeren-Button, "Keine Treffer fuer ...") ueber `GET /admin/orders?q=`
 - Admin-Uebersicht: Umsatz-Kachel mit Trend je Waehrung zum gleich langen Vorzeitraum ("+12 % zum Vorzeitraum", gruen/rot ueber Tokens); nur bei Vorzeitraum > 0, sonst "kein Vergleich", bei Backend ohne `prev_*` keine Trendzeile

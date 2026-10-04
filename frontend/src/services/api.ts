@@ -331,6 +331,8 @@ export interface User {
   mfa_enabled?: boolean;
   /** Noch gueltige Recovery-Codes (0, wenn MFA aus ist) */
   mfa_recovery_codes_remaining?: number;
+  /** Sprache fuer Mails und Belege (M67); null = Deutsch, fehlt bei aelterem Backend */
+  locale?: "de" | "en" | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -932,11 +934,15 @@ export const api = {
   },
 
   // ── Auth ─────────────────────────────────────────────
-  register: (username: string, email: string, password: string) =>
+  register: (username: string, email: string, password: string, locale?: "de" | "en") =>
     request<RegisterResponse>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify(locale ? { username, email, password, locale } : { username, email, password }),
     }),
+
+  /** Sprache fuer Mails und Belege speichern (M67); aeltere Backends antworten mit 404/400 */
+  updateAccountLocale: (locale: "de" | "en") =>
+    request<unknown>("/client/account", { method: "PATCH", body: JSON.stringify({ locale }) }),
 
   verifyEmail: (token: string) =>
     request<{ message: string }>("/auth/verify-email", {

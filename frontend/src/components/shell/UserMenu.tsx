@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Icon } from "../ui/Icon";
-import { LANG_OPTIONS, setLang, t, useLang } from "../../i18n";
+import { LANG_OPTIONS, t, useLang } from "../../i18n";
+import { changeLanguage } from "../../lib/locale";
 import { getThemePreference, setThemePreference, themeOptions, type ThemePreference } from "../../lib/theme";
 import { initials } from "./navItems";
 import type { User } from "../../services/api";
@@ -17,7 +18,7 @@ export function UserActions({ onLogout, onNavigate }: { onLogout: () => void; on
         <span id="um-lang">{t("nav.language")}</span>
         <div className="seg" role="group" aria-labelledby="um-lang">
           {LANG_OPTIONS.map((o) => (
-            <button key={o.value} type="button" lang={o.value} aria-pressed={lang === o.value} onClick={() => setLang(o.value)}>{o.label}</button>
+            <button key={o.value} type="button" lang={o.value} aria-pressed={lang === o.value} onClick={() => changeLanguage(o.value)}>{o.label}</button>
           ))}
         </div>
       </div>

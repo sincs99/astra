@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { LANG_OPTIONS, isLang, setLang, t, useLang } from "../../i18n";
+import { LANG_OPTIONS, isLang, t, useLang } from "../../i18n";
+import { changeLanguage } from "../../lib/locale";
 import { cardStyle, labelStyle, inputStyle } from "../ui";
 import { themeOptions, getThemePreference, isThemePreference, setThemePreference, type ThemePreference } from "../../lib/theme";
 
@@ -23,11 +24,11 @@ export function ThemeSection() {
       </select>
       <label htmlFor="lang-select" style={{ ...labelStyle, marginTop: 16 }}>{t("account.language")}</label>
       <select id="lang-select" value={lang} style={{ ...inputStyle, maxWidth: 260 }}
-        onChange={(e) => { if (isLang(e.target.value)) setLang(e.target.value); }}>
+        onChange={(e) => { if (isLang(e.target.value)) changeLanguage(e.target.value); }}>
         {LANG_OPTIONS.map((o) => <option key={o.value} value={o.value} lang={o.value}>{o.label}</option>)}
       </select>
       <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-3)" }}>
-        {t("account.browserOnly")} {t("account.languageHint")}
+        {t("account.browserOnly")} {t("account.mailLanguageHint")} {t("account.languageHint")}
       </p>
     </section>
   );

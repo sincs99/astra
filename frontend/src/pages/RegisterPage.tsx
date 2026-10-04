@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { t } from "../i18n";
+import { getLang, t } from "../i18n";
 import { api, isAuthenticated, setAccessToken, MIN_PASSWORD_LENGTH } from "../services/api";
 import { inputStyle, labelStyle, btnPrimary, linkStyle } from "../components/ui";
 import { safeRedirectPath } from "../lib/redirect";
@@ -40,7 +40,7 @@ export function RegisterPage() {
     try {
       setLoading(true);
       setError(null);
-      const result = await api.register(username.trim(), email.trim(), password);
+      const result = await api.register(username.trim(), email.trim(), password, getLang());
       if ("access_token" in result) {
         setAccessToken(result.access_token);
         navigate(redirectTo);
