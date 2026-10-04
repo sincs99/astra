@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { api } from "../services/api";
+import { t } from "../i18n";
 
 type ConnectionState = "disconnected" | "connecting" | "connected" | "error";
+type LineKind = "system" | "status" | "error" | "daemon" | "cmd" | "out";
+
+interface ConsoleLine {
+  kind: LineKind;
+  text: string;
+}
 
 interface WingsEvent {
   event: string;
@@ -15,7 +22,7 @@ interface Props {
 export function ServerConsole({ instanceUuid }: Props) {
   const [connectionState, setConnectionState] =
     useState<ConnectionState>("disconnected");
-  const [lines, setLines] = useState<string[]>([]);
+  const [lines, setLines] = useState<ConsoleLine[]>([]);
   const [command, setCommand] = useState("");
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -32,10 +39,9 @@ export function ServerConsole({ instanceUuid }: Props) {
     }
   }, [lines]);
 
-  const addLine = useCallback((text: string, prefix?: string) => {
-    const formatted = prefix ? `${prefix} ${text}` : text;
+  const addLine = useCallback((text: string, kind: LineKind = "out") => {
     setLines((prev) => {
-      const next = [...prev, formatted];
+      const next = [...prev, { kind, text }];
       // Max 500 Zeilen behalten
       return next.length > 500 ? next.slice(-500) : next;
     });
@@ -50,7 +56,7 @@ export function ServerConsole({ instanceUuid }: Props) {
 
     setConnectionState("connecting");
     setErrorMessage(null);
-    addLine("Verbindung wird aufgebaut…", "[System]");
+    addLine(t("sconsole.connecting"), "system");
 
     try {
       // Credentials vom Backend holen
@@ -61,7 +67,7 @@ export function ServerConsole({ instanceUuid }: Props) {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        addLine("Verbunden, Anmeldung läuft…", "[System]");
+        addLine(t("sconsole.connectedAuth"), "system");
         // Auth-Event senden
         ws.send(
           JSON.stringify({
@@ -76,30 +82,27 @@ export function ServerConsole({ instanceUuid }: Props) {
           const data: WingsEvent = JSON.parse(event.data);
           handleWingsEvent(data);
         } catch {
-          addLine(`Unbekannte Nachricht: ${event.data}`, "[?]");
+          addLine(t("sconsole.unknownMessage", { text: String(event.data) }), "error");
         }
       };
 
       ws.onerror = () => {
         setConnectionState("error");
-        setErrorMessage("Die Verbindung zur Konsole ist fehlgeschlagen.");
-        addLine("Verbindung unterbrochen.", "[Fehler]");
+        setErrorMessage(t("sconsole.connectionFailed"));
+        addLine(t("sconsole.connectionLost"), "error");
       };
 
       ws.onclose = (event) => {
         setConnectionState("disconnected");
-        addLine(
-          `Verbindung getrennt (Code: ${event.code})`,
-          "[System]"
-        );
+        addLine(t("sconsole.closed", { code: event.code }), "system");
         wsRef.current = null;
       };
     } catch (err) {
       setConnectionState("error");
       const msg =
-        err instanceof Error ? err.message : "Verbindung fehlgeschlagen";
+        err instanceof Error ? err.message : t("sconsole.failedGeneric");
       setErrorMessage(msg);
-      addLine(`Fehler: ${msg}`, "[System]");
+      addLine(t("sconsole.errorLine", { message: msg }), "system");
     }
   }, [instanceUuid, addLine]);
 
@@ -108,7 +111,7 @@ export function ServerConsole({ instanceUuid }: Props) {
       switch (data.event) {
         case "auth success":
           setConnectionState("connected");
-          addLine("Verbunden.", "[System]");
+          addLine(t("sconsole.connected"), "system");
           // Logs anfordern
           wsRef.current?.send(
             JSON.stringify({ event: "send logs", args: [null] })
@@ -125,7 +128,7 @@ export function ServerConsole({ instanceUuid }: Props) {
           break;
 
         case "status":
-          addLine(`Server: ${data.args[0]}`, "[Status]");
+          addLine(t("sconsole.serverStatus", { state: String(data.args[0]) }), "status");
           break;
 
         case "stats":
@@ -133,12 +136,12 @@ export function ServerConsole({ instanceUuid }: Props) {
           break;
 
         case "daemon error":
-          addLine(data.args[0] || "Der Server meldet einen Fehler", "[Daemon]");
+          addLine(data.args[0] || t("sconsole.daemonDefault"), "daemon");
           break;
 
         case "token expiring":
         case "token expired":
-          addLine("Sitzung wird erneuert…", "[System]");
+          addLine(t("sconsole.renewing"), "system");
           renewToken();
           break;
 
@@ -157,9 +160,9 @@ export function ServerConsole({ instanceUuid }: Props) {
       wsRef.current?.send(
         JSON.stringify({ event: "auth", args: [creds.token] })
       );
-      addLine("Sitzung erneuert", "[System]");
+      addLine(t("sconsole.renewed"), "system");
     } catch {
-      addLine("Die Sitzung konnte nicht erneuert werden. Bitte lade die Seite neu.", "[Fehler]");
+      addLine(t("sconsole.renewFailed"), "error");
     }
   }, [instanceUuid, addLine]);
 
@@ -177,7 +180,7 @@ export function ServerConsole({ instanceUuid }: Props) {
         JSON.stringify({ event: "send command", args: [cmd] })
       );
 
-      addLine(`> ${cmd}`, "");
+      addLine(`> ${cmd}`, "cmd");
       setCommandHistory((prev) => [...prev, cmd]);
       setHistoryIndex(-1);
       setCommand("");
@@ -223,109 +226,114 @@ export function ServerConsole({ instanceUuid }: Props) {
     };
   }, []);
 
-  const stateColor: Record<ConnectionState, string> = {
-    disconnected: "var(--neutral)",
-    connecting: "var(--warn)",
-    connected: "var(--ok)",
-    error: "var(--danger)",
+  const stateDot: Record<ConnectionState, string> = {
+    disconnected: "",
+    connecting: "dot-warn",
+    connected: "dot-ok",
+    error: "dot-danger",
   };
 
   const stateLabel: Record<ConnectionState, string> = {
-    disconnected: "Getrennt",
-    connecting: "Verbindet...",
-    connected: "Verbunden",
-    error: "Fehler",
+    disconnected: t("sconsole.stateDisconnected"),
+    connecting: t("sconsole.stateConnecting"),
+    connected: t("sconsole.stateConnected"),
+    error: t("sconsole.stateError"),
   };
 
+  const online = connectionState === "connected";
+
   return (
-    <div className="card" style={{ padding: 14, gap: 0 }}>
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 8,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <section className="card" aria-label={t("sconsole.title")}>
+      <div className="row-actions" style={{ marginTop: 0 }}>
+        <span className="hint" role="status" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <span
-            style={{
-              display: "inline-block",
-              width: 10,
-              height: 10,
-              borderRadius: "50%",
-              backgroundColor: stateColor[connectionState],
-            }}
+            className={`dot ${stateDot[connectionState]}`}
+            style={connectionState === "disconnected" ? { background: "var(--text-3)" } : undefined}
+            aria-hidden="true"
           />
-          <span style={{ fontSize: 12, color: "var(--text-2)" }}>
-            {stateLabel[connectionState]}
-          </span>
-        </div>
-        <div style={{ display: "flex", gap: 6 }}>
-          {connectionState === "disconnected" ||
-          connectionState === "error" ? (
-            <button onClick={connect} style={consoleBtnStyle}>
-              Verbinden
+          {stateLabel[connectionState]}
+        </span>
+        <span className="push" style={{ display: "inline-flex", gap: 8 }}>
+          {connectionState === "disconnected" || connectionState === "error" ? (
+            <button type="button" className="btn btn-sm btn-primary" onClick={connect}>
+              {t("sconsole.connect")}
             </button>
-          ) : connectionState === "connected" ? (
+          ) : online ? (
             <button
+              type="button"
+              className="btn btn-sm"
               onClick={() => {
                 wsRef.current?.close();
                 setConnectionState("disconnected");
               }}
-              style={consoleBtnStyle}
             >
-              Trennen
+              {t("sconsole.disconnect")}
             </button>
           ) : null}
           <button
+            type="button"
+            className="btn btn-sm"
             onClick={() => setLines([])}
-            style={consoleBtnStyle}
-            title="Ausgabe leeren"
+            aria-label={t("sconsole.clearAria")}
           >
-            Clear
+            {t("sconsole.clear")}
           </button>
-        </div>
+        </span>
       </div>
 
       {errorMessage && (
-        <div style={consoleErrorStyle}>{errorMessage}</div>
+        <div className="banner banner-danger" role="alert">
+          <span className="banner-text text-danger">{errorMessage}</span>
+        </div>
       )}
 
-      {/* Output */}
-      <div ref={outputRef} style={consoleOutputStyle}>
+      <div
+        ref={outputRef}
+        className="box-console mono"
+        role="log"
+        aria-label={t("sconsole.outputLabel")}
+        tabIndex={0}
+        style={{ height: 300, overflowY: "auto", gap: 0 }}
+      >
         {lines.length === 0 ? (
-          <div style={{ color: "var(--console-dim)" }}>
-            Klicke "Verbinden" um die Console zu starten...
-          </div>
+          <div style={{ color: "var(--console-dim)" }}>{t("sconsole.empty")}</div>
         ) : (
           lines.map((line, i) => (
-            <div key={i} style={lineStyle(line)}>
-              {line}
+            <div key={i} style={lineStyle(line.kind)}>
+              {line.text}
             </div>
           ))
         )}
       </div>
 
-      {/* Input */}
-      <div style={consoleInputContainer}>
-        <span style={{ color: "var(--ok)", marginRight: 4 }}>{">"}</span>
+      <div className="box-console mono" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <span style={{ color: "var(--ok)" }} aria-hidden="true">
+          {">"}
+        </span>
         <input
           type="text"
+          className="inp mono"
+          style={{ background: "transparent", border: "none", boxShadow: "none", color: "var(--text-console)", flex: 1 }}
           value={command}
           onChange={(e) => setCommand(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={
-            connectionState === "connected"
-              ? "Befehl eingeben..."
-              : "Nicht verbunden"
-          }
-          disabled={connectionState !== "connected"}
-          style={consoleInputStyle}
+          aria-label={t("sconsole.inputLabel")}
+          placeholder={online ? t("sconsole.placeholderConnected") : t("sconsole.placeholderOffline")}
+          disabled={!online}
+          autoComplete="off"
+          spellCheck={false}
         />
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => sendCommand(command)}
+          disabled={!online || !command.trim()}
+          aria-label={t("sconsole.send")}
+        >
+          {t("sconsole.send")}
+        </button>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -340,81 +348,22 @@ function stripAnsi(text: string): string {
   );
 }
 
-function lineStyle(line: string): React.CSSProperties {
-  const base: React.CSSProperties = {
+const LINE_COLOR: Record<LineKind, string> = {
+  system: "var(--accent)",
+  status: "var(--warn)",
+  error: "var(--danger)",
+  daemon: "var(--danger)",
+  cmd: "var(--ok)",
+  out: "var(--text-console)",
+};
+
+function lineStyle(kind: LineKind): React.CSSProperties {
+  return {
     whiteSpace: "pre-wrap",
     wordBreak: "break-all",
     lineHeight: 1.4,
-    fontSize: 13,
+    fontSize: "var(--fs-small)",
+    color: LINE_COLOR[kind],
+    fontWeight: kind === "cmd" ? 600 : undefined,
   };
-
-  if (line.startsWith("[System]")) {
-    return { ...base, color: "var(--accent)" };
-  }
-  if (line.startsWith("[Status]")) {
-    return { ...base, color: "var(--warn)" };
-  }
-  if (line.startsWith("[Fehler]") || line.startsWith("[Daemon]")) {
-    return { ...base, color: "var(--danger)" };
-  }
-  if (line.startsWith(">")) {
-    return { ...base, color: "var(--ok)", fontWeight: 600 };
-  }
-  return { ...base, color: "var(--text-console)" };
 }
-
-// ── Styles ──────────────────────────────────────────
-
-const consoleOutputStyle: React.CSSProperties = {
-  backgroundColor: "var(--console)",
-  color: "var(--text-console)",
-  fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
-  fontSize: 13,
-  padding: 12,
-  borderRadius: "4px 4px 0 0",
-  height: 300,
-  overflowY: "auto",
-  border: "1px solid var(--border)",
-  borderBottom: "none",
-};
-
-const consoleInputContainer: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  backgroundColor: "var(--console)",
-  padding: "8px 12px",
-  borderRadius: "0 0 4px 4px",
-  border: "1px solid var(--border)",
-  borderTop: "1px solid var(--border)",
-  fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
-};
-
-const consoleInputStyle: React.CSSProperties = {
-  flex: 1,
-  backgroundColor: "transparent",
-  border: "none",
-  outline: "none",
-  color: "var(--text)",
-  fontFamily: "inherit",
-  fontSize: 13,
-};
-
-const consoleBtnStyle: React.CSSProperties = {
-  padding: "4px 10px",
-  border: "1px solid var(--border)",
-  borderRadius: 4,
-  backgroundColor: "var(--surface-2)",
-  color: "var(--text)",
-  cursor: "pointer",
-  fontSize: 12,
-};
-
-const consoleErrorStyle: React.CSSProperties = {
-  backgroundColor: "var(--danger-soft)",
-  border: "1px solid var(--danger-border)",
-  color: "var(--danger)",
-  padding: 8,
-  borderRadius: 4,
-  marginBottom: 8,
-  fontSize: 12,
-};

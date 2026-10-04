@@ -5,11 +5,25 @@ import {
   type User,
   ALL_PERMISSIONS,
 } from "../services/api";
+import { hasKey, t } from "../i18n";
+import { Icon } from "./ui/Icon";
 
 interface CollaboratorManagerProps {
   instanceUuid: string;
   isOwner: boolean;
 }
+
+/** Übersetzt ein API-Recht; unbekannte Werte werden roh angezeigt. */
+function permLabel(p: string): string {
+  const key = `susers.perm.${p}`;
+  return hasKey(key) ? t(key) : p;
+}
+
+const chipStyle = (on: boolean): React.CSSProperties => ({
+  display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", cursor: "pointer",
+  fontSize: "var(--fs-small)", border: "1px solid var(--border)", borderRadius: "var(--radius-badge)",
+  background: on ? "var(--accent-soft)" : "var(--surface-2)", color: "var(--text)",
+});
 
 export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManagerProps) {
   const [collaborators, setCollaborators] = useState<CollaboratorEntry[]>([]);
@@ -19,13 +33,13 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
   const [message, setMessage] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
 
-  // Add-Form
   const [newUserId, setNewUserId] = useState<number | "">("");
   const [newPerms, setNewPerms] = useState<string[]>([]);
 
-  // Edit
   const [editId, setEditId] = useState<number | null>(null);
   const [editPerms, setEditPerms] = useState<string[]>([]);
+
+  const fail = (err: unknown) => setError(err instanceof Error ? err.message : t("susers.failed"));
 
   const loadAll = async () => {
     try {
@@ -38,7 +52,7 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
       setCollaborators(collabs);
       setUsers(userList);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
+      fail(err);
     } finally {
       setLoading(false);
     }
@@ -62,10 +76,10 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
       await api.addCollaborator(instanceUuid, newUserId as number, newPerms);
       setNewUserId("");
       setNewPerms([]);
-      showMsg("Collaborator hinzugefügt");
+      showMsg(t("susers.added"));
       await loadAll();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
+      fail(err);
     } finally {
       setActing(false);
     }
@@ -77,25 +91,25 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
       setError(null);
       await api.updateCollaborator(instanceUuid, id, editPerms);
       setEditId(null);
-      showMsg("Permissions aktualisiert");
+      showMsg(t("susers.updated"));
       await loadAll();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
+      fail(err);
     } finally {
       setActing(false);
     }
   };
 
   const handleDelete = async (c: CollaboratorEntry) => {
-    if (!confirm("Collaborator wirklich entfernen?")) return;
+    if (!confirm(t("susers.removeConfirm"))) return;
     try {
       setActing(true);
       setError(null);
       await api.deleteCollaborator(instanceUuid, c.id);
-      showMsg("Collaborator entfernt");
+      showMsg(t("susers.removed"));
       await loadAll();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
+      fail(err);
     } finally {
       setActing(false);
     }
@@ -105,82 +119,86 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
     list.includes(perm) ? list.filter((p) => p !== perm) : [...list, perm];
 
   if (!isOwner) {
-    return <p style={{ color: "var(--fg-muted)", fontSize: 13 }}>Nur der Owner kann Collaborators verwalten.</p>;
+    return <p className="hint">{t("susers.ownerOnly")}</p>;
   }
 
   return (
-    <div>
-      {error && <div style={errStyle}>{error}</div>}
-      {message && <div style={msgStyle}>{message}</div>}
+    <div className="stack" style={{ gap: 14 }}>
+      {error && <div className="banner banner-danger" role="alert">{error}</div>}
+      {message && <div className="banner banner-info" role="status">{message}</div>}
 
-      {/* Add-Formular */}
-      <form onSubmit={handleAdd} style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-          <select
-            value={newUserId}
-            onChange={(e) => setNewUserId(e.target.value ? Number(e.target.value) : "")}
-            required
-            aria-label="Benutzer auswählen"
-            style={{ padding: 6, fontSize: 13, flex: 1 }}
-          >
-            <option value="">– Benutzer wählen –</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
-            ))}
-          </select>
-          <button type="submit" disabled={acting || newPerms.length === 0} style={btnS}>
-            + Hinzufügen
+      <form onSubmit={handleAdd} className="stack" style={{ gap: 10 }}>
+        <div className="row-actions" style={{ marginTop: 0 }}>
+          <div className="field" style={{ flex: "1 1 220px" }}>
+            <label htmlFor="collab-user" className="sr-only">{t("susers.selectUser")}</label>
+            <select id="collab-user" className="inp" value={newUserId} required
+              onChange={(e) => setNewUserId(e.target.value ? Number(e.target.value) : "")}>
+              <option value="">{t("susers.selectPlaceholder")}</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" disabled={acting || newPerms.length === 0} className="btn btn-primary">
+            <Icon name="plus" /> {t("susers.add")}
           </button>
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-          {ALL_PERMISSIONS.map((p) => (
-            <label key={p} style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 2, padding: "2px 6px", border: "1px solid var(--border)", borderRadius: 3, backgroundColor: newPerms.includes(p) ? "var(--tint-blue)" : "var(--bg-card)", cursor: "pointer" }}>
-              <input type="checkbox" checked={newPerms.includes(p)} onChange={() => setNewPerms(togglePerm(newPerms, p))} style={{ width: 12, height: 12 }} />
-              {p}
-            </label>
-          ))}
-        </div>
+        <fieldset className="fieldset" style={{ gap: 8 }}>
+          <legend className="sr-only">{t("susers.permissions")}</legend>
+          <div className="row-actions" style={{ marginTop: 0 }}>
+            {ALL_PERMISSIONS.map((p) => (
+              <label key={p} style={chipStyle(newPerms.includes(p))}>
+                <input type="checkbox" checked={newPerms.includes(p)} onChange={() => setNewPerms(togglePerm(newPerms, p))} />
+                {permLabel(p)}
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </form>
 
-      {/* Liste */}
       {loading ? (
-        <p style={{ color: "var(--fg-muted)" }}>Wird geladen...</p>
+        <p className="hint">{t("susers.loading")}</p>
       ) : collaborators.length === 0 ? (
-        <p style={{ color: "var(--fg-muted)", fontSize: 13 }}>Keine Collaborators vorhanden.</p>
+        <div className="card-empty">{t("susers.empty")}</div>
       ) : (
-        <div style={{ display: "grid", gap: 8 }}>
+        <div className="stack" style={{ gap: 12 }}>
           {collaborators.map((c) => {
             const user = users.find((u) => u.id === c.user_id);
+            const name = user?.username ?? t("susers.userFallback", { id: c.user_id });
             const isEditing = editId === c.id;
             return (
-              <div key={c.id} style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <strong style={{ fontSize: 13 }}>{user?.username ?? `User #${c.user_id}`}</strong>
-                  <div style={{ display: "flex", gap: 4 }}>
+              <div key={c.id} className="card">
+                <div className="row-actions" style={{ marginTop: 0 }}>
+                  <span className="card-title">{name}</span>
+                  <span className="push row-actions" style={{ marginTop: 0 }}>
                     {isEditing ? (
                       <>
-                        <button onClick={() => handleUpdate(c.id)} disabled={acting} style={{ ...smBtn, color: "var(--c-green)" }}>💾</button>
-                        <button onClick={() => setEditId(null)} style={smBtn}>✕</button>
+                        <button type="button" className="btn btn-sm btn-icon" onClick={() => handleUpdate(c.id)} disabled={acting}
+                          aria-label={t("susers.save")} title={t("susers.save")}><Icon name="check" /></button>
+                        <button type="button" className="btn btn-sm btn-icon" onClick={() => setEditId(null)}
+                          aria-label={t("susers.cancel")} title={t("susers.cancel")}><Icon name="close" /></button>
                       </>
                     ) : (
                       <>
-                        <button onClick={() => { setEditId(c.id); setEditPerms([...c.permissions]); }} style={smBtn}>✏️</button>
-                        <button onClick={() => handleDelete(c)} disabled={acting} style={{ ...smBtn, color: "var(--c-red)" }}>🗑</button>
+                        <button type="button" className="btn btn-sm btn-icon" onClick={() => { setEditId(c.id); setEditPerms([...c.permissions]); }}
+                          aria-label={`${t("susers.edit")}: ${name}`} title={t("susers.edit")}><Icon name="settings" /></button>
+                        <button type="button" className="btn btn-sm btn-icon btn-danger-text" onClick={() => handleDelete(c)} disabled={acting}
+                          aria-label={`${t("susers.remove")}: ${name}`} title={t("susers.remove")}><Icon name="close" /></button>
                       </>
                     )}
-                  </div>
+                  </span>
                 </div>
-                <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 3 }}>
+                <div className="row-actions" style={{ marginTop: 0 }}>
                   {isEditing ? (
                     ALL_PERMISSIONS.map((p) => (
-                      <label key={p} style={{ fontSize: 10, display: "flex", alignItems: "center", gap: 2, padding: "1px 4px", border: "1px solid var(--border)", borderRadius: 2, backgroundColor: editPerms.includes(p) ? "var(--tint-blue)" : "var(--bg-card)", cursor: "pointer" }}>
-                        <input type="checkbox" checked={editPerms.includes(p)} onChange={() => setEditPerms(togglePerm(editPerms, p))} style={{ width: 10, height: 10 }} />
-                        {p}
+                      <label key={p} style={chipStyle(editPerms.includes(p))}>
+                        <input type="checkbox" checked={editPerms.includes(p)} onChange={() => setEditPerms(togglePerm(editPerms, p))} />
+                        {permLabel(p)}
                       </label>
                     ))
                   ) : (
                     c.permissions.map((p) => (
-                      <span key={p} style={{ fontSize: 10, padding: "1px 6px", backgroundColor: "var(--tint-blue)", borderRadius: 3, color: "var(--c-blue)" }}>{p}</span>
+                      <span key={p} className="card-sub" style={{ padding: "2px 8px", background: "var(--accent-soft)", borderRadius: "var(--radius-badge)", color: "var(--text)" }}>{permLabel(p)}</span>
                     ))
                   )}
                 </div>
@@ -192,8 +210,3 @@ export function CollaboratorManager({ instanceUuid, isOwner }: CollaboratorManag
     </div>
   );
 }
-
-const btnS: React.CSSProperties = { padding: "6px 12px", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontSize: 12, backgroundColor: "var(--bg-card)" };
-const smBtn: React.CSSProperties = { padding: "3px 6px", border: "1px solid var(--border)", borderRadius: 3, backgroundColor: "var(--bg-card)", cursor: "pointer", fontSize: 12 };
-const errStyle: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "var(--tint-red)", border: "1px solid var(--c-red)", borderRadius: 4, color: "var(--c-red)", fontSize: 12 };
-const msgStyle: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "var(--tint-green)", border: "1px solid var(--c-green)", borderRadius: 4, color: "var(--c-green)", fontSize: 12 };

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, type BackupEntry } from "../services/api";
 import { formatDateTime } from "../lib/dates";
+import { dateLocale, t } from "../i18n";
+import { Icon } from "./ui/Icon";
 
 interface BackupManagerProps {
   instanceUuid: string;
@@ -21,7 +23,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
       const data = await api.getBackups(instanceUuid);
       setBackups(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Backups konnten nicht geladen werden");
+      setError(err instanceof Error ? err.message : t("sbackups.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -29,6 +31,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
 
   useEffect(() => {
     loadBackups();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instanceUuid]);
 
   const showMsg = (msg: string) => {
@@ -36,152 +39,143 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
     setTimeout(() => setMessage(null), 4000);
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName.trim()) return;
+  const run = async (action: () => Promise<string | null>) => {
     try {
       setActing(true);
       setError(null);
-      await api.createBackup(instanceUuid, newName.trim());
-      setNewName("");
-      showMsg("Backup erstellt");
+      const msg = await action();
+      if (msg) showMsg(msg);
       await loadBackups();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
+      setError(err instanceof Error ? err.message : t("sbackups.actionFailed"));
     } finally {
       setActing(false);
     }
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newName.trim();
+    if (!name) return;
+    await run(async () => {
+      await api.createBackup(instanceUuid, name);
+      setNewName("");
+      return t("sbackups.created");
+    });
   };
 
   const handleRestore = async (backup: BackupEntry) => {
-    if (!confirm(`Backup "${backup.name}" wirklich wiederherstellen?`)) return;
-    try {
-      setActing(true);
-      setError(null);
-      const result = await api.restoreBackup(instanceUuid, backup.uuid);
-      showMsg(result.message);
-      await loadBackups();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
-    } finally {
-      setActing(false);
-    }
+    if (!confirm(t("sbackups.restoreConfirm", { name: backup.name }))) return;
+    await run(async () => (await api.restoreBackup(instanceUuid, backup.uuid)).message);
   };
 
   const handleDelete = async (backup: BackupEntry) => {
-    if (!confirm(`Backup "${backup.name}" wirklich löschen?`)) return;
-    try {
-      setActing(true);
-      setError(null);
-      const result = await api.deleteBackup(instanceUuid, backup.uuid);
-      showMsg(result.message);
-      await loadBackups();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
-    } finally {
-      setActing(false);
-    }
+    if (!confirm(t("sbackups.deleteConfirm", { name: backup.name }))) return;
+    await run(async () => (await api.deleteBackup(instanceUuid, backup.uuid)).message);
   };
 
   return (
-    <div>
-      {/* Erstell-Formular */}
-      <form onSubmit={handleCreate} style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+    <div className="stack" style={{ gap: 12 }}>
+      <form onSubmit={handleCreate} className="row-actions" style={{ marginTop: 0, flexWrap: "nowrap" }}>
         <input
           type="text"
+          className="inp"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          placeholder="Backup-Name"
+          placeholder={t("sbackups.namePlaceholder")}
+          aria-label={t("sbackups.nameLabel")}
           required
-          style={{ flex: 1, padding: 6, fontSize: 13 }}
         />
-        <button type="submit" disabled={acting} style={btnStyle}>
-          {acting ? "..." : "📦 Backup erstellen"}
+        <button type="submit" className="btn btn-primary" disabled={acting}>
+          <Icon name="package" />
+          {t("sbackups.create")}
         </button>
       </form>
 
-      {error && <div style={errStyle}>{error}</div>}
-      {message && <div style={msgStyle}>{message}</div>}
+      {error && (
+        <div className="banner banner-danger" role="alert">
+          <span className="banner-text text-danger">{error}</span>
+        </div>
+      )}
+      {message && (
+        <div className="banner" role="status">
+          <span className="dot dot-ok" aria-hidden="true" />
+          <span className="banner-text">{message}</span>
+        </div>
+      )}
 
-      {/* Backup-Liste */}
       {loading ? (
-        <p style={{ color: "var(--fg-muted)" }}>Backups werden geladen...</p>
+        <p className="hint" role="status">{t("sbackups.loading")}</p>
       ) : backups.length === 0 ? (
-        <p style={{ color: "var(--fg-muted)" }}>Noch keine Backups vorhanden.</p>
+        <p className="hint">{t("sbackups.empty")}</p>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-          <thead>
-            <tr style={{ borderBottom: "2px solid var(--border)" }}>
-              <th style={thS}>Name</th>
-              <th style={thS}>Grösse</th>
-              <th style={thS}>Status</th>
-              <th style={thS}>Erstellt</th>
-              <th style={{ ...thS, width: 120 }}>Aktionen</th>
-            </tr>
-          </thead>
-          <tbody>
-            {backups.map((b) => (
-              <tr key={b.uuid} style={{ borderBottom: "1px solid var(--border)" }}>
-                <td style={tdS}>
-                  {b.is_locked && "🔒 "}
-                  {b.name}
-                  <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>
-                    {b.uuid.substring(0, 8)}…
-                  </div>
-                </td>
-                <td style={tdS}>{formatBytes(b.bytes)}</td>
-                <td style={tdS}>
-                  {b.is_successful ? (
-                    <span style={{ color: "var(--c-green)" }}>✅ Erfolgreich</span>
-                  ) : (
-                    <span style={{ color: "var(--c-yellow)" }}>⏳ Ausstehend</span>
-                  )}
-                </td>
-                <td style={tdS}>
-                  {formatDateTime(b.created_at)}
-                </td>
-                <td style={tdS}>
-                  <div style={{ display: "flex", gap: 4 }}>
-                    {b.is_successful && (
-                      <button
-                        onClick={() => handleRestore(b)}
-                        disabled={acting}
-                        style={{ ...smBtn, color: "var(--c-blue)" }}
-                        title="Wiederherstellen"
-                      >
-                        🔄
-                      </button>
-                    )}
-                    {!b.is_locked && (
-                      <button
-                        onClick={() => handleDelete(b)}
-                        disabled={acting}
-                        style={{ ...smBtn, color: "var(--c-red)" }}
-                        title="Löschen"
-                      >
-                        🗑
-                      </button>
-                    )}
-                  </div>
-                </td>
+        <div style={{ overflowX: "auto" }}>
+          <table className="tbl" aria-label={t("sbackups.listLabel")}>
+            <thead>
+              <tr>
+                <th scope="col">{t("sbackups.colName")}</th>
+                <th scope="col">{t("sbackups.colSize")}</th>
+                <th scope="col">{t("sbackups.colStatus")}</th>
+                <th scope="col">{t("sbackups.colCreated")}</th>
+                <th scope="col">{t("sbackups.colActions")}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {backups.map((b) => (
+                <tr key={b.uuid}>
+                  <td>
+                    {b.name}
+                    {b.is_locked && <span className="hint"> ({t("sbackups.locked")})</span>}
+                    <div className="hint mono">{b.uuid.substring(0, 8)}…</div>
+                  </td>
+                  <td className="mono">{formatBytes(b.bytes)}</td>
+                  <td>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      <span className={`dot ${b.is_successful ? "dot-ok" : "dot-warn"}`} aria-hidden="true" />
+                      {b.is_successful ? t("sbackups.ok") : t("sbackups.pending")}
+                    </span>
+                  </td>
+                  <td>{formatDateTime(b.created_at)}</td>
+                  <td>
+                    <div className="row-actions" style={{ marginTop: 0, flexWrap: "nowrap" }}>
+                      {b.is_successful && (
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          onClick={() => handleRestore(b)}
+                          disabled={acting}
+                          aria-label={t("sbackups.restoreAria", { name: b.name })}
+                        >
+                          <Icon name="restart" size={14} />
+                          {t("sbackups.restore")}
+                        </button>
+                      )}
+                      {!b.is_locked && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger-text"
+                          onClick={() => handleDelete(b)}
+                          disabled={acting}
+                          aria-label={t("sbackups.deleteAria", { name: b.name })}
+                        >
+                          {t("sbackups.delete")}
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
 }
 
 function formatBytes(bytes: number): string {
+  const nf = (n: number) => n.toLocaleString(dateLocale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024) return `${nf(bytes / 1024)} KB`;
+  return `${nf(bytes / (1024 * 1024))} MB`;
 }
-
-const btnStyle: React.CSSProperties = { padding: "6px 14px", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontSize: 13, backgroundColor: "var(--bg-card)" };
-const smBtn: React.CSSProperties = { padding: "4px 8px", border: "1px solid var(--border)", borderRadius: 3, backgroundColor: "var(--bg-card)", cursor: "pointer", fontSize: 13 };
-const thS: React.CSSProperties = { padding: 8, textAlign: "left", fontSize: 12, fontWeight: 600 };
-const tdS: React.CSSProperties = { padding: 8, fontSize: 13 };
-const errStyle: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "var(--tint-red)", border: "1px solid var(--c-red)", borderRadius: 4, color: "var(--c-red)", fontSize: 12 };
-const msgStyle: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "var(--tint-green)", border: "1px solid var(--c-green)", borderRadius: 4, color: "var(--c-green)", fontSize: 12 };
