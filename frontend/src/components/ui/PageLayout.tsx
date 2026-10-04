@@ -25,6 +25,8 @@ interface PageLayoutProps {
   subtitle?: React.ReactNode;
   /** Primäre Aktionen rechts neben dem Titel */
   actions?: React.ReactNode;
+  /** Link "← Zurück" über dem Titel (z.B. von der Server-Detailseite zu "Meine Server") */
+  back?: { to: string; label: string };
   children: React.ReactNode;
   maxWidth?: number;
 }
@@ -61,8 +63,10 @@ function NavList({ items, current, collapsed, onNavigate }: { items: NavItem[]; 
   );
 }
 
-function PageHead({ title, subtitle, actions }: Pick<PageLayoutProps, "title" | "subtitle" | "actions">) {
+function PageHead({ title, subtitle, actions, back }: Pick<PageLayoutProps, "title" | "subtitle" | "actions" | "back">) {
   return (
+    <>
+    {back && <Link to={back.to} className="back-link"><Icon name="back" size={14} />{back.label}</Link>}
     <div className="page-head">
       <div>
         <h1 className="page-title">{title}</h1>
@@ -70,10 +74,11 @@ function PageHead({ title, subtitle, actions }: Pick<PageLayoutProps, "title" | 
       </div>
       {actions && <div className="page-actions">{actions}</div>}
     </div>
+    </>
   );
 }
 
-export function PageLayout({ title, subtitle, actions, children, maxWidth = 1200 }: PageLayoutProps) {
+export function PageLayout({ title, subtitle, actions, back, children, maxWidth = 1200 }: PageLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 760px)");
@@ -110,7 +115,7 @@ export function PageLayout({ title, subtitle, actions, children, maxWidth = 1200
   const content = (
     <main id="main-content" tabIndex={-1} className="shell-content" style={{ maxWidth }}>
       <FlashBanner />
-      <PageHead title={title} subtitle={subtitle} actions={actions} />
+      <PageHead title={title} subtitle={subtitle} actions={actions} back={back} />
       {children}
     </main>
   );

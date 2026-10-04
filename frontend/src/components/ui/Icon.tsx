@@ -27,6 +27,8 @@ const PATHS: Record<string, ReactNode> = {
   check: <path d="m5 12 5 5L20 7" />,
   card: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></>,
   bank: <><path d="m3 10 9-6 9 6" /><path d="M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18" /></>,
+  back: <path d="m15 18-6-6 6-6" />,
+  download: <><path d="M12 3v12m0 0 4-4m-4 4-4-4" /><path d="M4 19h16" /></>,
   plus: <path d="M12 5v14M5 12h14" />,
   copy: <><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>,
 };

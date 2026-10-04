@@ -238,7 +238,7 @@ export function ServerConsole({ instanceUuid }: Props) {
   };
 
   return (
-    <div>
+    <div className="card" style={{ padding: 14, gap: 0 }}>
       {/* Header */}
       <div
         style={{
@@ -258,7 +258,7 @@ export function ServerConsole({ instanceUuid }: Props) {
               backgroundColor: stateColor[connectionState],
             }}
           />
-          <span style={{ fontSize: 12, color: stateColor[connectionState] }}>
+          <span style={{ fontSize: 12, color: "var(--text-2)" }}>
             {stateLabel[connectionState]}
           </span>
         </div>
@@ -296,7 +296,7 @@ export function ServerConsole({ instanceUuid }: Props) {
       {/* Output */}
       <div ref={outputRef} style={consoleOutputStyle}>
         {lines.length === 0 ? (
-          <div style={{ color: "var(--text-3)" }}>
+          <div style={{ color: "var(--console-dim)" }}>
             Klicke "Verbinden" um die Console zu starten...
           </div>
         ) : (
