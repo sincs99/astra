@@ -4,6 +4,7 @@
  * Variablennamen, damit ältere Komponenten im neuen Look laufen. Neue Komponenten nutzen die Token-Namen direkt.
  */
 @import "./styles/tokens.css";
+@import "./styles/shell.css";
 
 :root { color-scheme: dark; }
 html[data-theme="light"] { color-scheme: light; }

@@ -13,7 +13,7 @@ export const account: Record<keyof typeof de, string> = {
   "account.appearance": "Appearance",
   "account.colorScheme": "Color scheme",
   "account.browserOnly": "This choice applies to this browser only.",
-  "account.themeSystem": "Like the device",
+  "account.themeSystem": "System",
   "account.themeLight": "Light",
   "account.themeDark": "Dark",
   "account.pw.missing": "Please fill in all fields",

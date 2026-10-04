@@ -24,7 +24,7 @@ describe("AccountPage", () => {
   it("zeigt Profil und Link auf die SSH-Keys", async () => {
     mount();
     expect(await screen.findByText("alice@example.com")).toBeTruthy();
-    expect(screen.getByText("Kunde")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Profil" })).getByText("Kunde")).toBeTruthy();
     expect(screen.getAllByRole("link", { name: /SSH-Keys verwalten/ })[0].getAttribute("href")).toBe("/account/ssh-keys");
   });
 

@@ -11,7 +11,7 @@ export const account = {
   "account.appearance": "Darstellung",
   "account.colorScheme": "Farbschema",
   "account.browserOnly": "Die Auswahl gilt nur für diesen Browser.",
-  "account.themeSystem": "Wie das Gerät",
+  "account.themeSystem": "System",
   "account.themeLight": "Hell",
   "account.themeDark": "Dunkel",
   "account.pw.missing": "Bitte alle Felder ausfüllen",
