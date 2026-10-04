@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter } from "react-router-dom";
 import { AdminInstancesPage } from "./AdminInstancesPage";
 import { api } from "../services/api";
+import { setLang } from "../i18n";
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -17,7 +18,7 @@ beforeEach(() => {
   ] as never);
   vi.spyOn(api, "getCurrentUser").mockResolvedValue({ id: 1, username: "root", is_admin: true } as never);
 });
-afterEach(() => { cleanup(); localStorage.clear(); });
+afterEach(() => { cleanup(); localStorage.clear(); setLang("de"); });
 
 async function fillBasics() {
   fireEvent.change(await screen.findByLabelText("Name *"), { target: { value: "Srv" } });
@@ -109,5 +110,51 @@ describe("AdminInstancesPage Transfer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Transfer starten" }));
     await waitFor(() => expect(transfer).toHaveBeenCalledWith("u-1", 8));
     expect(await screen.findByText(/Transfer für "Alt" gestartet/)).toBeTruthy();
+  });
+});
+
+describe("AdminInstancesPage Liste", () => {
+  const inst = { id: 1, uuid: "abcdef12-0000", name: "Alt", description: "Testserver", status: "ready", owner_id: 3, agent_id: 7, blueprint_id: 2,
+    primary_endpoint_id: 11, memory: 512, disk: 1024, cpu: 100 };
+
+  it("listet Instances mit Owner, Agent, Endpoint und Ressourcen", async () => {
+    (api.getInstances as ReturnType<typeof vi.fn>).mockResolvedValue([inst]);
+    render(<MemoryRouter><AdminInstancesPage /></MemoryRouter>);
+    expect(await screen.findByText("Alt")).toBeTruthy();
+    expect(screen.getByText("kunde", { selector: "td" })).toBeTruthy();
+    expect(screen.getByText("N1", { selector: "td" })).toBeTruthy();
+    expect(screen.getByText("0.0.0.0:25565")).toBeTruthy();
+    expect(screen.getByText("512 MB / 1024 MB / 100%")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Instances-Tabelle" })).toBeTruthy();
+  });
+
+  it("sperrt eine Instance nach Bestaetigung", async () => {
+    (api.getInstances as ReturnType<typeof vi.fn>).mockResolvedValue([inst]);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const suspend = vi.spyOn(api, "suspendInstance").mockResolvedValue({} as never);
+    render(<MemoryRouter><AdminInstancesPage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: "Sperren" }));
+    await waitFor(() => expect(suspend).toHaveBeenCalledWith("abcdef12-0000"));
+    expect(confirm).toHaveBeenCalledWith('Instance "Alt" suspendieren?');
+    expect(await screen.findByText('"Alt" suspendiert')).toBeTruthy();
+  });
+
+  it("zeigt einen Ladefehler als Alert mit Erneut-versuchen", async () => {
+    (api.getInstances as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Backend down"));
+    render(<MemoryRouter><AdminInstancesPage /></MemoryRouter>);
+    expect((await screen.findByRole("alert")).textContent).toMatch(/Backend down/);
+    expect(screen.getByRole("button", { name: "Erneut versuchen" })).toBeTruthy();
+  });
+
+  it("zeigt die Oberflaeche auf Englisch", async () => {
+    setLang("en");
+    (api.getInstances as ReturnType<typeof vi.fn>).mockResolvedValue([inst]);
+    render(<MemoryRouter><AdminInstancesPage /></MemoryRouter>);
+    expect(await screen.findByRole("heading", { name: "New instance" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Create instance" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Suspend" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Resources" })).toBeTruthy();
+    expect(screen.getByLabelText("Agent")).toBeTruthy();
+    expect(screen.queryByText("Instance erstellen")).toBeNull();
   });
 });

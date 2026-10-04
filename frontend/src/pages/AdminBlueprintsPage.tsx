@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { api, type Blueprint, type BlueprintVariable } from "../services/api";
 import { BlueprintImport } from "../components/BlueprintImport";
-import {
-  PageLayout, LoadingState, EmptyState, ErrorState, ConfirmButton,
-  Toast, useToast,
-  cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, thStyle, tdStyle,
-} from "../components/ui";
+import { PageLayout, ConfirmButton, Toast, useToast, ScrollRegion } from "../components/ui";
+import { Icon } from "../components/ui/Icon";
+import { Field, ErrorBanner, fieldGrid } from "../components/admin/AdminField";
 import { formatDateTime } from "../lib/dates";
+import { t } from "../i18n";
 
 const EMPTY_VAR: BlueprintVariable = {
   name: "",
@@ -21,6 +20,7 @@ export function AdminBlueprintsPage() {
   const toast = useToast();
   const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Erstell-Formular
@@ -56,10 +56,10 @@ export function AdminBlueprintsPage() {
   const loadBlueprints = async () => {
     try {
       setLoading(true);
-      setError(null);
+      setLoadError(null);
       setBlueprints(await api.getBlueprints());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      setLoadError(err instanceof Error ? err.message : t("ainst.bp.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -110,10 +110,10 @@ export function AdminBlueprintsPage() {
       setName(""); setDescription(""); setDockerImage("");
       setStartupCommand(""); setInstallScript(""); setVariables([]);
       setInstallContainer(""); setConfigStop(""); setStartupDone(""); setFileDenylist("");
-      toast.success("Blueprint erstellt.");
+      toast.success(t("ainst.bp.created"));
       await loadBlueprints();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Erstellen");
+      setError(err instanceof Error ? err.message : t("ainst.bp.createFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -150,10 +150,10 @@ export function AdminBlueprintsPage() {
         variables: editVars,
       });
       setEditingId(null);
-      toast.success("Blueprint aktualisiert.");
+      toast.success(t("ainst.bp.updated"));
       await loadBlueprints();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Speichern");
+      setError(err instanceof Error ? err.message : t("ainst.bp.saveFailed"));
     } finally {
       setEditSubmitting(false);
     }
@@ -163,195 +163,193 @@ export function AdminBlueprintsPage() {
     try {
       setError(null);
       await api.deleteBlueprint(bp.id);
-      toast.success(`Blueprint "${bp.name}" gelöscht.`);
+      toast.success(t("ainst.bp.deleted", { name: bp.name }));
       await loadBlueprints();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Löschen");
+      setError(err instanceof Error ? err.message : t("ainst.bp.deleteFailed"));
     }
   };
 
+  const col = {
+    name: t("ainst.bp.colName"), env: t("ainst.bp.colEnv"), def: t("ainst.bp.colDefault"),
+    viewable: t("ainst.bp.colViewable"), editable: t("ainst.bp.colEditable"),
+  };
+  const yesNo = (v: boolean) => (v ? t("ainst.yes") : t("ainst.no"));
+
   return (
-    <PageLayout title="Blueprints">
+    <PageLayout title={t("ainst.bp.title")}>
       <Toast {...toast} />
+      <div className="stack">
 
-      {/* ── Import (Pterodactyl-Egg) ── */}
-      <BlueprintImport
-        onImported={(bp) => { toast.success(`Blueprint '${bp.name}' importiert.`); loadBlueprints(); }}
-        onError={() => { /* Fehler wird im Import-Formular angezeigt */ }}
-      />
+        {error && <ErrorBanner message={error} />}
 
-      {/* ── Erstell-Formular ── */}
-      <div style={cardStyle}>
-        <h2 style={{ marginTop: 0, fontSize: 18, fontWeight: 700 }}>Neuer Blueprint</h2>
-        {error && <ErrorState message={error} />}
-        <form onSubmit={handleSubmit}>
-          <div style={grid2}>
-            <Field label="Name *">
-              <input type="text" value={name} onChange={e => setName(e.target.value)} required style={inputStyle} placeholder="z.B. Minecraft Vanilla" />
+        {/* ── Import (Pterodactyl-Egg) ── */}
+        <BlueprintImport
+          onImported={(bp) => { toast.success(t("ainst.bp.imported", { name: bp.name })); loadBlueprints(); }}
+          onError={() => { /* Fehler wird im Import-Formular angezeigt */ }}
+        />
+
+        {/* ── Erstell-Formular ── */}
+        <section className="panel" aria-labelledby="bp-new-title">
+          <div className="panel-head"><h2 id="bp-new-title">{t("ainst.bp.newTitle")}</h2></div>
+          <form className="panel-body" onSubmit={handleSubmit}>
+            <p className="hint">{t("ainst.required")}</p>
+            <div style={fieldGrid(240)}>
+              <Field label={t("ainst.bp.name")}>
+                <input className="inp" type="text" value={name} onChange={e => setName(e.target.value)} required aria-required="true" placeholder={t("ainst.bp.namePh")} />
+              </Field>
+              <Field label={t("ainst.bp.dockerImage")}>
+                <input className="inp mono" type="text" value={dockerImage} onChange={e => setDockerImage(e.target.value)} placeholder="itzg/minecraft-server" />
+              </Field>
+              <Field label={t("ainst.bp.startupCommand")}>
+                <input className="inp mono" type="text" value={startupCommand} onChange={e => setStartupCommand(e.target.value)} placeholder="java -jar server.jar" />
+              </Field>
+              <Field label={t("ainst.bp.description")}>
+                <input className="inp" type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder={t("ainst.bp.descriptionPh")} />
+              </Field>
+            </div>
+            <Field label={t("ainst.bp.installScript")}>
+              <textarea className="inp mono" value={installScript} onChange={e => setInstallScript(e.target.value)} rows={3}
+                style={{ padding: "8px 12px", resize: "vertical" }} placeholder={"#!/bin/bash\ncurl -o server.jar ..."} />
             </Field>
-            <Field label="Docker-Image">
-              <input type="text" value={dockerImage} onChange={e => setDockerImage(e.target.value)} style={inputStyle} placeholder="itzg/minecraft-server" />
-            </Field>
-          </div>
-          <div style={grid2}>
-            <Field label="Startup-Befehl">
-              <input type="text" value={startupCommand} onChange={e => setStartupCommand(e.target.value)} style={inputStyle} placeholder="java -jar server.jar" />
-            </Field>
-            <Field label="Beschreibung">
-              <input type="text" value={description} onChange={e => setDescription(e.target.value)} style={inputStyle} placeholder="Kurze Beschreibung" />
-            </Field>
-          </div>
-          <Field label="Install-Script">
-            <textarea
-              value={installScript}
-              onChange={e => setInstallScript(e.target.value)}
-              rows={3}
-              style={{ ...inputStyle, fontFamily: "monospace", fontSize: 12 }}
-              placeholder={"#!/bin/bash\ncurl -o server.jar ..."}
+            <WingsProcessFields
+              installContainer={installContainer} onInstallContainer={setInstallContainer}
+              configStop={configStop} onConfigStop={setConfigStop}
+              startupDone={startupDone} onStartupDone={setStartupDone}
+              fileDenylist={fileDenylist} onFileDenylist={setFileDenylist}
             />
-          </Field>
-          <WingsProcessFields
-            installContainer={installContainer} onInstallContainer={setInstallContainer}
-            configStop={configStop} onConfigStop={setConfigStop}
-            startupDone={startupDone} onStartupDone={setStartupDone}
-            fileDenylist={fileDenylist} onFileDenylist={setFileDenylist}
-          />
+            <VariableEditor
+              vars={variables}
+              onAdd={() => addVar(variables, setVariables)}
+              onRemove={idx => removeVar(variables, idx, setVariables)}
+              onUpdate={(idx, field, value) => updateVar(variables, idx, field, value, setVariables)}
+            />
+            <div className="row-actions">
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? t("ainst.bp.creating") : t("ainst.bp.create")}
+              </button>
+            </div>
+          </form>
+        </section>
 
-          <VariableEditor
-            vars={variables}
-            onAdd={() => addVar(variables, setVariables)}
-            onRemove={idx => removeVar(variables, idx, setVariables)}
-            onUpdate={(idx, field, value) => updateVar(variables, idx, field, value, setVariables)}
-          />
-
-          <div style={{ marginTop: 16 }}>
-            <button type="submit" disabled={submitting} style={{ ...btnPrimary, opacity: submitting ? 0.6 : 1 }}>
-              {submitting ? "Wird erstellt..." : "Blueprint erstellen"}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* ── Blueprint-Liste ── */}
-      {loading ? (
-        <LoadingState message="Blueprints werden geladen..." />
-      ) : blueprints.length === 0 ? (
-        <EmptyState icon="📋" message="Noch keine Blueprints vorhanden." />
-      ) : (
-        blueprints.map(bp => (
-          <div key={bp.id} style={cardStyle}>
-            {editingId === bp.id ? (
-              /* ── Edit-Modus ── */
-              <div>
-                <h3 style={{ marginTop: 0, fontSize: 16 }}>Blueprint bearbeiten #{bp.id}</h3>
-                <div style={grid2}>
-                  <Field label="Name *">
-                    <input type="text" value={editName} onChange={e => setEditName(e.target.value)} style={inputStyle} />
-                  </Field>
-                  <Field label="Docker-Image">
-                    <input type="text" value={editDockerImage} onChange={e => setEditDockerImage(e.target.value)} style={inputStyle} />
-                  </Field>
-                </div>
-                <div style={grid2}>
-                  <Field label="Startup-Befehl">
-                    <input type="text" value={editStartupCommand} onChange={e => setEditStartupCommand(e.target.value)} style={inputStyle} />
-                  </Field>
-                </div>
-                <Field label="Install-Script">
-                  <textarea
-                    value={editInstallScript}
-                    onChange={e => setEditInstallScript(e.target.value)}
-                    rows={3}
-                    style={{ ...inputStyle, fontFamily: "monospace", fontSize: 12 }}
-                  />
-                </Field>
-                <WingsProcessFields
-                  installContainer={editInstallContainer} onInstallContainer={setEditInstallContainer}
-                  configStop={editConfigStop} onConfigStop={setEditConfigStop}
-                  startupDone={editStartupDone} onStartupDone={setEditStartupDone}
-                  fileDenylist={editFileDenylist} onFileDenylist={setEditFileDenylist}
-                />
-                <VariableEditor
-                  vars={editVars}
-                  onAdd={() => addVar(editVars, setEditVars)}
-                  onRemove={idx => removeVar(editVars, idx, setEditVars)}
-                  onUpdate={(idx, field, value) => updateVar(editVars, idx, field, value, setEditVars)}
-                />
-                <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-                  <button
-                    onClick={() => handleUpdate(bp)}
-                    disabled={editSubmitting}
-                    style={{ ...btnPrimary, opacity: editSubmitting ? 0.6 : 1 }}
-                  >
-                    {editSubmitting ? "Speichern..." : "Speichern"}
-                  </button>
-                  <button onClick={() => setEditingId(null)} style={btnDefault}>Abbrechen</button>
-                </div>
-              </div>
-            ) : (
-              /* ── Anzeige-Modus ── */
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <strong style={{ fontSize: 16 }}>{bp.name}</strong>
-                    <span style={{ marginLeft: 8, color: "var(--fg-muted)", fontSize: 12 }}>#{bp.id}</span>
-                    {bp.description && <div style={{ fontSize: 13, color: "var(--fg-muted)", marginTop: 2 }}>{bp.description}</div>}
-                  </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={() => startEdit(bp)} style={btnDefault}>✏️ Bearbeiten</button>
-                    <ConfirmButton
-                      label="🗑 Löschen"
-                      confirmMessage={`Blueprint "${bp.name}" wirklich löschen?`}
-                      onConfirm={() => handleDelete(bp)}
-                      danger
-                      size="sm"
+        {/* ── Blueprint-Liste ── */}
+        <h2 className="section-title" style={{ margin: 0 }}>{t("ainst.bp.listTitle")}</h2>
+        {loadError && <ErrorBanner message={loadError} title={t("ainst.errorTitle")} retryLabel={t("ainst.retry")} onRetry={loadBlueprints} />}
+        {loading ? (
+          <p className="hint" role="status" aria-busy="true">{t("ainst.bp.loading")}</p>
+        ) : blueprints.length === 0 ? (
+          !loadError && <p className="hint">{t("ainst.bp.empty")}</p>
+        ) : (
+          blueprints.map(bp => (
+            <section key={bp.id} className="panel" aria-labelledby={`bp-title-${bp.id}`}>
+              {editingId === bp.id ? (
+                /* ── Edit-Modus ── */
+                <>
+                  <div className="panel-head"><h2 id={`bp-title-${bp.id}`}>{t("ainst.bp.editTitle", { id: bp.id })}</h2></div>
+                  <form className="panel-body" onSubmit={e => { e.preventDefault(); handleUpdate(bp); }}>
+                    <p className="hint">{t("ainst.required")}</p>
+                    <div style={fieldGrid(240)}>
+                      <Field label={t("ainst.bp.name")}>
+                        <input className="inp" type="text" value={editName} onChange={e => setEditName(e.target.value)} required aria-required="true" />
+                      </Field>
+                      <Field label={t("ainst.bp.dockerImage")}>
+                        <input className="inp mono" type="text" value={editDockerImage} onChange={e => setEditDockerImage(e.target.value)} />
+                      </Field>
+                      <Field label={t("ainst.bp.startupCommand")}>
+                        <input className="inp mono" type="text" value={editStartupCommand} onChange={e => setEditStartupCommand(e.target.value)} />
+                      </Field>
+                    </div>
+                    <Field label={t("ainst.bp.installScript")}>
+                      <textarea className="inp mono" value={editInstallScript} onChange={e => setEditInstallScript(e.target.value)} rows={3}
+                        style={{ padding: "8px 12px", resize: "vertical" }} />
+                    </Field>
+                    <WingsProcessFields
+                      installContainer={editInstallContainer} onInstallContainer={setEditInstallContainer}
+                      configStop={editConfigStop} onConfigStop={setEditConfigStop}
+                      startupDone={editStartupDone} onStartupDone={setEditStartupDone}
+                      fileDenylist={editFileDenylist} onFileDenylist={setEditFileDenylist}
                     />
+                    <VariableEditor
+                      vars={editVars}
+                      onAdd={() => addVar(editVars, setEditVars)}
+                      onRemove={idx => removeVar(editVars, idx, setEditVars)}
+                      onUpdate={(idx, field, value) => updateVar(editVars, idx, field, value, setEditVars)}
+                    />
+                    <div className="row-actions">
+                      <button type="submit" className="btn btn-primary" disabled={editSubmitting}>
+                        {editSubmitting ? t("ainst.bp.saving") : t("ainst.bp.save")}
+                      </button>
+                      <button type="button" className="btn" onClick={() => setEditingId(null)}>{t("ainst.bp.cancel")}</button>
+                    </div>
+                  </form>
+                </>
+              ) : (
+                /* ── Anzeige-Modus ── */
+                <>
+                  <div className="panel-head">
+                    <h2 id={`bp-title-${bp.id}`}>{bp.name} <span className="mono hint">#{bp.id}</span></h2>
+                    <div className="row-actions" style={{ marginTop: 0 }}>
+                      <button type="button" className="btn btn-sm" onClick={() => startEdit(bp)}>
+                        <Icon name="pencil" size={14} />{t("ainst.bp.edit")}
+                      </button>
+                      <ConfirmButton
+                        label={t("ainst.bp.delete")}
+                        confirmMessage={t("ainst.bp.confirmDelete", { name: bp.name })}
+                        onConfirm={() => handleDelete(bp)}
+                        danger
+                        size="sm"
+                      />
+                    </div>
                   </div>
-                </div>
+                  <div className="panel-body">
+                    {bp.description && <p className="hint" style={{ color: "var(--text-2)" }}>{bp.description}</p>}
+                    <div className="kv-list">
+                      {bp.docker_image && <div className="kv"><span>{t("ainst.bp.image")}</span><span className="mono">{bp.docker_image}</span></div>}
+                      {bp.startup_command && <div className="kv"><span>{t("ainst.bp.startup")}</span><span className="mono">{bp.startup_command}</span></div>}
+                      <div className="kv"><span>{t("ainst.bp.stop")}</span><span className="mono">{bp.config_stop || "stop"}</span></div>
+                      <div className="kv">
+                        <span>{t("ainst.bp.startupDetect")}</span>
+                        {bp.config_startup?.done?.length
+                          ? <span className="mono">{bp.config_startup.done.join(" | ")}</span>
+                          : <span className="text-danger">{t("ainst.bp.startupDetectMissing")}</span>}
+                      </div>
+                      <div className="kv"><span>{t("ainst.bp.variablesCount")}</span><span className="mono">{bp.variables?.length ?? 0}</span></div>
+                      <div className="kv"><span>{t("ainst.bp.created_at")}</span><span>{formatDateTime(bp.created_at)}</span></div>
+                    </div>
 
-                <div style={{ marginTop: 8, display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12, color: "var(--fg-soft)" }}>
-                  {bp.docker_image && <span><strong>Image:</strong> <code>{bp.docker_image}</code></span>}
-                  {bp.startup_command && <span><strong>Startup:</strong> <code>{bp.startup_command}</code></span>}
-                  <span><strong>Stop:</strong> <code>{bp.config_stop || "stop"}</code></span>
-                  <span>
-                    <strong>Startup-Erkennung:</strong>{" "}
-                    {bp.config_startup?.done?.length
-                      ? <code>{bp.config_startup.done.join(" | ")}</code>
-                      : <span style={{ color: "var(--c-red)" }}>fehlt – Server bleibt in Wings auf „starting“</span>}
-                  </span>
-                  <span><strong>Variablen:</strong> {bp.variables?.length ?? 0}</span>
-                  <span style={{ color: "var(--fg-muted)" }}>{formatDateTime(bp.created_at)}</span>
-                </div>
-
-                {bp.variables && bp.variables.length > 0 && (
-                  <table style={{ marginTop: 10, width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr>
-                        <th style={{ ...thStyle, fontSize: 12 }}>Name</th>
-                        <th style={{ ...thStyle, fontSize: 12 }}>ENV-Variable</th>
-                        <th style={{ ...thStyle, fontSize: 12 }}>Standard</th>
-                        <th style={{ ...thStyle, fontSize: 12 }}>Sichtbar</th>
-                        <th style={{ ...thStyle, fontSize: 12 }}>Editierbar</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bp.variables.map((v, i) => (
-                        <tr key={i}>
-                          <td style={{ ...tdStyle, fontSize: 12 }}>{v.name}</td>
-                          <td style={{ ...tdStyle, fontSize: 12 }}><code>{v.env_var}</code></td>
-                          <td style={{ ...tdStyle, fontSize: 12 }}>{v.default_value || "–"}</td>
-                          <td style={{ ...tdStyle, fontSize: 12 }}>{v.user_viewable ? "✅" : "❌"}</td>
-                          <td style={{ ...tdStyle, fontSize: 12 }}>{v.user_editable ? "✅" : "❌"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            )}
-          </div>
-        ))
-      )}
+                    {bp.variables && bp.variables.length > 0 && (
+                      <ScrollRegion label={t("ainst.bp.varsTableLabel", { name: bp.name })}>
+                        <table className="tbl tbl-cards">
+                          <thead>
+                            <tr>
+                              <th scope="col">{col.name}</th>
+                              <th scope="col">{col.env}</th>
+                              <th scope="col">{col.def}</th>
+                              <th scope="col">{col.viewable}</th>
+                              <th scope="col">{col.editable}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {bp.variables.map((v, i) => (
+                              <tr key={i}>
+                                <td data-label={col.name}>{v.name}</td>
+                                <td data-label={col.env}><span className="mono">{v.env_var}</span></td>
+                                <td data-label={col.def}>{v.default_value || t("ainst.none")}</td>
+                                <td data-label={col.viewable}>{yesNo(v.user_viewable)}</td>
+                                <td data-label={col.editable}>{yesNo(v.user_editable)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </ScrollRegion>
+                    )}
+                  </div>
+                </>
+              )}
+            </section>
+          ))
+        )}
+      </div>
     </PageLayout>
   );
 }
@@ -370,51 +368,47 @@ function VariableEditor({
   onUpdate: (idx: number, field: keyof BlueprintVariable, value: string | boolean) => void;
 }) {
   return (
-    <div style={{ marginTop: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <strong style={{ fontSize: 13 }}>Variablen ({vars.length})</strong>
-        <button type="button" onClick={onAdd} style={{ ...btnDefault, padding: "4px 12px", fontSize: 12 }}>
-          + Variable
+    <fieldset className="fieldset">
+      <legend className="panel-title" style={{ padding: 0 }}>{t("ainst.bp.variables", { n: vars.length })}</legend>
+      <div className="row-actions" style={{ marginTop: 0 }}>
+        <button type="button" className="btn btn-sm" onClick={onAdd}>
+          <Icon name="plus" size={14} />{t("ainst.bp.addVar")}
         </button>
       </div>
       {vars.map((v, i) => (
-        <div key={i} style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 10, marginBottom: 8, backgroundColor: "var(--bg-page)" }}>
-          <div style={grid3}>
-            <Field label="Name">
-              <input type="text" value={v.name} onChange={e => onUpdate(i, "name", e.target.value)} style={{ ...inputStyle, fontSize: 12 }} placeholder="Server Port" />
+        <div key={i} className="stack" style={{ gap: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-card)", padding: 12, background: "var(--surface-2)" }}>
+          <div style={fieldGrid(160)}>
+            <Field label={t("ainst.bp.varName")}>
+              <input className="inp" type="text" value={v.name} onChange={e => onUpdate(i, "name", e.target.value)} placeholder="Server Port" />
             </Field>
-            <Field label="ENV-Variable">
-              <input type="text" value={v.env_var} onChange={e => onUpdate(i, "env_var", e.target.value)} style={{ ...inputStyle, fontSize: 12 }} placeholder="SERVER_PORT" />
+            <Field label={t("ainst.bp.varEnv")}>
+              <input className="inp mono" type="text" value={v.env_var} onChange={e => onUpdate(i, "env_var", e.target.value)} placeholder="SERVER_PORT" />
             </Field>
-            <Field label="Standardwert">
-              <input type="text" value={v.default_value} onChange={e => onUpdate(i, "default_value", e.target.value)} style={{ ...inputStyle, fontSize: 12 }} placeholder="25565" />
+            <Field label={t("ainst.bp.varDefault")}>
+              <input className="inp mono" type="text" value={v.default_value} onChange={e => onUpdate(i, "default_value", e.target.value)} placeholder="25565" />
             </Field>
           </div>
-          <div style={{ display: "flex", gap: 16, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ flex: 1 }}>
-              <input
-                type="text"
-                value={v.description}
-                onChange={e => onUpdate(i, "description", e.target.value)}
-                style={{ ...inputStyle, fontSize: 12 }}
-                placeholder="Beschreibung für den User"
-              />
+          <div className="row-actions" style={{ marginTop: 0 }}>
+            <div style={{ flex: "1 1 220px" }}>
+              <input className="inp" type="text" value={v.description} onChange={e => onUpdate(i, "description", e.target.value)}
+                aria-label={`${t("ainst.bp.varDescription")} (${i + 1})`} placeholder={t("ainst.bp.varDescription")} />
             </div>
-            <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, whiteSpace: "nowrap" }}>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--fs-small)", whiteSpace: "nowrap" }}>
               <input type="checkbox" checked={v.user_viewable} onChange={e => onUpdate(i, "user_viewable", e.target.checked)} />
-              Sichtbar
+              {t("ainst.bp.varViewable")}
             </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, whiteSpace: "nowrap" }}>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--fs-small)", whiteSpace: "nowrap" }}>
               <input type="checkbox" checked={v.user_editable} onChange={e => onUpdate(i, "user_editable", e.target.checked)} />
-              Editierbar
+              {t("ainst.bp.varEditable")}
             </label>
-            <button type="button" onClick={() => onRemove(i)} style={{ ...btnDefault, padding: "4px 8px", fontSize: 12, color: "var(--c-red)", borderColor: "var(--border-red)" }}>
-              🗑
+            <button type="button" className="btn btn-sm btn-icon btn-danger-text" onClick={() => onRemove(i)}
+              aria-label={t("ainst.bp.removeVar", { n: i + 1 })} title={t("ainst.bp.removeVar", { n: i + 1 })}>
+              <Icon name="trash" size={14} />
             </button>
           </div>
         </div>
       ))}
-    </div>
+    </fieldset>
   );
 }
 
@@ -432,62 +426,25 @@ function WingsProcessFields({
   fileDenylist: string; onFileDenylist: (v: string) => void;
 }) {
   return (
-    <div style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 10, marginTop: 8, backgroundColor: "var(--bg-page)" }}>
-      <strong style={{ fontSize: 13 }}>Wings-Prozesskonfiguration</strong>
-      <div style={{ ...grid2, marginTop: 8 }}>
-        <Field label="Install-Container">
-          <input
-            type="text"
-            value={installContainer}
-            onChange={e => onInstallContainer(e.target.value)}
-            style={{ ...inputStyle, fontSize: 12 }}
-            placeholder="ghcr.io/pterodactyl/installers:debian"
-          />
+    <fieldset className="fieldset">
+      <legend className="panel-title">{t("ainst.bp.wingsTitle")}</legend>
+      <div style={fieldGrid(240)}>
+        <Field label={t("ainst.bp.installContainer")}>
+          <input className="inp mono" type="text" value={installContainer} onChange={e => onInstallContainer(e.target.value)}
+            placeholder="ghcr.io/pterodactyl/installers:debian" />
         </Field>
-        <Field label="Stop-Befehl (oder ^SIGTERM)">
-          <input
-            type="text"
-            value={configStop}
-            onChange={e => onConfigStop(e.target.value)}
-            style={{ ...inputStyle, fontSize: 12 }}
-            placeholder="stop"
-          />
+        <Field label={t("ainst.bp.configStop")}>
+          <input className="inp mono" type="text" value={configStop} onChange={e => onConfigStop(e.target.value)} placeholder="stop" />
+        </Field>
+        <Field label={t("ainst.bp.startupDone")}>
+          <textarea className="inp mono" value={startupDone} onChange={e => onStartupDone(e.target.value)} rows={2}
+            style={{ padding: "8px 12px", resize: "vertical" }} placeholder={")! For help, type "} />
+        </Field>
+        <Field label={t("ainst.bp.fileDenylist")}>
+          <textarea className="inp mono" value={fileDenylist} onChange={e => onFileDenylist(e.target.value)} rows={2}
+            style={{ padding: "8px 12px", resize: "vertical" }} placeholder={"*.jar"} />
         </Field>
       </div>
-      <div style={grid2}>
-        <Field label="Startup-Erkennung – Zeile(n), ab denen der Server läuft (eine pro Zeile)">
-          <textarea
-            value={startupDone}
-            onChange={e => onStartupDone(e.target.value)}
-            rows={2}
-            style={{ ...inputStyle, fontFamily: "monospace", fontSize: 12 }}
-            placeholder={")! For help, type "}
-          />
-        </Field>
-        <Field label="Datei-Denylist (eine pro Zeile)">
-          <textarea
-            value={fileDenylist}
-            onChange={e => onFileDenylist(e.target.value)}
-            rows={2}
-            style={{ ...inputStyle, fontFamily: "monospace", fontSize: 12 }}
-            placeholder={"*.jar"}
-          />
-        </Field>
-      </div>
-    </div>
+    </fieldset>
   );
 }
-
-// ── Hilfs-Komponenten & Styles ──────────────────────────
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 8 }}>
-      <label style={labelStyle}>{label}</label>
-      {children}
-    </div>
-  );
-}
-
-const grid2: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 };
-const grid3: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 };

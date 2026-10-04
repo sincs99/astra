@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
 import { api, type Blueprint } from "../services/api";
 import { parseEgg } from "../lib/eggParser";
-import { cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, ErrorState } from "./ui";
+import { t } from "../i18n";
+import { Field, ErrorBanner } from "./admin/AdminField";
 
 const MAX_EGG_BYTES = 1024 * 1024;
 
@@ -32,7 +33,7 @@ export function BlueprintImport({ onImported, onError }: BlueprintImportProps) {
       setError(null);
     } catch (err) {
       setParsed(null);
-      setError(err instanceof Error ? err.message : "Ungültige Eingabe");
+      setError(err instanceof Error ? err.message : t("ainst.imp.invalid"));
     }
   };
 
@@ -40,7 +41,7 @@ export function BlueprintImport({ onImported, onError }: BlueprintImportProps) {
     if (!file) return;
     if (file.size > MAX_EGG_BYTES) {
       setParsed(null);
-      setError("Die Datei ist zu gross (max. 1 MB).");
+      setError(t("ainst.imp.tooBig"));
       return;
     }
     check(await file.text());
@@ -54,7 +55,7 @@ export function BlueprintImport({ onImported, onError }: BlueprintImportProps) {
       onImported(blueprint);
       reset();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Import fehlgeschlagen";
+      const message = err instanceof Error ? err.message : t("ainst.imp.failed");
       setError(message);
       onError(message);
     } finally {
@@ -63,56 +64,51 @@ export function BlueprintImport({ onImported, onError }: BlueprintImportProps) {
   };
 
   return (
-    <div style={cardStyle}>
-      <h2 style={{ marginTop: 0, fontSize: 18, fontWeight: 700 }}>Blueprint importieren</h2>
-      <p style={{ marginTop: -8, color: "var(--fg-muted)", fontSize: 13 }}>
-        Pterodactyl-Egg als JSON-Datei hochladen oder einfügen.
-      </p>
+    <section className="panel" aria-labelledby="egg-import-title">
+      <div className="panel-head"><h2 id="egg-import-title">{t("ainst.imp.title")}</h2></div>
+      <div className="panel-body">
+        <p className="hint">{t("ainst.imp.intro")}</p>
 
-      <div style={{ marginBottom: 12 }}>
-        <label htmlFor="egg-file" style={labelStyle}>Egg-Datei (.json)</label>
-        <input
-          id="egg-file"
-          ref={fileRef}
-          type="file"
-          accept="application/json,.json"
-          onChange={(e) => handleFile(e.target.files?.[0])}
-        />
-      </div>
+        <Field label={t("ainst.imp.file")}>
+          <input ref={fileRef} type="file" accept="application/json,.json" onChange={(e) => handleFile(e.target.files?.[0])} />
+        </Field>
 
-      <div style={{ marginBottom: 12 }}>
-        <label htmlFor="egg-text" style={labelStyle}>oder JSON einfügen</label>
-        <textarea
-          id="egg-text"
-          value={text}
-          onChange={(e) => check(e.target.value)}
-          rows={8}
-          spellCheck={false}
-          style={{ ...inputStyle, fontFamily: "monospace", fontSize: 12, resize: "vertical" }}
-          placeholder='{ "name": "Minecraft", "docker_images": { ... }, "variables": [ ... ] }'
-        />
-      </div>
+        <Field label={t("ainst.imp.text")}>
+          <textarea
+            className="inp mono"
+            value={text}
+            onChange={(e) => check(e.target.value)}
+            rows={8}
+            spellCheck={false}
+            aria-invalid={error ? true : undefined}
+            style={{ padding: "8px 12px", resize: "vertical" }}
+            placeholder='{ "name": "Minecraft", "docker_images": { ... }, "variables": [ ... ] }'
+          />
+        </Field>
 
-      {error && <ErrorState message={error} />}
+        {error && <ErrorBanner message={error} />}
 
-      {parsed && (
-        <div style={{ padding: 10, marginBottom: 12, backgroundColor: "var(--tint-green)", borderRadius: 6, fontSize: 13 }}>
-          <strong>{parsed.preview.name}</strong>
-          {parsed.preview.author && <> von {parsed.preview.author}</>}
-          <div style={{ color: "var(--fg-soft)" }}>
-            {parsed.preview.image ? <>Image: <code>{parsed.preview.image}</code> · </> : null}
-            {parsed.preview.variableCount} Variable(n)
+        {parsed && (
+          <div role="status" className="banner banner-info">
+            <span className="dot dot-ok" aria-hidden="true" />
+            <div className="banner-text">
+              <strong>{parsed.preview.name}</strong>
+              {parsed.preview.author && <> {t("ainst.imp.by", { author: parsed.preview.author })}</>}
+              <div className="hint" style={{ color: "var(--text-2)" }}>
+                {parsed.preview.image ? <>{t("ainst.imp.image")}: <span className="mono">{parsed.preview.image}</span> · </> : null}
+                {t("ainst.imp.variableCount", { n: parsed.preview.variableCount })}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div style={{ display: "flex", gap: 8 }}>
-        <button type="button" onClick={handleImport} disabled={!parsed || importing}
-          style={{ ...btnPrimary, opacity: !parsed || importing ? 0.6 : 1, cursor: !parsed || importing ? "not-allowed" : "pointer" }}>
-          {importing ? "Wird importiert..." : "Importieren"}
-        </button>
-        <button type="button" onClick={reset} disabled={importing} style={btnDefault}>Zurücksetzen</button>
+        <div className="row-actions">
+          <button type="button" className="btn btn-primary" onClick={handleImport} disabled={!parsed || importing}>
+            {importing ? t("ainst.imp.importing") : t("ainst.imp.import")}
+          </button>
+          <button type="button" className="btn" onClick={reset} disabled={importing}>{t("ainst.imp.reset")}</button>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

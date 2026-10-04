@@ -1,4 +1,5 @@
 import type { Product, ProductInput } from "../services/api";
+import { t } from "../i18n";
 import { centsToEuroInput, parseEuroToCents } from "./money";
 
 export interface ProductFormValues {
@@ -48,32 +49,32 @@ function int(value: string, min: number, max = Number.MAX_SAFE_INTEGER): number 
 
 /** Liefert den API-Payload oder eine Fehlermeldung (string). */
 export function toProductPayload(v: ProductFormValues): ProductInput | string {
-  if (!v.name.trim()) return "Bitte einen Namen angeben.";
-  if (v.blueprintId === "") return "Bitte einen Blueprint wählen.";
+  if (!v.name.trim()) return t("ainst.prod.errName");
+  if (v.blueprintId === "") return t("ainst.prod.errBlueprint");
   const memory = int(v.memory, 1);
   const disk = int(v.disk, 1);
   const cpu = int(v.cpu, 1);
   const swap = int(v.swap, 0);
   const io = int(v.io, 10, 1000);
-  if (memory === null) return "Memory (MB) muss eine ganze Zahl ≥ 1 sein.";
-  if (disk === null) return "Disk (MB) muss eine ganze Zahl ≥ 1 sein.";
-  if (cpu === null) return "CPU (%) muss eine ganze Zahl ≥ 1 sein.";
-  if (swap === null) return "Swap (MB) muss eine ganze Zahl ≥ 0 sein.";
-  if (io === null) return "IO muss zwischen 10 und 1000 liegen.";
+  if (memory === null) return t("ainst.prod.errMemory");
+  if (disk === null) return t("ainst.prod.errDisk");
+  if (cpu === null) return t("ainst.prod.errCpu");
+  if (swap === null) return t("ainst.prod.errSwap");
+  if (io === null) return t("ainst.prod.errIo");
   const priceCents = parseEuroToCents(v.price);
-  if (priceCents === null) return "Der Preis muss ein Betrag in Euro mit höchstens 2 Dezimalstellen sein, z.B. 9,99.";
+  if (priceCents === null) return t("ainst.prod.errPrice");
   const currency = v.currency.trim().toUpperCase();
-  if (!/^[A-Z]{3}$/.test(currency)) return "Die Währung muss ein 3-stelliger Code sein, z.B. EUR.";
+  if (!/^[A-Z]{3}$/.test(currency)) return t("ainst.prod.errCurrency");
   const days = int(v.billingPeriodDays, 1, 3650);
-  if (days === null) return "Die Laufzeit muss zwischen 1 und 3650 Tagen liegen.";
+  if (days === null) return t("ainst.prod.errDays");
   let max: number | null = null;
   if (v.maxInstancesPerUser.trim() !== "") {
     max = int(v.maxInstancesPerUser, 1);
-    if (max === null) return "Max. Instances pro Nutzer muss leer (unbegrenzt) oder ≥ 1 sein.";
+    if (max === null) return t("ainst.prod.errMax");
   }
   // Gratis-Produkte brauchen ein Limit, sonst gaebe es unbegrenzt viele Gratis-Server (wie im Backend)
   if (priceCents === 0 && max === null) {
-    return "Kostenlose Produkte brauchen „Max. Instances pro Nutzer“ (sonst unbegrenzt viele Gratis-Server).";
+    return t("ainst.prod.errFree");
   }
   return {
     name: v.name.trim(),

@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+
 export interface EggPreview {
   name: string;
   author: string | null;
@@ -11,14 +13,14 @@ export function parseEgg(text: string): { egg: Record<string, unknown>; preview:
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error("Kein gültiges JSON.");
+    throw new Error(t("ainst.imp.errJson"));
   }
   if (!data || typeof data !== "object" || Array.isArray(data)) {
-    throw new Error("Das Egg muss ein JSON-Objekt sein.");
+    throw new Error(t("ainst.imp.errObject"));
   }
   const egg = data as Record<string, unknown>;
   if (typeof egg.name !== "string" || !egg.name.trim()) {
-    throw new Error("Im Egg fehlt das Feld 'name'. Ist das wirklich ein Pterodactyl-Egg?");
+    throw new Error(t("ainst.imp.errName"));
   }
   const images = egg.docker_images;
   const firstImage =
