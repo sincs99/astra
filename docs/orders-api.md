@@ -299,6 +299,23 @@ Steuernummer bzw. USt-IdNr. des Anbieters, Anschrift des Kunden, Umsatzsteuer-Au
 Kleinunternehmer-Hinweis), Leistungszeitraum, PDF bzw. revisionssichere Aufbewahrung, Rechnungskorrektur bei
 Erstattungen (Gutschrift) und die rechtliche Prüfung. Bis dahin Rechnungen außerhalb von Astra erstellen.
 
+## Sprache der Servertexte (M67)
+
+Mails und Belege folgen der Sprache des Kunden (`users.locale`, `de` oder `en`, nicht gesetzt = `de`):
+
+| Aufruf | Wirkung |
+|---|---|
+| `PATCH /api/client/account` `{"locale": "en"}` | setzt die Sprache; Antwort ist das Nutzerobjekt. Andere Werte: 400 `{code: "invalid_locale"}`; Body ohne `locale`: 400 |
+| `POST /api/auth/register` mit optionalem `locale` | Sprache von Anfang an (ungültig: 400); die Bestätigungsmail kommt bereits in dieser Sprache |
+| `GET /api/auth/me`, Nutzerobjekt überall | enthält `locale` (immer `de` oder `en`) |
+
+Übersetzt sind alle Kunden-Mails (Bestätigung, Passwort-Reset, Zahlung eingegangen, Server bereit, Verlängerung, Erinnerung, Sperre, Löschhinweis,
+Beendet, Erstattung, Recovery-Code verwendet) und der Zahlungsbeleg (Titel, Zeilenbezeichnungen, Hinweis „kein Steuerbeleg“). Der Beleg wird beim Abruf in der
+**aktuellen** Sprache des Kunden gerendert (`format=json` ist sprachneutral); Anbieter-Kopf (`INVOICE_SELLER`) und Fußzeile (`RECEIPT_FOOTER`) bleiben der
+Text des Betreibers. Betrag und Datum folgen der Sprache: DE `1.234,56 EUR` und `04.10.2026 14:05 UTC`, EN `€1,234.56` (Symbole für EUR, USD, GBP, sonst
+`CHF 1,234.56`) und `4 Oct 2026, 14:05 UTC`. **Deutsch bleiben:** Admin-Alerts, API-Fehlermeldungen, Activity-Beschreibungen und Webhook-Texte. Neue
+Sprachen: in `backend/app/i18n/messages.py` ergänzen und `SUPPORTED_LOCALES` erweitern.
+
 ## Admin-Benachrichtigung (M58)
 
 Astra meldet Störungen aktiv, sobald `ADMIN_ALERT_EMAIL` und/oder `ADMIN_ALERT_WEBHOOK_URL` gesetzt sind (Standard: aus):
