@@ -7,6 +7,7 @@ import { formatPrice } from "../lib/money";
 import {
   PageLayout, StatusBadge, LoadingState, ErrorState, EmptyState, ConfirmButton, Toast, useToast,
   cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, thStyle, tdStyle,
+  ScrollRegion,
 } from "../components/ui";
 
 const STATUS_VALUES = ["pending_payment", "awaiting_provisioning", "active", "past_due", "cancelled", "expired"];
@@ -115,7 +116,7 @@ export function AdminOrdersPage() {
       ) : orders.length === 0 && !error ? (
         <EmptyState icon="🧾" message="Keine Bestellungen gefunden." />
       ) : (
-        <div style={{ overflowX: "auto" }}>
+        <ScrollRegion label="Bestellungen-Tabelle">
           <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #e0e0e0" }}>
             <caption style={{ position: "absolute", left: -9999 }}>Bestellungen</caption>
             <thead>
@@ -184,7 +185,7 @@ export function AdminOrdersPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       )}
     </PageLayout>
   );

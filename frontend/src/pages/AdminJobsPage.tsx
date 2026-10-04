@@ -4,6 +4,7 @@ import { api, type JobEntry, type JobSummary } from "../services/api";
 import {
   PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState,
   cardStyle, inputStyle, labelStyle, btnDefault, thStyle, tdStyle,
+  ScrollRegion,
 } from "../components/ui";
 import { formatLogTime } from "../lib/dates";
 
@@ -100,7 +101,7 @@ export function AdminJobsPage() {
         <EmptyState icon="⚙️" message="Keine Jobs gefunden." />
       ) : (
         <>
-          <div style={{ overflowX: "auto" }}>
+          <ScrollRegion label="Jobs-Tabelle">
             <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #e0e0e0" }}>
               <thead>
                 <tr style={{ backgroundColor: "#f5f5f5" }}>
@@ -143,7 +144,7 @@ export function AdminJobsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollRegion>
 
           {pages > 1 && (
             <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 16 }}>

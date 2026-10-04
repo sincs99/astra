@@ -41,7 +41,7 @@
 ### UI / Frontend
 - Responsive Design: Kundenseiten (Dashboard, Server, Bestellungen, Konto, Shop) sind mobil nutzbar (Hamburger-Menue, Bestellungen als Karten); Admin-Tabellen scrollen auf kleinen Bildschirmen horizontal.
 - File-Upload nur fuer Textdateien bis 1 MB (kein Multipart-Endpoint im Backend).
-- Nicht alle Admin-Seiten verwenden bereits die neuen `PageLayout`/`StatusBadge`-Komponenten (schrittweise Migration).
+- Alle Seiten mit Navigation nutzen `PageLayout` (Tab-Titel, Skip-Link) und `StatusBadge`; Tabellen scrollen auf kleinen Bildschirmen horizontal in einem per Tastatur fokussierbaren Bereich (`ScrollRegion`). Nur die Bestellungen des Kunden werden mobil als Karten dargestellt.
 - Keine Echtzeit-Updates via WebSocket fuer Admin-Ansichten; Jobs, Fleet Monitoring, Dashboard und Admin-Instances pollen alle 15s (abschaltbar), andere Seiten nur manuell.
 
 ### Monitoring / Observability

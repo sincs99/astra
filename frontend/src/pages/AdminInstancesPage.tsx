@@ -14,6 +14,7 @@ import {
   PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState,
   Toast, useToast, ConfirmButton,
   cardStyle, inputStyle, labelStyle, btnPrimary, thStyle, tdStyle,
+  ScrollRegion,
 } from "../components/ui";
 
 export function AdminInstancesPage() {
@@ -205,7 +206,7 @@ export function AdminInstancesPage() {
       ) : instances.length === 0 ? (
         <EmptyState icon="🖥️" message="Noch keine Instances vorhanden." />
       ) : (
-        <div style={{ overflowX: "auto" }}>
+        <ScrollRegion label="Instances-Tabelle">
           <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #e0e0e0" }}>
             <thead>
               <tr style={{ backgroundColor: "#f5f5f5" }}>
@@ -332,7 +333,7 @@ export function AdminInstancesPage() {
               })}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       )}
     </PageLayout>
   );
