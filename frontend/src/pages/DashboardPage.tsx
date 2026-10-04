@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api, type Instance } from "../services/api";
 import { ConnectionAddress } from "../components/ConnectionAddress";
+import { BillingTickCard } from "../components/BillingTickCard";
 import { OpenOrdersCard } from "../components/OpenOrdersCard";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
@@ -52,6 +53,7 @@ export function DashboardPage() {
         Eingeloggt als {user ? user.username : "…"}
       </p>
 
+      {user?.is_admin && <BillingTickCard onlyWhenUnhealthy />}
       {user?.is_admin && <OpenOrdersCard />}
 
       {error && <ErrorState message={error} onRetry={() => load()} />}
