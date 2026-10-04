@@ -41,6 +41,17 @@ describe("AdminOrdersPage", () => {
     expect((screen.getByLabelText("Status") as HTMLSelectElement).value).toBe("awaiting_provisioning");
   });
 
+  it("bietet den Filter 'Erstattet' und zeigt erstattete Bestellungen ohne Aktion", async () => {
+    const refunded = { ...pending, id: 9, uuid: "r1", username: "carol", status: "refunded" as const, refunded_at: "2026-10-02T09:00:00Z", scheduled_deletion_at: "2026-10-09T09:00:00Z" };
+    const list = vi.spyOn(api, "getAdminOrders").mockResolvedValue([refunded]);
+    mount("/admin/orders?status=refunded");
+    await screen.findByText("carol");
+    expect(list).toHaveBeenCalledWith("refunded");
+    expect(screen.getByRole("option", { name: "Erstattet" })).toBeTruthy();
+    expect(screen.getByText(/Zahlung erstattet am 2\.10\.2026/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Als bezahlt markieren" })).toBeNull();
+  });
+
   it("ignoriert unbekannte Statuswerte in der URL", async () => {
     const list = vi.spyOn(api, "getAdminOrders").mockResolvedValue([pending]);
     mount("/admin/orders?status=hacked");

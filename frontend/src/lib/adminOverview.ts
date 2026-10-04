@@ -12,14 +12,15 @@ export interface RevenueSummary {
 }
 
 /**
- * Umsatz der letzten `days` Tage: Bestellungen mit `paid_at` im Zeitraum, Summe von `price_cents`.
+ * Umsatz der letzten `days` Tage: Bestellungen mit `paid_at` im Zeitraum, Summe von `price_cents`
+ * (erstattete Bestellungen zaehlen nicht).
  * Naeherung: `paid_at` zeigt nur die letzte Zahlung einer Bestellung, fruehere Verlaengerungen fehlen.
  */
 export function revenueLastDays(orders: Order[], days = 30, now: number = Date.now()): RevenueSummary {
   const byCurrency: Record<string, number> = {};
   let paidCount = 0;
   for (const o of orders) {
-    if (!o.paid_at || o.price_cents <= 0) continue;
+    if (!o.paid_at || o.price_cents <= 0 || o.status === "refunded") continue;
     const t = parseUtc(o.paid_at).getTime();
     if (Number.isNaN(t) || t > now || now - t > days * DAY_MS) continue;
     byCurrency[o.currency] = (byCurrency[o.currency] ?? 0) + o.price_cents;

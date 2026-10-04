@@ -14,6 +14,7 @@ describe("revenueLastDays", () => {
       makeOrder({ price_cents: 1000, paid_at: "2026-08-01T10:00:00Z" }), // zu alt
       makeOrder({ price_cents: 0, paid_at: "2026-10-02T10:00:00Z" }), // kostenlos
       makeOrder({ price_cents: 800, paid_at: null }), // unbezahlt
+      makeOrder({ price_cents: 2000, status: "refunded", paid_at: "2026-10-02T10:00:00Z" }), // erstattet
     ];
     expect(revenueLastDays(orders, 30, NOW)).toEqual({ byCurrency: { EUR: 1499, CHF: 700 }, paidCount: 3 });
   });

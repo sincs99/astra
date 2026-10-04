@@ -10,7 +10,7 @@ import {
   ScrollRegion,
 } from "../components/ui";
 
-const STATUS_VALUES = ["pending_payment", "awaiting_provisioning", "active", "past_due", "cancelled", "expired"];
+const STATUS_VALUES = ["pending_payment", "awaiting_provisioning", "active", "past_due", "cancelled", "expired", "refunded"];
 
 const STATUSES: { value: OrderStatus; label: string }[] = [
   { value: "pending_payment", label: "Zahlung ausstehend" },
@@ -19,6 +19,7 @@ const STATUSES: { value: OrderStatus; label: string }[] = [
   { value: "past_due", label: "Überfällig" },
   { value: "cancelled", label: "Gekündigt" },
   { value: "expired", label: "Abgelaufen" },
+  { value: "refunded", label: "Erstattet" },
 ];
 
 /** Admin: Bestellungen filtern, Zahlung bestaetigen (legt die Instance an) oder erneut bereitstellen. */

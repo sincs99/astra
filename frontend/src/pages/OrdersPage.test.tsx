@@ -73,6 +73,17 @@ describe("OrdersPage", () => {
     expect(screen.queryByRole("button", { name: /Kündigen|Stornieren/ })).toBeNull();
   });
 
+  it("zeigt bei erstatteten Bestellungen den Hinweis mit Loeschtermin und bei Streit das Badge, ohne Bezahl-Buttons", async () => {
+    const refunded = makeOrder({ id: 7, uuid: "o-7", status: "refunded", refunded_at: "2026-10-02T09:00:00Z", scheduled_deletion_at: "2026-10-09T09:00:00Z", instance_name: "Server-R" });
+    const disputed = makeOrder({ id: 8, uuid: "o-8", status: "active", disputed: true, current_period_end: "2026-11-15T00:00:00Z", instance_name: "Streit" });
+    vi.spyOn(api, "getMyOrders").mockResolvedValue([refunded, disputed]);
+    mount();
+    await screen.findAllByText("Server-R");
+    expect(screen.getAllByText(/Zahlung erstattet am 2\.10\.2026, der Server wird am 9\.10\.2026 gelöscht/).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("status", { name: "Zahlung angefochten" }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Jetzt bezahlen" })).toBeNull();
+  });
+
   it("warnt bei ueberfaelligen Bestellungen deutlich vor Sperre und Loeschung", async () => {
     vi.spyOn(api, "getMyOrders").mockResolvedValue([overdue]);
     mount();

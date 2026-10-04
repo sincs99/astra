@@ -249,7 +249,9 @@ export type OrderStatus =
   | "active"
   | "past_due"
   | "cancelled"
-  | "expired";
+  | "expired"
+  /** Voll erstattet oder Zahlungsstreit verloren (M59): Server gesperrt, nach der Karenzzeit geloescht */
+  | "refunded";
 
 export interface OrderConnection {
   host: string | null;
@@ -283,6 +285,10 @@ export interface Order {
   /** Geplante Loeschung: Ende der Karenzzeit bzw. Laufzeitende bei Kuendigung, sonst null */
   scheduled_deletion_at?: string | null;
   cancelled_at: string | null;
+  /** Zeitpunkt der Erstattung (UTC) bei Status refunded (M59) */
+  refunded_at?: string | null;
+  /** Zahlungsstreit (Dispute) offen: Server gesperrt, Status bleibt active/past_due (M59) */
+  disputed?: boolean;
   created_at: string | null;
   /** Nur Admin-Antworten */
   user_id?: number;

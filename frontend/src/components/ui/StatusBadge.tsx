@@ -40,6 +40,8 @@ const STATUS_CONFIG: Record<string, { bg: string; color: string; label?: string 
   past_due: { bg: "var(--tint-orange)", color: "var(--c-orange)", label: "überfällig" },
   cancelled: { bg: "var(--bg-subtle)", color: "var(--fg-muted)", label: "gekündigt" },
   expired: { bg: "var(--tint-red)", color: "var(--c-red)", label: "abgelaufen" },
+  refunded: { bg: "var(--tint-red)", color: "var(--c-red)", label: "Erstattet" },
+  disputed: { bg: "var(--tint-orange)", color: "var(--c-orange)", label: "Zahlung angefochten" },
   // Zahlungsereignisse
   mismatch: { bg: "var(--tint-red)", color: "var(--c-red)", label: "Betrag weicht ab" },
   unapplied: { bg: "var(--tint-orange)", color: "var(--c-orange)", label: "Erstattung prüfen" },

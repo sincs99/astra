@@ -25,6 +25,22 @@ describe("OrderNotice", () => {
     expect(screen.getByText(/Läuft bis 1\.12\.2026/)).toBeTruthy();
   });
 
+  it("zeigt bei erstatteten Bestellungen Erstattung und geplante Loeschung", () => {
+    render(<OrderNotice order={makeOrder({ status: "refunded", refunded_at: "2026-10-02T09:00:00Z", scheduled_deletion_at: "2026-10-09T09:00:00Z" })} />);
+    expect(screen.getByRole("alert").textContent).toBe("Zahlung erstattet am 2.10.2026, der Server wird am 9.10.2026 gelöscht");
+  });
+
+  it("zeigt ohne Loeschtermin, dass der Server gesperrt ist", () => {
+    render(<OrderNotice order={makeOrder({ status: "refunded", scheduled_deletion_at: null })} />);
+    expect(screen.getByRole("alert").textContent).toBe("Zahlung erstattet, der Server ist gesperrt");
+  });
+
+  it("zeigt bei angefochtener Zahlung ein Badge, auch bei laufender Bestellung", () => {
+    render(<OrderNotice order={makeOrder({ status: "active", disputed: true })} />);
+    expect(screen.getByRole("status", { name: "Zahlung angefochten" })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it.each(["active", "pending_payment", "cancelled", "expired", "awaiting_provisioning"] as const)("zeigt bei %s ohne Kuendigung nichts", (status) => {
     const { container } = render(<OrderNotice order={makeOrder({ status })} />);
     expect(container.textContent).toBe("");
