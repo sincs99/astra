@@ -542,9 +542,17 @@ def delete_product_route(product_id: int):
 
 @admin_bp.route("/orders", methods=["GET"])
 def list_orders():
-    """Alle Bestellungen, optional gefiltert: ?status=...&user_id=..."""
+    """Alle Bestellungen, optional gefiltert: ?status=...&user_id=...&q=...
+
+    `q` (M65, max. 100 Zeichen, sonst 400) sucht ohne Beachtung der Gross-/Kleinschreibung im
+    Verwendungszweck (`payment_purpose`, auch als Praefix wie "ASTRA-0042"), im Servernamen, im
+    Nutzernamen und als UUID-Praefix, damit der Admin einen Zahlungseingang direkt zuordnen kann.
+    """
     from sqlalchemy.orm import joinedload
     from app.domain.billing.models import Order, ALL_ORDER_STATUSES
+    q = (request.args.get("q") or "").strip()
+    if len(q) > 100:
+        return jsonify({"error": "q darf hoechstens 100 Zeichen lang sein"}), 400
     query = Order.query.options(
         joinedload(Order.user), joinedload(Order.instance).joinedload(Instance.agent),
         joinedload(Order.instance).joinedload(Instance.primary_endpoint),
@@ -558,7 +566,17 @@ def list_orders():
     if user_id is not None:
         query = query.filter(Order.user_id == user_id)
     orders = query.order_by(Order.created_at.desc(), Order.id.desc()).all()
+    if q:
+        orders = [o for o in orders if _order_matches(o, q.lower())]
     return jsonify([o.to_dict(include_user=True) for o in orders])
+
+
+def _order_matches(order, needle: str) -> bool:
+    """Suchtreffer fuer ?q= (M65): Verwendungszweck/UUID als Praefix, Server- und Nutzername als Teiltext."""
+    purpose = (order.payment_purpose or "").lower()
+    username = (order.user.username if order.user else "").lower()
+    return (purpose.startswith(needle) or order.uuid.lower().startswith(needle)
+            or needle in (order.instance_name or "").lower() or needle in username)
 
 
 @admin_bp.route("/billing/status", methods=["GET"])
@@ -577,7 +595,8 @@ def revenue_stats_route():
     """Umsatz der letzten ?days=30 Tage (1 bis 365) auf Basis der Zahlungsbelege (M62), je Waehrung getrennt.
 
     Antwort: {days, since, by_currency: {"EUR": cents}, paid_count (Erstzahlungen), renewals_count,
-    refunded_cents_by_currency}. Erstattungen werden getrennt ausgewiesen, nicht abgezogen.
+    refunded_cents_by_currency, prev_since, prev_by_currency, prev_paid_count, prev_renewals_count}.
+    Erstattungen werden getrennt ausgewiesen, nicht abgezogen; prev_* ist der gleich lange Vorzeitraum (M66).
     """
     from app.domain.billing.service import revenue_stats
     raw = request.args.get("days", "30")

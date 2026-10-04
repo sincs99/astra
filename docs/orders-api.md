@@ -256,9 +256,9 @@ Beweise für Streitfälle, vorzeitiges Löschen eines erstatteten Servers (Admin
 | `GET /api/client/billing-info` | öffentlich | aktiver Zahlungsweg |
 | `POST /api/payments/stripe` | Stripe | Webhook (Signatur statt Login) |
 | `GET/POST /api/admin/products`, `GET/PATCH/DELETE /{id}` | Admin | Pakete verwalten |
-| `GET /api/admin/orders?status=&user_id=`, `/{uuid}` | Admin | alle Bestellungen |
+| `GET /api/admin/orders?status=&user_id=&q=`, `/{uuid}` | Admin | alle Bestellungen; `q` (M65, max. 100 Zeichen, sonst 400) sucht ohne Gross-/Kleinschreibung im Verwendungszweck (`payment_purpose`, auch Präfix wie `ASTRA-0042`), Servernamen, Nutzernamen und als UUID-Präfix |
 | `GET /api/admin/billing/status` | Admin | Läuft der Billing-Tick? Letzter Lauf, Alter, Ergebnis, Bestellungen je Status |
-| `GET /api/admin/stats/revenue?days=30` | Admin | Umsatz der letzten `days` Tage (1 bis 365, sonst 400) auf Basis der Zahlungsbelege (`receipts.issued_at`, M62): `{days, since, by_currency: {"EUR": cents}, paid_count (Erstzahlungen), renewals_count, refunded_cents_by_currency}`. Erstattungen (M59) getrennt je Währung, nicht verrechnet; Zahlungen vor M62 und Gratis-Pakete fehlen |
+| `GET /api/admin/stats/revenue?days=30` | Admin | Umsatz der letzten `days` Tage (1 bis 365, sonst 400) auf Basis der Zahlungsbelege (`receipts.issued_at`, M62): `{days, since, by_currency: {"EUR": cents}, paid_count (Erstzahlungen), renewals_count, refunded_cents_by_currency}, prev_since, prev_by_currency, prev_paid_count, prev_renewals_count}`; `prev_*` (M66) ist der gleich lange Zeitraum davor für den Trend in der Admin-Übersicht. Erstattungen (M59) getrennt je Währung, nicht verrechnet; Zahlungen vor M62 und Gratis-Pakete fehlen |
 | `GET /api/admin/payment-events?status=&order_uuid=&limit=` | Admin | Zahlungsereignisse des Anbieters (nur lesen, neueste zuerst, `limit` 1 bis 500); `mismatch` und `unapplied` brauchen Aufmerksamkeit |
 | `POST /api/admin/orders/{uuid}/mark-paid` | Admin | `{payment_reference?}` Zahlung bestätigen und Instance bereitstellen; auf `active`/`past_due` ist die Referenz Pflicht (Verlängerung) |
 

@@ -109,6 +109,8 @@ r = stats()
 check("ohne Zahlungen: leere Summen, Standard 30 Tage", r.status_code == 200 and r.json["days"] == 30 and r.json["by_currency"] == {}
       and r.json["paid_count"] == 0 and r.json["renewals_count"] == 0 and r.json["refunded_cents_by_currency"] == {}, str(r.json))
 check("since mit UTC-Suffix", r.json["since"].endswith("+00:00"))
+check("Vorzeitraum leer (M66)", r.json["prev_by_currency"] == {} and r.json["prev_paid_count"] == 0
+      and r.json["prev_renewals_count"] == 0 and r.json["prev_since"] < r.json["since"], str(r.json))
 
 print("Zahlungen (Belege)")
 o1 = new_order(small); pay(o1, "p1")
@@ -128,6 +130,10 @@ print("Zeitraum")
 backdate(o2, 40)
 r = stats().json
 check("Beleg von vor 40 Tagen faellt aus den 30 Tagen", r["by_currency"] == {"EUR": 998, "USD": 250} and r["paid_count"] == 2, str(r))
+check("M66: er liegt im Vorzeitraum (30 bis 60 Tage)", r["prev_by_currency"] == {"EUR": 1000} and r["prev_paid_count"] == 1
+      and r["prev_renewals_count"] == 0, str(r))
+check("M66: days=20 hat ihn weder im Zeitraum noch im Vorzeitraum", stats("?days=20").json["prev_by_currency"] == {})
+check("M66: days=60 hat einen leeren Vorzeitraum", stats("?days=60").json["prev_by_currency"] == {})
 r = stats("?days=60").json
 check("days=60 enthaelt ihn wieder", r["by_currency"]["EUR"] == 1998 and r["paid_count"] == 3 and r["days"] == 60, str(r))
 backdate(o1, 3, ref="p1-renew")
