@@ -217,6 +217,7 @@ Dann unter **Admin → Instances** eine Instanz anlegen: Blueprint Paper, Agent 
 | Status | `./scripts/deploy.sh --status` |
 | Logs | `docker compose logs -f backend` / `journalctl -u wings -f` |
 | Backup (täglich per Cron) | `0 3 * * * cd /opt/astra && ./scripts/backup.sh >> /var/log/astra-backup.log 2>&1` |
+| Alte Job-Einträge aufräumen (wöchentlich per Cron) | `0 4 * * 0 cd /opt/astra && docker compose exec -T backend python cli.py cleanup-jobs --days 30 >> /var/log/astra-cleanup.log 2>&1` (löscht nur `completed`/`failed` älter als 30 Tage; `--dry-run` zählt nur) |
 | Node-Credentials rotieren | Panel → Agent → *Credentials rotieren*, dann `install-wings.sh` erneut ausführen |
 | Billing-Tick manuell | `docker compose exec backend python cli.py billing-tick` (läuft sonst automatisch alle 5 Minuten im Container `billing`) |
 | Läuft der Billing-Tick? | `curl -s -H "Authorization: Bearer $TOKEN" https://panel.deinedomain.de/api/admin/billing/status` → `healthy` muss `true` sein, sobald es Bestellungen gibt. Auch im Preflight (`python cli.py preflight`, Check `billing_tick`) und im Smoke-Test. Schwelle: `BILLING_TICK_MAX_AGE_MINUTES` (Standard 15) |
