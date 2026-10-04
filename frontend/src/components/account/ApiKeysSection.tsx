@@ -75,12 +75,12 @@ export function ApiKeysSection({ onMessage }: { onMessage: (message: string) => 
       {error && <ErrorState message={error} onRetry={load} />}
 
       {created && (
-        <div role="alert" style={{ padding: 12, marginBottom: 12, background: "var(--tint-green)", border: "1px solid var(--border-green)", borderRadius: 8 }}>
+        <div role="alert" style={{ padding: 12, marginBottom: 12, background: "color-mix(in srgb, var(--ok) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--ok) 35%, transparent)", borderRadius: 8 }}>
           <strong>{t("account.keys.newTitle")}</strong>
           <p style={{ margin: "4px 0 8px", fontSize: 13 }}>
             {t("account.keys.newText1")}<strong>{t("account.keys.once")}</strong>{t("account.keys.newText2")}
           </p>
-          <code style={{ display: "block", wordBreak: "break-all", userSelect: "all", background: "var(--bg-card)", padding: 8, borderRadius: 4 }}>
+          <code style={{ display: "block", wordBreak: "break-all", userSelect: "all", background: "var(--surface)", padding: 8, borderRadius: 4 }}>
             {created.raw_token}
           </code>
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>

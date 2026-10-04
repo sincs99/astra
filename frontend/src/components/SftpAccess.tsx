@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type Instance } from "../services/api";
@@ -21,13 +22,13 @@ function CopyValue({ label, value }: { label: string; value: string }) {
   };
   return (
     <tr>
-      <th scope="row" style={{ textAlign: "left", fontWeight: 600, fontSize: 13, color: "var(--fg-soft)", padding: "4px 12px 4px 0", whiteSpace: "nowrap" }}>
+      <th scope="row" style={{ textAlign: "left", fontWeight: 600, fontSize: 13, color: "var(--text-2)", padding: "4px 12px 4px 0", whiteSpace: "nowrap" }}>
         {label}
       </th>
       <td style={{ padding: "4px 0" }}>
-        <code style={{ userSelect: "all", background: "var(--bg-subtle)", padding: "2px 6px", borderRadius: 4, fontSize: 13 }}>{value}</code>
-        <button type="button" onClick={copy} aria-label={`${label} kopieren`} style={{ ...btnDefault, padding: "2px 8px", fontSize: 12, marginLeft: 8 }}>
-          {copied ? "✓ Kopiert" : "📋"}
+        <code style={{ userSelect: "all", background: "var(--surface-2)", padding: "2px 6px", borderRadius: 4, fontSize: 13 }}>{value}</code>
+        <button type="button" onClick={copy} aria-label={t("sform.copyAria", { label })} style={{ ...btnDefault, padding: "2px 8px", fontSize: 12, marginLeft: 8 }}>
+          {copied ? t("sform.copied") : t("sform.copy")}
         </button>
       </td>
     </tr>
@@ -70,7 +71,7 @@ export function SftpAccess({ instance }: SftpAccessProps) {
           <CopyValue label="Benutzername" value={sftpUsername(username, instance.uuid)} />
         </tbody>
       </table>
-      <p style={{ color: "var(--fg-muted)", fontSize: 12, margin: "8px 0 0" }}>
+      <p style={{ color: "var(--text-3)", fontSize: 12, margin: "8px 0 0" }}>
         Passwort = Panel-Passwort oder ein hinterlegter SSH-Key.{" "}
         <Link to="/account/ssh-keys" style={linkStyle}>SSH-Keys verwalten</Link>
       </p>

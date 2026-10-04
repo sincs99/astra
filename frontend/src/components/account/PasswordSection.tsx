@@ -43,7 +43,7 @@ export function PasswordSection({ onChanged }: { onChanged: (message: string) =>
           <label htmlFor="pw-new" style={labelStyle}>{t("account.pw.new")}</label>
           <input id="pw-new" type="password" autoComplete="new-password" value={next}
             onChange={(e) => setNext(e.target.value)} style={inputStyle} />
-          <small style={{ color: "var(--fg-muted)", fontSize: 12 }}>{t("account.pw.minLength", { n: MIN_PASSWORD_LENGTH })}</small>
+          <small style={{ color: "var(--text-3)", fontSize: 12 }}>{t("account.pw.minLength", { n: MIN_PASSWORD_LENGTH })}</small>
         </div>
         <div style={{ marginBottom: 16 }}>
           <label htmlFor="pw-confirm" style={labelStyle}>{t("account.pw.repeat")}</label>
@@ -54,7 +54,7 @@ export function PasswordSection({ onChanged }: { onChanged: (message: string) =>
           {busy ? "..." : t("account.pw.title")}
         </button>
       </form>
-      <p style={{ color: "var(--fg-muted)", fontSize: 12, margin: "12px 0 0" }}>
+      <p style={{ color: "var(--text-3)", fontSize: 12, margin: "12px 0 0" }}>
         {t("account.pw.hint")}
       </p>
     </section>

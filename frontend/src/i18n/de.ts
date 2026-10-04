@@ -7,6 +7,8 @@ import { nav } from "./de/nav";
 import { orders } from "./de/orders";
 import { shop } from "./de/shop";
 import { srv } from "./de/srv";
+import { aover } from "./de/aover";
+import { sform } from "./de/sform";
 import { asys } from "./de/asys";
 import { ainst } from "./de/ainst";
 import { aagents } from "./de/aagents";
@@ -28,6 +30,8 @@ export const de = {
   ...orders,
   ...shop,
   ...srv,
+  ...aover,
+  ...sform,
   ...asys,
   ...ainst,
   ...aagents,

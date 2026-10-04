@@ -86,9 +86,9 @@ export function MfaSection({ enabled, remaining, onChanged }: MfaSectionProps) {
           <p style={{ marginTop: 0 }}>{t("account.mfa.active")}</p>
           {remaining !== undefined && !recovery && (
             remaining === 0 ? (
-              <p role="alert" style={{ color: "var(--c-red)", fontWeight: 600 }}>{t("account.mfa.remainingNone")}</p>
+              <p role="alert" style={{ color: "var(--danger)", fontWeight: 600 }}>{t("account.mfa.remainingNone")}</p>
             ) : (
-              <p style={{ color: remaining <= 2 ? "var(--c-orange)" : "var(--fg-soft)", fontWeight: remaining <= 2 ? 600 : 400 }}>
+              <p style={{ color: remaining <= 2 ? "var(--warn)" : "var(--text-2)", fontWeight: remaining <= 2 ? 600 : 400 }}>
                 {remaining <= 2 ? t("account.mfa.remainingLow", { n: remaining }) : t("account.mfa.remaining", { n: remaining, total: TOTAL_RECOVERY_CODES })}
               </p>
             )
@@ -132,8 +132,8 @@ export function MfaSection({ enabled, remaining, onChanged }: MfaSectionProps) {
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
             <QrCode value={setup.provisioning_uri} alt={t("account.mfa.qrAlt")} />
             <div>
-              <div style={{ fontSize: 13, color: "var(--fg-soft)" }}>{t("account.mfa.secret")}</div>
-              <code style={{ userSelect: "all", background: "var(--bg-subtle)", padding: "2px 6px", borderRadius: 4 }}>{setup.secret}</code>
+              <div style={{ fontSize: 13, color: "var(--text-2)" }}>{t("account.mfa.secret")}</div>
+              <code style={{ userSelect: "all", background: "var(--surface-2)", padding: "2px 6px", borderRadius: 4 }}>{setup.secret}</code>
             </div>
           </div>
           <form onSubmit={verify} noValidate style={{ maxWidth: 260 }}>

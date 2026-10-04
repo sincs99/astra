@@ -8,6 +8,8 @@ import { nav } from "./en/nav";
 import { orders } from "./en/orders";
 import { shop } from "./en/shop";
 import { srv } from "./en/srv";
+import { aover } from "./en/aover";
+import { sform } from "./en/sform";
 import { asys } from "./en/asys";
 import { ainst } from "./en/ainst";
 import { aagents } from "./en/aagents";
@@ -29,6 +31,8 @@ export const en: Record<MessageKey, string> = {
   ...orders,
   ...shop,
   ...srv,
+  ...aover,
+  ...sform,
   ...asys,
   ...ainst,
   ...aagents,

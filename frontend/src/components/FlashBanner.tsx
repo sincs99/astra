@@ -20,9 +20,9 @@ export function FlashBanner() {
     <div role={warn ? "alert" : "status"} style={{
       display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "space-between",
       padding: "10px 14px", marginBottom: 16, borderRadius: 8, fontSize: 14,
-      backgroundColor: warn ? "var(--tint-orange)" : "var(--tint-blue)",
-      color: warn ? "var(--c-orange)" : "var(--c-blue)",
-      border: `1px solid ${warn ? "var(--border-orange)" : "var(--border-blue)"}`,
+      backgroundColor: warn ? "var(--warn-soft)" : "var(--accent-soft)",
+      color: warn ? "var(--warn)" : "var(--accent)",
+      border: `1px solid ${warn ? "var(--warn-border)" : "color-mix(in srgb, var(--accent) 35%, transparent)"}`,
     }}>
       <span>
         {flash.text}

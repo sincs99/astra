@@ -84,7 +84,7 @@ export function ShopPage() {
       <Toast {...toast} />
 
       {placed && (
-        <div role="status" className="banner" style={{ background: "var(--tint-green)", borderColor: "var(--border-green)", marginBottom: 20 }}>
+        <div role="status" className="banner" style={{ background: "color-mix(in srgb, var(--ok) 12%, transparent)", borderColor: "color-mix(in srgb, var(--ok) 35%, transparent)", marginBottom: 20 }}>
           <span className="dot dot-ok" aria-hidden="true" />
           <span className="banner-text">
             <strong>{t("shop.placed")}</strong>{" "}

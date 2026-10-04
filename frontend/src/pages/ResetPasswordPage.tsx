@@ -55,7 +55,7 @@ export function ResetPasswordPage() {
           <label htmlFor="password" style={labelStyle}>{t("auth.reset.newPw")}</label>
           <input id="password" type="password" autoComplete="new-password" autoFocus value={password}
             onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
-          <small style={{ color: "var(--fg-muted)", fontSize: 12 }}>{t("auth.minLength", { n: MIN_PASSWORD_LENGTH })}</small>
+          <small style={{ color: "var(--text-3)", fontSize: 12 }}>{t("auth.minLength", { n: MIN_PASSWORD_LENGTH })}</small>
         </div>
         <div style={{ marginBottom: 20 }}>
           <label htmlFor="confirm" style={labelStyle}>{t("auth.pwRepeat")}</label>

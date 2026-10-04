@@ -11,10 +11,10 @@ const links = () => [
 /** Fusszeile mit den Rechtslinks; auf allen Seiten (auch Login und Registrierung) eingebunden. */
 export function SiteFooter({ showLanguage = true }: { showLanguage?: boolean }) {
   return (
-    <footer style={{ textAlign: "center", padding: "24px 16px", fontSize: 13, color: "var(--fg-muted)" }}>
+    <footer style={{ textAlign: "center", padding: "24px 16px", fontSize: 13, color: "var(--text-3)" }}>
       <nav aria-label={t("footer.legalNav")} style={{ display: "inline-flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
         {links().map((l) => (
-          <Link key={l.to} to={l.to} style={{ color: "var(--c-blue)", textDecoration: "underline" }}>{l.label}</Link>
+          <Link key={l.to} to={l.to} style={{ color: "var(--accent)", textDecoration: "underline" }}>{l.label}</Link>
         ))}
       </nav>
       {showLanguage && <div style={{ marginTop: 8 }}><LanguageSwitch /></div>}

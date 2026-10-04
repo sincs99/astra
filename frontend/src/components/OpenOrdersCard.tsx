@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../services/api";
@@ -36,12 +37,12 @@ export function OpenOrdersCard() {
 
   return (
     <section aria-labelledby="open-orders-title"
-      style={{ ...cardStyle, borderColor: total > 0 ? "var(--border-orange)" : "var(--border)", backgroundColor: total > 0 ? "var(--tint-yellow)" : "var(--bg-card)" }}>
+      style={{ ...cardStyle, borderColor: total > 0 ? "var(--warn-border)" : "var(--border)", backgroundColor: total > 0 ? "var(--warn-soft)" : "var(--surface)" }}>
       <h2 id="open-orders-title" style={{ margin: "0 0 8px", fontSize: 16 }}>
-        Offene Bestellungen: <span data-testid="open-orders-total">{total}</span>
+        {t("sform.openOrders")} <span data-testid="open-orders-total">{total}</span>
       </h2>
       {total === 0 ? (
-        <p style={{ margin: 0, fontSize: 13, color: "var(--fg-muted)" }}>Keine offenen Bestellungen.</p>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>{t("sform.noOpenOrders")}</p>
       ) : (
         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14 }}>
           {counts.pending > 0 && (

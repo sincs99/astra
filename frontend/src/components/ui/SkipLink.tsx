@@ -16,7 +16,7 @@ export function SkipLink() {
         main?.scrollIntoView?.();
       }}
       style={focused
-        ? { position: "fixed", top: 8, left: 8, zIndex: 1000, padding: "8px 12px", background: "var(--bg-card)", color: "var(--c-blue)", border: "2px solid var(--c-blue)", borderRadius: 4, fontSize: 14 }
+        ? { position: "fixed", top: 8, left: 8, zIndex: 1000, padding: "8px 12px", background: "var(--surface)", color: "var(--accent)", border: "2px solid var(--accent)", borderRadius: 4, fontSize: 14 }
         : { position: "absolute", left: -9999, top: 0 }}
     >
       {t("common.skipToContent")}

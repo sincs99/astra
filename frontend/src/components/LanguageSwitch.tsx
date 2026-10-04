@@ -12,7 +12,7 @@ export function LanguageSwitch() {
             aria-pressed={lang === o.value}
             style={{
               background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit",
-              color: lang === o.value ? "var(--fg)" : "var(--c-blue)",
+              color: lang === o.value ? "var(--text)" : "var(--accent)",
               fontWeight: lang === o.value ? 700 : 400,
               textDecoration: lang === o.value ? "none" : "underline",
             }}>

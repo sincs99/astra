@@ -135,12 +135,12 @@ export function OrdersPage() {
   const productCell = (o: Order) => (
     <div>
       <strong>{o.product_name ?? t("orders.productN", { id: o.product_id })}</strong>
-      <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+      <div style={{ fontSize: 12, color: "var(--text-3)" }}>
         {formatPrice(o.price_cents, o.currency, o.billing_period_days)}
       </div>
       {o.receipts && o.receipts.length > 0 && (
         <div style={{ marginTop: 6, fontSize: 12 }}>
-          <div style={{ color: "var(--fg-soft)", fontWeight: 600 }}>{t("orders.receipts")}</div>
+          <div style={{ color: "var(--text-2)", fontWeight: 600 }}>{t("orders.receipts")}</div>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 4 }}>
             {o.receipts.map((r) => (
               <li key={r.number} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -180,7 +180,7 @@ export function OrdersPage() {
   const action = (o: Order) => {
     // Bei überfälliger Zahlung ist der Server gesperrt: Bezahl-Button rot hervorheben
     const payButton = (label: string, urgent = false) => manualPayment ? (
-      <span style={{ fontSize: 12, color: "var(--fg-muted)", maxWidth: 220 }}>
+      <span style={{ fontSize: 12, color: "var(--text-3)", maxWidth: 220 }}>
         {manualPaymentNotice()}
         {o.payment_purpose && <> {t("dash.rowPurpose")}: <strong className="mono" style={{ userSelect: "all" }}>{o.payment_purpose}</strong></>}
       </span>
@@ -213,7 +213,7 @@ export function OrdersPage() {
       );
     }
     if (o.status === "awaiting_provisioning") {
-      return <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>{t("orders.awaiting")}</span>;
+      return <span style={{ fontSize: 12, color: "var(--text-3)" }}>{t("orders.awaiting")}</span>;
     }
     return "–";
   };
@@ -244,9 +244,9 @@ export function OrdersPage() {
                   <StatusBadge status={o.status} size="sm" />
                 </div>
                 <dl style={{ margin: "12px 0", display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px 12px", fontSize: 14 }}>
-                  <dt style={{ color: "var(--fg-soft)" }}>{t("orders.colEnd")}</dt>
+                  <dt style={{ color: "var(--text-2)" }}>{t("orders.colEnd")}</dt>
                   <dd style={{ margin: 0 }}>{endCell(o)}</dd>
-                  <dt style={{ color: "var(--fg-soft)" }}>{t("orders.colServer")}</dt>
+                  <dt style={{ color: "var(--text-2)" }}>{t("orders.colServer")}</dt>
                   <dd style={{ margin: 0 }}>{serverCell(o)}</dd>
                 </dl>
                 {action(o) !== "–" && <div>{action(o)}</div>}
@@ -258,7 +258,7 @@ export function OrdersPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <caption style={{ position: "absolute", left: -9999 }}>{t("orders.title")}</caption>
             <thead>
-              <tr style={{ backgroundColor: "var(--bg-subtle)" }}>
+              <tr style={{ backgroundColor: "var(--surface-2)" }}>
                 <th scope="col" style={thStyle}>{t("orders.colProduct")}</th>
                 <th scope="col" style={thStyle}>{t("orders.colStatus")}</th>
                 <th scope="col" style={thStyle}>{t("orders.colEnd")}</th>
@@ -282,7 +282,7 @@ export function OrdersPage() {
         )
       )}
       {orders.some((o) => (o.receipts?.length ?? 0) > 0) && (
-        <p style={{ fontSize: 12, color: "var(--fg-muted)", marginTop: 12 }}>{t("orders.receiptNote")}</p>
+        <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 12 }}>{t("orders.receiptNote")}</p>
       )}
       {receipt && <ReceiptViewer number={receipt.number} html={receipt.html} onClose={() => setReceipt(null)} />}
     </PageLayout>

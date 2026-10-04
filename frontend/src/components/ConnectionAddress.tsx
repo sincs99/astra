@@ -27,8 +27,8 @@ export function ConnectionAddress({ connection, compact = false }: ConnectionAdd
 
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-      {!compact && <span style={{ color: "var(--fg-muted)", fontSize: 13 }}>{t("orders.address")}</span>}
-      <code style={{ fontSize: compact ? 12 : 13, userSelect: "all", background: "var(--bg-subtle)", padding: "2px 6px", borderRadius: 4 }}>
+      {!compact && <span style={{ color: "var(--text-3)", fontSize: 13 }}>{t("orders.address")}</span>}
+      <code style={{ fontSize: compact ? 12 : 13, userSelect: "all", background: "var(--surface-2)", padding: "2px 6px", borderRadius: 4 }}>
         {connection.address}
       </code>
       <button

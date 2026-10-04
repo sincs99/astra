@@ -37,7 +37,7 @@ export function ReceiptViewer({ number, html, onClose }: { number: string; html:
       onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label={t("orders.receiptDialog", { number })}
         onClick={(e) => e.stopPropagation()}
-        style={{ background: "var(--bg-card)", color: "var(--fg)", borderRadius: 8, width: "min(720px, 100%)", maxHeight: "100%", display: "flex", flexDirection: "column", padding: 16, gap: 12 }}>
+        style={{ background: "var(--surface)", color: "var(--text)", borderRadius: 8, width: "min(720px, 100%)", maxHeight: "100%", display: "flex", flexDirection: "column", padding: 16, gap: 12 }}>
         <iframe title={t("orders.receiptFrame", { number })} sandbox="" srcDoc={html}
           style={{ flex: 1, minHeight: 360, border: "1px solid var(--border)", borderRadius: 6, background: "white" }} />
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
