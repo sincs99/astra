@@ -1,11 +1,13 @@
+import { t } from "../i18n";
+
 /** Darstellung: "system" folgt dem Betriebssystem, "light"/"dark" überschreiben es (im Browser gemerkt). */
 export type ThemePreference = "system" | "light" | "dark";
 
 export const THEME_STORAGE_KEY = "astra_theme";
-export const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
-  { value: "system", label: "Wie das Gerät" },
-  { value: "light", label: "Hell" },
-  { value: "dark", label: "Dunkel" },
+export const themeOptions = (): { value: ThemePreference; label: string }[] => [
+  { value: "system", label: t("account.themeSystem") },
+  { value: "light", label: t("account.themeLight") },
+  { value: "dark", label: t("account.themeDark") },
 ];
 
 export function isThemePreference(v: unknown): v is ThemePreference {

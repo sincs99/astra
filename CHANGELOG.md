@@ -5,6 +5,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – F5 Englische Sprachversion)
+- Leichtgewichtiges i18n (`src/i18n`): Deutsch bleibt Standard, Englisch ist per Sprachumschalter (Fusszeile jeder Seite, inkl. Login, und Konto > Darstellung) waehlbar und wird im Browser gemerkt (`astra_lang`). Woerterbuecher `de`/`en` je Namensraum, der Compiler erzwingt gleiche Schluessel, ein Test prueft Platzhalter-Paritaet. Uebersetzt: Login, Registrierung, Passwort-Reset, E-Mail-Bestaetigung, Navigation, Dashboard, Shop, Bestellungen (inkl. Status, Hinweise, Verbindungsadresse), Konto (Passwort, MFA, API-Keys, Darstellung), SSH-Keys, 404, Fehlerseiten, Zeitangaben, Datums- und Waehrungsformate (`en-GB`)
+- Nicht uebersetzt (bewusst/spaeter): Admin-Bereich, Server-Detailseite (Konsole, Dateien, Backups), Rechtstexte (Impressum, Datenschutz, AGB) sowie Meldungen, die das Backend selbst liefert (deutsch)
+- Konto: Hinweis zum Passwortwechsel korrigiert (seit M57 werden andere Geraete abgemeldet)
+- Test `OrdersPage` (Rueckkehr von Stripe) war ein Race und ist stabil
+
 ### Added (Frontend – Erstattungen und Zahlungsstreit, M59)
 - Bestellungen: Status `refunded` ("Erstattet", rot) und Felder `refunded_at`/`disputed`; Admin-Statusfilter "Erstattet"; Hinweis "Zahlung erstattet am …, der Server wird am … gelöscht" in Kunden- und Admin-Liste, Badge "Zahlung angefochten" bei offenem Zahlungsstreit; erstattete Bestellungen zaehlen nicht zum Umsatz der Admin-Uebersicht
 

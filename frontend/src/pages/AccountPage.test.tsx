@@ -32,7 +32,7 @@ describe("AccountPage", () => {
     const change = vi.spyOn(api, "changePassword").mockResolvedValue({ message: "ok" });
     mount();
     await screen.findByText("alice@example.com");
-    expect(screen.getByText(/Sitzungen auf anderen Geräten/)).toBeTruthy();
+    expect(screen.getByText(/anderen angemeldeten Geräte abgemeldet/)).toBeTruthy();
 
     const fill = (cur: string, next: string, conf: string) => {
       fireEvent.change(screen.getByLabelText("Aktuelles Passwort"), { target: { value: cur } });
