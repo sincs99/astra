@@ -76,7 +76,7 @@ try {
     await cust.getByLabel("Passwort", { exact: true }).fill(customer.password);
     await cust.getByRole("button", { name: /Anmelden/ }).click();
   }
-  await expectVisible(cust, cust.getByRole("heading", { name: "Dashboard" }), "Dashboard nach Login");
+  await expectVisible(cust, cust.getByRole("heading", { name: "Meine Server" }), "Meine Server nach Login");
   log("Kunde eingeloggt");
 
   await cust.goto(`${BASE}/shop`);
@@ -107,7 +107,7 @@ try {
 
   // ── Kunde sieht den Server im Dashboard ───────────────────
   await cust.goto(`${BASE}/`);
-  await expectVisible(cust, cust.getByText(serverName).first(), "Server im Kunden-Dashboard");
+  await expectVisible(cust, cust.getByRole("link", { name: serverName }), "Server-Karte im Kunden-Dashboard");
   log("Kunde sieht den Server im Dashboard");
 
   console.log("[e2e] OK");
