@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Astra – Meine Server (Handy)</title>
+</head>
+<body>
+<!-- Referenz-Mockup aus dem Claude-Design-Canvas. Als Vorlage für Markup und Inline-Styles gedacht, nicht als fertiger Produktionscode. -->
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#2bb8cc}a:hover{color:#5fd0e0}
+.mono{font-family:'Geist Mono','JetBrains Mono',ui-monospace,monospace}
+.dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.badge{display:inline-flex;align-items:center;gap:7px;padding:3px 9px 3px 8px;border-radius:4px;font-size:12px;font-weight:500;background:#1c232d;border:1px solid #2a313c;line-height:1.3;white-space:nowrap}
+.btn2{font:inherit;font-weight:500;font-size:14px;height:44px;padding:0 14px;border-radius:6px;border:1px solid #2a313c;background:#1c232d;color:#e6e9ef;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;flex:1 1 0}
+.kv{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:#9aa5b4}
+.card{background:#161b22;border:1px solid #2a313c;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px}
+</style>
+</helmet>
+<div style="width: 390px; height: 1040px; box-sizing: border-box; background: #0f1419; color: #e6e9ef; font-family: Geist, Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.5; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 10px 16px; border-bottom: 1px solid #2a313c; background: #161b22">
+    <a href="#top" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: #e6e9ef"><svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 3 L18.6 13.4 L29 16 L18.6 18.6 L16 29 L13.4 18.6 L3 16 L13.4 13.4 Z" fill="#2bb8cc"/><circle cx="26" cy="6" r="2.4" fill="#e6e9ef"/></svg><span style="font-size: 18px; font-weight: 600; letter-spacing: -0.03em">Astra</span></a>
+    <div style="display: flex; align-items: center; gap: 4px">
+      <span style="width: 32px; height: 32px; border-radius: 50%; background: #1c232d; border: 1px solid #2a313c; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #9aa5b4; margin-right: 4px">PK</span>
+      <button type="button" aria-label="Menü" style="width: 44px; height: 44px; border-radius: 6px; border: 0; background: transparent; color: #e6e9ef; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    </div>
+  </header>
+
+  <main style="padding: 16px; display: flex; flex-direction: column; gap: 14px">
+    <div role="status" style="display: flex; align-items: flex-start; gap: 10px; background: rgba(210,153,34,.1); border: 1px solid rgba(210,153,34,.35); border-radius: 8px; padding: 10px 12px; font-size: 13px">
+      <span class="dot" style="background: #d29922; margin-top: 6px"></span>
+      <span>Überweisung für <strong style="font-weight: 600">Valheim Clan</strong> steht noch aus. <a href="#bestellung" style="font-weight: 500">Zahlungsdaten</a></span>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0">
+      <div style="display: flex; flex-direction: column"><h1 style="margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.02em">Meine Server</h1><span style="color: #9aa5b4; font-size: 13px">3 Server · 2 laufen</span></div>
+      <a href="#shop" aria-label="Neuer Server" style="width: 44px; height: 44px; background: #2bb8cc; color: #0b1118; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></a>
+    </div>
+
+    <article class="card">
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px">
+        <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><a href="#srv1" style="font-size: 16px; font-weight: 600; color: #e6e9ef; text-decoration: none">Freitagsrunde</a><span style="font-size: 13px; color: #9aa5b4">Minecraft · Crew</span></div>
+        <span class="badge"><span class="dot" style="background: #3fb950"></span>läuft</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; background: #0a0d12; border: 1px solid #2a313c; border-radius: 6px; padding: 4px 4px 4px 10px">
+        <span class="mono" style="font-size: 13px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">mc.astra.example:25565</span>
+        <button type="button" aria-label="Adresse kopieren" style="width: 40px; height: 40px; border-radius: 6px; border: 1px solid #2a313c; background: #1c232d; color: #e6e9ef; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+      </div>
+      <div class="kv"><span>Spieler 4 / 25 · RAM 5,1 / 8 GB</span><span style="color: #e6e9ef">bis 28. Okt</span></div>
+      <div style="display: flex; gap: 8px">
+        <button type="button" class="btn2" style="color: #f85149">Stop</button>
+        <a href="#srv1" class="btn2" style="background: #2bb8cc; border-color: #2bb8cc; color: #0b1118">Öffnen</a>
+        <button type="button" aria-label="Weitere Aktionen" class="btn2" style="flex: 0 0 44px; padding: 0"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+      </div>
+    </article>
+
+    <article class="card">
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px">
+        <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><a href="#srv2" style="font-size: 16px; font-weight: 600; color: #e6e9ef; text-decoration: none">Factory 02</a><span style="font-size: 13px; color: #9aa5b4">Satisfactory · Community</span></div>
+        <span class="badge"><span class="dot" style="background: #3fb950"></span>läuft</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; background: #0a0d12; border: 1px solid #2a313c; border-radius: 6px; padding: 4px 4px 4px 10px">
+        <span class="mono" style="font-size: 13px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">sf.astra.example:7777</span>
+        <button type="button" aria-label="Adresse kopieren" style="width: 40px; height: 40px; border-radius: 6px; border: 1px solid #2a313c; background: #1c232d; color: #e6e9ef; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+      </div>
+      <div class="kv"><span>Spieler 2 / 60 · RAM 11,4 / 16 GB</span><span style="color: #d29922">noch 3 Tage</span></div>
+      <div style="display: flex; gap: 8px">
+        <button type="button" class="btn2" style="border-color: #2bb8cc; color: #5fd0e0">Verlängern</button>
+        <a href="#srv2" class="btn2">Öffnen</a>
+        <button type="button" aria-label="Weitere Aktionen" class="btn2" style="flex: 0 0 44px; padding: 0"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+      </div>
+    </article>
+
+    <article class="card">
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px">
+        <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><a href="#srv3" style="font-size: 16px; font-weight: 600; color: #e6e9ef; text-decoration: none">Valheim Clan</a><span style="font-size: 13px; color: #9aa5b4">Valheim · Start</span></div>
+        <span class="badge"><span class="dot" style="background: #d29922"></span>wartet</span>
+      </div>
+      <div class="kv"><span>ORD-2026-0418 · 14,90 €</span><span class="mono" style="color: #e6e9ef">ASTRA-0418-7K</span></div>
+      <a href="#bezahlen" class="btn2" style="background: #2bb8cc; border-color: #2bb8cc; color: #0b1118">Jetzt mit Karte bezahlen</a>
+    </article>
+  </main>
+</div>
+</x-dc>
+</body>
+</html>
