@@ -409,6 +409,33 @@ check("net_by_currency und vat_by_currency (nur Belege mit Steuerfeldern)", rs["
       and exp_net + exp_vat == exp_gross - legacy.amount_cents, f"{rs} {exp_net} {exp_vat} {exp_gross}")
 check("Zaehler nur aus Rechnungen", rs["paid_count"] + rs["renewals_count"] == len(invoices))
 check("API liefert die Felder", c.get("/api/admin/stats/revenue", headers=AH).json["vat_by_currency"] == {"EUR": exp_vat})
+with app.app_context():
+    exp_refunded = -sum(d.amount_cents for d in Receipt.query.filter_by(kind="credit_note").all())
+check("M73: refunded_cents_by_currency = Summe der Gutschriften (keine Doppelzaehlung kumulierter Teilerstattungen)",
+      rs["refunded_cents_by_currency"] == {"EUR": exp_refunded}, f"{rs['refunded_cents_by_currency']} {exp_refunded}")
+
+print("M73: Gutschrift bei verlorenem Zahlungsstreit")
+ou_d, pi_d = paid_order()
+check("Streit eroeffnet: noch keine Gutschrift", dispute(pi_d).status_code == 200 and docs_of(ou_d, "credit_note") == [])
+check("Streit gewonnen: keine Gutschrift", dispute(pi_d, "closed", "won", "evt_dwon").status_code == 200 and docs_of(ou_d, "credit_note") == [])
+check("Streit verloren: 200", dispute(pi_d, "closed", "lost", "evt_dlost").status_code == 200)
+cn = docs_of(ou_d, "credit_note")
+inv_d = docs_of(ou_d, "invoice")[0]
+check("genau eine Gutschrift ueber den vollen Betrag mit Bezug zur Rechnung",
+      len(cn) == 1 and cn[0]["amount_cents"] == -inv_d["amount_cents"] and cn[0]["references_number"] == inv_d["number"], str(cn))
+check("Wiederholung desselben Events: keine zweite Gutschrift", dispute(pi_d, "closed", "lost", "evt_dlost").status_code == 200 and len(docs_of(ou_d, "credit_note")) == 1)
+check("anderes Event, schon voll gutgeschrieben: keine weitere Gutschrift", dispute(pi_d, "closed", "lost", "evt_dlost2").status_code == 200 and len(docs_of(ou_d, "credit_note")) == 1)
+with app.app_context():
+    st = Order.query.filter_by(uuid=ou_d).first().status
+check("Bestellung wie erstattet behandelt", st == "refunded", st)
+ou_e, pi_e = paid_order()
+refund(pi_e, full=False, event_id="evt_part")   # 100 Cent kumuliert
+before = len(docs_of(ou_e, "credit_note"))
+dispute(pi_e, "closed", "lost", "evt_elost")
+cn_e = docs_of(ou_e, "credit_note")
+inv_e = docs_of(ou_e, "invoice")[0]
+check("Teilerstattung + verlorener Streit: Gutschriften summieren sich auf den Rechnungsbetrag",
+      before == 1 and len(cn_e) == 2 and sum(-d["amount_cents"] for d in cn_e) == inv_e["amount_cents"], str(cn_e))
 
 print("Migration")
 cwd = os.path.dirname(__file__)

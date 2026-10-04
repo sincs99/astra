@@ -5,6 +5,10 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Backend – M73 Erstattungen)
+- Umsatzstatistik: `refunded_cents_by_currency` ist die Summe der Gutschriften im Zeitraum; kumulierte Teilerstattungen werden nicht mehr mehrfach gezaehlt (nur Erstattungs-Events vor M70 ohne `credit_note` zaehlen wie bisher)
+- Verlorener Zahlungsstreit (`charge.dispute.closed`, Status `lost`) stellt eine Gutschrift ueber den Streitbetrag aus (hoechstens bis zum Rechnungsbetrag, idempotent je Event); `order:disputed` traegt die Nummer in `credit_note`
+
 ### Changed (Frontend – M72 Fehlertexte in der Nutzersprache)
 - Jeder API-Aufruf sendet `Accept-Language: de|en` (Sprache der Oberflaeche). Fehlerdarstellung: der Server-Text gewinnt, nur technische Statuscodes ("Request failed: 500") und Netzwerkfehler kommen aus der Frontend-Uebersetzung; die ASCII-Umlaut-Korrektur alter deutscher Meldungen gilt nur noch in der deutschen Oberflaeche. Sonderfaelle (`manual`, `captcha_failed`, `rate_limited`, `reminder_cooldown`, `invalid_locale`, `email_not_verified`) werden am `code` bzw. Status erkannt, nicht am Text (Registrierung deaktiviert: Status 403/404)
 

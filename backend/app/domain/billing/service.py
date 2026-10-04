@@ -420,8 +420,9 @@ def revenue_stats(days: int = 30, now: datetime | None = None) -> dict:
     (`paid_count`), weitere sind Verlaengerungen (`renewals_count`). Kostenlose Pakete haben keine Rechnungen.
     Zahlungen vor M62 haben keinen Beleg und fehlen. `by_currency` ist brutto. Seit M70 zusaetzlich `net_by_currency` und
     `vat_by_currency` (Summe der Steuerfelder; Belege aus der Zeit vor M70 haben keine und fehlen dort). Erstattungen
-    (M59, Events `order:refunded`) werden getrennt je Waehrung ausgewiesen (`refunded_cents_by_currency`) und nicht
-    verrechnet, Gutschriften zaehlen nicht mit; fehlt im Event der erstattete Betrag, zaehlt der Betrag der Zahlung.
+    werden getrennt je Waehrung ausgewiesen (`refunded_cents_by_currency`) und nicht verrechnet. Seit M73 ist das die
+    Summe der Gutschriften im Zeitraum (inkl. verlorener Zahlungsstreite); nur Erstattungs-Events aus der Zeit vor M70
+    (ohne Feld `credit_note`) zaehlen wie bisher aus `order:refunded` (erstatteter Betrag, sonst Betrag der Zahlung).
     Keine Waehrungsumrechnung.
     Zusaetzlich (M66) derselbe Zeitraum davor (`prev_since` bis `since`, gleich lang): `prev_by_currency`,
     `prev_paid_count`, `prev_renewals_count` fuer den Trend in der Admin-Uebersicht.
@@ -459,9 +460,15 @@ def revenue_stats(days: int = 30, now: datetime | None = None) -> dict:
     by_currency, net_by_currency, vat_by_currency, paid, renewals = totals(since, now + timedelta(microseconds=1))
     prev_by_currency, _, _, prev_paid, prev_renewals = totals(prev_since, since)
     refunded: dict[str, int] = {}
+    # Seit M73: Summe der Gutschriften (deckt nur den Zuwachs je Erstattung ab, keine Doppelzaehlung kumulierter Teilerstattungen)
+    for cents, currency in db.session.query(Receipt.amount_cents, Receipt.currency).filter(
+            Receipt.kind == "credit_note", Receipt.issued_at >= since, Receipt.issued_at < now + timedelta(microseconds=1)).all():
+        refunded[currency] = refunded.get(currency, 0) - cents
     for (props,) in db.session.query(ActivityLog.properties).filter(
             ActivityLog.event == "order:refunded", ActivityLog.created_at >= since).all():
         props = props or {}
+        if "credit_note" in props:
+            continue  # seit M70 ueber die Gutschrift gezaehlt (auch wenn keine ausgestellt werden konnte: dann kein Betrag)
         cents = props.get("refunded_cents") if isinstance(props.get("refunded_cents"), int) else props.get("amount_cents")
         currency = props.get("currency")
         if isinstance(cents, int) and currency:
@@ -1011,9 +1018,10 @@ def _suspend_for(order: Order, instance: Instance | None, reason: str) -> bool:
     return True
 
 
-def _issue_credit_note(order: Order, ev, now: datetime) -> str | None:
+def _issue_credit_note(order: Order, ev, now: datetime, total: int | None = None) -> str | None:
     """Gutschrift zur erstatteten Rechnung (M70), best effort. Rueckgabe: Nummer oder None (keine Rechnung zur Zahlung,
-    schon vollstaendig gutgeschrieben, Fehler). Idempotent je Erstattungs-Ereignis."""
+    schon vollstaendig gutgeschrieben, Fehler). Idempotent je Erstattungs-Ereignis. `total` (M73) ueberschreibt den
+    erstatteten Gesamtbetrag, z.B. beim verlorenen Zahlungsstreit."""
     try:
         from app.domain.billing.models import Receipt
         from app.domain.billing.receipts import issue_credit_note
@@ -1021,7 +1029,8 @@ def _issue_credit_note(order: Order, ev, now: datetime) -> str | None:
             if ev.payment_reference else None
         if invoice is None:
             return None
-        total = ev.refunded_cents if isinstance(ev.refunded_cents, int) else (invoice.amount_cents if ev.full_refund else None)
+        if total is None:
+            total = ev.refunded_cents if isinstance(ev.refunded_cents, int) else (invoice.amount_cents if ev.full_refund else None)
         if total is None:
             return None
         note = issue_credit_note(order, invoice, total, ev.event_id, now)
@@ -1087,7 +1096,9 @@ def _apply_dispute(order: Order, ev, now: datetime) -> str:
 
     # dispute_closed
     if ev.dispute_status == "lost":
-        # Streit verloren: Geld ist weg wie bei einer Erstattung (unabhaengig davon, welche Zahlung betroffen war)
+        # Streit verloren: Geld ist weg wie bei einer Erstattung (unabhaengig davon, welche Zahlung betroffen war);
+        # dazu gehoert auch die Gutschrift (M73), idempotent je Ereignis, hoechstens bis zum Rechnungsbetrag
+        base["credit_note"] = _issue_credit_note(order, ev, now, total=ev.amount_cents if isinstance(ev.amount_cents, int) else None)
         if order.status not in (ORDER_REFUNDED, ORDER_CANCELLED, ORDER_EXPIRED):
             suspended = _suspend_for(order, instance, REFUND_SUSPEND_REASON)
             order.status = ORDER_REFUNDED

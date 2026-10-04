@@ -164,6 +164,30 @@ with app.app_context():
     db.session.commit()
 check("alte Erstattungen ausserhalb des Zeitraums zaehlen nicht", stats().json["refunded_cents_by_currency"] == {})
 
+print("M73: Erstattungen aus Gutschriften")
+with app.app_context():
+    from app.domain.billing.receipts import issue_credit_note
+    from app.domain.billing.models import Receipt
+    ordr = Order.query.filter_by(uuid=o3).first()
+    inv3 = Receipt.query.filter_by(order_id=ordr.id, kind="invoice").first()
+    # Stripe meldet kumuliert: erst 100, dann 250 -> Gutschriften 100 + 150, Events beider tragen `credit_note`
+    n1 = issue_credit_note(ordr, inv3, 100, "evt_c1")
+    n2 = issue_credit_note(ordr, inv3, 250, "evt_c2")
+    for ev_amount, n in ((100, n1), (250, n2)):
+        log_event(event="order:refunded", actor_id=None, subject_id=ordr.id, subject_type="order",
+                  properties={"refunded_cents": ev_amount, "amount_cents": 250, "currency": "USD", "credit_note": n.number})
+    log_event(event="order:refunded", actor_id=None, subject_id=ordr.id, subject_type="order",
+              properties={"refunded_cents": 40, "amount_cents": 250, "currency": "USD", "credit_note": None})
+r = stats().json
+check("kumulierte Teilerstattungen zaehlen nur den Zuwachs (100 + 150 = 250 USD, nicht 350)",
+      r["refunded_cents_by_currency"] == {"USD": 250}, str(r["refunded_cents_by_currency"]))
+check("Gutschriften zaehlen nicht in by_currency", r["by_currency"]["USD"] == 250)
+with app.app_context():
+    for n in Receipt.query.filter_by(kind="credit_note").all():
+        n.issued_at = datetime.utcnow() - timedelta(days=100)
+    db.session.commit()
+check("alte Gutschriften ausserhalb des Zeitraums zaehlen nicht", stats().json["refunded_cents_by_currency"] == {})
+
 print("Eingabe und Rechte")
 check("days=abc: 400", stats("?days=abc").status_code == 400)
 check("days=0: 400", stats("?days=0").status_code == 400)
