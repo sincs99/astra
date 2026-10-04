@@ -809,6 +809,20 @@ export interface BillingStatus {
   };
 }
 
+export type PaymentEventStatus = "processed" | "ignored" | "unapplied" | "mismatch" | "received";
+
+export interface PaymentEvent {
+  id: number;
+  event_id: string;
+  provider: string;
+  event_type: string;
+  order_uuid: string | null;
+  status: PaymentEventStatus;
+  detail: string | null;
+  received_at: string | null;
+  processed_at: string | null;
+}
+
 // ── System / Version Types (M24) ────────────────────────
 
 export interface SystemVersionInfo {
@@ -1277,6 +1291,13 @@ export const api = {
   getSystemVersion: () => request<SystemVersionInfo>("/admin/system/version"),
   getUpgradeStatus: () => request<UpgradeStatus>("/admin/system/upgrade-status"),
   getPreflight: () => request<PreflightResult>("/admin/system/preflight"),
+  getPaymentEvents: (params?: { status?: PaymentEventStatus; limit?: number }) => {
+    const p = new URLSearchParams();
+    if (params?.status) p.set("status", params.status);
+    if (params?.limit) p.set("limit", String(params.limit));
+    const qs = p.toString();
+    return request<PaymentEvent[]>(`/admin/payment-events${qs ? `?${qs}` : ""}`);
+  },
   getBillingStatus: () => request<BillingStatus>("/admin/billing/status"),
 
   // ── Admin: Agent Maintenance (M25) ────────────────────

@@ -31,7 +31,8 @@ export function formatTimeAgo(iso: string, now: number = Date.now()): string {
   if (diff < 60) return "gerade eben";
   if (diff < 3600) return `vor ${Math.floor(diff / 60)} Min.`;
   if (diff < 86400) return `vor ${Math.floor(diff / 3600)} Std.`;
-  return `vor ${Math.floor(diff / 86400)} Tagen`;
+  const days = Math.floor(diff / 86400);
+  return days === 1 ? "vor 1 Tag" : `vor ${days} Tagen`;
 }
 
 /** Kurzes Datum mit Uhrzeit inkl. Sekunden für Protokolle, z.B. "03.10., 14:05:09". */

@@ -25,6 +25,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   // Core
   { label: "Dashboard", href: "/", group: "Core" },
+  { label: "Übersicht", adminOnly: true, href: "/admin", group: "Core" },
   { label: "Agents", adminOnly: true, href: "/admin/agents", group: "Core" },
   { label: "Blueprints", adminOnly: true, href: "/admin/blueprints", group: "Core" },
   { label: "Instances", adminOnly: true, href: "/admin/instances", group: "Core" },

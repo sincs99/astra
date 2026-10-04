@@ -5,6 +5,10 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – F1 Admin-Uebersicht)
+- Neue Seite `/admin` ("Uebersicht", Navigationspunkt fuer Admins): Kacheln Umsatz der letzten 30 Tage (Naeherung aus `paid_at`/`price_cents` von `GET /api/admin/orders`, clientseitig je Waehrung aggregiert), Bestellungen je Status (pending_payment, awaiting_provisioning, active, past_due, verlinkt auf die gefilterte Liste), Node-Auslastung (aus `GET /api/admin/agents/monitoring`, effektive Kapazitaet inkl. Ueberallokation, Agents ohne Limit ausgewiesen), Billing-Tick und Zahlungsereignisse mit Status `mismatch`/`unapplied` (`GET /api/admin/payment-events`). Jede Kachel faellt einzeln aus; Aktualisierung alle 60 s; mobil einspaltig
+- `formatTimeAgo`: "vor 1 Tag" statt "vor 1 Tagen"
+
 ### Added (Frontend – Betrieb, Barrierefreiheit)
 - Admin-Seiten werden per Code-Splitting nachgeladen (Haupt-Bundle ca. 452 -> 385 KB); fehlt nach einem Deployment eine Seiten-Datei, zeigt die App "Neue Version verfuegbar" mit Reload-Button statt der allgemeinen Fehlerseite
 - Browser-Tab-Titel folgt der Seite ("Meine Bestellungen - Astra"); Skip-Link "Zum Inhalt springen" fuer Tastaturnutzer

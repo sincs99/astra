@@ -40,6 +40,9 @@ const STATUS_CONFIG: Record<string, { bg: string; color: string; label?: string 
   past_due: { bg: "#fff3e0", color: "#bf360c", label: "überfällig" },
   cancelled: { bg: "#f5f5f5", color: "#666", label: "gekündigt" },
   expired: { bg: "#ffebee", color: "#c62828", label: "abgelaufen" },
+  // Zahlungsereignisse
+  mismatch: { bg: "#ffebee", color: "#c62828", label: "Betrag weicht ab" },
+  unapplied: { bg: "#fff3e0", color: "#bf360c", label: "Erstattung prüfen" },
   // Maintenance
   maintenance: { bg: "#fff3e0", color: "#bf360c", label: "Wartung" },
   // Misc
