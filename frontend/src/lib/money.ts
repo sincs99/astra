@@ -1,4 +1,4 @@
-import { moneyLocale } from "../i18n";
+import { moneyLocale, t } from "../i18n";
 
 /** Preise werden im Backend in Cent gespeichert; im UI als Euro mit 2 Dezimalstellen bearbeitet. */
 
@@ -32,7 +32,7 @@ export function formatMoney(cents: number, currency = "EUR"): string {
 
 /** "30 Tage" / "1 Tag" */
 export function formatPeriod(days: number): string {
-  return days === 1 ? "1 Tag" : `${days} Tage`;
+  return days === 1 ? t("orders.day") : t("orders.days", { n: days });
 }
 
 /** "9,99 € / 30 Tage" */

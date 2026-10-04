@@ -3,7 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError, type Order } from "../services/api";
 import { formatDate } from "../lib/dates";
 import { formatPrice } from "../lib/money";
-import { MANUAL_PAYMENT_NOTICE } from "../legal/payment";
+import { manualPaymentNotice } from "../legal/payment";
+import { t } from "../i18n";
 import { isManualPayment, readPaymentReturn, safeCheckoutUrl } from "../lib/checkout";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -43,7 +44,7 @@ export function OrdersPage() {
       if (billing) setManualPayment(!billing.online_payment);
     } catch (err) {
       // Bei stillem Nachladen die vorhandene Liste nicht durch einen Fehler ersetzen
-      if (!silent) setError(err instanceof Error ? err.message : "Bestellungen konnten nicht geladen werden");
+      if (!silent) setError(err instanceof Error ? err.message : t("orders.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -59,7 +60,7 @@ export function OrdersPage() {
     if (!ret || handledReturn.current) return;
     handledReturn.current = true;
     if (ret.kind === "paid") {
-      toast.success("Zahlung eingegangen, Server wird bereitgestellt. Eine Bestätigung folgt per E-Mail.");
+      toast.success(t("orders.paid"));
       // Die Bestätigung kommt asynchron per Webhook: nach 5 s nachladen, solange der Status noch aussteht (max. 6x)
       let tries = 0;
       const timer = setInterval(async () => {
@@ -74,7 +75,7 @@ export function OrdersPage() {
         }
       }, 5000);
     } else {
-      toast.warning("Zahlung abgebrochen.");
+      toast.warning(t("orders.payCancelled"));
     }
     setSearchParams({}, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,14 +87,14 @@ export function OrdersPage() {
       const { checkout_url } = await api.createCheckout(order.uuid);
       const target = safeCheckoutUrl(checkout_url);
       if (!target) {
-        toast.error("Die Zahlungsseite konnte nicht geöffnet werden (ungültige Adresse).");
+        toast.error(t("orders.badCheckout"));
         return;
       }
       window.location.assign(target);
     } catch (err) {
       if (isManualPayment(err)) setManualPayment(true);
       else {
-        toast.error(err instanceof Error ? err.message : "Zahlung konnte nicht gestartet werden");
+        toast.error(err instanceof Error ? err.message : t("orders.payFailed"));
         // Der Status der Bestellung hat sich inzwischen geändert (z.B. bereits bezahlt): Liste aktualisieren
         if (err instanceof ApiError && err.code === "invalid_status") await load();
       }
@@ -107,18 +108,18 @@ export function OrdersPage() {
       const result = await api.cancelOrder(order.uuid);
       toast.success(
         order.status === "pending_payment"
-          ? "Bestellung storniert."
-          : `Gekündigt. Dein Server läuft noch bis ${formatDate(result.current_period_end ?? order.current_period_end)}.`,
+          ? t("orders.cancelledNow")
+          : t("orders.cancelledLater", { date: formatDate(result.current_period_end ?? order.current_period_end) }),
       );
       await load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Kündigung fehlgeschlagen");
+      toast.error(err instanceof Error ? err.message : t("orders.cancelFailed"));
     }
   };
 
   const productCell = (o: Order) => (
     <div>
-      <strong>{o.product_name ?? `Produkt #${o.product_id}`}</strong>
+      <strong>{o.product_name ?? t("orders.productN", { id: o.product_id })}</strong>
       <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>
         {formatPrice(o.price_cents, o.currency, o.billing_period_days)}
       </div>
@@ -137,7 +138,7 @@ export function OrdersPage() {
       <div>{o.instance_name}</div>
       {o.instance_uuid && (
         <>
-          <Link to={`/instances/${o.instance_uuid}`} style={linkStyle}>Zum Server</Link>
+          <Link to={`/instances/${o.instance_uuid}`} style={linkStyle}>{t("orders.toServer")}</Link>
           {o.connection && <div style={{ marginTop: 4 }}><ConnectionAddress connection={o.connection} compact /></div>}
         </>
       )}
@@ -147,7 +148,7 @@ export function OrdersPage() {
   const action = (o: Order) => {
     // Bei überfälliger Zahlung ist der Server gesperrt: Bezahl-Button rot hervorheben
     const payButton = (label: string, urgent = false) => manualPayment ? (
-      <span style={{ fontSize: 12, color: "var(--fg-muted)", maxWidth: 220 }}>{MANUAL_PAYMENT_NOTICE}</span>
+      <span style={{ fontSize: 12, color: "var(--fg-muted)", maxWidth: 220 }}>{manualPaymentNotice()}</span>
     ) : (
       <button type="button" onClick={() => pay(o)} disabled={paying === o.uuid}
         style={{ ...(urgent ? btnDanger : btnPrimary), padding: "4px 12px", fontSize: 12, opacity: paying === o.uuid ? 0.6 : 1 }}>
@@ -157,9 +158,9 @@ export function OrdersPage() {
     if (o.status === "pending_payment") {
       return (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          {payButton("Jetzt bezahlen")}
-          <ConfirmButton size="sm" danger label="Stornieren"
-            confirmMessage="Bestellung wirklich stornieren?" onConfirm={() => cancel(o)} />
+          {payButton(t("orders.payNow"))}
+          <ConfirmButton size="sm" danger label={t("orders.cancelBtn")}
+            confirmMessage={t("orders.cancelConfirm")} onConfirm={() => cancel(o)} />
         </div>
       );
     }
@@ -167,23 +168,23 @@ export function OrdersPage() {
       return (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
           {/* Kostenlose Bestellungen haben nichts zu bezahlen: weder Bezahl-Button noch Überweisungshinweis */}
-          {o.price_cents > 0 && payButton("Verlängern und bezahlen", o.status === "past_due")}
+          {o.price_cents > 0 && payButton(t("orders.renewPay"), o.status === "past_due")}
           {!o.cancel_at_period_end && (
-            <ConfirmButton size="sm" danger label="Kündigen zum Laufzeitende"
-              confirmMessage="Zum Laufzeitende kündigen? Der Server bleibt bis dahin nutzbar."
+            <ConfirmButton size="sm" danger label={t("orders.cancelEnd")}
+              confirmMessage={t("orders.cancelEndConfirm")}
               onConfirm={() => cancel(o)} />
           )}
         </div>
       );
     }
     if (o.status === "awaiting_provisioning") {
-      return <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>Bezahlt. Dein Server wird automatisch bereitgestellt, sobald Platz frei ist.</span>;
+      return <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>{t("orders.awaiting")}</span>;
     }
     return "–";
   };
 
   return (
-    <PageLayout title="Meine Bestellungen">
+    <PageLayout title={t("orders.title")}>
       <Toast {...toast} />
       {orders.length > 0 && (
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -192,15 +193,15 @@ export function OrdersPage() {
       )}
       {error && <ErrorState message={error} onRetry={() => load()} />}
       {loading ? (
-        <LoadingState message="Bestellungen werden geladen..." />
+        <LoadingState message={t("orders.loading")} />
       ) : orders.length === 0 && !error ? (
         <div>
-          <EmptyState icon="🧾" message="Du hast noch keine Bestellungen." />
-          <p style={{ textAlign: "center" }}><Link to="/shop" style={linkStyle}>Zum Shop</Link></p>
+          <EmptyState icon="🧾" message={t("orders.none")} />
+          <p style={{ textAlign: "center" }}><Link to="/shop" style={linkStyle}>{t("orders.toShop")}</Link></p>
         </div>
       ) : (
         compact ? (
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 12 }} aria-label="Meine Bestellungen">
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 12 }} aria-label={t("orders.title")}>
             {orders.map((o) => (
               <li key={o.uuid} style={{ ...cardStyle, marginBottom: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
@@ -208,9 +209,9 @@ export function OrdersPage() {
                   <StatusBadge status={o.status} size="sm" />
                 </div>
                 <dl style={{ margin: "12px 0", display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px 12px", fontSize: 14 }}>
-                  <dt style={{ color: "var(--fg-soft)" }}>Laufzeitende</dt>
+                  <dt style={{ color: "var(--fg-soft)" }}>{t("orders.colEnd")}</dt>
                   <dd style={{ margin: 0 }}>{endCell(o)}</dd>
-                  <dt style={{ color: "var(--fg-soft)" }}>Server</dt>
+                  <dt style={{ color: "var(--fg-soft)" }}>{t("orders.colServer")}</dt>
                   <dd style={{ margin: 0 }}>{serverCell(o)}</dd>
                 </dl>
                 {action(o) !== "–" && <div>{action(o)}</div>}
@@ -220,14 +221,14 @@ export function OrdersPage() {
         ) : (
         <div style={{ ...cardStyle, padding: 0, overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <caption style={{ position: "absolute", left: -9999 }}>Meine Bestellungen</caption>
+            <caption style={{ position: "absolute", left: -9999 }}>{t("orders.title")}</caption>
             <thead>
               <tr style={{ backgroundColor: "var(--bg-subtle)" }}>
-                <th scope="col" style={thStyle}>Produkt</th>
-                <th scope="col" style={thStyle}>Status</th>
-                <th scope="col" style={thStyle}>Laufzeitende</th>
-                <th scope="col" style={thStyle}>Server</th>
-                <th scope="col" style={thStyle}>Aktionen</th>
+                <th scope="col" style={thStyle}>{t("orders.colProduct")}</th>
+                <th scope="col" style={thStyle}>{t("orders.colStatus")}</th>
+                <th scope="col" style={thStyle}>{t("orders.colEnd")}</th>
+                <th scope="col" style={thStyle}>{t("orders.colServer")}</th>
+                <th scope="col" style={thStyle}>{t("orders.colActions")}</th>
               </tr>
             </thead>
             <tbody>

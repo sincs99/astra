@@ -1,5 +1,6 @@
 import type { Order } from "../services/api";
 import { formatDate, formatDateTime } from "../lib/dates";
+import { t } from "../i18n";
 import { StatusBadge } from "./ui";
 
 /**
@@ -21,19 +22,19 @@ export function OrderNotice({ order }: { order: Order }) {
       )}
       {order.status === "past_due" && (
         <div role="alert" style={{ marginTop: 4, fontSize: 12, color: "var(--c-red)", fontWeight: 600 }}>
-          <div>Gesperrt seit {formatDateTime(order.past_due_at)}</div>
-          {deletion && <div>Server wird am {formatDate(deletion)} gelöscht</div>}
+          <div>{t("orders.suspendedSince", { date: formatDateTime(order.past_due_at) })}</div>
+          {deletion && <div>{t("orders.deletedOn", { date: formatDate(deletion) })}</div>}
         </div>
       )}
       {order.status === "refunded" && (
         <div role="alert" style={{ marginTop: 4, fontSize: 12, color: "var(--c-red)", fontWeight: 600 }}>
-          Zahlung erstattet{order.refunded_at ? ` am ${formatDate(order.refunded_at)}` : ""}
-          {deletion ? `, der Server wird am ${formatDate(deletion)} gelöscht` : ", der Server ist gesperrt"}
+          {order.refunded_at ? t("orders.refundedAt", { date: formatDate(order.refunded_at) }) : t("orders.refunded")}
+          {deletion ? t("orders.refundedDelete", { date: formatDate(deletion) }) : t("orders.refundedLocked")}
         </div>
       )}
       {order.status === "active" && order.cancel_at_period_end && (
         <div style={{ marginTop: 4, fontSize: 12, color: "var(--c-orange)" }}>
-          Läuft bis {formatDate(deletion ?? order.current_period_end)}, wird dann gelöscht
+          {t("orders.endsThenDeleted", { date: formatDate(deletion ?? order.current_period_end) })}
         </div>
       )}
     </>
