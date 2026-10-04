@@ -101,7 +101,7 @@ try {
   const row = adm.getByRole("row").filter({ hasText: serverName });
   await expectVisible(adm, row, "Bestellung in der Admin-Liste");
   await row.getByRole("button", { name: "Als bezahlt markieren" }).click();
-  await row.getByRole("button", { name: "Bezahlt bestätigen" }).click();
+  await adm.getByRole("dialog").getByRole("button", { name: "Bezahlt bestätigen" }).click();
   await expectVisible(adm, adm.getByText(/als bezahlt markiert/), "Bestätigung 'als bezahlt markiert'");
   log("Admin hat die Bestellung als bezahlt markiert");
 
