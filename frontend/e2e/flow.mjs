@@ -80,7 +80,7 @@ try {
   log("Kunde eingeloggt");
 
   await cust.goto(`${BASE}/shop`);
-  await cust.getByRole("button", { name: `${product.name} bestellen` }).click();
+  await cust.locator("label.pcard", { hasText: product.name }).click();
   await cust.getByLabel("Servername (optional)").fill(serverName);
   await cust.getByRole("button", { name: "Verbindlich bestellen" }).click();
   await expectVisible(cust, cust.getByText("Bestellung eingegangen."), "Bestätigung im Shop");

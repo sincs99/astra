@@ -24,6 +24,9 @@ const PATHS: Record<string, ReactNode> = {
   stop: <rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor" />,
   play: <path d="M7 4v16l13-8Z" fill="currentColor" />,
   restart: <><path d="M21 12a9 9 0 1 1-3-6.7" /><path d="M21 3v6h-6" /></>,
+  check: <path d="m5 12 5 5L20 7" />,
+  card: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></>,
+  bank: <><path d="m3 10 9-6 9 6" /><path d="M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18" /></>,
   plus: <path d="M12 5v14M5 12h14" />,
   copy: <><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>,
 };
