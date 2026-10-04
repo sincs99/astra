@@ -816,7 +816,8 @@ def process_payment_events(provider: str, events: list) -> list[dict]:
             continue
         if row is None:
             row = PaymentEventRow(event_id=ev.event_id, provider=provider, event_type=ev.type,
-                                  order_uuid=ev.order_uuid, status="received")
+                                  order_uuid=ev.order_uuid, status="received",
+                                  amount_cents=_event_amount(ev), currency=(ev.currency or None))
             db.session.add(row)
             try:
                 db.session.commit()
@@ -831,12 +832,21 @@ def process_payment_events(provider: str, events: list) -> list[dict]:
         row = PaymentEventRow.query.filter_by(event_id=ev.event_id).first()
         row.status = status
         row.detail = detail
+        if row.amount_cents is None:  # Zeile aus einer frueheren Zustellung (vor M68) nachziehen
+            row.amount_cents, row.currency = _event_amount(ev), (ev.currency or row.currency)
         row.processed_at = _now()
         db.session.commit()
         if status in ("mismatch", "unapplied"):
             _alert_payment_problem(ev, status, detail)
         results.append({"event_id": ev.event_id, "status": status, "duplicate": False})
     return results
+
+
+def _event_amount(ev) -> int | None:
+    """Betrag des Ereignisses fuer payment_events (M68): bei Erstattungen der erstattete Betrag, sonst der Betrag."""
+    if ev.kind == "refunded" and isinstance(ev.refunded_cents, int):
+        return ev.refunded_cents
+    return ev.amount_cents if isinstance(ev.amount_cents, int) else None
 
 
 def _alert_refund_or_dispute(order: Order, ev, detail: str) -> None:
