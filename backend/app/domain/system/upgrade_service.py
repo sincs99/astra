@@ -184,6 +184,23 @@ def run_preflight_check() -> dict:
         checks["billing_tick"] = "unknown"
         issues.append(f"Billing-Tick nicht pruefbar: {type(e).__name__}")
 
+    # 7. Bezahlte Bestellungen, die zu lange auf einen freien Node warten
+    try:
+        from app.domain.billing.service import get_tick_status
+        wait = get_tick_status()["awaiting_provisioning"]
+        if wait["waiting_too_long"]:
+            checks["billing_waiting_orders"] = "warning"
+            issues.append(
+                f"{wait['count']} bezahlte Bestellung(en) warten auf einen freien Node, die aelteste seit "
+                f"{wait['oldest_wait_hours']} Stunden (Warnschwelle {wait['warn_after_hours']} Stunden): "
+                f"Kapazitaet pruefen"
+            )
+        else:
+            checks["billing_waiting_orders"] = "ok"
+    except Exception as e:
+        checks["billing_waiting_orders"] = "unknown"
+        issues.append(f"Wartende Bestellungen nicht pruefbar: {type(e).__name__}")
+
     # Gesamtstatus
     has_errors = any(v.startswith("error") for v in checks.values() if isinstance(v, str))
     has_pending = checks.get("migrations") == "pending"

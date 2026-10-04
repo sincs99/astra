@@ -46,6 +46,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Added (M56 – Warnung bei lange wartenden Bestellungen)
+- `GET /api/admin/billing/status` enthaelt `awaiting_provisioning`: `count`, `oldest_paid_at`, `oldest_wait_hours`, `warn_after_hours`, `waiting_too_long`. Preflight-Check `billing_waiting_orders` warnt, wenn die aelteste bezahlte Bestellung ohne Instance `BILLING_WAIT_WARN_HOURS` (Standard 24) oder laenger wartet. Nur Warnung, nichts blockiert; Env-Variable in `.env.prod.example` und Compose. `backend/test_m56.py`
+
 ### Added (M55 – Job-Cleanup)
 - `python cli.py cleanup-jobs [--days 30] [--dry-run]` loescht beendete Job-Eintraege (`completed`, `failed`), die vor mehr als N Tagen endeten; wartende, laufende und wiederholte Jobs bleiben immer. `--days` unter 1 ergibt Exit 2. Funktion `cleanup_jobs` in `app/infrastructure/jobs/cleanup.py`, `backend/test_m55.py` (10 Tests)
 
