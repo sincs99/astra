@@ -1,132 +1,102 @@
-# UI-Konventionen (M26)
+# UI-Konventionen
 
-## Zentrale Komponentenbibliothek
+Kurzfassung und Checkliste für neue Seiten. Das visuelle Regelwerk steht in `design/DESIGN.md`, die Referenz-Mockups in
+`design/mockups/*.html`. Hier steht, wie das im Frontend (`frontend/src`) umgesetzt ist.
 
-Alle gemeinsamen UI-Komponenten befinden sich unter:
-`frontend/src/components/ui/`
+## Checkliste für eine neue Seite
 
-### Verfuegbare Komponenten
+1. Passendes Mockup in `design/mockups/` lesen und Markup/Stil übernehmen; was dort fehlt, nicht erfinden.
+2. Seitenrahmen mit `PageLayout` (`title`, `subtitle`, `actions`, `back`, `maxWidth`).
+3. Farben, Schrift, Abstände nur über Tokens/Klassen (siehe unten), **keine Hex-Werte** im Komponenten-Code.
+4. Jeder sichtbare Text über `t()` (DE und EN), neue Schlüssel im passenden Namespace.
+5. Tabellen mit `tbl tbl-cards`, `th scope="col"` und `data-label` an jeder Zelle.
+6. Lade-/Fehler-/Leerzustand vorhanden (`LoadingState`, `ErrorState`, `EmptyState`).
+7. Destruktive Aktionen mit `ConfirmButton` (oder eigenem Dialog mit Namenseingabe).
+8. Formularfelder mit Label, Fehler als `role="alert"`, Erfolg als `role="status"`, Icon-Buttons mit `aria-label`.
+9. Test (`// @vitest-environment jsdom`) mit Liste, Hauptaktion, Fehlerzustand und EN-Anzeige.
+10. `npx tsc --noEmit -p .`, `npx vitest run`, `npm run build`; bei Kundenfluss zusätzlich `./e2e/run-local.sh`
+    (enthält die automatische Barrierefreiheitsprüfung `e2e/a11y.mjs`).
 
-| Komponente | Zweck | Import |
-|-----------|-------|--------|
-| `StatusBadge` | Einheitliche Status-Anzeige | `import { StatusBadge } from "../components/ui"` |
-| `LoadingState` | Ladezustand | `import { LoadingState } from "../components/ui"` |
-| `ErrorState` | Fehleranzeige mit Retry | `import { ErrorState } from "../components/ui"` |
-| `EmptyState` | Leerzustand | `import { EmptyState } from "../components/ui"` |
-| `ConfirmButton` | Button mit Bestaetigungsdialog | `import { ConfirmButton } from "../components/ui"` |
-| `Toast/useToast` | Benachrichtigungen | `import { Toast, useToast } from "../components/ui"` |
-| `PageLayout` | Seitenlayout mit Navigation | `import { PageLayout } from "../components/ui"` |
+## Design-Tokens
 
-### Gemeinsame Styles
+- Quelle ist `design/tokens.css` (und `tokens.json`). Das Frontend nutzt die Kopie `frontend/src/styles/tokens.css`
+  (der Docker-Build-Kontext ist `frontend/`). Nach jeder Änderung an der Quelle: `npm run sync:tokens`, die Kopie nie von Hand bearbeiten.
+- `src/theme.css` importiert Tokens und die Stylesheets (`shell.css`, `ui.css`, `landing.css`) und ergänzt nur `color-scheme` und
+  abgeleitete Werte (`--console-dim`). Es gibt keine Kompatibilitäts-Aliase mehr; alte Namen wie `--bg-card`, `--fg-muted`, `--c-red`,
+  `--tint-*` dürfen nicht neu auftauchen.
+- Wichtige Tokens: Flächen `--bg`, `--surface`, `--surface-2`; Text `--text`, `--text-2`, `--text-3`; Akzent `--accent`/`--accent-soft`/`--on-accent`;
+  Status `--ok`, `--warn`, `--danger` (jeweils `-soft`, `-border`; `--on-danger` für Text auf Danger-Flächen); Konsole `--console`, `--text-console`;
+  Maße `--radius-card`, `--radius-btn`, `--control-h`, `--control-h-touch`, Schriftgrößen `--fs-*`.
+- Kontrast: Text erfüllt WCAG AA. `--text-3` ist der hellste erlaubte Textton; Akzent-Text auf `--accent-soft` und `--ok` sind in den Tokens korrigiert.
 
-```ts
-import { cardStyle, inputStyle, labelStyle, btnPrimary, btnDanger, btnDefault, thStyle, tdStyle, linkStyle } from "../components/ui";
-```
+## Bausteine aus `ui.css`
 
-## Farbkonventionen
+| Klasse | Zweck |
+|---|---|
+| `.btn`, `.btn-sm`, `.btn-lg`, `.btn-primary`, `.btn-danger`, `.btn-danger-text`, `.btn-ghost`, `.btn-icon` | Buttons (Primär nur einmal pro Bereich) |
+| `.card`, `.card-title`, `.card-sub`, `.card-empty`, `.cards-grid` | Karten und Leerzustand |
+| `.panel`, `.panel-head`, `.panel-body`, `.panel-foot`, `.panel-title` | Abschnitte mit Kopf (Formulare, Tabellen) |
+| `.banner`, `.banner-info/-warn/-danger`, `.banner-text` | Hinweise; Gefahr mit `role="alert"`, sonst `role="status"` |
+| `.kv-list`, `.kv` | Schlüssel/Wert-Zeilen; `.mono` für IDs, Adressen, Zahlen |
+| `.addr` | Adresszeile in Konsolenfarbe mit Kopieren-Button (`AddressRow`) |
+| `.bar`, `.bar-warn/-danger/-hatch/-nodata/-stack` | Auslastungsbalken; Warnfarbe ab 80 %, „überbucht“ schraffiert |
+| `.tbl`, `.tbl-cards`, `.num` | Tabellen; mobil werden Zeilen zu Karten (`data-label` an jeder `td`) |
+| `.tabs`, `.tab` | Tabs mit `role="tablist"`, Tastatursteuerung, `?tab=` in der URL |
+| `.field`, `.fieldset`, `.inp`, `.hint` | Formulare |
+| `.tiles`, `.tile` | Kennzahlenkacheln |
+| `.pcard`, `.pkgs`, `.summary` | Shop (Paketwahl, Zusammenfassung) |
+| `.lp-*` | Nur die öffentliche Landingpage (`landing.css`) |
 
-**Dunkler Modus:** Farben stehen als CSS-Variablen in `frontend/src/theme.css` (`--bg-card`, `--fg-muted`, `--c-green`, `--tint-red`, `--border` usw.) und werden in Komponenten als `var(--...)` verwendet, nicht als Hex. Die Hex-Werte in den Tabellen unten sind die Werte des hellen Designs. Dunkel gilt bei `prefers-color-scheme: dark` oder `data-theme="dark"`; der Nutzer waehlt im Konto "Wie das Gerät", "Hell" oder "Dunkel" (localStorage `astra_theme`). Gesaettigte Flaechen mit weissem Text (Buttons, Power-Buttons) bleiben bewusst feste Hex-Werte, ebenso die Server-Konsole (immer dunkel).
+Icons kommen aus `components/ui/Icon.tsx` (24er-Raster, 2 px Strich, `currentColor`, immer dekorativ). Fehlt ein Icon, wird es dort ergänzt;
+keine Emojis als Icons.
 
-### Status-Farben
+## Status-Anzeige
 
-| Farbe | Hex | Verwendung |
-|-------|-----|-----------|
-| Gruen | `#2e7d32` | ready, running, healthy, completed, ok, active, success |
-| Blau | `#1565c0` | provisioning, starting, pending, info, reinstalling |
-| Orange | `#bf360c` | stale, retrying, warning, maintenance, restoring, stopping |
-| Rot | `#c62828` | failed, error, degraded, stopped, provision_failed |
-| Lila | `#7b1fa2` | retrying (Jobs) |
-| Grau | `#666` | offline, unknown, inactive, unreachable, none |
+`StatusBadge` zeigt Punkt + Text, nie Farbe allein: grün (`ok`) für bereit/läuft/bezahlt/aktiv, gelb (`warn`) für ausstehend/wartet/bald fällig,
+rot (`danger`) für Fehler/überfällig/gesperrt/**nicht erreichbar**, grau (`neutral`) für gestoppt/unbekannt/inaktiv, Akzent für laufende Vorgänge
+(Einrichtung, Neuinstallation). Der Text kommt aus den `status.*`-Schlüsseln; unbekannte API-Werte werden roh angezeigt.
 
-### Background-Farben (Badges)
+## Texte und Sprachen (i18n)
 
-Immer heller Hintergrund mit dunkler Schrift:
-- Gruen: `bg: #e8f5e9, color: #4caf50`
-- Blau: `bg: #e3f2fd, color: #1976d2`
-- Orange: `bg: #fff3e0, color: #f57c00`
-- Rot: `bg: #ffebee, color: #d32f2f`
-- Grau: `bg: #f5f5f5, color: #888`
+- `src/i18n/index.ts`: `t(key, params)`, `useLang`, `setLang`, `dateLocale()`, `moneyLocale()`, `hasKey`. Deutsch ist Standard, Englisch umschaltbar
+  (Konto, Login, Landing); `LangRoot` baut den Baum beim Wechsel neu auf.
+- Wörterbücher je Namespace in `src/i18n/de/*.ts` und `src/i18n/en/*.ts` (`common`, `nav`, `auth`, `account`, `dash`, `shop`, `orders`, `landing`,
+  `srv` + `sconsole/sfiles/sbackups/sroutines/susers/sform` für Server-Detail, `aorders/aagents/ainst/asys/aover` für den Admin-Bereich). Schlüssel haben das
+  Präfix des Namespaces (`dash.rowTerm`). `de.ts` bestimmt die Schlüssel, `en.ts` ist typgeprüft (fehlt einer, bricht `tsc`); ein Test prüft gleiche Platzhalter.
+- Platzhalter `{name}`; **keine „(en)“-Plurale**, sondern getrennte Schlüssel (`…One`/`…Other`) mit `Intl.PluralRules(dateLocale())` (siehe `plural()` in `lib/adminOverview.ts`).
+- Datum, Zahl, Währung, Relativzeit nur über `formatDateTime`/`formatMoney`/`formatTimeAgo`/`Intl`, nie feste `de-DE`-Strings.
+- Texte vom Server (Fehlermeldungen, Backup-/Restore-Antworten, Aktivitätsbeschreibungen) bleiben deutsch und werden unverändert angezeigt.
+- Wortstellung mit eingebettetem Element (z. B. `<code>`) über einen Platzhalter und Split (siehe `ui/TypeName.tsx`).
 
-Hinweis: Textfarben erfuellen WCAG AA (Kontrast >= 4.5:1). Fuer Text keine helleren Grautoene als `#666`
-und kein `#4caf50` auf hellem Grund verwenden. Jedes Formularfeld braucht ein Label (`htmlFor`/`id`).
+## Theme
 
-## Loading / Error / Empty States
+- Dunkel ist der Standard. `lib/theme.ts` kennt `system | light | dark` (localStorage `astra_theme`, Auswahl unter Konto → Darstellung), löst „system“ über
+  `prefers-color-scheme` auf und setzt `data-theme` am `<html>`. Ein Inline-Skript in `index.html` setzt es vor dem ersten Rendern (kein Aufblitzen).
+- Komponenten dürfen `data-theme` nicht selbst prüfen; sie nutzen Tokens, die sich mit dem Theme ändern. Die Server-Konsole bleibt in beiden Themes dunkel.
+- Schrift: Geist/Geist Mono self-hosted über `@fontsource` (kein Google-Fonts-Link).
 
-### Loading
-```tsx
-<LoadingState message="Daten werden geladen..." />
-```
+## Mobil
 
-### Error
-```tsx
-<ErrorState message={error} onRetry={loadData} />
-```
+- Breakpoint 760 px: Seitenleiste wird zur Kopfzeile mit Menü-Overlay, Tabellen mit `tbl-cards` zu Karten, Buttons/Eingaben mit Touch-Höhe
+  (`--control-h-touch`, 44 px). Kein horizontales Seiten-Scrollen; breite Tabellen/Konsolen nur in fokussierbaren Bereichen
+  (`role="region" tabIndex={0} aria-label=…` oder `ScrollRegion`).
+- Die Sprungmarke „Zum Inhalt“ (`SkipLink`) und der Seitentitel im Tab (`document.title`) gehören zu jeder Seite über `PageLayout`.
 
-### Empty
-```tsx
-<EmptyState message="Keine Eintraege vorhanden." icon="📭" />
-```
+## Gefährliche Aktionen
 
-## Gefaehrliche Aktionen
+`ConfirmButton` (Text, `danger` für rot) für Löschen, Rotieren, Neuinstallieren, Kill. Wo ein Fehlgriff Daten kostet, zusätzlich Namenseingabe
+(`DeleteInstanceForm`, `TransferInstanceForm`). Toasts (`useToast`) nur für kurze Rückmeldungen; Fehler in Formularen stehen im Formular.
 
-Fuer destruktive Aktionen (Delete, Reinstall, etc.):
-```tsx
-<ConfirmButton
-  label="Loeschen"
-  confirmMessage="Wirklich loeschen?"
-  onConfirm={handleDelete}
-  danger
-/>
-```
+## Bewusst nicht aus den Mockups übernommen
 
-## Toast-Benachrichtigungen
+Alles, was die API nicht belegt, bleibt weg („nichts erfunden“):
+Spielerzahlen, RAM-Auslastung im Dashboard, Trend „+12 % zum Vormonat“, Betrag je Zahlungsereignis, „Erinnerung senden“, nächster Tick-Lauf;
+auf der Landingpage „Server in Deutschland“, „Tägliche Backups“, „Beliebt“-Marke, MwSt-Hinweis, feste Spieleliste (nur aus Blueprint-Namen), „monatlich kündbar“;
+IBAN/Verwendungszweck stehen nur, wo das Backend sie liefert (`payment_purpose`) bzw. der Betreiber sie in `legal/payment.ts` pflegt.
+Die Überschrift „In drei Minuten online, ohne Linux“ ist Mockup-Text und vom Betreiber zu bestätigen.
+Farbige Ereignis-Badges im Aktivitätslog entfallen (keine Tokens dafür), ebenso Marken-Logos bei Spielen.
 
-```tsx
-const toast = useToast();
+## Tests
 
-// Verwenden
-toast.success("Erfolgreich gespeichert!");
-toast.error("Aktion fehlgeschlagen!");
-toast.info("Hinweis: ...");
-toast.warning("Achtung: ...");
-
-// Rendern (einmal pro Seite)
-<Toast messages={toast.messages} />
-```
-
-## Seitenlayout
-
-Alle Admin-Seiten sollten `PageLayout` verwenden:
-
-```tsx
-<PageLayout title="Seitentitel" maxWidth={1100}>
-  {/* Seiteninhalt */}
-</PageLayout>
-```
-
-Die Navigation wird automatisch angezeigt mit den Gruppen:
-- **Core**: Dashboard, Agents, Blueprints, Instances
-- **Operations**: Fleet Monitoring, Jobs, System
-- **Integrations**: Webhooks
-
-## Formulare
-
-- Labels: `<label style={labelStyle}>Feldname *</label>`
-- Inputs: `<input style={inputStyle} />`
-- Pflichtfelder: mit `*` im Label und `required` Attribut
-- Submit-Button: waehrend Submit `disabled` setzen
-- Fehler: ueber `ErrorState` oder Inline-Meldung
-
-## Tabellen
-
-- Header: `<th style={thStyle}>Spalte</th>`
-- Zellen: `<td style={tdStyle}>Wert</td>`
-- Leere Tabellen: `<EmptyState>` anstelle leerer `<tbody>`
-- Sortierung: wo vorhanden, Sortierrichtung im Header anzeigen
-
-## Responsive
-
-- `maxWidth` auf Seiten verwenden (900-1100px)
-- `overflowX: "auto"` fuer breite Tabellen
-- `flexWrap: "wrap"` fuer Button-/Filter-Gruppen
-- Keine fixen Pixelbreiten fuer Inputs
+- Vitest + Testing Library + jsdom (`vitest run`); API per `vi.spyOn(api, …)`, Sprache per `setLang` und in `afterEach` zurück auf `de`.
+- `e2e/flow.mjs` (Kundenfluss gegen das echte Backend) und `e2e/a11y.mjs` (axe A/AA) über `./e2e/run-local.sh`, siehe `frontend/e2e/README.md`.
