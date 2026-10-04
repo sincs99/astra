@@ -58,4 +58,12 @@ export const auth = {
   "auth.verify.ok": "Deine E-Mail-Adresse wurde bestätigt. Du kannst dich jetzt anmelden.",
   "auth.verify.expiredHint": "Der Link kann abgelaufen sein. Melde dich an, dort kannst du eine neue Mail anfordern.",
   "auth.verify.missing": "Der Link ist unvollständig (Token fehlt).",
+  "auth.login.useRecovery": "Recovery-Code verwenden",
+  "auth.login.useApp": "Stattdessen Authenticator-Code verwenden",
+  "auth.login.recoveryLabel": "Recovery-Code",
+  "auth.login.recoveryHint": "Einer deiner einmaligen Notfall-Codes, z.B. abcde-fghij. Groß-/Kleinschreibung ist egal.",
+  "auth.login.missingRecovery": "Bitte einen Recovery-Code eingeben",
+  "auth.login.recoveryUsed": "Recovery-Code verwendet, noch {n} übrig.",
+  "auth.login.recoveryLow": "Recovery-Code verwendet, nur noch {n} übrig. Erzeuge neue Codes, bevor sie ausgehen.",
+  "auth.login.recoveryLink": "Zum Konto",
 } as const;

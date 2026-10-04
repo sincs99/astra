@@ -7,6 +7,7 @@ export const common: Record<keyof typeof de, string> = {
   "common.empty": "No data available.",
   "common.autoRefresh": "Auto-refresh ({seconds}s)",
   "common.skipToContent": "Skip to content",
+  "common.close": "Close",
   "common.cancel": "Cancel",
   "common.save": "Save",
   "common.back": "Back",

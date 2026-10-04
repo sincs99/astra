@@ -9,6 +9,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { linkStyle, btnDefault } from "./styles";
 import { api, isAuthenticated, logout } from "../../services/api";
 import { SkipLink } from "./SkipLink";
+import { FlashBanner } from "../FlashBanner";
 import { t, type MessageKey } from "../../i18n";
 import { SiteFooter } from "../SiteFooter";
 import { loginUrl } from "../../lib/redirect";
@@ -214,6 +215,7 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
 
       {/* Content */}
       <main id="main-content" tabIndex={-1} style={{ outline: "none", maxWidth, margin: "0 auto", padding: "16px clamp(12px, 4vw, 24px)", overflowX: "auto" }}>
+        <FlashBanner />
         <h1 style={{ marginTop: 0, marginBottom: 20, fontSize: 24, fontWeight: 700 }}>
           {title}
         </h1>

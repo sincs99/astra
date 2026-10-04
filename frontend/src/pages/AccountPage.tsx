@@ -45,7 +45,11 @@ export function AccountPage() {
           <PasswordSection onChanged={toast.success} />
           <MfaSection
             enabled={!!user.mfa_enabled}
-            onChanged={(enabled, message) => { setUser({ ...user, mfa_enabled: enabled }); toast.success(message); }}
+            remaining={user.mfa_enabled ? user.mfa_recovery_codes_remaining : undefined}
+            onChanged={(enabled, message, remaining) => {
+              setUser({ ...user, mfa_enabled: enabled, mfa_recovery_codes_remaining: enabled ? remaining ?? user.mfa_recovery_codes_remaining : 0 });
+              toast.success(message);
+            }}
           />
           <ApiKeysSection onMessage={toast.success} />
         </>

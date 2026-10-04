@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { t } from "../i18n";
 import { api, ApiError, isAuthenticated, setAccessToken } from "../services/api";
 import { SiteFooter } from "../components/SiteFooter";
+import { setFlash } from "../lib/flash";
 import { safeRedirectPath } from "../lib/redirect";
 import { inputStyle, labelStyle, btnPrimary, linkStyle } from "../components/ui";
 
@@ -18,6 +19,7 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
+  const [useRecovery, setUseRecovery] = useState(false);
   const [unverified, setUnverified] = useState(false);
   const [resent, setResent] = useState(false);
 
@@ -31,7 +33,7 @@ export function LoginPage() {
       return;
     }
     if (mfaRequired && !mfaCode.trim()) {
-      setError(t("auth.login.missingCode"));
+      setError(t(useRecovery ? "auth.login.missingRecovery" : "auth.login.missingCode"));
       return;
     }
 
@@ -47,6 +49,13 @@ export function LoginPage() {
         return;
       }
       setAccessToken(result.access_token);
+      if (result.recovery_code_used) {
+        // Einmaliger Hinweis nach dem Login: wie viele Codes noch übrig sind (bei wenigen mit Link ins Konto)
+        const left = result.recovery_codes_remaining ?? 0;
+        setFlash(left <= 2
+          ? { kind: "warning", text: t("auth.login.recoveryLow", { n: left }), link: { to: "/account", label: t("auth.login.recoveryLink") } }
+          : { kind: "info", text: t("auth.login.recoveryUsed", { n: left }) });
+      }
       navigate(redirectTo);
     } catch (err) {
       if (err instanceof ApiError && err.code === "email_not_verified") setUnverified(true);
@@ -137,21 +146,29 @@ export function LoginPage() {
 
         {mfaRequired && (
           <div style={{ marginBottom: 20 }}>
-            <label htmlFor="mfa" style={labelStyle}>{t("auth.login.mfaLabel")}</label>
+            <label htmlFor="mfa" style={labelStyle}>{useRecovery ? t("auth.login.recoveryLabel") : t("auth.login.mfaLabel")}</label>
             <input
               id="mfa"
               type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
+              inputMode={useRecovery ? "text" : "numeric"}
+              autoComplete={useRecovery ? "off" : "one-time-code"}
+              autoCapitalize="none"
+              spellCheck={false}
               autoFocus
               value={mfaCode}
               onChange={(e) => setMfaCode(e.target.value)}
-              placeholder="123456"
+              placeholder={useRecovery ? "xxxxx-xxxxx" : "123456"}
               style={inputStyle}
             />
             <small style={{ color: "var(--fg-muted)", fontSize: 12 }}>
-              {t("auth.login.mfaHint")}
+              {useRecovery ? t("auth.login.recoveryHint") : t("auth.login.mfaHint")}
             </small>
+            <div style={{ marginTop: 6 }}>
+              <button type="button" onClick={() => { setUseRecovery(!useRecovery); setMfaCode(""); setError(null); }}
+                style={{ ...linkStyle, background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit", fontSize: 13 }}>
+                {useRecovery ? t("auth.login.useApp") : t("auth.login.useRecovery")}
+              </button>
+            </div>
           </div>
         )}
 

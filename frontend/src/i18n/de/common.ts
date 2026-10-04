@@ -5,6 +5,7 @@ export const common = {
   "common.empty": "Keine Daten vorhanden.",
   "common.autoRefresh": "Auto-Refresh ({seconds}s)",
   "common.skipToContent": "Zum Inhalt springen",
+  "common.close": "Schliessen",
   "common.cancel": "Abbrechen",
   "common.save": "Speichern",
   "common.back": "Zurück",

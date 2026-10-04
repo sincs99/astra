@@ -1,21 +1,28 @@
 import { useState } from "react";
 import { t } from "../../i18n";
-import { api, type MfaSetupResult } from "../../services/api";
+import { api, ApiError, type MfaSetupResult } from "../../services/api";
 import { cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, ConfirmButton, ErrorState } from "../ui";
 import { QrCode } from "./QrCode";
+import { RecoveryCodesPanel } from "./RecoveryCodesPanel";
+
+const TOTAL_RECOVERY_CODES = 10;
 
 interface MfaSectionProps {
   enabled: boolean;
-  onChanged: (enabled: boolean, message: string) => void;
+  /** Noch gültige Recovery-Codes (aus /auth/me); undefined, wenn das Backend sie nicht liefert */
+  remaining?: number;
+  onChanged: (enabled: boolean, message: string, remaining?: number) => void;
 }
 
 /** MFA/TOTP einrichten (QR-Code + Secret, Verifikation, Recovery-Codes) und deaktivieren. */
-export function MfaSection({ enabled, onChanged }: MfaSectionProps) {
+export function MfaSection({ enabled, remaining, onChanged }: MfaSectionProps) {
   const [setup, setSetup] = useState<MfaSetupResult | null>(null);
   const [code, setCode] = useState("");
   const [recovery, setRecovery] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [password, setPassword] = useState("");
 
   const run = async (fn: () => Promise<void>) => {
     try {
@@ -39,7 +46,25 @@ export function MfaSection({ enabled, onChanged }: MfaSectionProps) {
       setRecovery(result.recovery_codes);
       setSetup(null);
       setCode("");
-      onChanged(true, t("account.mfa.enabledMsg"));
+      onChanged(true, t("account.mfa.enabledMsg"), result.recovery_codes_remaining ?? result.recovery_codes.length);
+    });
+  };
+
+  const regenerate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!password) return setError(t("account.mfa.regenerateNeedPw"));
+    return run(async () => {
+      try {
+        const result = await api.regenerateRecoveryCodes(password);
+        setRecovery(result.recovery_codes);
+        setRegenerating(false);
+        setPassword("");
+        onChanged(true, t("account.mfa.regenerated"), result.recovery_codes_remaining);
+      } catch (err) {
+        // Falsches Passwort kommt als 403 (bewusst kein 401): die Anmeldung bleibt bestehen
+        if (err instanceof ApiError && err.code === "invalid_password") throw new Error(t("account.mfa.regenerateWrongPw"));
+        throw err;
+      }
     });
   };
 
@@ -54,22 +79,36 @@ export function MfaSection({ enabled, onChanged }: MfaSectionProps) {
       <h2 id="mfa-title" style={{ marginTop: 0, fontSize: 18 }}>{t("account.mfa.title")}</h2>
       {error && <ErrorState message={error} />}
 
-      {recovery && (
-        <div role="alert" style={{ padding: 12, marginBottom: 12, background: "var(--tint-orange)", border: "1px solid var(--border-orange)", borderRadius: 8 }}>
-          <strong>{t("account.mfa.recoveryTitle")}</strong>
-          <p style={{ margin: "4px 0 8px", fontSize: 13 }}>
-            {t("account.mfa.recoveryText")}
-          </p>
-          <code style={{ display: "block", whiteSpace: "pre-wrap", userSelect: "all" }}>{recovery.join("\n")}</code>
-          <button type="button" style={{ ...btnDefault, marginTop: 8 }} onClick={() => setRecovery(null)}>
-            {t("account.mfa.saved")}
-          </button>
-        </div>
-      )}
+      {recovery && <RecoveryCodesPanel codes={recovery} onDone={() => setRecovery(null)} />}
 
       {enabled && !setup && (
         <>
           <p style={{ marginTop: 0 }}>{t("account.mfa.active")}</p>
+          {remaining !== undefined && !recovery && (
+            remaining === 0 ? (
+              <p role="alert" style={{ color: "var(--c-red)", fontWeight: 600 }}>{t("account.mfa.remainingNone")}</p>
+            ) : (
+              <p style={{ color: remaining <= 2 ? "var(--c-orange)" : "var(--fg-soft)", fontWeight: remaining <= 2 ? 600 : 400 }}>
+                {remaining <= 2 ? t("account.mfa.remainingLow", { n: remaining }) : t("account.mfa.remaining", { n: remaining, total: TOTAL_RECOVERY_CODES })}
+              </p>
+            )
+          )}
+          {regenerating ? (
+            <form onSubmit={regenerate} noValidate style={{ maxWidth: 320, marginBottom: 12 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 13 }}>{t("account.mfa.regenerateIntro")}</p>
+              <label htmlFor="mfa-regen-pw" style={labelStyle}>{t("account.mfa.regeneratePw")}</label>
+              <input id="mfa-regen-pw" type="password" autoComplete="current-password" autoFocus value={password}
+                onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button type="submit" disabled={busy} style={{ ...btnPrimary, opacity: busy ? 0.6 : 1 }}>{t("account.mfa.regenerateSubmit")}</button>
+                <button type="button" style={btnDefault} onClick={() => { setRegenerating(false); setPassword(""); setError(null); }}>{t("account.mfa.regenerateCancel")}</button>
+              </div>
+            </form>
+          ) : (
+            <p style={{ margin: "0 0 12px" }}>
+              <button type="button" style={btnDefault} onClick={() => { setRegenerating(true); setError(null); }}>{t("account.mfa.regenerate")}</button>
+            </p>
+          )}
           <ConfirmButton label={t("account.mfa.disable")} danger disabled={busy}
             confirmMessage={t("account.mfa.disableConfirm")}
             onConfirm={disable} />
