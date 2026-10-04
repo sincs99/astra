@@ -204,7 +204,7 @@ export function AdminAgentsPage() {
             {submitting ? "…" : "Agent erstellen"}
           </button>
         </form>
-        <p style={{ color: "#666", fontSize: 12, margin: "8px 0 0" }}>
+        <p style={{ color: "var(--fg-muted)", fontSize: 12, margin: "8px 0 0" }}>
           Beim Erstellen werden Node-Credentials erzeugt. Die fertige <code>config.yml</code> für Wings
           gibt es anschließend über den Button beim Agent.
         </p>
@@ -255,14 +255,14 @@ export function AdminAgentsPage() {
             {epSubmitting ? "…" : "Endpoint(s) erstellen"}
           </button>
         </form>
-        <p id="ep-range-hint" style={{ color: "#666", fontSize: 12, margin: "8px 0 0" }}>
+        <p id="ep-range-hint" style={{ color: "var(--fg-muted)", fontSize: 12, margin: "8px 0 0" }}>
           Ein Bereich wie <code>25565-25600</code> legt alle Ports auf einmal an (max. 1000); vorhandene werden übersprungen.
         </p>
       </div>
 
       {/* Agent bearbeiten */}
       {editId !== null && (
-        <div style={{ ...cardStyle, borderColor: "#f57c00" }}>
+        <div style={{ ...cardStyle, borderColor: "var(--c-orange)" }}>
           <h2 style={{ marginTop: 0, fontSize: 18, fontWeight: 700 }}>Agent bearbeiten</h2>
           <form onSubmit={handleAgentUpdate}>
             <AgentFormFields values={editForm} onChange={setEditForm} idPrefix="edit" showActive />
@@ -278,7 +278,7 @@ export function AdminAgentsPage() {
 
       {/* config.yml-Dialog */}
       {configAgent && (
-        <div style={{ ...cardStyle, borderColor: "#1976d2" }}>
+        <div style={{ ...cardStyle, borderColor: "var(--c-blue)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
               config.yml für {configAgent.name}
@@ -288,7 +288,7 @@ export function AdminAgentsPage() {
               <button onClick={() => setConfigAgent(null)} style={btnDefault}>Schließen</button>
             </div>
           </div>
-          <p style={{ color: "#666", fontSize: 12, margin: "8px 0" }}>
+          <p style={{ color: "var(--fg-muted)", fontSize: 12, margin: "8px 0" }}>
             Auf dem Node nach <code>/etc/pterodactyl/config.yml</code> speichern und Wings neu starten.
             Diese Datei enthält das Node-Secret – nicht weitergeben.
           </p>
@@ -318,7 +318,7 @@ export function AdminAgentsPage() {
             <div key={agent.id} style={{ ...cardStyle, marginBottom: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
                 <strong style={{ fontSize: 16 }}>{agent.name}</strong>
-                <span style={{ color: "#666", fontSize: 14 }}>
+                <span style={{ color: "var(--fg-muted)", fontSize: 14 }}>
                   {agent.scheme}://{agent.fqdn}:{agent.daemon_connect}
                 </span>
                 <StatusBadge status={agent.is_active ? "active" : "inactive"} size="sm" />
@@ -339,7 +339,7 @@ export function AdminAgentsPage() {
                   />
                 </span>
               </div>
-              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12, color: "#555", marginBottom: 8 }}>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12, color: "var(--fg-soft)", marginBottom: 8 }}>
                 <span><strong>Token-ID:</strong> <code>{agent.daemon_token_id ?? "–"}</code></span>
                 <span><strong>Listen:</strong> {agent.daemon_listen}</span>
                 <span><strong>SFTP:</strong> {agent.daemon_sftp}</span>
@@ -366,11 +366,11 @@ export function AdminAgentsPage() {
               )}
 
               {agentEndpoints.length === 0 ? (
-                <p style={{ color: "#666", margin: "4px 0 0", fontSize: 13 }}>Keine Endpoints</p>
+                <p style={{ color: "var(--fg-muted)", margin: "4px 0 0", fontSize: 13 }}>Keine Endpoints</p>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr style={{ backgroundColor: "#f5f5f5" }}>
+                    <tr style={{ backgroundColor: "var(--bg-subtle)" }}>
                       <th style={thStyle}>ID</th>
                       <th style={thStyle}>IP:Port</th>
                       <th style={thStyle}>Status</th>
@@ -466,8 +466,8 @@ function AgentFormFields({ values, onChange, idPrefix, showActive }: AgentFormFi
           </div>
         )}
       </div>
-      <fieldset style={{ border: "1px solid #e0e0e0", borderRadius: 6, marginTop: 12, padding: "8px 12px" }}>
-        <legend style={{ fontSize: 13, fontWeight: 600, color: "#555", padding: "0 4px" }}>Kapazität (0 = kein Limit)</legend>
+      <fieldset style={{ border: "1px solid var(--border)", borderRadius: 6, marginTop: 12, padding: "8px 12px" }}>
+        <legend style={{ fontSize: 13, fontWeight: 600, color: "var(--fg-soft)", padding: "0 4px" }}>Kapazität (0 = kein Limit)</legend>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           {([
             ["memory", "Memory gesamt (MB)", "memoryTotal"],
@@ -494,7 +494,7 @@ function AgentFormFields({ values, onChange, idPrefix, showActive }: AgentFormFi
             </div>
           ))}
         </div>
-        <small style={{ color: "#666", fontSize: 12 }}>
+        <small style={{ color: "var(--fg-muted)", fontSize: 12 }}>
           Effektive Kapazität = Gesamt × (1 + Überallokation). Bei 0 wird der Agent bei der automatischen Platzierung nicht nach dieser Dimension begrenzt.
         </small>
       </fieldset>
@@ -510,7 +510,7 @@ function AgentFormFields({ values, onChange, idPrefix, showActive }: AgentFormFi
           </label>
         )}
       </div>
-      <p style={{ color: "#666", fontSize: 12, margin: "8px 0 0" }}>
+      <p style={{ color: "var(--fg-muted)", fontSize: 12, margin: "8px 0 0" }}>
         <strong>Connect-Port:</strong> unter diesem Port erreicht das Panel Wings (z.B. 443 hinter Caddy).{" "}
         <strong>Listen-Port:</strong> hier lauscht Wings lokal (z.B. 8080).
       </p>

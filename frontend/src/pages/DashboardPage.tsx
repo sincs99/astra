@@ -49,7 +49,7 @@ export function DashboardPage() {
   return (
     <PageLayout title="Dashboard" maxWidth={900}>
       <Toast {...toast} />
-      <p style={{ color: "#666", marginTop: -12, marginBottom: 24, fontSize: 14 }}>
+      <p style={{ color: "var(--fg-muted)", marginTop: -12, marginBottom: 24, fontSize: 14 }}>
         Eingeloggt als {user ? user.username : "…"}
       </p>
 
@@ -86,21 +86,21 @@ export function DashboardPage() {
               key={inst.id}
               onClick={() => navigate(`/instances/${inst.uuid}`)}
               style={{ ...cardStyle, cursor: "pointer", transition: "border-color 0.15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#1976d2")}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e0e0e0")}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--c-blue)")}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <strong style={{ fontSize: 16 }}>{inst.name}</strong>
                   {inst.description && (
-                    <span style={{ color: "#666", marginLeft: 8, fontSize: 14 }}>
+                    <span style={{ color: "var(--fg-muted)", marginLeft: 8, fontSize: 14 }}>
                       {inst.description}
                     </span>
                   )}
                 </div>
                 <StatusBadge status={inst.status ?? "ready"} />
               </div>
-              <div style={{ marginTop: 8, fontSize: 13, color: "#666" }}>
+              <div style={{ marginTop: 8, fontSize: 13, color: "var(--fg-muted)" }}>
                 <code style={{ fontSize: 11 }}>{inst.uuid}</code>
                 <span style={{ marginLeft: 16 }}>
                   {inst.memory} MB RAM &middot; {inst.disk} MB Disk &middot; {inst.cpu}% CPU

@@ -294,8 +294,8 @@ export function AdminBlueprintsPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
                     <strong style={{ fontSize: 16 }}>{bp.name}</strong>
-                    <span style={{ marginLeft: 8, color: "#666", fontSize: 12 }}>#{bp.id}</span>
-                    {bp.description && <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>{bp.description}</div>}
+                    <span style={{ marginLeft: 8, color: "var(--fg-muted)", fontSize: 12 }}>#{bp.id}</span>
+                    {bp.description && <div style={{ fontSize: 13, color: "var(--fg-muted)", marginTop: 2 }}>{bp.description}</div>}
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
                     <button onClick={() => startEdit(bp)} style={btnDefault}>✏️ Bearbeiten</button>
@@ -309,7 +309,7 @@ export function AdminBlueprintsPage() {
                   </div>
                 </div>
 
-                <div style={{ marginTop: 8, display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12, color: "#555" }}>
+                <div style={{ marginTop: 8, display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12, color: "var(--fg-soft)" }}>
                   {bp.docker_image && <span><strong>Image:</strong> <code>{bp.docker_image}</code></span>}
                   {bp.startup_command && <span><strong>Startup:</strong> <code>{bp.startup_command}</code></span>}
                   <span><strong>Stop:</strong> <code>{bp.config_stop || "stop"}</code></span>
@@ -317,10 +317,10 @@ export function AdminBlueprintsPage() {
                     <strong>Startup-Erkennung:</strong>{" "}
                     {bp.config_startup?.done?.length
                       ? <code>{bp.config_startup.done.join(" | ")}</code>
-                      : <span style={{ color: "#d32f2f" }}>fehlt – Server bleibt in Wings auf „starting“</span>}
+                      : <span style={{ color: "var(--c-red)" }}>fehlt – Server bleibt in Wings auf „starting“</span>}
                   </span>
                   <span><strong>Variablen:</strong> {bp.variables?.length ?? 0}</span>
-                  <span style={{ color: "#666" }}>{formatDateTime(bp.created_at)}</span>
+                  <span style={{ color: "var(--fg-muted)" }}>{formatDateTime(bp.created_at)}</span>
                 </div>
 
                 {bp.variables && bp.variables.length > 0 && (
@@ -378,7 +378,7 @@ function VariableEditor({
         </button>
       </div>
       {vars.map((v, i) => (
-        <div key={i} style={{ border: "1px solid #e0e0e0", borderRadius: 6, padding: 10, marginBottom: 8, backgroundColor: "#fafafa" }}>
+        <div key={i} style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 10, marginBottom: 8, backgroundColor: "var(--bg-page)" }}>
           <div style={grid3}>
             <Field label="Name">
               <input type="text" value={v.name} onChange={e => onUpdate(i, "name", e.target.value)} style={{ ...inputStyle, fontSize: 12 }} placeholder="Server Port" />
@@ -408,7 +408,7 @@ function VariableEditor({
               <input type="checkbox" checked={v.user_editable} onChange={e => onUpdate(i, "user_editable", e.target.checked)} />
               Editierbar
             </label>
-            <button type="button" onClick={() => onRemove(i)} style={{ ...btnDefault, padding: "4px 8px", fontSize: 12, color: "#d32f2f", borderColor: "#ef9a9a" }}>
+            <button type="button" onClick={() => onRemove(i)} style={{ ...btnDefault, padding: "4px 8px", fontSize: 12, color: "var(--c-red)", borderColor: "var(--border-red)" }}>
               🗑
             </button>
           </div>
@@ -432,7 +432,7 @@ function WingsProcessFields({
   fileDenylist: string; onFileDenylist: (v: string) => void;
 }) {
   return (
-    <div style={{ border: "1px solid #e0e0e0", borderRadius: 6, padding: 10, marginTop: 8, backgroundColor: "#fafafa" }}>
+    <div style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 10, marginTop: 8, backgroundColor: "var(--bg-page)" }}>
       <strong style={{ fontSize: 13 }}>Wings-Prozesskonfiguration</strong>
       <div style={{ ...grid2, marginTop: 8 }}>
         <Field label="Install-Container">

@@ -5,6 +5,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – Erstattungen und Zahlungsstreit, M59)
+- Bestellungen: Status `refunded` ("Erstattet", rot) und Felder `refunded_at`/`disputed`; Admin-Statusfilter "Erstattet"; Hinweis "Zahlung erstattet am …, der Server wird am … gelöscht" in Kunden- und Admin-Liste, Badge "Zahlung angefochten" bei offenem Zahlungsstreit; erstattete Bestellungen zaehlen nicht zum Umsatz der Admin-Uebersicht
+
+### Added (Frontend – F4 Dunkler Modus)
+- Farb-Tokens als CSS-Variablen (`src/theme.css`), alle bisher hartkodierten Farben der Seiten und Komponenten (Karten, Tabellen, Status-Badges, Banner, Auslastungsbalken) darauf umgestellt; dunkles Design folgt `prefers-color-scheme: dark` und ist im Konto unter "Darstellung" auf Hell/Dunkel/Wie das Gerät umschaltbar (im Browser gemerkt, ohne Aufblitzen beim Laden). Textfarben im Dunkeln erfuellen WCAG AA: alle 16 Routen im dunklen Design per axe geprueft (0 Verstoesse). Server-Konsole bleibt bewusst dunkel
+
 ### Added (Frontend – F3 E2E-Durchlauf)
 - `frontend/e2e/`: Playwright-Durchlauf gegen das echte Backend (SQLite, Stub-Runner, manuelle Zahlung): Registrierung, Login, Bestellung im Shop, Admin markiert als bezahlt, Kunde sieht den Server im Dashboard. `./e2e/run-local.sh` startet Backend und Frontend, fuehrt den Durchlauf aus und raeumt auf (Anleitung in `frontend/e2e/README.md`); `.github/workflows/e2e.yml` fuehrt ihn manuell bzw. bei Aenderungen an den E2E-Dateien aus (lokal verifiziert, auf GitHub noch nicht)
 - Login-Seite: Feldbezeichnung "Benutzername oder E-Mail" statt "Username oder Email"

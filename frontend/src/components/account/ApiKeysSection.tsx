@@ -74,12 +74,12 @@ export function ApiKeysSection({ onMessage }: { onMessage: (message: string) => 
       {error && <ErrorState message={error} onRetry={load} />}
 
       {created && (
-        <div role="alert" style={{ padding: 12, marginBottom: 12, background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 8 }}>
+        <div role="alert" style={{ padding: 12, marginBottom: 12, background: "var(--tint-green)", border: "1px solid var(--border-green)", borderRadius: 8 }}>
           <strong>Dein neuer API-Key</strong>
           <p style={{ margin: "4px 0 8px", fontSize: 13 }}>
             Kopiere ihn jetzt – er wird <strong>nur einmal</strong> angezeigt und kann danach nicht mehr abgerufen werden.
           </p>
-          <code style={{ display: "block", wordBreak: "break-all", userSelect: "all", background: "#fff", padding: 8, borderRadius: 4 }}>
+          <code style={{ display: "block", wordBreak: "break-all", userSelect: "all", background: "var(--bg-card)", padding: 8, borderRadius: 4 }}>
             {created.raw_token}
           </code>
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>

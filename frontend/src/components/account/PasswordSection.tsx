@@ -42,7 +42,7 @@ export function PasswordSection({ onChanged }: { onChanged: (message: string) =>
           <label htmlFor="pw-new" style={labelStyle}>Neues Passwort</label>
           <input id="pw-new" type="password" autoComplete="new-password" value={next}
             onChange={(e) => setNext(e.target.value)} style={inputStyle} />
-          <small style={{ color: "#666", fontSize: 12 }}>Mindestens {MIN_PASSWORD_LENGTH} Zeichen</small>
+          <small style={{ color: "var(--fg-muted)", fontSize: 12 }}>Mindestens {MIN_PASSWORD_LENGTH} Zeichen</small>
         </div>
         <div style={{ marginBottom: 16 }}>
           <label htmlFor="pw-confirm" style={labelStyle}>Neues Passwort wiederholen</label>
@@ -53,7 +53,7 @@ export function PasswordSection({ onChanged }: { onChanged: (message: string) =>
           {busy ? "..." : "Passwort ändern"}
         </button>
       </form>
-      <p style={{ color: "#666", fontSize: 12, margin: "12px 0 0" }}>
+      <p style={{ color: "var(--fg-muted)", fontSize: 12, margin: "12px 0 0" }}>
         Hinweis: Bestehende Sitzungen auf anderen Geräten bleiben bis zum Ablauf ihres Tokens gültig.
       </p>
     </section>

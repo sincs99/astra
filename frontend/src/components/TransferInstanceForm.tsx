@@ -62,22 +62,22 @@ export function TransferInstanceForm({ instanceUuid, instanceName, agents, onTra
   return (
     <form onSubmit={submit} style={{ maxWidth: 520 }}>
       {error && <ErrorState message={error} />}
-      <div role="alert" style={{ padding: "10px 14px", marginBottom: 12, backgroundColor: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, color: "#c62828", fontSize: 13, fontWeight: 600 }}>
+      <div role="alert" style={{ padding: "10px 14px", marginBottom: 12, backgroundColor: "var(--tint-red)", border: "1px solid var(--border-red)", borderRadius: 8, color: "var(--c-red)", fontSize: 13, fontWeight: 600 }}>
         Achtung: Beim Transfer werden die Serverdaten NICHT übertragen. Vorher ein Backup erstellen und danach wiederherstellen.
       </div>
 
       <div style={{ fontSize: 13, marginBottom: 12 }} role="status">
-        {check.state === "loading" && <span style={{ color: "#666" }}>Backups werden geprüft…</span>}
+        {check.state === "loading" && <span style={{ color: "var(--fg-muted)" }}>Backups werden geprüft…</span>}
         {check.state === "ok" && (
-          <span style={{ color: "#2e7d32" }}>Letztes erfolgreiches Backup: {formatDateTime(check.lastAt)}</span>
+          <span style={{ color: "var(--c-green)" }}>Letztes erfolgreiches Backup: {formatDateTime(check.lastAt)}</span>
         )}
         {check.state === "none" && (
-          <span style={{ color: "#c62828", fontWeight: 600 }}>
+          <span style={{ color: "var(--c-red)", fontWeight: 600 }}>
             Für diese Instance gibt es kein erfolgreiches Backup. Erstelle zuerst eines, sonst gehen die Daten verloren.
           </span>
         )}
         {check.state === "unknown" && (
-          <span style={{ color: "#666" }}>Die Backups konnten nicht geprüft werden. Bitte stelle selbst sicher, dass ein aktuelles Backup existiert.</span>
+          <span style={{ color: "var(--fg-muted)" }}>Die Backups konnten nicht geprüft werden. Bitte stelle selbst sicher, dass ein aktuelles Backup existiert.</span>
         )}
       </div>
 

@@ -105,13 +105,13 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
 
       {/* Backup-Liste */}
       {loading ? (
-        <p style={{ color: "#666" }}>Backups werden geladen...</p>
+        <p style={{ color: "var(--fg-muted)" }}>Backups werden geladen...</p>
       ) : backups.length === 0 ? (
-        <p style={{ color: "#666" }}>Noch keine Backups vorhanden.</p>
+        <p style={{ color: "var(--fg-muted)" }}>Noch keine Backups vorhanden.</p>
       ) : (
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
-            <tr style={{ borderBottom: "2px solid #ddd" }}>
+            <tr style={{ borderBottom: "2px solid var(--border)" }}>
               <th style={thS}>Name</th>
               <th style={thS}>Grösse</th>
               <th style={thS}>Status</th>
@@ -121,20 +121,20 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
           </thead>
           <tbody>
             {backups.map((b) => (
-              <tr key={b.uuid} style={{ borderBottom: "1px solid #eee" }}>
+              <tr key={b.uuid} style={{ borderBottom: "1px solid var(--border)" }}>
                 <td style={tdS}>
                   {b.is_locked && "🔒 "}
                   {b.name}
-                  <div style={{ fontSize: 11, color: "#666" }}>
+                  <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>
                     {b.uuid.substring(0, 8)}…
                   </div>
                 </td>
                 <td style={tdS}>{formatBytes(b.bytes)}</td>
                 <td style={tdS}>
                   {b.is_successful ? (
-                    <span style={{ color: "#5cb85c" }}>✅ Erfolgreich</span>
+                    <span style={{ color: "var(--c-green)" }}>✅ Erfolgreich</span>
                   ) : (
-                    <span style={{ color: "#f0ad4e" }}>⏳ Ausstehend</span>
+                    <span style={{ color: "var(--c-yellow)" }}>⏳ Ausstehend</span>
                   )}
                 </td>
                 <td style={tdS}>
@@ -146,7 +146,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
                       <button
                         onClick={() => handleRestore(b)}
                         disabled={acting}
-                        style={{ ...smBtn, color: "#5bc0de" }}
+                        style={{ ...smBtn, color: "var(--c-blue)" }}
                         title="Wiederherstellen"
                       >
                         🔄
@@ -156,7 +156,7 @@ export function BackupManager({ instanceUuid }: BackupManagerProps) {
                       <button
                         onClick={() => handleDelete(b)}
                         disabled={acting}
-                        style={{ ...smBtn, color: "#c00" }}
+                        style={{ ...smBtn, color: "var(--c-red)" }}
                         title="Löschen"
                       >
                         🗑
@@ -179,9 +179,9 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-const btnStyle: React.CSSProperties = { padding: "6px 14px", border: "1px solid #ddd", borderRadius: 4, cursor: "pointer", fontSize: 13, backgroundColor: "#fff" };
-const smBtn: React.CSSProperties = { padding: "4px 8px", border: "1px solid #ddd", borderRadius: 3, backgroundColor: "#fff", cursor: "pointer", fontSize: 13 };
+const btnStyle: React.CSSProperties = { padding: "6px 14px", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontSize: 13, backgroundColor: "var(--bg-card)" };
+const smBtn: React.CSSProperties = { padding: "4px 8px", border: "1px solid var(--border)", borderRadius: 3, backgroundColor: "var(--bg-card)", cursor: "pointer", fontSize: 13 };
 const thS: React.CSSProperties = { padding: 8, textAlign: "left", fontSize: 12, fontWeight: 600 };
 const tdS: React.CSSProperties = { padding: 8, fontSize: 13 };
-const errStyle: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "#fee", border: "1px solid #c00", borderRadius: 4, color: "#c00", fontSize: 12 };
-const msgStyle: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "#efe", border: "1px solid #0a0", borderRadius: 4, color: "#060", fontSize: 12 };
+const errStyle: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "var(--tint-red)", border: "1px solid var(--c-red)", borderRadius: 4, color: "var(--c-red)", fontSize: 12 };
+const msgStyle: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "var(--tint-green)", border: "1px solid var(--c-green)", borderRadius: 4, color: "var(--c-green)", fontSize: 12 };

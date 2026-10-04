@@ -122,20 +122,20 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       {error && <div style={errS}>{error}</div>}
       {message && <div style={msgS}>{message}</div>}
 
-      {loading ? <p style={{ color: "#666" }}>Wird geladen...</p> : routines.length === 0 ? (
-        <p style={{ color: "#666", fontSize: 13 }}>Keine Routinen vorhanden.</p>
+      {loading ? <p style={{ color: "var(--fg-muted)" }}>Wird geladen...</p> : routines.length === 0 ? (
+        <p style={{ color: "var(--fg-muted)", fontSize: 13 }}>Keine Routinen vorhanden.</p>
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
           {routines.map((r) => (
-            <div key={r.id} style={{ border: "1px solid #eee", borderRadius: 6, padding: 10 }}>
+            <div key={r.id} style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <strong style={{ fontSize: 13 }}>{r.name}</strong>
-                  <span style={{ marginLeft: 8, fontSize: 11, color: r.is_active ? "#5cb85c" : "#666" }}>
+                  <span style={{ marginLeft: 8, fontSize: 11, color: r.is_active ? "var(--c-green)" : "var(--fg-muted)" }}>
                     {r.is_active ? "●aktiv" : "○inaktiv"}
                   </span>
-                  {r.is_processing && <span style={{ marginLeft: 6, fontSize: 11, color: "#f0ad4e" }}>⏳running</span>}
-                  <span style={{ marginLeft: 8, fontSize: 10, color: "#666" }}>
+                  {r.is_processing && <span style={{ marginLeft: 6, fontSize: 11, color: "var(--c-yellow)" }}>⏳running</span>}
+                  <span style={{ marginLeft: 8, fontSize: 10, color: "var(--fg-muted)" }}>
                     {r.cron_minute} {r.cron_hour} {r.cron_day_month} {r.cron_month} {r.cron_day_week}
                   </span>
                 </div>
@@ -143,23 +143,23 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
                   <button onClick={() => handleToggle(r)} style={smB} title={r.is_active ? "Deaktivieren" : "Aktivieren"}>
                     {r.is_active ? "⏸" : "▶"}
                   </button>
-                  <button onClick={() => handleExecute(r)} disabled={acting || r.is_processing} style={{ ...smB, color: "#5cb85c" }} title="Ausführen">⚡</button>
+                  <button onClick={() => handleExecute(r)} disabled={acting || r.is_processing} style={{ ...smB, color: "var(--c-green)" }} title="Ausführen">⚡</button>
                   <button onClick={() => setExpandedId(expandedId === r.id ? null : r.id)} style={smB}>
                     {expandedId === r.id ? "▲" : "▼"}
                   </button>
-                  <button onClick={() => handleDelete(r)} disabled={acting} style={{ ...smB, color: "#c00" }}>🗑</button>
+                  <button onClick={() => handleDelete(r)} disabled={acting} style={{ ...smB, color: "var(--c-red)" }}>🗑</button>
                 </div>
               </div>
 
               {r.last_run_at && (
-                <div style={{ fontSize: 10, color: "#666", marginTop: 2 }}>
+                <div style={{ fontSize: 10, color: "var(--fg-muted)", marginTop: 2 }}>
                   Zuletzt: {formatDateTime(r.last_run_at)}
                 </div>
               )}
 
               {/* Expanded: Actions */}
               {expandedId === r.id && (
-                <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #eee" }}>
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
                   <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Actions ({r.actions.length})</div>
                   {r.actions.length > 0 && (
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 8 }}>
@@ -174,13 +174,13 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
                       </thead>
                       <tbody>
                         {r.actions.map((a) => (
-                          <tr key={a.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                          <tr key={a.id} style={{ borderBottom: "1px solid var(--bg-subtle)" }}>
                             <td style={tdS}>{a.sequence}</td>
                             <td style={tdS}><code>{a.action_type}</code></td>
                             <td style={tdS}><code style={{ fontSize: 10 }}>{JSON.stringify(a.payload)}</code></td>
                             <td style={tdS}>{a.delay_seconds}s</td>
                             <td style={tdS}>
-                              <button onClick={() => handleDeleteAction(r.id, a.id)} style={{ ...smB, color: "#c00", fontSize: 10 }}>✕</button>
+                              <button onClick={() => handleDeleteAction(r.id, a.id)} style={{ ...smB, color: "var(--c-red)", fontSize: 10 }}>✕</button>
                             </td>
                           </tr>
                         ))}
@@ -216,9 +216,9 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
   );
 }
 
-const btnS: React.CSSProperties = { padding: "6px 12px", border: "1px solid #ddd", borderRadius: 4, cursor: "pointer", fontSize: 12, backgroundColor: "#fff" };
-const smB: React.CSSProperties = { padding: "3px 6px", border: "1px solid #ddd", borderRadius: 3, backgroundColor: "#fff", cursor: "pointer", fontSize: 12 };
+const btnS: React.CSSProperties = { padding: "6px 12px", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontSize: 12, backgroundColor: "var(--bg-card)" };
+const smB: React.CSSProperties = { padding: "3px 6px", border: "1px solid var(--border)", borderRadius: 3, backgroundColor: "var(--bg-card)", cursor: "pointer", fontSize: 12 };
 const thS: React.CSSProperties = { padding: 4, textAlign: "left", fontSize: 11, fontWeight: 600 };
 const tdS: React.CSSProperties = { padding: 4, fontSize: 12 };
-const errS: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "#fee", border: "1px solid #c00", borderRadius: 4, color: "#c00", fontSize: 12 };
-const msgS: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "#efe", border: "1px solid #0a0", borderRadius: 4, color: "#060", fontSize: 12 };
+const errS: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "var(--tint-red)", border: "1px solid var(--c-red)", borderRadius: 4, color: "var(--c-red)", fontSize: 12 };
+const msgS: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "var(--tint-green)", border: "1px solid var(--c-green)", borderRadius: 4, color: "var(--c-green)", fontSize: 12 };

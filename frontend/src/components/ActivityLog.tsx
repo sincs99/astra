@@ -25,13 +25,13 @@ export function ActivityLog({ instanceUuid }: ActivityLogProps) {
     load();
   }, [instanceUuid]);
 
-  if (loading) return <p style={{ color: "#666", fontSize: 13 }}>Wird geladen...</p>;
-  if (logs.length === 0) return <p style={{ color: "#666", fontSize: 13 }}>Keine Aktivitäten vorhanden.</p>;
+  if (loading) return <p style={{ color: "var(--fg-muted)", fontSize: 13 }}>Wird geladen...</p>;
+  if (logs.length === 0) return <p style={{ color: "var(--fg-muted)", fontSize: 13 }}>Keine Aktivitäten vorhanden.</p>;
 
   return (
     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
       <thead>
-        <tr style={{ borderBottom: "2px solid #ddd" }}>
+        <tr style={{ borderBottom: "2px solid var(--border)" }}>
           <th style={thS}>Zeit</th>
           <th style={thS}>Event</th>
           <th style={thS}>Beschreibung</th>
@@ -40,7 +40,7 @@ export function ActivityLog({ instanceUuid }: ActivityLogProps) {
       </thead>
       <tbody>
         {logs.map((l) => (
-          <tr key={l.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+          <tr key={l.id} style={{ borderBottom: "1px solid var(--bg-subtle)" }}>
             <td style={tdS}>
               {formatLogTime(l.created_at)}
             </td>
@@ -61,12 +61,12 @@ export function ActivityLog({ instanceUuid }: ActivityLogProps) {
 }
 
 function eventColor(event: string): string {
-  if (event.startsWith("instance:")) return "#e8f0fe";
-  if (event.startsWith("backup:")) return "#fef3e0";
-  if (event.startsWith("file:")) return "#e8f5e9";
-  if (event.startsWith("collaborator:")) return "#f3e5f5";
-  if (event.startsWith("routine:")) return "#e0f7fa";
-  return "#f5f5f5";
+  if (event.startsWith("instance:")) return "var(--tint-blue)";
+  if (event.startsWith("backup:")) return "var(--tint-orange)";
+  if (event.startsWith("file:")) return "var(--tint-green)";
+  if (event.startsWith("collaborator:")) return "var(--tint-purple)";
+  if (event.startsWith("routine:")) return "var(--tint-blue)";
+  return "var(--bg-subtle)";
 }
 
 const thS: React.CSSProperties = { padding: 6, textAlign: "left", fontSize: 11, fontWeight: 600 };

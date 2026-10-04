@@ -99,7 +99,7 @@ export function RegisterPage() {
             <label htmlFor="password" style={labelStyle}>Passwort</label>
             <input id="password" type="password" autoComplete="new-password" value={password}
               onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
-            <small style={{ color: "#666", fontSize: 12 }}>Mindestens {MIN_PASSWORD_LENGTH} Zeichen</small>
+            <small style={{ color: "var(--fg-muted)", fontSize: 12 }}>Mindestens {MIN_PASSWORD_LENGTH} Zeichen</small>
           </div>
           <div style={{ marginBottom: 16 }}>
             <label htmlFor="confirm" style={labelStyle}>Passwort wiederholen</label>
