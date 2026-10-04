@@ -12,7 +12,7 @@
 ### Queue / Background Jobs
 - **SyncQueue** (synchron) ist Default in Dev/Test. Fuer Produktion muss Redis konfiguriert und ein Worker gestartet werden.
 - Webhook-Retry-Delays (5/15/30s) laufen im SyncQueue-Modus blockierend.
-- Kein automatisches Job-Cleanup (alte Jobs bleiben in DB).
+- Job-Cleanup ist nicht automatisch: alte Job-Eintraege (`completed`/`failed`) bleiben in der DB, bis jemand `python cli.py cleanup-jobs [--days 30] [--dry-run]` ausfuehrt (z.B. per Cron).
 
 ### Datenbank
 - **SQLite** wird in Dev/Test verwendet. Fuer Produktion PostgreSQL empfohlen.
