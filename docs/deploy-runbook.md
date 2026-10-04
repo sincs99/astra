@@ -235,13 +235,21 @@ Online-Zahlung per Stripe:
 1. Stripe-Konto anlegen, im Dashboard zuerst den **Test-Modus** verwenden.
 2. In `.env`: `PAYMENT_PROVIDER=stripe`, `STRIPE_SECRET_KEY=sk_test_…`, danach Webhook im Stripe-Dashboard
    anlegen: URL `https://panel.deinedomain.de/api/payments/stripe`, Ereignisse
-   `checkout.session.completed` und `checkout.session.async_payment_succeeded`. Das dort angezeigte
+   `checkout.session.completed`, `checkout.session.async_payment_succeeded` sowie (seit M59, für Erstattungen und
+   Zahlungsstreitigkeiten) `charge.refunded`, `charge.dispute.created` und `charge.dispute.closed`. Ohne die drei
+   letzten bleibt ein erstatteter Server aktiv. Das dort angezeigte
    Signing Secret als `STRIPE_WEBHOOK_SECRET=whsec_…` eintragen.
 3. `./scripts/deploy.sh` (Backend-Image wird neu gebaut, das Stripe-Paket ist Teil davon).
 4. Mit einer Testbestellung und der Stripe-Testkarte `4242 4242 4242 4242` durchspielen:
    Kunde klickt *Jetzt bezahlen*, kommt nach `/orders?paid=…` zurück, der Webhook stellt den Server bereit.
    Lokal lässt sich der Webhook mit der Stripe CLI nachstellen (`stripe listen --forward-to …`).
 5. Erst nach erfolgreichem Testlauf auf die Live-Schlüssel wechseln.
+
+Erstattungen und Streitfälle (M59): Eine volle Erstattung der letzten Zahlung setzt die Bestellung auf
+`refunded`, sperrt den Server und löscht ihn nach `BILLING_GRACE_DAYS`; der Kunde bekommt eine Mail. Teilerstattungen
+und ein offener Dispute sperren nur bzw. melden nur, der Admin entscheidet. Alles davon kommt als Admin-Alert (M58)
+und als Activity-Event `order:refunded` / `order:disputed` an. Erstattungen selbst löst Astra nie aus, das bleibt
+im Stripe-Dashboard.
 
 Betrieb: Bestellungen mit Status `mismatch` oder Activity-Events `order:payment_unapplied` bedeuten,
 dass Geld eingegangen ist, aber nichts freigeschaltet wurde (Betrag oder Währung passten nicht, oder die
