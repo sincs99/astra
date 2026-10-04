@@ -57,4 +57,4 @@
 - `/api/admin` ist durch einen Admin-Guard geschuetzt (M35), Agents sprechen nur noch ueber `/api/remote` mit Node-Token. Die Legacy-Routen unter `/api/agent` wurden mit M40 entfernt.
 - Rate Limiting nutzt Redis (`REDIS_URL`); ist Redis nicht erreichbar, faellt es auf einen In-Memory-Zaehler pro Prozess zurueck.
 - CSRF-Schutz ist ueber SameSite Cookies + JWT geloest, kein dedizierter CSRF-Token.
-- Ausgestellte JWTs bleiben nach einem Passwortwechsel bis zu ihrem Ablauf gueltig (kein Abmelden anderer Geraete).
+- Passwortwechsel und -reset machen neu ausgestellte JWTs sofort ungueltig (Claim `pwf`, Fingerabdruck des Passwort-Hashes); das Gerät, das das Passwort ändert, bekommt ein frisches Token. Noch vor M57 ausgestellte Tokens ohne diesen Claim gelten bis zu ihrem Ablauf (24 Stunden). Sonst gibt es weiterhin kein einzelnes Abmelden (kein Logout-Blocklisting) und API-Keys bleiben vom Passwortwechsel unberührt.

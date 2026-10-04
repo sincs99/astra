@@ -97,6 +97,9 @@ r = c.post(url, json={"new_password": "ganz-neu-123"}, headers=H)
 check("aktuelles Passwort fehlt -> 401", r.status_code == 401)
 r = c.post(url, json={"current_password": "neues-passwort", "new_password": "ganz-neu-123"}, headers=H)
 check("Aenderung erfolgreich -> 200", r.status_code == 200, r.get_data(as_text=True))
+check("Antwort enthaelt frisches Token, altes ist ungueltig", bool(r.json.get("access_token"))
+      and c.get("/api/auth/me", headers=H).status_code == 401)
+H = {"Authorization": f"Bearer {r.json['access_token']}"}
 check("Login mit neuem Passwort", c.post("/api/auth/login", json={"login": "neu", "password": "ganz-neu-123"}).status_code == 200)
 check("altes Passwort ungueltig", c.post("/api/auth/login", json={"login": "neu", "password": "neues-passwort"}).status_code == 401)
 with app.app_context():

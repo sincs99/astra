@@ -5,6 +5,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – Betrieb, Barrierefreiheit)
+- Admin-Seiten werden per Code-Splitting nachgeladen (Haupt-Bundle ca. 452 -> 385 KB); fehlt nach einem Deployment eine Seiten-Datei, zeigt die App "Neue Version verfuegbar" mit Reload-Button statt der allgemeinen Fehlerseite
+- Browser-Tab-Titel folgt der Seite ("Meine Bestellungen - Astra"); Skip-Link "Zum Inhalt springen" fuer Tastaturnutzer
+- Admin-System: Karte "Billing-Tick" (Ampel, letzter Lauf relativ, Bestellungen je Status, Warnung "Container billing pruefen"); bezahlte Bestellungen ohne freien Node mit Warnung "Kapazitaet pruefen". Auf dem Admin-Dashboard erscheint die Karte nur bei Stoerung
+- Bestellungen: Nach der Stripe-Rueckkehr Hinweis auf die Bestaetigungsmail (M54)
+
 ### Added (Phase 2 – Produktions-Deployment)
 - GitHub Actions `.github/workflows/backend.yml`: alle Testskripte plus Migrations-Roundtrip auf SQLite bei Push/PR
 - `POST /api/client/orders/{uuid}/checkout`: 409-Antworten tragen `code` (`manual`, `invalid_status`), `PaymentError.code`
@@ -45,6 +51,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Der gesamte `/api/admin`-Blueprint verlangt jetzt einen angemeldeten Admin (`before_request`, JWT, API-Key oder in Dev/Test `X-User-Id`). Ausnahme: `GET /api/admin/health`. Ohne Login 401, ohne Admin-Recht 403
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
+
+### Security (M57 – Tokens nach Passwortwechsel ungueltig)
+- Access-Tokens enthalten den Claim `pwf` (Fingerabdruck des Passwort-Hashes). Nach Passwortwechsel oder -reset sind alle bisherigen Tokens des Kontos sofort ungueltig (401). `POST /api/auth/change-password` liefert zusaetzlich ein frisches `access_token`, das Frontend (`api.changePassword`) uebernimmt es, damit das aendernde Geraet angemeldet bleibt. Tokens ohne den Claim (vor diesem Update ausgestellt) gelten bis zu ihrem Ablauf. API-Keys sind nicht betroffen. `backend/test_m57.py` (11 Tests)
 
 ### Added (M56 – Warnung bei lange wartenden Bestellungen)
 - `GET /api/admin/billing/status` enthaelt `awaiting_provisioning`: `count`, `oldest_paid_at`, `oldest_wait_hours`, `warn_after_hours`, `waiting_too_long`. Preflight-Check `billing_waiting_orders` warnt, wenn die aelteste bezahlte Bestellung ohne Instance `BILLING_WAIT_WARN_HOURS` (Standard 24) oder laenger wartet. Nur Warnung, nichts blockiert; Env-Variable in `.env.prod.example` und Compose. `backend/test_m56.py`
