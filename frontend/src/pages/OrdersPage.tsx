@@ -59,7 +59,7 @@ export function OrdersPage() {
     if (!ret || handledReturn.current) return;
     handledReturn.current = true;
     if (ret.kind === "paid") {
-      toast.success("Zahlung eingegangen, Server wird bereitgestellt.");
+      toast.success("Zahlung eingegangen, Server wird bereitgestellt. Eine Bestätigung folgt per E-Mail.");
       // Die Bestätigung kommt asynchron per Webhook: nach 5 s nachladen, solange der Status noch aussteht (max. 6x)
       let tries = 0;
       const timer = setInterval(async () => {

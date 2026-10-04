@@ -244,7 +244,7 @@ describe("OrdersPage", () => {
           .mockResolvedValueOnce([pending])
           .mockResolvedValue([{ ...pending, status: "active", current_period_end: "2026-11-15T00:00:00" }]);
         mount("/orders?paid=o-2");
-        expect(await screen.findByText("Zahlung eingegangen, Server wird bereitgestellt.")).toBeTruthy();
+        expect(await screen.findByText("Zahlung eingegangen, Server wird bereitgestellt. Eine Bestätigung folgt per E-Mail.")).toBeTruthy();
         await vi.advanceTimersByTimeAsync(5100);
         await waitFor(() => expect(screen.getByLabelText("aktiv")).toBeTruthy());
         // nach dem Statuswechsel wird nicht weiter nachgeladen
