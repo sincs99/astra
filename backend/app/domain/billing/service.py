@@ -443,6 +443,13 @@ def get_tick_status(now: datetime | None = None) -> dict:
     counts = dict(db.session.query(Order.status, db.func.count(Order.id)).group_by(Order.status).all())
     needing = sum(counts.get(s, 0) for s in _LIVE_STATUSES)
     healthy = needing == 0 or (age is not None and age <= max_age * 60)
+
+    # Bezahlte Bestellungen ohne Instance: wie lange wartet die aelteste?
+    warn_hours = int(current_app.config.get("BILLING_WAIT_WARN_HOURS", 24))
+    oldest_paid = db.session.query(db.func.min(Order.paid_at)).filter(
+        Order.status == ORDER_AWAITING_PROVISIONING).scalar()
+    oldest_paid = _utc_naive(oldest_paid) if oldest_paid else None
+    wait_hours = round((now - oldest_paid).total_seconds() / 3600, 1) if oldest_paid else None
     return {
         "healthy": healthy,
         "last_run_at": iso_utc(last_run),
@@ -451,6 +458,13 @@ def get_tick_status(now: datetime | None = None) -> dict:
         "orders_needing_tick": needing,
         "orders_by_status": counts,
         "last_summary": summary,
+        "awaiting_provisioning": {
+            "count": counts.get(ORDER_AWAITING_PROVISIONING, 0),
+            "oldest_paid_at": iso_utc(oldest_paid),
+            "oldest_wait_hours": wait_hours,
+            "warn_after_hours": warn_hours,
+            "waiting_too_long": wait_hours is not None and wait_hours >= warn_hours,
+        },
     }
 
 
