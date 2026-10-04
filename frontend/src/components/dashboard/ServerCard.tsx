@@ -4,6 +4,7 @@ import { Icon } from "../ui/Icon";
 import { AddressRow } from "./AddressRow";
 import { canRenew, expiryOf, formatMemory, instanceState, isRunning, type Expiry } from "../../lib/dashboard";
 import { formatDateLong } from "../../lib/dates";
+import { gamePackageLabel } from "../../lib/subtitle";
 import { dateLocale, t } from "../../i18n";
 import type { Instance, Order, PowerSignal } from "../../services/api";
 
@@ -34,7 +35,7 @@ export function ServerCard({ instance, order, acting, onPower, onRenew, onlinePa
   const expiry = expiryOf(order);
   const controllable = (instance.status ?? "ready") === "ready" && instance.role !== "none";
   const renew = canRenew(order);
-  const sub = order?.product_name ?? "";
+  const sub = gamePackageLabel(instance.blueprint_name, order?.product_name);
   const toDetail = `/instances/${instance.uuid}`;
 
   return (

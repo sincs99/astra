@@ -26,6 +26,7 @@ export const dash: Record<keyof typeof de, string> = {
   "dash.rowOrder": "Order",
   "dash.rowAmount": "Amount",
   "dash.rowTerm": "Term",
+  "dash.rowPurpose": "Payment reference",
   "dash.stop": "Stop",
   "dash.start": "Start",
   "dash.restart": "Restart",

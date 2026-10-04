@@ -170,6 +170,13 @@ describe("OrdersPage", () => {
       expect(checkout).not.toHaveBeenCalled();
     });
 
+    it("nennt bei manuellem Anbieter den Verwendungszweck der Bestellung", async () => {
+      vi.spyOn(api, "getBillingInfo").mockResolvedValue({ payment_provider: "manual", online_payment: false });
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([{ ...pending, payment_purpose: "ASTRA-0042-7F" }]);
+      mount();
+      expect((await screen.findAllByText("ASTRA-0042-7F")).length).toBeGreaterThan(0);
+    });
+
     it("zeigt bei Stripe die Bezahl-Buttons", async () => {
       vi.spyOn(api, "getMyOrders").mockResolvedValue([pending]);
       mount();

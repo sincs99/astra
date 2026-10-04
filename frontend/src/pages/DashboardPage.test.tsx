@@ -165,6 +165,19 @@ describe("DashboardPage", () => {
       expect(within(card).getByText("Adresse nach Zahlungseingang")).toBeTruthy();
     });
 
+    it("zeigt bei Ueberweisung den Verwendungszweck und Spiel · Paket in der Unterzeile", async () => {
+      vi.spyOn(api, "getClientInstances").mockResolvedValue([{ ...running, blueprint_name: "Valheim" } as Instance]);
+      vi.spyOn(api, "getMyOrders").mockResolvedValue([
+        makeOrder({ id: 418, uuid: "o-pending", status: "pending_payment", instance_name: "Valheim Clan", product_name: "Start", blueprint_name: "Minecraft", payment_purpose: "ASTRA-0418-7F" }),
+      ]);
+      mount();
+      const card = await screen.findByRole("article", { name: "Valheim Clan" });
+      expect(within(card).getByText("Minecraft · Start")).toBeTruthy();
+      expect(within(card).getByText("Verwendungszweck")).toBeTruthy();
+      expect(within(card).getByText("ASTRA-0418-7F")).toBeTruthy();
+      expect(screen.getByRole("article", { name: running.name }).textContent).toContain("Valheim");
+    });
+
     it("bietet bei Online-Zahlung 'Jetzt mit Karte bezahlen' und storniert nach Bestaetigung", async () => {
       vi.spyOn(api, "getClientInstances").mockResolvedValue([]);
       vi.spyOn(api, "getBillingInfo").mockResolvedValue({ payment_provider: "stripe", online_payment: true });

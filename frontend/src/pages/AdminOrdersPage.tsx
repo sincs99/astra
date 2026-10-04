@@ -138,11 +138,13 @@ export function AdminOrdersPage() {
                   <td style={tdStyle}>{o.username ?? `User #${o.user_id}`}</td>
                   <td style={tdStyle}>
                     {o.product_name ?? `Produkt #${o.product_id}`}
+                    {o.blueprint_name && <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>{o.blueprint_name}</div>}
                     <div style={{ fontSize: 12, color: "var(--fg-muted)" }}>{formatPrice(o.price_cents, o.currency, o.billing_period_days)}</div>
                   </td>
                   <td style={tdStyle}>
                     <StatusBadge status={o.status} size="sm" />
                     {o.payment_reference && <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>Ref: {o.payment_reference}</div>}
+                    {o.payment_purpose && <div className="mono" style={{ fontSize: 11, color: "var(--fg-muted)" }}>Zweck: {o.payment_purpose}</div>}
                     {o.receipts && o.receipts.length > 0 && (
                       <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>Belege: {o.receipts.map((r) => r.number).join(", ")}</div>
                     )}
