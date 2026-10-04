@@ -273,7 +273,21 @@ def mark_order_paid(order: Order, payment_reference: str | None = None, actor_id
         order.payment_references = [ref] if ref else []
         db.session.commit()
         _log("order:paid", order, actor_id, "Bestellung als bezahlt markiert", {"payment_reference": ref})
-    return fulfill_order(order, now)
+    first_payment = order.price_cents > 0 and order.status == ORDER_PENDING_PAYMENT
+    try:
+        order = fulfill_order(order, now)
+    except BillingError:
+        if first_payment:
+            _mail_order(
+                order, "Astra: Zahlung eingegangen",
+                f"Hallo,\n\ndeine Zahlung für '{order.instance_name}' ist eingegangen. Aktuell ist auf unseren "
+                f"Servern kein Platz frei; dein Server wird automatisch bereitgestellt, sobald wieder Platz da ist. "
+                f"Die Laufzeit beginnt erst dann.\nBestellung: {order.uuid}\n",
+            )
+        raise
+    if order.price_cents > 0:
+        _mail_server_ready(order, paid_now=first_payment)
+    return order
 
 
 def renew_order(order: Order, payment_reference: str | None, actor_id: int | None = None,
@@ -319,6 +333,12 @@ def renew_order(order: Order, payment_reference: str | None, actor_id: int | Non
     _log("order:renewed", order, actor_id, "Bestellung verlängert",
          {"payment_reference": payment_reference, "was_past_due": was_past_due, "unsuspended": lifted,
           "current_period_end": iso_utc(order.current_period_end)})
+    if order.price_cents > 0:
+        _mail_order(
+            order, "Astra: Zahlung eingegangen, Server verlängert",
+            f"Hallo,\n\ndeine Zahlung ist eingegangen. Dein Server '{order.instance_name}' läuft jetzt bis "
+            f"{order.current_period_end:%d.%m.%Y %H:%M} UTC.\nBestellung: {order.uuid}\n",
+        )
     return order
 
 
@@ -446,6 +466,19 @@ def _mail_order(order: Order, subject: str, body: str) -> None:
             send_mail(current_app, user.email, subject, body)
     except Exception:  # pragma: no cover - Mail darf den Tick nie stoppen
         logger.exception("Mail zur Bestellung %s fehlgeschlagen", order.uuid)
+
+
+def _mail_server_ready(order: Order, paid_now: bool = False) -> None:
+    """Mail "Server ist bereit" mit Verbindungsadresse (falls schon bekannt)."""
+    instance = db.session.get(Instance, order.instance_id) if order.instance_id else None
+    info = instance.connection_info() if instance else None
+    address = f"\nVerbindungsadresse: {info['address']}\n" if info else ""
+    intro = "deine Zahlung ist eingegangen und dein Server" if paid_now else "dein Server"
+    _mail_order(
+        order, "Astra: Dein Server ist bereit",
+        f"Hallo,\n\n{intro} '{order.instance_name}' wurde bereitgestellt und kann jetzt genutzt werden.\n"
+        f"{address}Bestellung: {order.uuid}\n",
+    )
 
 
 def _blocking_status(instance: Instance) -> bool:
@@ -607,14 +640,7 @@ def _retry_provisioning(order_id: int, now: datetime) -> bool:
         return False  # weiterhin kein Platz: leise im naechsten Tick erneut
     order = db.session.get(Order, order_id)
     _log("order:provisioned", order, None, "Bezahlte Bestellung nachtraeglich automatisch bereitgestellt")
-    instance = db.session.get(Instance, order.instance_id)
-    info = instance.connection_info() if instance else None
-    address = f"\nVerbindungsadresse: {info['address']}\n" if info else ""
-    _mail_order(
-        order, "Astra: Dein Server ist bereit",
-        f"Hallo,\n\ndein Server '{order.instance_name}' wurde bereitgestellt und kann jetzt genutzt werden.\n"
-        f"{address}Bestellung: {order.uuid}\n",
-    )
+    _mail_server_ready(order)
     return True
 
 

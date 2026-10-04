@@ -71,6 +71,17 @@ Compose-Service gedacht (alle 5 Minuten reichen). Ausgabe: eine JSON-Zeile
 | `awaiting_provisioning` (bezahlt, keine Instance) | erneute Bereitstellung bei freiem Platz (`provisioned`), ohne Event bei jedem erfolglosen Versuch; Mail und Event `order:provisioned` bei Erfolg |
 | Kostenloses Paket (`price_cents = 0`), Laufzeit abgelaufen | wird automatisch verlängert (`renewed`, Referenz `free-auto:...`), keine Sperre, keine Mail; nach Kündigung läuft es zum Laufzeitende aus |
 
+### Mails zu Zahlungen
+
+| Anlass | Mail |
+|---|---|
+| Erste Zahlung, Server bereitgestellt | „Astra: Dein Server ist bereit“ (mit Verbindungsadresse) |
+| Erste Zahlung, kein Platz | „Astra: Zahlung eingegangen“ (Hinweis: Bereitstellung automatisch bei freiem Platz, Laufzeit beginnt dann); danach „Dein Server ist bereit“ bei der Bereitstellung |
+| Verlängerung | „Astra: Zahlung eingegangen, Server verlängert“ (mit neuem Laufzeitende, UTC) |
+
+Keine Mail gibt es beim Anlegen einer Bestellung, bei bereits verbuchter Referenz (Wiederholung) und bei kostenlosen
+Paketen. Ein Mailfehler bricht die Zahlung nie ab.
+
 ### Überwachung des Ticks (M53)
 
 Jeder Lauf (auch einer mit Fehlern) vermerkt Zeitpunkt und Ergebnis in der Tabelle `system_state`
