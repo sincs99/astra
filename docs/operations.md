@@ -193,6 +193,8 @@ in der Agents-Ansicht. Details: `docs/wings-remote-api.md`.
 | `ADMIN_ALERT_WEBHOOK_URL` | Webhook für Admin-Alerts, JSON mit `content` (Discord) und `text` (Slack); enthält oft ein Geheimnis (leer = aus) | – |
 | `ADMIN_ALERT_COOLDOWN_MINUTES` | Eine anhaltende Störung wird frühestens nach so vielen Minuten erneut gemeldet | 360 |
 | `ADMIN_ALERT_RECOVERY` | Einmalige Entwarnung, wenn die Störung behoben ist | true |
+| `INVOICE_NUMBER_FORMAT` | Format der Belegnummer (`{year}`, `{seq}`), nach dem Start nicht mehr ändern | `AST-{year}-{seq:05d}` |
+| `INVOICE_SELLER` / `RECEIPT_FOOTER` | Anbieter-Kopf und Fußzeile der Zahlungsbelege (`\n` = Zeilenumbruch) | – |
 | `BILLING_GRACE_DAYS` | Tage von überfälliger Zahlung bis zur Löschung der Instance (Billing-Tick) | 7 |
 | `REGISTRATION_ENABLED` | Selbstregistrierung erlauben | false |
 | `EMAIL_VERIFICATION_REQUIRED` | Login erst nach bestaetigter E-Mail (braucht funktionierendes SMTP) | false |

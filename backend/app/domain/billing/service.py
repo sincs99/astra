@@ -276,6 +276,7 @@ def mark_order_paid(order: Order, payment_reference: str | None = None, actor_id
         order.payment_references = [ref] if ref else []
         db.session.commit()
         _log("order:paid", order, actor_id, "Bestellung als bezahlt markiert", {"payment_reference": ref})
+        _issue_receipt(order, ref, now)
     first_payment = order.price_cents > 0 and order.status == ORDER_PENDING_PAYMENT
     try:
         order = fulfill_order(order, now)
@@ -336,6 +337,7 @@ def renew_order(order: Order, payment_reference: str | None, actor_id: int | Non
     _log("order:renewed", order, actor_id, "Bestellung verlängert",
          {"payment_reference": payment_reference, "was_past_due": was_past_due, "unsuspended": lifted,
           "current_period_end": iso_utc(order.current_period_end)})
+    _issue_receipt(order, payment_reference, now)
     if order.price_cents > 0:
         _mail_order(
             order, "Astra: Zahlung eingegangen, Server verlängert",
@@ -343,6 +345,16 @@ def renew_order(order: Order, payment_reference: str | None, actor_id: int | Non
             f"{order.current_period_end:%d.%m.%Y %H:%M} UTC.\nBestellung: {order.uuid}\n",
         )
     return order
+
+
+def _issue_receipt(order: Order, payment_reference: str | None, now: datetime) -> None:
+    """Beleg mit fortlaufender Nummer (M62), best effort: darf die Zahlung nie blockieren."""
+    try:
+        from app.domain.billing.receipts import issue_receipt
+        issue_receipt(order, payment_reference, now)
+    except Exception:  # pragma: no cover
+        db.session.rollback()
+        logger.exception("Beleg fuer Bestellung %s fehlgeschlagen", order.uuid)
 
 
 def _best_effort(func, *args):

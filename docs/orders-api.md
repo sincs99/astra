@@ -264,6 +264,38 @@ Beweise für Streitfälle, vorzeitiges Löschen eines erstatteten Servers (Admin
 Activity- und Webhook-Events: `order:created`, `order:paid`, `order:provision_failed`, `order:cancelled`,
 `order:past_due`, `order:renewed`, `order:expired`, `order:reminder`, `order:payment_unapplied`, `order:provisioned`, `order:refunded`, `order:disputed`.
 
+## Zahlungsbelege (M62, Grundlage)
+
+Zu jeder verbuchten **Zahlung** (erste Zahlung, `mark-paid`, Stripe, Verlängerung) stellt Astra einen Beleg mit
+fortlaufender Nummer aus. Kostenlose Pakete und die automatische Gratis-Verlängerung bekommen keinen. Der
+Beleg ist **kein Steuerbeleg**: keine Umsatzsteuer, keine Anschrift des Kunden (siehe unten, was fehlt).
+
+- **Nummer:** `INVOICE_NUMBER_FORMAT` (Standard `AST-{year}-{seq:05d}`, erlaubt sind nur `{year}` und `{seq}`).
+  Die laufende Nummer beginnt jedes Jahr bei 1 und ist lückenlos: Zähler (`invoice_counters`, Zeilensperre
+  auf PostgreSQL) und Beleg werden in einer Transaktion geschrieben, ein Fehler verbraucht keine Nummer.
+  Belege werden **nie gelöscht** (sonst entstünde eine Lücke). Das Format nach dem Start nicht mehr ändern.
+  Ein ungültiges Format meldet der Produktions-Check kritisch; zur Laufzeit gilt dann das Standardformat.
+- **Zeitpunkt:** direkt nach der Buchung, auch wenn die Bereitstellung wartet (kein Platz). Ein Fehler beim
+  Ausstellen blockiert die Zahlung nie (Log `Beleg fuer Bestellung ... fehlgeschlagen`, es fehlt dann ein Beleg;
+  für Zahlungen vor M62 gibt es keine Belege).
+- **Inhalt:** Nummer, Datum (UTC), Kunde (Benutzername, E-Mail), Paket, Servername, Laufzeit in Tagen, Betrag,
+  Zahlungsreferenz, optional Anbieter (`INVOICE_SELLER`) und Fußzeile (`RECEIPT_FOOTER`), jeweils mit `\n` für
+  Zeilenumbrüche. Der Inhalt ist ein Schnappschuss zum Zahlungszeitpunkt.
+
+| Aufruf | Antwort |
+|---|---|
+| `GET /api/client/orders`, `/{uuid}` (und die Admin-Liste) | enthält `receipts: [{number, issued_at, amount_cents, currency}]`, älteste zuerst |
+| `GET /api/client/orders/{uuid}/receipt?number=&format=` | Beleg der eigenen Bestellung. `number` = Belegnummer (Standard: neuester), `format` = `html` (Standard, eigenständige Seite), `text` oder `json` (`number, issued_at, amount_cents, currency, payment_reference, product_name, instance_name, billing_period_days, customer`). 404 bei fremder/unbekannter Bestellung, unbekannter Nummer oder wenn es keinen Beleg gibt; 400 bei falschem `format`; 401 ohne Anmeldung |
+
+Das HTML escaped alle Werte (auch den vom Kunden gewählten Servernamen) und wird mit `nosniff`, einer
+restriktiven Content-Security-Policy und `no-store` ausgeliefert. Ein Link im Browser trägt keinen
+`Authorization`-Header: das Frontend holt den Beleg per `fetch` und zeigt ihn als Blob bzw. rendert `json` selbst.
+
+**Es fehlt für eine echte Rechnung** (Angaben und Entscheidungen des Betreibers): vollständige Anschrift und
+Steuernummer bzw. USt-IdNr. des Anbieters, Anschrift des Kunden, Umsatzsteuer-Ausweis (Netto/Brutto/Satz oder
+Kleinunternehmer-Hinweis), Leistungszeitraum, PDF bzw. revisionssichere Aufbewahrung, Rechnungskorrektur bei
+Erstattungen (Gutschrift) und die rechtliche Prüfung. Bis dahin Rechnungen außerhalb von Astra erstellen.
+
 ## Admin-Benachrichtigung (M58)
 
 Astra meldet Störungen aktiv, sobald `ADMIN_ALERT_EMAIL` und/oder `ADMIN_ALERT_WEBHOOK_URL` gesetzt sind (Standard: aus):
