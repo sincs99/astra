@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { LoginPage } from "../pages/LoginPage";
 import { DashboardPage } from "../pages/DashboardPage";
+import { LandingPage } from "../pages/LandingPage";
 import { InstanceDetailPage } from "../pages/InstanceDetailPage";
 import { AccountPage } from "../pages/AccountPage";
 import { SshKeysPage } from "../pages/SshKeysPage";
@@ -53,6 +54,11 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** "/": angemeldet das Dashboard "Meine Server", sonst die öffentliche Landingpage. */
+function HomeRoute() {
+  return isAuthenticated() ? <DashboardPage /> : <LandingPage />;
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
@@ -66,7 +72,7 @@ export function AppRouter() {
         <Route path="/password-reset" element={<ForgotPasswordPage />} />
         <Route path="/password-reset/confirm" element={<ResetPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
-        <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/" element={<HomeRoute />} />
         <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminOverviewPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/admin/agents" element={<ProtectedRoute><AdminRoute><AdminAgentsPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/admin/agents/monitoring" element={<ProtectedRoute><AdminRoute><AdminAgentsMonitoringPage /></AdminRoute></ProtectedRoute>} />

@@ -3,6 +3,7 @@ import { account } from "./en/account";
 import { auth } from "./en/auth";
 import { common } from "./en/common";
 import { dash } from "./en/dash";
+import { landing } from "./en/landing";
 import { nav } from "./en/nav";
 import { orders } from "./en/orders";
 import { shop } from "./en/shop";
@@ -14,6 +15,7 @@ export const en: Record<MessageKey, string> = {
   ...auth,
   ...common,
   ...dash,
+  ...landing,
   ...nav,
   ...orders,
   ...shop,

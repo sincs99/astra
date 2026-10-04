@@ -2,6 +2,7 @@ import { account } from "./de/account";
 import { auth } from "./de/auth";
 import { common } from "./de/common";
 import { dash } from "./de/dash";
+import { landing } from "./de/landing";
 import { nav } from "./de/nav";
 import { orders } from "./de/orders";
 import { shop } from "./de/shop";
@@ -13,6 +14,7 @@ export const de = {
   ...auth,
   ...common,
   ...dash,
+  ...landing,
   ...nav,
   ...orders,
   ...shop,

@@ -5,6 +5,10 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – D7 Landingpage)
+- Oeffentliche Startseite `/` nach `design/mockups/Landing.html` (ausgeloggt; angemeldet zeigt `/` weiter das Dashboard "Meine Server"): Kopf mit Logo, Anker-Navigation und "Anmelden"/"Jetzt bestellen" (mobil Menue), Hero, Pakete aus `GET /api/client/products` (Preis, RAM/CPU, Speicher, Spiel; "Jetzt bestellen" fuehrt zu `/shop?plan=<id>` und waehlt das Paket vor), Spiele nur aus den Blueprint-Namen der Pakete, "So funktioniert's" passend zum Zahlungsweg, Fuss mit Rechtslinks und Sprachumschalter. DE/EN. Der Shop liest `?plan=` zur Vorauswahl
+- Aus dem Mockup bewusst nicht uebernommen, weil nicht belegbar: "Server in Deutschland", "Taegliche Backups", Spielerzahlen, Backup-Anzahl je Paket, "Beliebt"-Marke, MwSt-Hinweis, feste Spieleliste. Die Ueberschrift "In drei Minuten online" ist Mockup-Text und vom Betreiber zu bestaetigen
+
 ### Changed (Frontend – D6 Admin-Uebersicht nach Mockup)
 - `/admin` nach `design/mockups/AdminOverview.html`: Warnbanner (rot, role=alert) bei nicht erreichbaren oder beeintraechtigten Nodes mit Heartbeat und betroffenen Instances, gebuendelter Hinweis (role=status) zu Zahlungen mit Fehlstatus, in 24 h ablaufenden Bestellungen, ausfallendem Abrechnungs-Tick und zu lange wartenden Bestellungen; vier Kennzahlen (Umsatz exakt aus `stats/revenue` mit Rueckfall, Bestellungen im Zeitraum mit bezahlt/wartend/ueberfaellig, laufende Instances aus `GET /admin/instances`, Abrechnungs-Tick); Zeitraum waehlbar (7/30/90 Tage); Node-Auslastung mit RAM-/Festplattenbalken (Warnfarbe ab 80 %, "ueberbucht" mit schraffiertem Anteil, kein Limit/keine Daten) und Tabelle der auffaelligen Zahlungen (`payment-events`); Aktualisierung alle 30 s, jede Quelle faellt einzeln aus
 - Nicht aus den APIs verfuegbar und daher weggelassen: Trend "+12 % zum Vormonat", Betrag je Zahlungsereignis, naechster Tick-Lauf, "Erinnerung senden"

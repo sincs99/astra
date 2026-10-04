@@ -12,8 +12,8 @@ const starter = makeProduct({ blueprint_id: undefined, is_active: undefined, max
 const crew = makeProduct({ id: 6, name: "Crew", price_cents: 1999, description: null, blueprint_id: undefined, is_active: undefined, resources: { memory: 8192, swap: 0, disk: 51200, io: 500, cpu: 400 } });
 const plain = (s: string | null) => (s ?? "").replace(/[\u00a0\u202f]/g, " ");
 
-function mount() {
-  return render(<MemoryRouter><ShopPage /></MemoryRouter>);
+function mount(path = "/shop") {
+  return render(<MemoryRouter initialEntries={[path]}><ShopPage /></MemoryRouter>);
 }
 
 beforeEach(() => {
@@ -44,6 +44,21 @@ describe("ShopPage", () => {
     mount();
     expect((await screen.findAllByText("Minecraft Vanilla")).length).toBeGreaterThan(0);
     expect(within(screen.getByRole("complementary", { name: "Zusammenfassung" })).getByText("Minecraft Vanilla")).toBeTruthy();
+  });
+
+  it("wählt über ?plan= das verlinkte Paket vor (Link von der Landingpage)", async () => {
+    vi.spyOn(api, "getShopProducts").mockResolvedValue([starter, crew]);
+    mount("/shop?plan=6");
+    const group = await screen.findByRole("radiogroup", { name: "Paket" });
+    const radios = within(group).getAllByRole("radio") as HTMLInputElement[];
+    expect(radios.map((r) => r.checked)).toEqual([false, true]);
+  });
+
+  it("ignoriert ein unbekanntes ?plan= und wählt das erste Paket", async () => {
+    vi.spyOn(api, "getShopProducts").mockResolvedValue([starter, crew]);
+    mount("/shop?plan=999");
+    const radios = within(await screen.findByRole("radiogroup", { name: "Paket" })).getAllByRole("radio") as HTMLInputElement[];
+    expect(radios.map((r) => r.checked)).toEqual([true, false]);
   });
 
   it("aktualisiert die Zusammenfassung bei Paket- und Namenswahl", async () => {
