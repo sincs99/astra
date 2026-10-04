@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api, isAuthenticated, type Order, type Product } from "../services/api";
 import { loginUrl } from "../lib/redirect";
 import { formatMoney, formatPeriod, formatPrice } from "../lib/money";
@@ -18,6 +18,9 @@ function specsOf(p: Product): string {
 /** Neuer Server (Kunden-Shop): Paket wählen, benennen, bezahlen; Zusammenfassung rechts. */
 export function ShopPage() {
   const toast = useToast();
+  // Vorauswahl über /shop?plan=<id> (Link von der Landingpage)
+  const [searchParams] = useSearchParams();
+  const planParam = Number(searchParams.get("plan"));
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +41,7 @@ export function ShopPage() {
         api.getBillingInfo().catch(() => null),
       ]);
       setProducts(list);
-      setSelected((cur) => cur ?? list[0]?.id ?? null);
+      setSelected((cur) => cur ?? list.find((p) => p.id === planParam)?.id ?? list[0]?.id ?? null);
       if (billing) setOnlinePayment(billing.online_payment);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("shop.loadFailed"));
