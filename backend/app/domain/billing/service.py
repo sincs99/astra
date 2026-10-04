@@ -658,6 +658,16 @@ def _retry_provisioning(order_id: int, now: datetime) -> bool:
     return True
 
 
+def _check_admin_alerts(now: datetime) -> None:
+    """Admin-Alerts (M58), best effort: darf den Tick nie stoeren."""
+    try:
+        from app.domain.system.alerts import check_alerts
+        check_alerts(now)
+    except Exception:  # pragma: no cover
+        db.session.rollback()
+        logger.exception("Billing-Tick: Admin-Alerts fehlgeschlagen")
+
+
 def run_billing_tick(now: datetime | None = None) -> dict:
     """Setzt die Laufzeiten durch. Idempotent, gedacht fuer Cron/Compose alle paar Minuten.
 
@@ -680,6 +690,8 @@ def run_billing_tick(now: datetime | None = None) -> dict:
     now = _utc_naive(now) or _now()
     grace = timedelta(days=current_app.config.get("BILLING_GRACE_DAYS", 7))
     reminder = timedelta(days=current_app.config.get("BILLING_REMINDER_DAYS", 3))
+    # Vor dem Lauf: War der Tick ausgefallen, meldet das der Alert jetzt; am Ende folgt die Entwarnung
+    _check_admin_alerts(now)
 
     ids = [oid for (oid,) in db.session.query(Order.id)
            .filter(Order.status.in_((ORDER_ACTIVE, ORDER_PAST_DUE))).order_by(Order.id).all()]
@@ -711,6 +723,7 @@ def run_billing_tick(now: datetime | None = None) -> dict:
 
     logger.info("Billing-Tick: %s", summary)
     _record_tick(summary, now)
+    _check_admin_alerts(now)
     return summary
 
 
@@ -758,8 +771,20 @@ def process_payment_events(provider: str, events: list) -> list[dict]:
         row.detail = detail
         row.processed_at = _now()
         db.session.commit()
+        if status in ("mismatch", "unapplied"):
+            _alert_payment_problem(ev, status, detail)
         results.append({"event_id": ev.event_id, "status": status, "duplicate": False})
     return results
+
+
+def _alert_payment_problem(ev, status: str, detail: str | None) -> None:
+    """Admin-Alert (M58), best effort: darf die Webhook-Verarbeitung nie stoeren."""
+    try:
+        from app.domain.system.alerts import alert_payment_problem
+        alert_payment_problem(ev.order_uuid, status, detail, ev.event_id)
+    except Exception:  # pragma: no cover
+        db.session.rollback()
+        logger.exception("Admin-Alert zum Zahlungsereignis %s fehlgeschlagen", ev.event_id)
 
 
 def _apply_payment_event(ev) -> tuple[str, str | None]:
