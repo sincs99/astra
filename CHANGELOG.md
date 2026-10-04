@@ -5,6 +5,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – D9 Admin-Seiten)
+- Admin Bestellungen, Agents, Fleet Monitoring, Instances, Blueprints (inkl. Import), Produkte, Jobs, System und Webhooks im neuen Look-and-Feel und vollstaendig DE/EN (Namespaces `aorders`, `aagents`, `ainst`, `asys`). Tabellen sind mobil Karten (`tbl-cards` mit `data-label`), Formulare in `.panel`/`.field`, Fehler als `role=alert`, Loeschen/Rotieren mit Bestaetigung, Secrets nie in Labels
+- Bestellungen: Statusfilter und Dialog "Als bezahlt markieren" mit Zahlungsreferenz, vorbelegt mit dem Verwendungszweck (`payment_purpose`)
+- Gemeinsame Komponenten `ErrorState`, `EmptyState`, `LoadingState`, `ConfirmButton`, `AutoRefreshToggle`, `OrderNotice` auf `ui.css`-Klassen und Tokens (keine Emojis, keine alten Farb-Aliase); Icons Papierkorb, Stift, Speichern
+- Bekannt: `TransferInstanceForm`, `DeleteInstanceForm`, `UtilizationBar`, `SftpAccess`, `ReceiptViewer` u. a. nutzen noch alte Farb-Aliase und teils feste deutsche Texte; Validierungsmeldungen in `lib/agentForm.ts` und `lib/portRange.ts` sind deutsch. Eine Admin-Nutzerseite gibt es nicht
+
 ### Changed (Frontend – D8b Server-Unterkomponenten)
 - Konsole, Dateien, Backups, Routinen, Mitbenutzer und Aktivitaet im neuen Look-and-Feel (nur Tokens und `ui.css`-Klassen, keine Emojis, Icon-Buttons mit `aria-label`, Tabellen mit `scope=col`, Fehler `role=alert`), funktionsgleich; alle Texte DE/EN (Namespaces `sconsole`, `sfiles`, `sbackups`, `sroutines`, `susers`). Konsolenzeilen tragen ihre Art (`kind`) statt eines Textpraefixes, die Farbe haengt nicht mehr am uebersetzten Text. Neue Tests je Komponente. Toast auf direkte Tokens umgestellt
 - Nicht uebersetzt bleiben Texte vom Server (Backup-/Restore-Antworten, Aktivitaets-Ereigniscodes und -beschreibungen). Farbige Ereignis-Badges im Aktivitaetslog entfallen (neutrales Badge)
