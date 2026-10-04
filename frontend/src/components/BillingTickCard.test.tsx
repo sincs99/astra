@@ -41,4 +41,11 @@ describe("BillingTickCard", () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(container.textContent).toBe("");
   });
+
+  it("blendet sich im Dashboard-Modus aus, solange alles gesund ist", async () => {
+    vi.spyOn(api, "getBillingStatus").mockResolvedValue(base);
+    const { container } = render(<BillingTickCard onlyWhenUnhealthy />);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(container.textContent).toBe("");
+  });
 });
