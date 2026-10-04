@@ -46,6 +46,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Schalter `ADMIN_GUARD_ENABLED` (Standard `true`), nur in `TestingConfig` aus, damit die Legacy-Tests M10–M32 ohne Auth weiterlaufen
 - `backend/test_m35.py` (20 Tests, prueft u.a. jede registrierte Admin-Route per Routentabelle)
 
+### Security (M57 – Tokens nach Passwortwechsel ungueltig)
+- Access-Tokens enthalten den Claim `pwf` (Fingerabdruck des Passwort-Hashes). Nach Passwortwechsel oder -reset sind alle bisherigen Tokens des Kontos sofort ungueltig (401). `POST /api/auth/change-password` liefert zusaetzlich ein frisches `access_token`, das Frontend (`api.changePassword`) uebernimmt es, damit das aendernde Geraet angemeldet bleibt. Tokens ohne den Claim (vor diesem Update ausgestellt) gelten bis zu ihrem Ablauf. API-Keys sind nicht betroffen. `backend/test_m57.py` (11 Tests)
+
 ### Added (M56 – Warnung bei lange wartenden Bestellungen)
 - `GET /api/admin/billing/status` enthaelt `awaiting_provisioning`: `count`, `oldest_paid_at`, `oldest_wait_hours`, `warn_after_hours`, `waiting_too_long`. Preflight-Check `billing_waiting_orders` warnt, wenn die aelteste bezahlte Bestellung ohne Instance `BILLING_WAIT_WARN_HOURS` (Standard 24) oder laenger wartet. Nur Warnung, nichts blockiert; Env-Variable in `.env.prod.example` und Compose. `backend/test_m56.py`
 

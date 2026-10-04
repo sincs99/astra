@@ -53,6 +53,13 @@ describe("api.request", () => {
     expect(getAccessToken()).toBe("tok");
   });
 
+  it("uebernimmt nach dem Passwort-Aendern das frische Token", async () => {
+    setAccessToken("alt");
+    mockFetch(200, { message: "Passwort wurde geändert", access_token: "neu" });
+    await api.changePassword("altespasswort1", "neuespasswort1");
+    expect(getAccessToken()).toBe("neu");
+  });
+
   it("zeigt bei fehlender Admin-Berechtigung eine verstaendliche Meldung", async () => {
     setAccessToken("tok");
     mockFetch(403, { error: "Admin-Berechtigung erforderlich" });
