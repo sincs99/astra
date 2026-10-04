@@ -11,11 +11,14 @@ export const cardStyle: React.CSSProperties = {
 };
 
 export const inputStyle: React.CSSProperties = {
-  padding: "8px 12px",
+  padding: "6px 12px",
+  minHeight: "var(--control-h)",
   boxSizing: "border-box",
   width: "100%",
-  borderRadius: 6,
-  border: "1px solid var(--border-strong)",
+  borderRadius: "var(--radius-btn)",
+  border: "1px solid var(--border)",
+  backgroundColor: "var(--surface-2)",
+  color: "var(--text)",
   fontSize: 14,
   lineHeight: 1.5,
 };
