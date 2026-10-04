@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type ActivityLogEntry } from "../services/api";
 import { formatLogTime } from "../lib/dates";
+import { t } from "../i18n";
 
 interface ActivityLogProps {
   instanceUuid: string;
@@ -25,49 +26,35 @@ export function ActivityLog({ instanceUuid }: ActivityLogProps) {
     load();
   }, [instanceUuid]);
 
-  if (loading) return <p style={{ color: "var(--fg-muted)", fontSize: 13 }}>Wird geladen...</p>;
-  if (logs.length === 0) return <p style={{ color: "var(--fg-muted)", fontSize: 13 }}>Keine Aktivitäten vorhanden.</p>;
+  if (loading) return <p className="hint">{t("susers.logLoading")}</p>;
+  if (logs.length === 0) return <div className="card-empty">{t("susers.logEmpty")}</div>;
 
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-      <thead>
-        <tr style={{ borderBottom: "2px solid var(--border)" }}>
-          <th style={thS}>Zeit</th>
-          <th style={thS}>Event</th>
-          <th style={thS}>Beschreibung</th>
-          <th style={thS}>Actor</th>
-        </tr>
-      </thead>
-      <tbody>
-        {logs.map((l) => (
-          <tr key={l.id} style={{ borderBottom: "1px solid var(--bg-subtle)" }}>
-            <td style={tdS}>
-              {formatLogTime(l.created_at)}
-            </td>
-            <td style={tdS}>
-              <code style={{ fontSize: 11, padding: "1px 4px", backgroundColor: eventColor(l.event), borderRadius: 3 }}>
-                {l.event}
-              </code>
-            </td>
-            <td style={tdS}>{l.description || "–"}</td>
-            <td style={tdS}>
-              {l.actor_type === "system" ? "🤖 System" : `👤 #${l.actor_id}`}
-            </td>
+    <div className="panel" style={{ overflowX: "auto" }} role="region" tabIndex={0} aria-label={t("srv.activity")}>
+      <table className="tbl">
+        <thead>
+          <tr>
+            <th scope="col">{t("susers.colTime")}</th>
+            <th scope="col">{t("susers.colEvent")}</th>
+            <th scope="col">{t("susers.colDescription")}</th>
+            <th scope="col">{t("susers.colActor")}</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {logs.map((l) => (
+            <tr key={l.id}>
+              <td>{formatLogTime(l.created_at)}</td>
+              <td>
+                <code className="mono" style={{ padding: "1px 6px", background: "var(--surface-2)", borderRadius: "var(--radius-badge)" }}>
+                  {l.event}
+                </code>
+              </td>
+              <td>{l.description || "–"}</td>
+              <td>{l.actor_type === "system" ? t("susers.actorSystem") : t("susers.actorUser", { id: l.actor_id ?? "?" })}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
-
-function eventColor(event: string): string {
-  if (event.startsWith("instance:")) return "var(--tint-blue)";
-  if (event.startsWith("backup:")) return "var(--tint-orange)";
-  if (event.startsWith("file:")) return "var(--tint-green)";
-  if (event.startsWith("collaborator:")) return "var(--tint-purple)";
-  if (event.startsWith("routine:")) return "var(--tint-blue)";
-  return "var(--bg-subtle)";
-}
-
-const thS: React.CSSProperties = { padding: 6, textAlign: "left", fontSize: 11, fontWeight: 600 };
-const tdS: React.CSSProperties = { padding: 6, fontSize: 12 };

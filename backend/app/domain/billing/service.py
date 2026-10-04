@@ -423,21 +423,31 @@ def revenue_stats(days: int = 30, now: datetime | None = None) -> dict:
     Zahlungen vor M62 haben keinen Beleg und fehlen. Erstattungen (M59, Events `order:refunded`) werden
     getrennt je Waehrung ausgewiesen (`refunded_cents_by_currency`) und nicht verrechnet; fehlt im Event
     der erstattete Betrag, zaehlt der Betrag der Zahlung. Keine Waehrungsumrechnung.
+    Zusaetzlich (M66) derselbe Zeitraum davor (`prev_since` bis `since`, gleich lang): `prev_by_currency`,
+    `prev_paid_count`, `prev_renewals_count` fuer den Trend in der Admin-Uebersicht.
     """
     from app.domain.activity.models import ActivityLog
     from app.domain.billing.models import Receipt
     now = _utc_naive(now) or _now()
     since = now - timedelta(days=days)
+    prev_since = since - timedelta(days=days)
     first_ids = {rid for (rid,) in db.session.query(db.func.min(Receipt.id)).group_by(Receipt.order_id).all()}
-    by_currency: dict[str, int] = {}
-    paid = renewals = 0
-    for rid, cents, currency in (db.session.query(Receipt.id, Receipt.amount_cents, Receipt.currency)
-                                 .filter(Receipt.issued_at >= since, Receipt.issued_at <= now).all()):
-        by_currency[currency] = by_currency.get(currency, 0) + cents
-        if rid in first_ids:
-            paid += 1
-        else:
-            renewals += 1
+
+    def totals(start: datetime, end: datetime) -> tuple[dict[str, int], int, int]:
+        sums: dict[str, int] = {}
+        first = later = 0
+        for rid, cents, currency in (db.session.query(Receipt.id, Receipt.amount_cents, Receipt.currency)
+                                     .filter(Receipt.issued_at >= start, Receipt.issued_at < end).all()):
+            sums[currency] = sums.get(currency, 0) + cents
+            if rid in first_ids:
+                first += 1
+            else:
+                later += 1
+        return dict(sorted(sums.items())), first, later
+
+    # Zeitraum [since, now], Vorzeitraum [prev_since, since) gleich lang (M66, fuer den Trend in der Uebersicht)
+    by_currency, paid, renewals = totals(since, now + timedelta(microseconds=1))
+    prev_by_currency, prev_paid, prev_renewals = totals(prev_since, since)
     refunded: dict[str, int] = {}
     for (props,) in db.session.query(ActivityLog.properties).filter(
             ActivityLog.event == "order:refunded", ActivityLog.created_at >= since).all():
@@ -446,9 +456,11 @@ def revenue_stats(days: int = 30, now: datetime | None = None) -> dict:
         currency = props.get("currency")
         if isinstance(cents, int) and currency:
             refunded[currency] = refunded.get(currency, 0) + cents
-    return {"days": days, "since": iso_utc(since), "by_currency": dict(sorted(by_currency.items())),
+    return {"days": days, "since": iso_utc(since), "by_currency": by_currency,
             "paid_count": paid, "renewals_count": renewals,
-            "refunded_cents_by_currency": dict(sorted(refunded.items()))}
+            "refunded_cents_by_currency": dict(sorted(refunded.items())),
+            "prev_since": iso_utc(prev_since), "prev_by_currency": prev_by_currency,
+            "prev_paid_count": prev_paid, "prev_renewals_count": prev_renewals}
 
 
 # ── Betriebszustand des Billing-Ticks (M53) ─────────────
@@ -612,7 +624,7 @@ def _suspend_for_payment(order: Order, instance: Instance, now: datetime) -> boo
         order, "Astra: Zahlung überfällig – dein Server wurde gesperrt",
         f"Hallo,\n\ndie Laufzeit deines Servers '{order.instance_name}' ist abgelaufen, der Server wurde gesperrt.\n"
         f"Bitte begleiche die Zahlung innerhalb von {days} Tagen, sonst wird er gelöscht.\n"
-        f"Bestellung: {order.uuid}\n",
+        f"Verwendungszweck: {order.payment_purpose}\nBestellung: {order.uuid}\n",
     )
     return True
 
@@ -652,7 +664,7 @@ def _remind_if_due(order: Order, end: datetime, now: datetime, reminder: timedel
             f"Hallo,\n\ndie Laufzeit deines Servers '{order.instance_name}' endet am {end:%d.%m.%Y %H:%M} UTC.\n"
             f"Bitte veranlasse rechtzeitig die Zahlung ({order.price_cents / 100:.2f} {order.currency} für "
             f"{order.billing_period_days} Tage), sonst wird der Server gesperrt und nach der Karenzzeit gelöscht.\n"
-            f"Bestellung: {order.uuid}\n",
+            f"Verwendungszweck: {order.payment_purpose}\nBestellung: {order.uuid}\n",
         )
     return True
 

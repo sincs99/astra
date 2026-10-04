@@ -71,7 +71,7 @@ export function LoginPage() {
 
       {resetDone && !error && (
         <div role="status" style={{
-          padding: "10px 14px", backgroundColor: "var(--tint-green)", color: "var(--c-green)",
+          padding: "10px 14px", backgroundColor: "color-mix(in srgb, var(--ok) 12%, transparent)", color: "var(--ok)",
           borderRadius: 6, marginBottom: 16, fontSize: 14,
         }}>
           {t("auth.login.resetDone")}
@@ -80,7 +80,7 @@ export function LoginPage() {
 
       {expired && !error && (
         <div role="status" style={{
-          padding: "10px 14px", backgroundColor: "var(--tint-orange)", color: "var(--c-orange)",
+          padding: "10px 14px", backgroundColor: "var(--warn-soft)", color: "var(--warn)",
           borderRadius: 6, marginBottom: 16, fontSize: 14,
         }}>
           {t("auth.login.expired")}
@@ -90,8 +90,8 @@ export function LoginPage() {
       {error && (
         <div role="alert" style={{
           padding: "10px 14px",
-          backgroundColor: "var(--tint-red)",
-          color: "var(--c-red)",
+          backgroundColor: "var(--danger-soft)",
+          color: "var(--danger)",
           borderRadius: 6,
           marginBottom: 16,
           fontSize: 14,
@@ -160,7 +160,7 @@ export function LoginPage() {
               placeholder={useRecovery ? "xxxxx-xxxxx" : "123456"}
               style={inputStyle}
             />
-            <small style={{ color: "var(--fg-muted)", fontSize: 12 }}>
+            <small style={{ color: "var(--text-3)", fontSize: 12 }}>
               {useRecovery ? t("auth.login.recoveryHint") : t("auth.login.mfaHint")}
             </small>
             <div style={{ marginTop: 6 }}>

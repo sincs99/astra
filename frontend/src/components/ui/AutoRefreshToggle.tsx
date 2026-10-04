@@ -8,7 +8,7 @@ interface AutoRefreshToggleProps {
 
 export function AutoRefreshToggle({ enabled, onChange, intervalSeconds }: AutoRefreshToggleProps) {
   return (
-    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--fg-soft)", alignSelf: "flex-end", paddingBottom: 8 }}>
+    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "var(--fs-small)", color: "var(--text-2)", alignSelf: "flex-end", paddingBottom: 8 }}>
       <input type="checkbox" checked={enabled} onChange={(e) => onChange(e.target.checked)} />
       {t("common.autoRefresh", { seconds: intervalSeconds })}
     </label>

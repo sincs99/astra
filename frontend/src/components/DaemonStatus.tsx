@@ -18,7 +18,7 @@ export function DaemonStatus({ daemon_reachable, daemon_version, daemon_error }:
           size="sm"
         />
       </span>
-      {daemon_version && <span style={{ color: "var(--fg-muted)", fontSize: 12 }}>Wings {daemon_version}</span>}
+      {daemon_version && <span style={{ color: "var(--text-3)", fontSize: "var(--fs-hint)" }}>Wings {daemon_version}</span>}
     </>
   );
 }

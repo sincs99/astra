@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type FileEntry } from "../services/api";
-import { Toast, useToast, btnDefault, btnPrimary } from "./ui";
+import { Toast, useToast } from "./ui";
+import { Icon } from "./ui/Icon";
+import { t } from "../i18n";
 
 interface FileBrowserProps {
   instanceUuid: string;
@@ -47,7 +49,7 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
       setEditContent(null);
       setSelected(new Set());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      setError(err instanceof Error ? err.message : t("sfiles.errLoad"));
     } finally {
       setLoading(false);
     }
@@ -63,7 +65,7 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
       setFileContent(result.content);
       setEditContent(result.content);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Lesen");
+      setError(err instanceof Error ? err.message : t("sfiles.errRead"));
     }
   };
 
@@ -72,24 +74,24 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
     try {
       setError(null);
       await api.writeFile(instanceUuid, selectedFile, editContent);
-      toast.success("Datei gespeichert.");
+      toast.success(t("sfiles.saved"));
       setFileContent(editContent);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler beim Speichern");
+      toast.error(err instanceof Error ? err.message : t("sfiles.errSave"));
     }
   };
 
   const handleDelete = async (path: string) => {
-    if (!confirm(`'${path}' wirklich löschen?`)) return;
+    if (!confirm(t("sfiles.deleteConfirm", { path }))) return;
     try {
       setError(null);
       await api.deleteFile(instanceUuid, path);
-      toast.success(`'${path}' gelöscht.`);
+      toast.success(t("sfiles.deleted", { path }));
       if (selectedFile === path) { setSelectedFile(null); setFileContent(null); setEditContent(null); }
       setSelected(prev => { const n = new Set(prev); n.delete(path); return n; });
       await loadFiles(directory);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler beim Löschen");
+      toast.error(err instanceof Error ? err.message : t("sfiles.errDelete"));
     }
   };
 
@@ -101,26 +103,26 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
     let ok = 0;
     for (const file of Array.from(files)) {
       if (file.size > MAX_UPLOAD_BYTES) {
-        toast.error(`'${file.name}' ist zu gross (max. 1 MB).`);
+        toast.error(t("sfiles.uploadTooBig", { name: file.name }));
         continue;
       }
       try {
         const text = await file.text();
         // Binärdateien würden beim Text-Write beschädigt -> ablehnen
         if (text.includes("\uFFFD") || text.includes("\0")) {
-          toast.error(`'${file.name}' ist keine Textdatei und kann nicht hochgeladen werden.`);
+          toast.error(t("sfiles.uploadNotText", { name: file.name }));
           continue;
         }
         await api.writeFile(instanceUuid, joinPath(file.name), text);
         ok++;
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : `Upload von '${file.name}' fehlgeschlagen`);
+        toast.error(err instanceof Error ? err.message : t("sfiles.uploadFailed", { name: file.name }));
       }
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
     setUploading(false);
     if (ok > 0) {
-      toast.success(`${ok} Datei(en) hochgeladen.`);
+      toast.success(t("sfiles.uploaded", { n: ok }));
       await loadFiles(directory);
     }
   };
@@ -130,12 +132,12 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
     if (!name) return;
     try {
       await api.writeFile(instanceUuid, joinPath(name), "");
-      toast.success(`Datei '${name}' erstellt.`);
+      toast.success(t("sfiles.fileCreated", { name }));
       setNewFileName("");
       await loadFiles(directory);
       await openFile(joinPath(name));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
+      toast.error(err instanceof Error ? err.message : t("sfiles.errAction"));
     }
   };
 
@@ -145,11 +147,11 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
     try {
       setError(null);
       await api.createDirectory(instanceUuid, path);
-      toast.success(`Ordner '${path}' erstellt.`);
+      toast.success(t("sfiles.dirCreated", { path }));
       setNewDirName("");
       await loadFiles(directory);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
+      toast.error(err instanceof Error ? err.message : t("sfiles.errAction"));
     }
   };
 
@@ -158,27 +160,27 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
     try {
       setError(null);
       await api.renameFile(instanceUuid, renameSrc.trim(), renameTgt.trim());
-      toast.success("Umbenannt.");
+      toast.success(t("sfiles.renamed"));
       setRenameSrc(""); setRenameTgt("");
       await loadFiles(directory);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
+      toast.error(err instanceof Error ? err.message : t("sfiles.errAction"));
     }
   };
 
   const handleCompress = async () => {
-    if (selected.size === 0) { setError("Keine Dateien ausgewählt"); return; }
+    if (selected.size === 0) { setError(t("sfiles.noneSelected")); return; }
     const name = archiveName.trim() || "archive.tar.gz";
     const destination = directory === "/" ? `/${name}` : `${directory}/${name}`;
     try {
       setError(null);
       await api.compressFiles(instanceUuid, Array.from(selected), destination);
-      toast.success(`${selected.size} Datei(en) komprimiert → '${name}'`);
+      toast.success(t("sfiles.compressed", { n: selected.size, name }));
       setArchiveName("");
       setSelected(new Set());
       await loadFiles(directory);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler beim Komprimieren");
+      toast.error(err instanceof Error ? err.message : t("sfiles.errCompress"));
     }
   };
 
@@ -187,10 +189,10 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
     try {
       setError(null);
       await api.decompressFile(instanceUuid, filePath, dest);
-      toast.success(`Entpackt nach '${dest}'`);
+      toast.success(t("sfiles.decompressed", { dest }));
       await loadFiles(directory);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler beim Entpacken");
+      toast.error(err instanceof Error ? err.message : t("sfiles.errDecompress"));
     }
   };
 
@@ -207,162 +209,154 @@ export function FileBrowser({ instanceUuid }: FileBrowserProps) {
     loadFiles(directory.substring(0, directory.lastIndexOf("/")) || "/");
   };
 
+  const closeEditor = () => { setSelectedFile(null); setFileContent(null); setEditContent(null); };
+  const dirty = editContent !== fileContent;
+
   return (
-    <div>
+    <div className="stack">
       <Toast {...toast} />
 
-      {/* Breadcrumb */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <button onClick={() => loadFiles("/")} style={smBtn} title="Root">🏠</button>
-        {directory !== "/" && <button onClick={navigateUp} style={smBtn} title="Zurück">⬆</button>}
-        <code style={{ fontSize: 13, color: "var(--fg-soft)" }}>{directory}</code>
-        <button onClick={() => loadFiles(directory)} style={smBtn} title="Aktualisieren">🔄</button>
-        {selected.size > 0 && (
-          <span style={{ fontSize: 12, color: "var(--c-blue)", fontWeight: 600 }}>{selected.size} ausgewählt</span>
+      <nav aria-label={t("sfiles.nav")} className="row-actions">
+        <button type="button" className="btn btn-sm" onClick={() => loadFiles("/")}>{t("sfiles.root")}</button>
+        {directory !== "/" && (
+          <button type="button" className="btn btn-sm btn-icon" onClick={navigateUp} aria-label={t("sfiles.up")} title={t("sfiles.up")}>
+            <Icon name="back" />
+          </button>
         )}
-      </div>
+        <span className="mono">{directory}</span>
+        <button type="button" className="btn btn-sm btn-icon" onClick={() => loadFiles(directory)} aria-label={t("sfiles.refresh")} title={t("sfiles.refresh")}>
+          <Icon name="restart" />
+        </button>
+        {selected.size > 0 && <span className="hint" role="status">{t("sfiles.selectedCount", { n: selected.size })}</span>}
+      </nav>
 
-      {error && (
-        <div style={{ padding: 8, marginBottom: 8, backgroundColor: "var(--tint-red)", border: "1px solid var(--border-red)", borderRadius: 4, color: "var(--c-red)", fontSize: 12 }}>
-          {error}
-        </div>
-      )}
+      {error && <div className="banner banner-danger" role="alert"><span className="banner-text text-danger">{error}</span></div>}
 
-      <div style={{ display: "grid", gridTemplateColumns: selectedFile ? "repeat(auto-fit, minmax(280px, 1fr))" : "1fr", gap: 16 }}>
-        {/* Dateiliste */}
-        <div>
-          {loading ? (
-            <p style={{ color: "var(--fg-muted)", fontSize: 13 }}>Wird geladen...</p>
-          ) : entries.length === 0 ? (
-            <p style={{ color: "var(--fg-muted)", fontSize: 13 }}>Verzeichnis leer</p>
-          ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ borderBottom: "2px solid var(--border)" }}>
-                  <th style={{ ...thS, width: 24 }}></th>
-                  <th style={thS}>Name</th>
-                  <th style={thS}>Grösse</th>
-                  <th style={{ ...thS, width: 80 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map(entry => (
-                  <tr
-                    key={entry.path}
-                    style={{
-                      borderBottom: "1px solid var(--bg-subtle)",
-                      backgroundColor: selected.has(entry.path) ? "var(--tint-blue)" : selectedFile === entry.path ? "var(--tint-blue)" : undefined,
-                    }}
-                  >
-                    <td style={{ padding: "4px 4px 4px 8px" }}>
-                      <input
-                        type="checkbox"
-                        aria-label={`${entry.name} auswählen`}
-                        checked={selected.has(entry.path)}
-                        onChange={() => toggleSelect(entry.path)}
-                        onClick={e => e.stopPropagation()}
-                      />
-                    </td>
-                    <td style={{ padding: 6, cursor: "pointer" }} onClick={() => entry.is_directory ? loadFiles(entry.path) : openFile(entry.path)}>
-                      {entry.is_directory ? "📁 " : "📄 "}
-                      {entry.name}
-                    </td>
-                    <td style={{ padding: 6, color: "var(--fg-muted)", fontSize: 12 }}>
-                      {entry.is_file ? formatSize(entry.size) : "–"}
-                    </td>
-                    <td style={{ padding: 6 }}>
-                      <div style={{ display: "flex", gap: 4 }}>
-                        {entry.is_file && isArchive(entry.name) && (
-                          <button onClick={e => { e.stopPropagation(); handleDecompress(entry.path); }} style={smBtn} title="Entpacken">📦</button>
-                        )}
-                        <button onClick={e => { e.stopPropagation(); handleDelete(entry.path); }} style={{ ...smBtn, color: "var(--c-red)" }} title="Löschen">🗑</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-
-          {/* ── Aktionen ── */}
-          <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              hidden
-              aria-label="Dateien hochladen"
-              onChange={e => handleUpload(e.target.files)}
-            />
-            <button onClick={() => fileInputRef.current?.click()} disabled={uploading} style={smBtn}>
-              {uploading ? "Wird hochgeladen..." : "⬆ Hochladen"}
-            </button>
-            <small style={{ color: "var(--fg-muted)", fontSize: 11 }}>nur Textdateien, max. 1 MB</small>
+      <div className="cards-grid" style={selectedFile ? undefined : { gridTemplateColumns: "1fr" }}>
+        <div className="stack">
+          <div className="panel">
+            {loading ? (
+              <p className="hint panel-body" role="status">{t("sfiles.loading")}</p>
+            ) : entries.length === 0 ? (
+              <p className="hint panel-body">{t("sfiles.empty")}</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table className="tbl">
+                  <caption className="sr-only">{t("sfiles.listCaption", { dir: directory })}</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col" style={{ width: 32 }}><span className="sr-only">{t("sfiles.colSelect")}</span></th>
+                      <th scope="col">{t("sfiles.colName")}</th>
+                      <th scope="col">{t("sfiles.colSize")}</th>
+                      <th scope="col"><span className="sr-only">{t("sfiles.colActions")}</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {entries.map(entry => (
+                      <tr
+                        key={entry.path}
+                        style={selected.has(entry.path) || selectedFile === entry.path ? { background: "var(--accent-soft)" } : undefined}
+                      >
+                        <td>
+                          <input
+                            type="checkbox"
+                            aria-label={t("sfiles.selectEntry", { name: entry.name })}
+                            checked={selected.has(entry.path)}
+                            onChange={() => toggleSelect(entry.path)}
+                          />
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm mono"
+                            aria-label={t(entry.is_directory ? "sfiles.openDir" : "sfiles.openFile", { name: entry.name })}
+                            onClick={() => entry.is_directory ? loadFiles(entry.path) : openFile(entry.path)}
+                          >
+                            {entry.name}{entry.is_directory ? "/" : ""}
+                          </button>
+                        </td>
+                        <td className="mono">{entry.is_file ? formatSize(entry.size) : "–"}</td>
+                        <td>
+                          <div className="row-actions" style={{ marginTop: 0 }}>
+                            {entry.is_file && isArchive(entry.name) && (
+                              <button type="button" className="btn btn-sm" aria-label={t("sfiles.decompressEntry", { name: entry.name })} onClick={() => handleDecompress(entry.path)}>
+                                {t("sfiles.decompress")}
+                              </button>
+                            )}
+                            <button type="button" className="btn btn-sm btn-danger-text" aria-label={t("sfiles.deleteEntry", { name: entry.name })} onClick={() => handleDelete(entry.path)}>
+                              {t("sfiles.delete")}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
-          <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <input type="text" value={newFileName} onChange={e => setNewFileName(e.target.value)} placeholder="Neue Datei" style={actionInput} />
-            <button onClick={handleCreateFile} style={smBtn}>📄+</button>
-            <input type="text" value={newDirName} onChange={e => setNewDirName(e.target.value)} placeholder="Neuer Ordner" style={actionInput} />
-            <button onClick={handleCreateDir} style={smBtn}>📁+</button>
+          <div className="card">
+            <div className="row-actions">
+              <input ref={fileInputRef} type="file" multiple hidden aria-label={t("sfiles.uploadInput")} onChange={e => handleUpload(e.target.files)} />
+              <button type="button" className="btn btn-sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                <Icon name="download" size={14} />
+                {uploading ? t("sfiles.uploading") : t("sfiles.upload")}
+              </button>
+              <span className="hint">{t("sfiles.uploadHint")}</span>
+            </div>
+
+            <div className="row-actions">
+              <input className="inp" style={{ width: 180 }} type="text" value={newFileName} onChange={e => setNewFileName(e.target.value)} aria-label={t("sfiles.newFile")} placeholder={t("sfiles.newFile")} />
+              <button type="button" className="btn btn-sm" onClick={handleCreateFile}><Icon name="plus" size={14} />{t("sfiles.createFile")}</button>
+            </div>
+            <div className="row-actions">
+              <input className="inp" style={{ width: 180 }} type="text" value={newDirName} onChange={e => setNewDirName(e.target.value)} aria-label={t("sfiles.newDir")} placeholder={t("sfiles.newDir")} />
+              <button type="button" className="btn btn-sm" onClick={handleCreateDir}><Icon name="plus" size={14} />{t("sfiles.createDir")}</button>
+            </div>
+
+            <div className="row-actions">
+              <input className="inp" style={{ width: 180 }} type="text" value={renameSrc} onChange={e => setRenameSrc(e.target.value)} aria-label={t("sfiles.renameSrc")} placeholder={t("sfiles.renameSrc")} />
+              <span aria-hidden="true">→</span>
+              <input className="inp" style={{ width: 180 }} type="text" value={renameTgt} onChange={e => setRenameTgt(e.target.value)} aria-label={t("sfiles.renameTgt")} placeholder={t("sfiles.renameTgt")} />
+              <button type="button" className="btn btn-sm" onClick={handleRename}>{t("sfiles.rename")}</button>
+            </div>
           </div>
 
-          <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <input type="text" value={renameSrc} onChange={e => setRenameSrc(e.target.value)} placeholder="Quelle" style={actionInput} />
-            <span style={{ fontSize: 12 }}>→</span>
-            <input type="text" value={renameTgt} onChange={e => setRenameTgt(e.target.value)} placeholder="Ziel" style={actionInput} />
-            <button onClick={handleRename} style={smBtn}>✏️ Umbenennen</button>
-          </div>
-
-          {/* ── Compress-Bereich ── */}
-          <div style={{ marginTop: 12, padding: 10, border: "1px solid var(--border)", borderRadius: 6, backgroundColor: "var(--tint-blue)" }}>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: "var(--c-blue)" }}>Komprimieren</div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <input type="text" value={archiveName} onChange={e => setArchiveName(e.target.value)} placeholder="archiv.tar.gz" style={actionInput} />
-              <button
-                onClick={handleCompress}
-                disabled={selected.size === 0}
-                style={{ ...(selected.size > 0 ? btnPrimary : btnDefault), padding: "4px 12px", fontSize: 12 }}
-              >
-                📦 Komprimieren ({selected.size})
+          <div className="card">
+            <h3 className="card-title">{t("sfiles.compressTitle")}</h3>
+            <div className="row-actions">
+              <input className="inp" style={{ width: 180 }} type="text" value={archiveName} onChange={e => setArchiveName(e.target.value)} aria-label={t("sfiles.archiveName")} placeholder={t("sfiles.archivePlaceholder")} />
+              <button type="button" className={`btn btn-sm${selected.size > 0 ? " btn-primary" : ""}`} onClick={handleCompress} disabled={selected.size === 0}>
+                {t("sfiles.compress", { n: selected.size })}
               </button>
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
-              <input type="text" value={decompressTarget} onChange={e => setDecompressTarget(e.target.value)} placeholder={`Ziel: ${directory}`} style={{ ...actionInput, width: 200 }} />
-              <small style={{ color: "var(--fg-muted)", fontSize: 11 }}>Zielverzeichnis für 📦-Entpacken</small>
+            <div className="row-actions">
+              <input className="inp" style={{ width: 240 }} type="text" value={decompressTarget} onChange={e => setDecompressTarget(e.target.value)} aria-label={t("sfiles.decompressTarget")} placeholder={t("sfiles.decompressPlaceholder", { dir: directory })} />
+              <span className="hint">{t("sfiles.decompressHint")}</span>
             </div>
           </div>
         </div>
 
-        {/* Dateiinhalt / Editor */}
         {selectedFile && (
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <code style={{ fontSize: 12, color: "var(--fg-soft)" }}>{selectedFile}</code>
-              <div style={{ display: "flex", gap: 4 }}>
-                <button
-                  onClick={saveFile}
-                  disabled={editContent === fileContent}
-                  style={{
-                    ...smBtn,
-                    backgroundColor: editContent !== fileContent ? "var(--ok)" : "var(--surface-2)",
-                    color: editContent !== fileContent ? "var(--on-accent)" : "var(--text-3)",
-                    cursor: editContent !== fileContent ? "pointer" : "default",
-                  }}
-                >
-                  💾 Speichern
+          <div className="card">
+            <div className="row-actions">
+              <span className="mono card-sub">{selectedFile}</span>
+              <span className="push row-actions" style={{ marginTop: 0 }}>
+                <button type="button" className={`btn btn-sm${dirty ? " btn-primary" : ""}`} onClick={saveFile} disabled={!dirty}>
+                  {t("sfiles.save")}
                 </button>
-                <button onClick={() => { setSelectedFile(null); setFileContent(null); setEditContent(null); }} style={smBtn}>✕</button>
-              </div>
+                <button type="button" className="btn btn-sm btn-icon" onClick={closeEditor} aria-label={t("sfiles.closeEditor")} title={t("sfiles.closeEditor")}>
+                  <Icon name="close" />
+                </button>
+              </span>
             </div>
             <textarea
+              className="inp mono"
+              style={{ minHeight: 300, padding: 8, resize: "vertical" }}
+              aria-label={t("sfiles.editorLabel", { path: selectedFile })}
               value={editContent ?? ""}
               onChange={e => setEditContent(e.target.value)}
-              style={{
-                width: "100%", minHeight: 300, fontFamily: "monospace", fontSize: 12,
-                padding: 8, border: "1px solid var(--border)", borderRadius: 6,
-                boxSizing: "border-box", backgroundColor: "var(--bg-page)", resize: "vertical",
-              }}
             />
           </div>
         )}
@@ -376,17 +370,3 @@ function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
-
-const smBtn: React.CSSProperties = {
-  padding: "4px 8px", border: "1px solid var(--border)", borderRadius: 4,
-  backgroundColor: "var(--bg-card)", cursor: "pointer", fontSize: 12,
-};
-
-const actionInput: React.CSSProperties = {
-  padding: "4px 8px", fontSize: 12, borderRadius: 4,
-  border: "1px solid var(--border-strong)", width: 130,
-};
-
-const thS: React.CSSProperties = {
-  padding: 6, textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--fg-soft)",
-};

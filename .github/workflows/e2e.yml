@@ -1,17 +1,22 @@
 name: E2E
 
 # Browser-Durchlauf gegen das echte Backend (SQLite, Stub-Runner, manuelle Zahlung):
-# Registrierung -> Login -> Bestellung -> Admin markiert als bezahlt -> Server im Dashboard.
+# Registrierung -> Login -> Bestellung -> Admin markiert als bezahlt -> Server im Dashboard,
+# danach axe-core (WCAG A/AA) auf den wichtigsten Seiten, dunkel/hell, 390 und 1100 px (e2e/a11y.mjs).
 # Laeuft manuell (workflow_dispatch) und bei Aenderungen an den E2E-Dateien. Lokal: frontend/e2e/README.md
 on:
   workflow_dispatch:
   push:
     paths:
       - "frontend/e2e/**"
+      - "frontend/src/**"
+      - "design/tokens.css"
       - ".github/workflows/e2e.yml"
   pull_request:
     paths:
       - "frontend/e2e/**"
+      - "frontend/src/**"
+      - "design/tokens.css"
       - ".github/workflows/e2e.yml"
 
 jobs:
@@ -41,7 +46,7 @@ jobs:
           npm ci
           npx playwright-core install --with-deps chromium
 
-      - name: E2E-Durchlauf
+      - name: E2E-Durchlauf und Barrierefreiheit
         working-directory: frontend
         run: ./e2e/run-local.sh
 

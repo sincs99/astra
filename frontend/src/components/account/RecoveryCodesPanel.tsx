@@ -36,7 +36,7 @@ export function RecoveryCodesPanel({ codes, onDone }: { codes: string[]; onDone:
   };
 
   return (
-    <div role="alert" style={{ padding: 12, marginBottom: 12, background: "var(--tint-orange)", border: "1px solid var(--border-orange)", borderRadius: 8 }}>
+    <div role="alert" style={{ padding: 12, marginBottom: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-border)", borderRadius: 8 }}>
       <strong>{t("account.mfa.recoveryTitle")}</strong>
       <p style={{ margin: "4px 0 8px", fontSize: 13 }}>{t("account.mfa.recoveryText")}</p>
       <ul aria-label={t("account.mfa.recoveryList")} style={{
@@ -46,7 +46,7 @@ export function RecoveryCodesPanel({ codes, onDone }: { codes: string[]; onDone:
         {codes.map((c) => (
           <li key={c}><code style={{
             display: "block", textAlign: "center", fontSize: 18, fontWeight: 600, letterSpacing: 1, userSelect: "all",
-            background: "var(--bg-card)", color: "var(--fg)", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)",
+            background: "var(--surface)", color: "var(--text)", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)",
           }}>{c}</code></li>
         ))}
       </ul>

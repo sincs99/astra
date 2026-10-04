@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+import { TypeName } from "./ui/TypeName";
 import { useState } from "react";
 import { btnDanger, btnDefault, inputStyle, labelStyle, statusLabel, ErrorState } from "./ui";
 
@@ -35,7 +37,7 @@ export function DeleteInstanceForm({ name, status, allowForce = false, notice, o
       setError(null);
       await onDelete(force);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Löschen fehlgeschlagen");
+      setError(err instanceof Error ? err.message : t("sform.deleteFailed"));
       setBusy(false);
     }
   };
@@ -44,34 +46,33 @@ export function DeleteInstanceForm({ name, status, allowForce = false, notice, o
     <form onSubmit={submit} style={{ maxWidth: 460 }}>
       {error && <ErrorState message={error} />}
       <p style={{ marginTop: 0, fontSize: 13 }}>
-        <strong>Das lässt sich nicht rückgängig machen.</strong> Alle Dateien, Backups, Datenbanken, Collaborators und
-        Routinen dieses Servers werden gelöscht, die Endpoints werden freigegeben.
+        <strong>{t("sform.deleteWarnStrong")}</strong> {t("sform.deleteWarn")}
       </p>
       {notice && (
-        <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--c-red)", fontWeight: 600 }}>{notice}</p>
+        <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--danger)", fontWeight: 600 }}>{notice}</p>
       )}
       <label htmlFor={`${idPrefix}-confirm`} style={labelStyle}>
-        Zur Bestätigung den Namen <code>{name}</code> eingeben
+        <TypeName name={name} />
       </label>
       <input id={`${idPrefix}-confirm`} type="text" autoComplete="off" value={typed}
         onChange={(e) => setTyped(e.target.value)} style={inputStyle} />
       {allowForce && blocked && (
         <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, marginTop: 8 }}>
           <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} />
-          Erzwingen (Status „{statusLabel(status)}“ – laufender Vorgang wird abgebrochen)
+          {t("sform.force", { status: statusLabel(status) })}
         </label>
       )}
       {!allowForce && blocked && (
-        <p style={{ fontSize: 12, color: "var(--c-red)", margin: "8px 0 0" }}>
-          Der Server ist gerade „{statusLabel(status)}“. Löschen ist erst danach möglich.
+        <p style={{ fontSize: 12, color: "var(--danger)", margin: "8px 0 0" }}>
+          {t("sform.blocked", { status: statusLabel(status) })}
         </p>
       )}
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
         <button type="submit" disabled={!matches || busy || (blocked && !allowForce) || (blocked && allowForce && !force)}
           style={{ ...btnDanger, opacity: !matches || busy ? 0.5 : 1, cursor: matches && !busy ? "pointer" : "not-allowed" }}>
-          {busy ? "Wird gelöscht..." : "Endgültig löschen"}
+          {busy ? t("sform.deleting") : t("sform.deleteForever")}
         </button>
-        <button type="button" onClick={onCancel} disabled={busy} style={btnDefault}>Abbrechen</button>
+        <button type="button" onClick={onCancel} disabled={busy} style={btnDefault}>{t("sform.cancel")}</button>
       </div>
     </form>
   );

@@ -1,9 +1,17 @@
 import { useEffect, useState } from "react";
 import { api, type RoutineEntry, ACTION_TYPES } from "../services/api";
 import { formatDateTime } from "../lib/dates";
+import { hasKey, t } from "../i18n";
+import { Icon } from "./ui/Icon";
 
 interface RoutineManagerProps {
   instanceUuid: string;
+}
+
+/** Übersetzt einen API-Aktionstyp; unbekannte Werte werden roh angezeigt. */
+function actionLabel(type: string): string {
+  const key = `sroutines.type.${type}`;
+  return hasKey(key) ? t(key) : type;
 }
 
 export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
@@ -13,23 +21,21 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
 
-  // Create form
   const [newName, setNewName] = useState("");
-  // Expanded routine for action management
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  // Add action form
   const [aType, setAType] = useState(ACTION_TYPES[0]);
   const [aPayload, setAPayload] = useState("{}");
   const [aDelay, setADelay] = useState(0);
+
+  const fail = (err: unknown) => setError(err instanceof Error ? err.message : t("sroutines.failed"));
 
   const loadRoutines = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await api.getRoutines(instanceUuid);
-      setRoutines(data);
+      setRoutines(await api.getRoutines(instanceUuid));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen");
+      fail(err);
     } finally {
       setLoading(false);
     }
@@ -46,20 +52,20 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       setActing(true); setError(null);
       await api.createRoutine(instanceUuid, { name: newName.trim() });
       setNewName("");
-      showMsg("Routine erstellt");
+      showMsg(t("sroutines.created"));
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
+    } catch (err) { fail(err); }
     finally { setActing(false); }
   };
 
   const handleDelete = async (r: RoutineEntry) => {
-    if (!confirm(`Routine "${r.name}" löschen?`)) return;
+    if (!confirm(t("sroutines.deleteConfirm", { name: r.name }))) return;
     try {
       setActing(true); setError(null);
       await api.deleteRoutine(instanceUuid, r.id);
-      showMsg("Routine gelöscht");
+      showMsg(t("sroutines.deleted"));
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
+    } catch (err) { fail(err); }
     finally { setActing(false); }
   };
 
@@ -68,18 +74,18 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
       setError(null);
       await api.updateRoutine(instanceUuid, r.id, { is_active: !r.is_active });
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
+    } catch (err) { fail(err); }
   };
 
   const handleExecute = async (r: RoutineEntry) => {
     try {
       setActing(true); setError(null);
       const result = await api.executeRoutine(instanceUuid, r.id);
-      const ok = result.results.filter((r) => r.success).length;
-      const fail = result.results.filter((r) => !r.success).length;
-      showMsg(`Routine ausgeführt: ${ok} OK, ${fail} Fehler`);
+      const ok = result.results.filter((x) => x.success).length;
+      const failed = result.results.filter((x) => !x.success).length;
+      showMsg(t("sroutines.executed", { ok, fail: failed }));
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
+    } catch (err) { fail(err); }
     finally { setActing(false); }
   };
 
@@ -88,16 +94,16 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
     if (!routine) return;
     const nextSeq = routine.actions.length > 0 ? Math.max(...routine.actions.map((a) => a.sequence)) + 1 : 1;
     let payload: Record<string, unknown> | null = null;
-    try { payload = JSON.parse(aPayload); } catch { setError("Die Nutzdaten (Payload) sind kein gültiges JSON."); return; }
+    try { payload = JSON.parse(aPayload); } catch { setError(t("sroutines.invalidJson")); return; }
     try {
       setActing(true); setError(null);
       await api.addRoutineAction(instanceUuid, routineId, {
         sequence: nextSeq, action_type: aType, payload, delay_seconds: aDelay,
       });
       setAPayload("{}"); setADelay(0);
-      showMsg("Action hinzugefügt");
+      showMsg(t("sroutines.actionAdded"));
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
+    } catch (err) { fail(err); }
     finally { setActing(false); }
   };
 
@@ -105,106 +111,120 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
     try {
       setActing(true); setError(null);
       await api.deleteRoutineAction(instanceUuid, routineId, actionId);
-      showMsg("Action gelöscht");
+      showMsg(t("sroutines.actionDeleted"));
       await loadRoutines();
-    } catch (err) { setError(err instanceof Error ? err.message : "Aktion fehlgeschlagen"); }
+    } catch (err) { fail(err); }
     finally { setActing(false); }
   };
 
   return (
-    <div>
-      {/* Create */}
-      <form onSubmit={handleCreate} style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Routine-Name" required style={{ flex: 1, padding: 6, fontSize: 13 }} />
-        <button type="submit" disabled={acting} style={btnS}>+ Routine</button>
+    <div className="stack" style={{ gap: 14 }}>
+      <form onSubmit={handleCreate} className="row-actions" style={{ alignItems: "flex-end" }}>
+        <div className="field" style={{ flex: "1 1 220px" }}>
+          <label htmlFor="routine-name" className="sr-only">{t("sroutines.nameLabel")}</label>
+          <input id="routine-name" className="inp" type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
+            placeholder={t("sroutines.namePlaceholder")} required />
+        </div>
+        <button type="submit" disabled={acting} className="btn btn-primary"><Icon name="plus" /> {t("sroutines.add")}</button>
       </form>
 
-      {error && <div style={errS}>{error}</div>}
-      {message && <div style={msgS}>{message}</div>}
+      {error && <div className="banner banner-danger" role="alert">{error}</div>}
+      {message && <div className="banner banner-info" role="status">{message}</div>}
 
-      {loading ? <p style={{ color: "var(--fg-muted)" }}>Wird geladen...</p> : routines.length === 0 ? (
-        <p style={{ color: "var(--fg-muted)", fontSize: 13 }}>Keine Routinen vorhanden.</p>
+      {loading ? <p className="hint">{t("sroutines.loading")}</p> : routines.length === 0 ? (
+        <div className="card-empty">{t("sroutines.empty")}</div>
       ) : (
-        <div style={{ display: "grid", gap: 8 }}>
+        <div className="stack" style={{ gap: 12 }}>
           {routines.map((r) => (
-            <div key={r.id} style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <strong style={{ fontSize: 13 }}>{r.name}</strong>
-                  <span style={{ marginLeft: 8, fontSize: 11, color: r.is_active ? "var(--c-green)" : "var(--fg-muted)" }}>
-                    {r.is_active ? "●aktiv" : "○inaktiv"}
-                  </span>
-                  {r.is_processing && <span style={{ marginLeft: 6, fontSize: 11, color: "var(--c-yellow)" }}>⏳running</span>}
-                  <span style={{ marginLeft: 8, fontSize: 10, color: "var(--fg-muted)" }}>
-                    {r.cron_minute} {r.cron_hour} {r.cron_day_month} {r.cron_month} {r.cron_day_week}
-                  </span>
-                </div>
-                <div style={{ display: "flex", gap: 4 }}>
-                  <button onClick={() => handleToggle(r)} style={smB} title={r.is_active ? "Deaktivieren" : "Aktivieren"}>
-                    {r.is_active ? "⏸" : "▶"}
+            <div key={r.id} className="card">
+              <div className="row-actions" style={{ marginTop: 0 }}>
+                <span className="card-title">{r.name}</span>
+                <span className="card-sub">
+                  <span className={`dot ${r.is_active ? "dot-ok" : ""}`} style={r.is_active ? undefined : { background: "var(--text-3)" }} aria-hidden="true" />{" "}
+                  {r.is_active ? t("sroutines.active") : t("sroutines.inactive")}
+                </span>
+                {r.is_processing && <span className="card-sub text-warn">{t("sroutines.running")}</span>}
+                <span className="card-sub mono" title={t("sroutines.cron")}>
+                  {r.cron_minute} {r.cron_hour} {r.cron_day_month} {r.cron_month} {r.cron_day_week}
+                </span>
+                <span className="push row-actions" style={{ marginTop: 0 }}>
+                  <button type="button" className="btn btn-sm btn-icon" onClick={() => handleToggle(r)}
+                    aria-label={r.is_active ? t("sroutines.deactivate") : t("sroutines.activate")}
+                    title={r.is_active ? t("sroutines.deactivate") : t("sroutines.activate")}>
+                    <Icon name={r.is_active ? "stop" : "play"} />
                   </button>
-                  <button onClick={() => handleExecute(r)} disabled={acting || r.is_processing} style={{ ...smB, color: "var(--c-green)" }} title="Ausführen">⚡</button>
-                  <button onClick={() => setExpandedId(expandedId === r.id ? null : r.id)} style={smB}>
-                    {expandedId === r.id ? "▲" : "▼"}
+                  <button type="button" className="btn btn-sm btn-icon" onClick={() => handleExecute(r)} disabled={acting || r.is_processing}
+                    aria-label={t("sroutines.run")} title={t("sroutines.run")}>
+                    <Icon name="zap" />
                   </button>
-                  <button onClick={() => handleDelete(r)} disabled={acting} style={{ ...smB, color: "var(--c-red)" }}>🗑</button>
-                </div>
+                  <button type="button" className="btn btn-sm btn-icon" onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}
+                    aria-expanded={expandedId === r.id}
+                    aria-label={expandedId === r.id ? t("sroutines.collapse") : t("sroutines.expand")}
+                    title={expandedId === r.id ? t("sroutines.collapse") : t("sroutines.expand")}>
+                    <Icon name="chevrons" />
+                  </button>
+                  <button type="button" className="btn btn-sm btn-icon btn-danger-text" onClick={() => handleDelete(r)} disabled={acting}
+                    aria-label={t("sroutines.delete")} title={t("sroutines.delete")}>
+                    <Icon name="close" />
+                  </button>
+                </span>
               </div>
 
-              {r.last_run_at && (
-                <div style={{ fontSize: 10, color: "var(--fg-muted)", marginTop: 2 }}>
-                  Zuletzt: {formatDateTime(r.last_run_at)}
-                </div>
-              )}
+              {r.last_run_at && <p className="hint">{t("sroutines.lastRun", { time: formatDateTime(r.last_run_at) })}</p>}
 
-              {/* Expanded: Actions */}
               {expandedId === r.id && (
-                <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Actions ({r.actions.length})</div>
+                <div className="stack" style={{ gap: 12 }}>
+                  <h3 className="section-title" style={{ margin: 0 }}>{t("sroutines.actionsTitle", { n: r.actions.length })}</h3>
                   {r.actions.length > 0 && (
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 8 }}>
-                      <thead>
-                        <tr>
-                          <th style={thS}>#</th>
-                          <th style={thS}>Typ</th>
-                          <th style={thS}>Payload</th>
-                          <th style={thS}>Delay</th>
-                          <th style={{ ...thS, width: 30 }}></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {r.actions.map((a) => (
-                          <tr key={a.id} style={{ borderBottom: "1px solid var(--bg-subtle)" }}>
-                            <td style={tdS}>{a.sequence}</td>
-                            <td style={tdS}><code>{a.action_type}</code></td>
-                            <td style={tdS}><code style={{ fontSize: 10 }}>{JSON.stringify(a.payload)}</code></td>
-                            <td style={tdS}>{a.delay_seconds}s</td>
-                            <td style={tdS}>
-                              <button onClick={() => handleDeleteAction(r.id, a.id)} style={{ ...smB, color: "var(--c-red)", fontSize: 10 }}>✕</button>
-                            </td>
+                    <div style={{ overflowX: "auto" }}>
+                      <table className="tbl">
+                        <thead>
+                          <tr>
+                            <th scope="col">{t("sroutines.colSeq")}</th>
+                            <th scope="col">{t("sroutines.colType")}</th>
+                            <th scope="col">{t("sroutines.colPayload")}</th>
+                            <th scope="col">{t("sroutines.colDelay")}</th>
+                            <th scope="col"><span className="sr-only">{t("sroutines.colRemove")}</span></th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {r.actions.map((a) => (
+                            <tr key={a.id}>
+                              <td>{a.sequence}</td>
+                              <td>{actionLabel(a.action_type)}</td>
+                              <td><code className="mono">{JSON.stringify(a.payload)}</code></td>
+                              <td>{a.delay_seconds}s</td>
+                              <td>
+                                <button type="button" className="btn btn-sm btn-icon btn-danger-text" onClick={() => handleDeleteAction(r.id, a.id)} disabled={acting}
+                                  aria-label={t("sroutines.deleteAction", { n: a.sequence })} title={t("sroutines.deleteAction", { n: a.sequence })}>
+                                  <Icon name="close" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
 
-                  {/* Add Action */}
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "flex-end" }}>
-                    <div>
-                      <label style={{ fontSize: 10 }}>Typ</label>
-                      <select value={aType} onChange={(e) => setAType(e.target.value)} style={{ display: "block", fontSize: 11, padding: 4 }}>
-                        {ACTION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  <div className="row-actions" style={{ alignItems: "flex-end" }}>
+                    <div className="field">
+                      <label htmlFor={`a-type-${r.id}`}>{t("sroutines.fieldType")}</label>
+                      <select id={`a-type-${r.id}`} className="inp" value={aType} onChange={(e) => setAType(e.target.value)}>
+                        {ACTION_TYPES.map((x) => <option key={x} value={x}>{actionLabel(x)}</option>)}
                       </select>
                     </div>
-                    <div>
-                      <label style={{ fontSize: 10 }}>Payload (JSON)</label>
-                      <input type="text" value={aPayload} onChange={(e) => setAPayload(e.target.value)} style={{ display: "block", fontSize: 11, padding: 4, width: 180 }} />
+                    <div className="field" style={{ flex: "1 1 200px" }}>
+                      <label htmlFor={`a-payload-${r.id}`}>{t("sroutines.fieldPayload")}</label>
+                      <input id={`a-payload-${r.id}`} className="inp mono" type="text" value={aPayload} onChange={(e) => setAPayload(e.target.value)} />
                     </div>
-                    <div>
-                      <label style={{ fontSize: 10 }}>Delay (s)</label>
-                      <input type="number" value={aDelay} onChange={(e) => setADelay(Number(e.target.value))} min={0} style={{ display: "block", fontSize: 11, padding: 4, width: 50 }} />
+                    <div className="field" style={{ width: 120 }}>
+                      <label htmlFor={`a-delay-${r.id}`}>{t("sroutines.fieldDelay")}</label>
+                      <input id={`a-delay-${r.id}`} className="inp" type="number" value={aDelay} onChange={(e) => setADelay(Number(e.target.value))} min={0} />
                     </div>
-                    <button onClick={() => handleAddAction(r.id)} disabled={acting} style={{ ...smB, fontSize: 11 }}>+ Action</button>
+                    <button type="button" className="btn" onClick={() => handleAddAction(r.id)} disabled={acting}>
+                      <Icon name="plus" /> {t("sroutines.addAction")}
+                    </button>
                   </div>
                 </div>
               )}
@@ -215,10 +235,3 @@ export function RoutineManager({ instanceUuid }: RoutineManagerProps) {
     </div>
   );
 }
-
-const btnS: React.CSSProperties = { padding: "6px 12px", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontSize: 12, backgroundColor: "var(--bg-card)" };
-const smB: React.CSSProperties = { padding: "3px 6px", border: "1px solid var(--border)", borderRadius: 3, backgroundColor: "var(--bg-card)", cursor: "pointer", fontSize: 12 };
-const thS: React.CSSProperties = { padding: 4, textAlign: "left", fontSize: 11, fontWeight: 600 };
-const tdS: React.CSSProperties = { padding: 4, fontSize: 12 };
-const errS: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "var(--tint-red)", border: "1px solid var(--c-red)", borderRadius: 4, color: "var(--c-red)", fontSize: 12 };
-const msgS: React.CSSProperties = { padding: 8, marginBottom: 8, backgroundColor: "var(--tint-green)", border: "1px solid var(--c-green)", borderRadius: 4, color: "var(--c-green)", fontSize: 12 };

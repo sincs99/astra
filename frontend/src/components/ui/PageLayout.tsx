@@ -1,71 +1,96 @@
 /**
- * Einheitliches Seitenlayout mit Navigation (M26).
- *
- * Stellt eine konsistente Navigationsleiste und Seitenstruktur bereit.
+ * App-Shell nach design/DESIGN.md: Seitenleiste links (einklappbar), mobil Kopfzeile mit Vollbild-Menü,
+ * ausgeloggt eine schlanke Kopfzeile. Seitentitel mit optionalem Untertitel und Aktionen rechts.
  */
 
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { linkStyle, btnDefault } from "./styles";
 import { api, isAuthenticated, logout } from "../../services/api";
+import { SiteFooter } from "../SiteFooter";
 import { SkipLink } from "./SkipLink";
 import { FlashBanner } from "../FlashBanner";
-import { t, type MessageKey } from "../../i18n";
-import { SiteFooter } from "../SiteFooter";
+import { Logo } from "./Logo";
+import { Icon } from "./Icon";
 import { loginUrl } from "../../lib/redirect";
 import { useCurrentUser, resetCurrentUserCache } from "../../hooks/useCurrentUser";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
-
-interface NavItem {
-  label: string;
-  /** Übersetzungsschlüssel für Kundenpunkte; Admin-Punkte bleiben unübersetzt */
-  labelKey?: MessageKey;
-  href: string;
-  group: string;
-  /** Nur für Administratoren sichtbar */
-  adminOnly?: boolean;
-}
-
-const NAV_ITEMS: NavItem[] = [
-  // Core
-  { label: "Dashboard", labelKey: "nav.dashboard", href: "/", group: "Core" },
-  { label: "Übersicht", adminOnly: true, href: "/admin", group: "Core" },
-  { label: "Agents", adminOnly: true, href: "/admin/agents", group: "Core" },
-  { label: "Blueprints", adminOnly: true, href: "/admin/blueprints", group: "Core" },
-  { label: "Instances", adminOnly: true, href: "/admin/instances", group: "Core" },
-  // Operations
-  { label: "Fleet Monitoring", adminOnly: true, href: "/admin/agents/monitoring", group: "Operations" },
-  { label: "Jobs", adminOnly: true, href: "/admin/jobs", group: "Operations" },
-  { label: "System", adminOnly: true, href: "/admin/system", group: "Operations" },
-  // Shop (Phase 4)
-  { label: "Shop", labelKey: "nav.shop", href: "/shop", group: "Shop" },
-  { label: "Meine Bestellungen", labelKey: "nav.orders", href: "/orders", group: "Shop" },
-  { label: "Produkte", href: "/admin/products", group: "Verkauf", adminOnly: true },
-  { label: "Bestellungen", href: "/admin/orders", group: "Verkauf", adminOnly: true },
-  // Integrations
-  { label: "Webhooks", adminOnly: true, href: "/admin/webhooks", group: "Integrations" },
-  // Account
-  { label: "Konto", labelKey: "nav.account", href: "/account", group: "Account" },
-  { label: "SSH Keys", labelKey: "nav.sshKeys", href: "/account/ssh-keys", group: "Account" },
-];
+import { t } from "../../i18n";
+import { NAV_ITEMS, activeHref, initials, type NavItem } from "../shell/navItems";
+import { UserActions, UserMenu } from "../shell/UserMenu";
+import type { User } from "../../services/api";
 
 interface PageLayoutProps {
   title: string;
+  /** Einzeiliger Untertitel unter dem Titel */
+  subtitle?: React.ReactNode;
+  /** Primäre Aktionen rechts neben dem Titel */
+  actions?: React.ReactNode;
+  /** Link "← Zurück" über dem Titel (z.B. von der Server-Detailseite zu "Meine Server") */
+  back?: { to: string; label: string };
   children: React.ReactNode;
   maxWidth?: number;
 }
 
-export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps) {
-  const currentPath = useLocation().pathname;
+const COLLAPSE_KEY = "astra_sidebar_collapsed";
+
+function readCollapsed(): boolean {
+  try { return localStorage.getItem(COLLAPSE_KEY) === "1"; } catch { return false; }
+}
+
+function itemLabel(item: NavItem): string {
+  return item.labelKey ? t(item.labelKey) : item.label;
+}
+
+function NavList({ items, current, collapsed, onNavigate }: { items: NavItem[]; current: string | null; collapsed: boolean; onNavigate?: () => void }) {
+  let lastGroup: string | undefined;
+  return (
+    <>
+      {items.map((item) => {
+        const heading = item.group && item.group !== lastGroup ? item.group : null;
+        lastGroup = item.group;
+        return (
+          <div key={item.href} style={{ display: "contents" }}>
+            {heading && <div className="sb-label" aria-hidden="true">{heading}</div>}
+            <Link to={item.href} className="sb-link" aria-current={current === item.href ? "page" : undefined}
+              aria-label={collapsed ? itemLabel(item) : undefined} title={collapsed ? itemLabel(item) : undefined} onClick={onNavigate}>
+              <Icon name={item.icon} />
+              <span className="sb-text">{itemLabel(item)}</span>
+            </Link>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function PageHead({ title, subtitle, actions, back }: Pick<PageLayoutProps, "title" | "subtitle" | "actions" | "back">) {
+  return (
+    <>
+    {back && <Link to={back.to} className="back-link"><Icon name="back" size={14} />{back.label}</Link>}
+    <div className="page-head">
+      <div>
+        <h1 className="page-title">{title}</h1>
+        {subtitle && <div className="page-sub">{subtitle}</div>}
+      </div>
+      {actions && <div className="page-actions">{actions}</div>}
+    </div>
+    </>
+  );
+}
+
+export function PageLayout({ title, subtitle, actions, back, children, maxWidth = 1200 }: PageLayoutProps) {
+  const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 760px)");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(readCollapsed);
+  const user = useCurrentUser();
 
   // Browser-Tab-Titel folgt der Seite
   useEffect(() => { document.title = `${title} – Astra`; }, [title]);
 
-  // Menü schliessen bei Seitenwechsel, Escape oder Wechsel zur Desktop-Ansicht
-  useEffect(() => { setMenuOpen(false); }, [currentPath, isMobile]);
+  // Overlay schliessen bei Seitenwechsel, Escape oder Wechsel zur Desktop-Ansicht
+  useEffect(() => { setMenuOpen(false); }, [location.pathname, isMobile]);
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(false); };
@@ -73,10 +98,11 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
     return () => document.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
-  const user = useCurrentUser();
-  // Während der User lädt, gelten die Admin-Links als nicht sichtbar (kein Flackern für Kunden)
-  const navItems = NAV_ITEMS.filter((i) => (!i.adminOnly || user?.is_admin));
-  const groups = Array.from(new Set(navItems.map((i) => i.group)));
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    try { localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0"); } catch { /* nur für diese Sitzung */ }
+  };
 
   const handleLogout = async () => {
     // Token zuerst am Server sperren (best effort), danach immer lokal abmelden
@@ -86,142 +112,84 @@ export function PageLayout({ title, children, maxWidth = 1100 }: PageLayoutProps
     navigate("/login");
   };
 
-  // Ausgeloggt (z.B. öffentlicher Shop): schlanke Leiste ohne Konto-Navigation
+  const content = (
+    <main id="main-content" tabIndex={-1} className="shell-content" style={{ maxWidth }}>
+      <FlashBanner />
+      <PageHead title={title} subtitle={subtitle} actions={actions} back={back} />
+      {children}
+    </main>
+  );
+
+  // Ausgeloggt (z.B. öffentlicher Shop): schlanke Kopfzeile ohne Konto-Navigation
   if (!isAuthenticated()) {
+    const here = location.pathname + location.search;
     return (
-      <div style={{ minHeight: "100vh", backgroundColor: "var(--bg-page)" }}>
+      <div className="m-shell">
         <SkipLink />
-        <nav aria-label={t("nav.main")} style={{
-          backgroundColor: "var(--bg-card)", borderBottom: "1px solid var(--border)",
-          padding: "0 clamp(12px, 4vw, 24px)", position: "sticky", top: 0, zIndex: 100,
-        }}>
-          <div style={{ maxWidth, margin: "0 auto", display: "flex", alignItems: "center", gap: 16, height: 48 }}>
-            <Link to="/shop" style={{ ...linkStyle, fontWeight: 700, fontSize: 16 }}>Astra</Link>
-            <div style={{ flex: 1 }} />
-            <Link to={loginUrl(currentPath)} style={linkStyle}>{t("nav.login")}</Link>
-            <Link to={`/register?redirect=${encodeURIComponent(currentPath)}`} style={{ ...btnDefault, textDecoration: "none", padding: "4px 12px", fontSize: 13 }}>
-              {t("nav.register")}
-            </Link>
+        <header className="m-head">
+          <Link to="/shop" className="sb-brand" aria-label={t("nav.home")}><Logo /></Link>
+          <nav aria-label={t("nav.main")} style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <Link to={loginUrl(here)}>{t("nav.login")}</Link>
+            <Link to={`/register?redirect=${encodeURIComponent(here)}`} className="menu-item"
+              style={{ width: "auto", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)" }}>{t("nav.register")}</Link>
+          </nav>
+        </header>
+        <div className="shell-main">{content}<SiteFooter /></div>
+      </div>
+    );
+  }
+
+  const visible = NAV_ITEMS.filter((i) => !i.adminOnly || user?.is_admin);
+  const current = activeHref(visible, location.pathname);
+
+  if (isMobile) {
+    return (
+      <div className="m-shell">
+        <SkipLink />
+        <header className="m-head">
+          <Link to="/" className="sb-brand" aria-label={t("nav.home")}><Logo /></Link>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span className="avatar" style={{ width: 32, height: 32 }} aria-hidden="true">{initials(user?.username)}</span>
+            <button type="button" className="m-btn" aria-label={menuOpen ? t("nav.menuClose") : t("nav.menuOpen")}
+              aria-expanded={menuOpen} aria-controls="mobile-menu" onClick={() => setMenuOpen(!menuOpen)}>
+              <Icon name={menuOpen ? "close" : "menu"} size={20} />
+            </button>
           </div>
-        </nav>
-        <main id="main-content" tabIndex={-1} style={{ outline: "none", maxWidth, margin: "0 auto", padding: "16px clamp(12px, 4vw, 24px)", overflowX: "auto" }}>
-          <h1 style={{ marginTop: 0, marginBottom: 20, fontSize: 24, fontWeight: 700 }}>{title}</h1>
-          {children}
-        </main>
-        <SiteFooter />
+        </header>
+        {menuOpen && (
+          <div id="mobile-menu" className="m-overlay" role="dialog" aria-modal="true" aria-label={t("nav.menu")}>
+            <div className="m-head">
+              <Link to="/" className="sb-brand" aria-label={t("nav.home")}><Logo /></Link>
+              <button type="button" className="m-btn" aria-label={t("nav.menuClose")} onClick={() => setMenuOpen(false)}><Icon name="close" size={20} /></button>
+            </div>
+            <nav className="m-overlay-body" aria-label={t("nav.main")}>
+              <NavList items={visible} current={current} collapsed={false} onNavigate={() => setMenuOpen(false)} />
+              <div className="sb-sep" />
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "0 4px" }}>
+                <UserActions onLogout={handleLogout} onNavigate={() => setMenuOpen(false)} />
+              </div>
+            </nav>
+          </div>
+        )}
+        <div className="shell-main">{content}<SiteFooter showLanguage={false} /></div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--bg-page)" }}>
+    <div className="shell">
       <SkipLink />
-      {/* Navigation */}
-      <nav aria-label="Hauptnavigation" style={{
-        backgroundColor: "var(--bg-card)",
-        borderBottom: "1px solid var(--border)",
-        padding: "0 clamp(12px, 4vw, 24px)",
-        position: "sticky",
-        top: 0,
-        zIndex: 100,
-      }}>
-        <div style={{
-          maxWidth, margin: "0 auto",
-          display: "flex", alignItems: "center", gap: 24,
-          minHeight: 48, padding: "4px 0",
-        }}>
-          <Link to="/" style={{ ...linkStyle, fontWeight: 700, fontSize: 16, marginRight: 8, flexShrink: 0 }}>
-            Astra
-          </Link>
-          {isMobile && <div style={{ flex: 1 }} />}
-          {isMobile && (
-            <button
-              type="button"
-              onClick={() => setMenuOpen((o) => !o)}
-              aria-expanded={menuOpen}
-              aria-controls="mobile-menu"
-              aria-label={menuOpen ? t("nav.menuClose") : t("nav.menuOpen")}
-              style={{ ...btnDefault, padding: "4px 12px", fontSize: 18, lineHeight: 1 }}
-            >
-              {menuOpen ? "✕" : "☰"}
-            </button>
-          )}
-          {!isMobile && <div style={{ display: "flex", flexWrap: "wrap", gap: 2, fontSize: 13, flex: 1, minWidth: 0 }}>
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                to={item.href}
-                aria-current={currentPath === item.href ? "page" : undefined}
-                style={{
-                  ...linkStyle,
-                  padding: "6px 10px",
-                  borderRadius: 6,
-                  fontSize: 13,
-                  fontWeight: currentPath === item.href ? 700 : 400,
-                  backgroundColor: currentPath === item.href ? "var(--tint-blue)" : "transparent",
-                  color: currentPath === item.href ? "var(--c-blue)" : "var(--fg-soft)",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {item.labelKey ? t(item.labelKey) : item.label}
-              </Link>
-            ))}
-          </div>}
-          {!isMobile && (
-            <button
-              type="button"
-              onClick={handleLogout}
-              style={{ ...btnDefault, padding: "4px 12px", fontSize: 13, flexShrink: 0 }}
-            >
-              {t("nav.logout")}
-            </button>
-          )}
+      <nav className={`sb${collapsed ? " sb-collapsed" : ""}`} aria-label={t("nav.main")}>
+        <div className="sb-head">
+          <Link to="/" className="sb-brand" aria-label={t("nav.home")}><Logo size={collapsed ? 22 : 24} wordmark={!collapsed} /></Link>
+          <button type="button" className="icon-btn" aria-label={collapsed ? t("nav.expand") : t("nav.collapse")}
+            aria-expanded={!collapsed} onClick={toggleCollapsed}><Icon name="panel" /></button>
         </div>
-
-        {isMobile && menuOpen && (
-          <div id="mobile-menu" style={{ paddingBottom: 12, maxHeight: "calc(100vh - 48px)", overflowY: "auto" }}>
-            {groups.map((group) => (
-              <div key={group} style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--fg-muted)", padding: "4px 10px" }}>
-                  {group}
-                </div>
-                {navItems.filter((i) => i.group === group).map((item) => (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    aria-current={currentPath === item.href ? "page" : undefined}
-                    style={{
-                      ...linkStyle,
-                      display: "block",
-                      padding: "10px",
-                      borderRadius: 6,
-                      fontSize: 15,
-                      fontWeight: currentPath === item.href ? 700 : 400,
-                      backgroundColor: currentPath === item.href ? "var(--tint-blue)" : "transparent",
-                      color: currentPath === item.href ? "var(--c-blue)" : "var(--fg)",
-                    }}
-                  >
-                    {item.labelKey ? t(item.labelKey) : item.label}
-                  </Link>
-                ))}
-              </div>
-            ))}
-            <button type="button" onClick={handleLogout} style={{ ...btnDefault, width: "100%", marginTop: 4 }}>
-              {t("nav.logout")}
-            </button>
-          </div>
-        )}
+        <div className="sb-scroll"><NavList items={visible} current={current} collapsed={collapsed} /></div>
+        <div className="sb-sep" />
+        <UserMenu user={user as User | null} onLogout={handleLogout} />
       </nav>
-
-      {/* Content */}
-      <main id="main-content" tabIndex={-1} style={{ outline: "none", maxWidth, margin: "0 auto", padding: "16px clamp(12px, 4vw, 24px)", overflowX: "auto" }}>
-        <FlashBanner />
-        <h1 style={{ marginTop: 0, marginBottom: 20, fontSize: 24, fontWeight: 700 }}>
-          {title}
-        </h1>
-        {children}
-      </main>
-      <SiteFooter />
+      <div className="shell-main">{content}<SiteFooter showLanguage={false} /></div>
     </div>
   );
 }

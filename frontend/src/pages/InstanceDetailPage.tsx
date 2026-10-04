@@ -1,40 +1,56 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   api,
   type Instance,
   type Blueprint,
+  type Order,
   type PowerSignal,
   type ResourceStats,
 } from "../services/api";
 import { hasRunningOrder, ORDER_END_NOTICE } from "../lib/orders";
+import { instanceState, isRunning, orderForInstance } from "../lib/dashboard";
+import { useCheckout } from "../hooks/useCheckout";
 import { DeleteInstanceForm } from "../components/DeleteInstanceForm";
 import { SftpAccess } from "../components/SftpAccess";
-import { ConnectionAddress } from "../components/ConnectionAddress";
 import { ServerConsole } from "../components/ServerConsole";
 import { FileBrowser } from "../components/FileBrowser";
 import { BackupManager } from "../components/BackupManager";
 import { CollaboratorManager } from "../components/CollaboratorManager";
 import { RoutineManager } from "../components/RoutineManager";
 import { ActivityLog } from "../components/ActivityLog";
+import { Tabs } from "../components/server/Tabs";
+import { ConnectionPanel, ResourcesPanel, TermPanel } from "../components/server/ServerAside";
+import { Icon } from "../components/ui/Icon";
+import { t } from "../i18n";
 import {
   PageLayout, StatusBadge, LoadingState, ErrorState,
   Toast, useToast,
-  cardStyle, btnDefault, btnPrimary,
 } from "../components/ui";
+
+type TabKey = "console" | "files" | "backups" | "settings";
+const TAB_KEYS: TabKey[] = ["console", "files", "backups", "settings"];
 
 export function InstanceDetailPage() {
   const { uuid } = useParams<{ uuid: string }>();
   const navigate = useNavigate();
   const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const tab: TabKey = TAB_KEYS.includes(tabParam as TabKey) ? (tabParam as TabKey) : "console";
+  const setTab = (key: TabKey) => setSearchParams(key === "console" ? {} : { tab: key }, { replace: true });
+
   const [instance, setInstance] = useState<Instance | null>(null);
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
   const [resources, setResources] = useState<ResourceStats | null>(null);
+  const [order, setOrder] = useState<Order | undefined>(undefined);
+  const [onlinePayment, setOnlinePayment] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [orderNotice, setOrderNotice] = useState<string | null>(null);
+  const { pay } = useCheckout(toast.error);
 
   // Gehört die Instance zu einer laufenden Bestellung, endet diese mit dem Löschen (ohne Erstattung)
   const startDeleting = async () => {
@@ -77,7 +93,7 @@ export function InstanceDetailPage() {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      setError(err instanceof Error ? err.message : t("srv.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -91,6 +107,18 @@ export function InstanceDetailPage() {
     } catch {
       // Still silently – Resources sind optional
     }
+  }, [uuid]);
+
+  // Laufzeit-Angaben aus der Bestellung (best effort: Mitbenutzer haben keine eigene Bestellung)
+  useEffect(() => {
+    if (!uuid) return;
+    let alive = true;
+    Promise.all([api.getMyOrders().catch(() => [] as Order[]), api.getBillingInfo().catch(() => null)]).then(([orders, billing]) => {
+      if (!alive) return;
+      setOrder(orderForInstance(orders, uuid));
+      if (billing) setOnlinePayment(billing.online_payment);
+    });
+    return () => { alive = false; };
   }, [uuid]);
 
   useEffect(() => {
@@ -111,9 +139,9 @@ export function InstanceDetailPage() {
       setError(null);
       const result = await api.sendPowerAction(uuid, signal);
       toast.success(result.message);
-      setTimeout(() => loadInstance(), 500);
+      setTimeout(() => { loadInstance(); loadResources(); }, 500);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Die Aktion konnte nicht ausgeführt werden");
+      toast.error(err instanceof Error ? err.message : t("srv.powerFailed"));
     } finally {
       setActing(false);
     }
@@ -128,7 +156,7 @@ export function InstanceDetailPage() {
       toast.success(result.message);
       await loadInstance();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Die Neuinstallation ist fehlgeschlagen");
+      toast.error(err instanceof Error ? err.message : t("srv.reinstallError"));
     } finally {
       setActing(false);
     }
@@ -140,31 +168,37 @@ export function InstanceDetailPage() {
       setVarSaving(true);
       const result = await api.updateVariableValues(uuid, varEdits);
       if (result.rejected && result.rejected.length > 0) {
-        toast.error(`Nicht gespeichert: ${result.rejected.join(", ")}`);
+        toast.error(t("srv.varRejected", { list: result.rejected.join(", ") }));
       } else {
-        toast.success("Variablen gespeichert.");
+        toast.success(t("srv.varSaved"));
       }
       await loadInstance();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler beim Speichern");
+      toast.error(err instanceof Error ? err.message : t("srv.varError"));
     } finally {
       setVarSaving(false);
     }
   };
 
-  if (loading) {
+  const renew = async (o: Order) => {
+    const outcome = await pay(o);
+    if (outcome === "manual") { setOnlinePayment(false); navigate("/orders"); }
+  };
+
+  const back = { to: "/", label: t("dash.title") };
+
+  if (loading && !instance) {
     return (
-      <PageLayout title="Server" maxWidth={700}>
-        <LoadingState message="Server wird geladen..." />
+      <PageLayout title={t("srv.pageTitle")} back={back}>
+        <LoadingState message={t("srv.loading")} />
       </PageLayout>
     );
   }
 
   if (error && !instance) {
     return (
-      <PageLayout title="Server" maxWidth={700}>
+      <PageLayout title={t("srv.pageTitle")} back={back}>
         <ErrorState message={error} onRetry={loadInstance} />
-        <button onClick={() => navigate("/")} style={btnDefault}>Zurück</button>
       </PageLayout>
     );
   }
@@ -173,265 +207,222 @@ export function InstanceDetailPage() {
 
   const status = instance.status ?? "ready";
   const viewableVars = blueprint?.variables?.filter(v => v.user_viewable || v.user_editable) ?? [];
+  const isOwner = instance.role === "owner";
+  const ready = status === "ready";
+  const running = resources ? resources.container_status === "running" : isRunning(instance);
+  const badge = instanceState({ status: instance.status, container_state: resources ? resources.container_status : instance.container_state });
+
+  const powerActions = (
+    <>
+      <button type="button" className="btn btn-sm" disabled={acting || !ready || running} onClick={() => handlePower("start")}>
+        <Icon name="play" size={12} />{t("dash.start")}
+      </button>
+      <button type="button" className="btn btn-sm" disabled={acting || !ready || !running} onClick={() => handlePower("restart")}>
+        <Icon name="restart" size={13} />{t("dash.restart")}
+      </button>
+      <button type="button" className="btn btn-sm btn-danger-text" disabled={acting || !ready || !running} onClick={() => handlePower("stop")}>
+        <Icon name="stop" size={12} />{t("dash.stop")}
+      </button>
+      <button type="button" className="btn btn-sm btn-danger-text" style={{ borderColor: "var(--danger-border)" }} disabled={acting || !ready}
+        title={t("srv.killTitle")}
+        onClick={() => { if (confirm(t("srv.killConfirm"))) handlePower("kill"); }}>
+        {t("srv.kill")}
+      </button>
+    </>
+  );
+
+  const subtitle = (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <StatusBadge status={badge} />
+      <span className="mono" style={{ fontSize: 12, color: "var(--text-3)" }}>{instance.uuid.slice(0, 8)}</span>
+      {instance.description && <span>{instance.description}</span>}
+    </span>
+  );
+
+  const tabs = [
+    { key: "console" as const, label: t("srv.tabConsole") },
+    { key: "files" as const, label: t("srv.tabFiles") },
+    { key: "backups" as const, label: t("srv.tabBackups") },
+    { key: "settings" as const, label: t("srv.tabSettings") },
+  ];
 
   return (
-    <PageLayout title={instance.name} maxWidth={700}>
+    <PageLayout title={instance.name} subtitle={subtitle} actions={powerActions} back={back} maxWidth={1200}>
       <Toast {...toast} />
 
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: -12, marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button onClick={() => navigate("/")} style={btnDefault}>Zurück</button>
-          <StatusBadge status={status} />
-          {instance.container_state && (
-            <StatusBadge status={instance.container_state} size="sm" />
-          )}
-        </div>
-      </div>
-
-      {instance.description && (
-        <p style={{ color: "var(--fg-muted)", marginTop: 4 }}>{instance.description}</p>
-      )}
-
-      {instance.connection && (
-        <div style={{ marginBottom: 16 }}>
-          <ConnectionAddress connection={instance.connection} />
-        </div>
-      )}
-
-      {/* Suspension-Banner (M29) */}
-      {instance.status === "suspended" && (
-        <div style={{
-          padding: "12px 16px", marginBottom: 16,
-          backgroundColor: "var(--tint-orange)", border: "1px solid var(--border-orange)",
-          borderRadius: 8, color: "var(--c-orange)",
-        }}>
-          <strong>Dein Server ist gesperrt</strong>
-          {instance.suspended_reason && (
-            <span style={{ marginLeft: 8 }}>— {instance.suspended_reason}</span>
-          )}
-          <div style={{ fontSize: 12, marginTop: 4, color: "var(--c-orange)" }}>
-            Starten, Dateien, Backups, Datenbanken und Routinen sind bis zur Entsperrung nicht verfügbar.
-            Bitte kontaktiere den Support.
+      <div className="stack" style={{ gap: 16 }}>
+        {/* Suspension-Banner (M29) */}
+        {instance.status === "suspended" && (
+          <div role="alert" className="banner banner-warn">
+            <span className="dot dot-warn" aria-hidden="true" />
+            <span className="banner-text">
+              <strong>{t("srv.suspendedTitle")}</strong>
+              {instance.suspended_reason && <span> — {instance.suspended_reason}</span>}
+              <span style={{ display: "block", fontSize: 13, color: "var(--text-2)" }}>{t("srv.suspendedText")}</span>
+            </span>
           </div>
-        </div>
-      )}
-
-      {error && <ErrorState message={error} />}
-
-      <SftpAccess instance={instance} />
-
-      {/* Power-Aktionen */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Steuerung</h3>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={() => handlePower("start")} disabled={acting} style={powerBtn("var(--ok)", "var(--on-accent)")}>▶ Starten</button>
-          <button onClick={() => handlePower("stop")} disabled={acting} style={powerBtn("var(--warn)", "var(--on-accent)")}>⏹ Stoppen</button>
-          <button onClick={() => handlePower("restart")} disabled={acting} style={powerBtn("var(--accent)", "var(--on-accent)")}>🔄 Neustarten</button>
-          <button
-            onClick={() => { if (confirm("Server sofort beenden? Nicht gespeicherte Daten können verloren gehen.")) handlePower("kill"); }}
-            disabled={acting}
-            title="Beendet den Server sofort. Nur nutzen, wenn Stoppen nicht funktioniert."
-            style={powerBtn("var(--danger)", "var(--on-danger)")}
-          >
-            ✕ Beenden erzwingen
-          </button>
-        </div>
+        )}
 
         {(status === "provisioning" || status === "reinstalling") && (
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
-            <p style={{ fontSize: 13, color: "var(--fg-muted)", margin: "0 0 8px" }}>
-              {status === "reinstalling" ? "⏳ Der Server wird neu installiert…" : "⏳ Der Server wird eingerichtet…"}
-            </p>
+          <div role="status" className="banner banner-info">
+            <span className="banner-text">{status === "reinstalling" ? t("srv.reinstalling") : t("srv.provisioning")}</span>
           </div>
         )}
 
         {(status === "provision_failed" || status === "reinstall_failed") && (
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
-            <p style={{ fontSize: 13, color: "var(--c-red)", margin: "0 0 8px" }}>
-              {status === "reinstall_failed" ? "❌ Die Neuinstallation ist fehlgeschlagen." : "❌ Die Einrichtung ist fehlgeschlagen. Du kannst es erneut versuchen."}
-            </p>
-            {instance.role === "owner" && (
-              <button onClick={handleReinstall} disabled={acting} style={powerBtn("var(--warn)", "var(--on-accent)")}>
-                🔄 Neu installieren
-              </button>
+          <div role="alert" className="banner banner-danger">
+            <span className="dot dot-danger" aria-hidden="true" />
+            <span className="banner-text">{status === "reinstall_failed" ? t("srv.reinstallFailed") : t("srv.provisionFailed")}</span>
+            {isOwner && <button type="button" className="btn btn-sm" disabled={acting} onClick={handleReinstall}>🔄 {t("srv.reinstall")}</button>}
+          </div>
+        )}
+
+        {error && <ErrorState message={error} />}
+
+        <Tabs tabs={tabs} active={tab} onChange={setTab} label={t("srv.tabs")} idPrefix="srv" />
+
+        <div className="detail-layout">
+          <div className="detail-main" role="tabpanel" id="srv-panel" aria-labelledby={`srv-tab-${tab}`}>
+            {tab === "console" && <ServerConsole instanceUuid={instance.uuid} />}
+
+            {tab === "files" && (
+              <section className="card" aria-label={t("srv.tabFiles")}><FileBrowser instanceUuid={instance.uuid} /></section>
             )}
-          </div>
-        )}
-      </div>
 
-      {/* Runtime Resources */}
-      <div style={cardStyle}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ margin: 0 }}>Live-Auslastung</h3>
-          {resources && (
-            <StatusBadge status={resources.container_status === "running" ? "running" : "stopped"} size="sm" />
-          )}
-        </div>
+            {tab === "backups" && (
+              <section className="card" aria-label={t("srv.tabBackups")}><BackupManager instanceUuid={instance.uuid} /></section>
+            )}
 
-        {resources ? (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 12 }}>
-            <ResourceBox label="CPU" value={`${resources.cpu_percent}%`} />
-            <ResourceBox
-              label="Memory"
-              value={formatBytes(resources.memory_bytes)}
-              sub={`/ ${formatBytes(resources.memory_limit_bytes)}`}
-            />
-            <ResourceBox label="Disk" value={formatBytes(resources.disk_bytes)} />
-            <ResourceBox label="Net ↓" value={formatBytes(resources.network_rx_bytes)} />
-            <ResourceBox label="Net ↑" value={formatBytes(resources.network_tx_bytes)} />
-            <ResourceBox label="Uptime" value={formatUptime(resources.uptime_seconds)} />
-          </div>
-        ) : (
-          <p style={{ color: "var(--fg-muted)", marginTop: 8 }}>Runtime-Daten werden geladen...</p>
-        )}
-        <p style={{ fontSize: 11, color: "var(--fg-muted)", marginBottom: 0, marginTop: 8 }}>
-          Auto-Refresh alle 5 Sekunden
-        </p>
-      </div>
+            {tab === "settings" && (
+              <>
+                {viewableVars.length > 0 && (
+                  <section className="card" aria-labelledby="set-vars">
+                    <h2 id="set-vars" className="section-title" style={{ margin: 0 }}>{t("srv.variables")}</h2>
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr style={{ background: "var(--surface-2)" }}>
+                            <th scope="col" style={thSmall}>{t("srv.varName")}</th>
+                            <th scope="col" style={thSmall}>{t("srv.varValue")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {viewableVars.map(v => (
+                            <tr key={v.env_var} style={{ borderBottom: "1px solid var(--border-soft)" }}>
+                              <td style={{ padding: 8, verticalAlign: "middle" }}>
+                                <label htmlFor={`var-${v.env_var}`} style={{ fontWeight: 600, fontSize: 13 }}>{v.name}</label>
+                                {v.description && <div className="hint" style={{ fontSize: 12 }}>{v.description}</div>}
+                                <code style={{ fontSize: 11, color: "var(--text-3)" }}>{v.env_var}</code>
+                              </td>
+                              <td style={{ padding: 8, verticalAlign: "middle" }}>
+                                {v.user_editable ? (
+                                  <input id={`var-${v.env_var}`} className="inp" type="text" value={varEdits[v.env_var] ?? ""}
+                                    onChange={e => setVarEdits(prev => ({ ...prev, [v.env_var]: e.target.value }))} />
+                                ) : (
+                                  <span className="mono" style={{ fontSize: 13 }}>{varEdits[v.env_var] ?? "–"}</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {viewableVars.some(v => v.user_editable) && (
+                      <div>
+                        <button type="button" className="btn btn-primary" onClick={handleSaveVariables} disabled={varSaving}>
+                          {varSaving ? t("srv.varSaving") : t("srv.varSave")}
+                        </button>
+                      </div>
+                    )}
+                  </section>
+                )}
 
-      {/* Variablen */}
-      {viewableVars.length > 0 && (
-        <div style={cardStyle}>
-          <h3 style={{ marginTop: 0 }}>Variablen</h3>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid var(--border)" }}>
-                <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--fg-soft)" }}>Name</th>
-                <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--fg-soft)" }}>Wert</th>
-              </tr>
-            </thead>
-            <tbody>
-              {viewableVars.map(v => (
-                <tr key={v.env_var} style={{ borderBottom: "1px solid var(--bg-subtle)" }}>
-                  <td style={{ padding: "8px", verticalAlign: "middle" }}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{v.name}</div>
-                    {v.description && <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>{v.description}</div>}
-                    <code style={{ fontSize: 11, color: "var(--fg-muted)" }}>{v.env_var}</code>
-                  </td>
-                  <td style={{ padding: "8px", verticalAlign: "middle" }}>
-                    {v.user_editable ? (
-                      <input
-                        type="text"
-                        value={varEdits[v.env_var] ?? ""}
-                        onChange={e => setVarEdits(prev => ({ ...prev, [v.env_var]: e.target.value }))}
-                        style={{ padding: "4px 8px", fontSize: 13, borderRadius: 4, border: "1px solid var(--border-strong)", width: "100%" }}
+                <SftpAccess instance={instance} />
+
+                {isOwner && (
+                  <section className="card" aria-labelledby="set-routines">
+                    <h2 id="set-routines" className="section-title" style={{ margin: 0 }}>{t("srv.routines")}</h2>
+                    <RoutineManager instanceUuid={instance.uuid} />
+                  </section>
+                )}
+
+                <section className="card" aria-labelledby="set-collab">
+                  <h2 id="set-collab" className="section-title" style={{ margin: 0 }}>{t("srv.collaborators")}</h2>
+                  <CollaboratorManager instanceUuid={instance.uuid} isOwner={isOwner} />
+                </section>
+
+                <section className="card" aria-labelledby="set-activity">
+                  <h2 id="set-activity" className="section-title" style={{ margin: 0 }}>{t("srv.activity")}</h2>
+                  <ActivityLog instanceUuid={instance.uuid} />
+                </section>
+
+                <section className="card" aria-labelledby="set-details">
+                  <h2 id="set-details" className="section-title" style={{ margin: 0 }}>{t("srv.details")}</h2>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <tbody>
+                      <DetailRow label="UUID" value={instance.uuid} mono />
+                      <DetailRow label="Lifecycle" value={status} />
+                      <DetailRow label="Container" value={instance.container_state ?? "–"} />
+                      <DetailRow label="Agent" value={`#${instance.agent_id}`} />
+                      <DetailRow label="Blueprint" value={blueprint ? `${blueprint.name} (#${instance.blueprint_id})` : `#${instance.blueprint_id}`} />
+                      <DetailRow label="Owner" value={`#${instance.owner_id}`} />
+                      <DetailRow label="Image" value={instance.image ?? "–"} mono />
+                      <DetailRow label="Startup" value={instance.startup_command ?? "–"} mono />
+                    </tbody>
+                  </table>
+                </section>
+
+                <section className="card" aria-labelledby="set-limits">
+                  <h2 id="set-limits" className="section-title" style={{ margin: 0 }}>{t("srv.limits")}</h2>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <tbody>
+                      <DetailRow label="Memory" value={`${instance.memory} MB`} mono />
+                      <DetailRow label="Swap" value={`${instance.swap} MB`} mono />
+                      <DetailRow label="Disk" value={`${instance.disk} MB`} mono />
+                      <DetailRow label="CPU" value={`${instance.cpu} %`} mono />
+                      <DetailRow label="IO" value={`${instance.io}`} mono />
+                      <DetailRow label="Endpoint" value={instance.primary_endpoint_id ? `#${instance.primary_endpoint_id}` : "–"} mono />
+                    </tbody>
+                  </table>
+                </section>
+
+                {/* Gefahrenzone: nur Owner */}
+                {isOwner && (
+                  <section className="card" aria-labelledby="set-danger" style={{ borderColor: "var(--danger-border)" }}>
+                    <h2 id="set-danger" className="section-title text-danger" style={{ margin: 0 }}>{t("srv.danger")}</h2>
+                    {instance.status === "suspended" ? (
+                      <p className="hint" style={{ margin: 0 }}>{t("srv.suspendedDelete")}</p>
+                    ) : deleting ? (
+                      <DeleteInstanceForm
+                        name={instance.name}
+                        status={instance.status}
+                        notice={orderNotice}
+                        idPrefix="detail-del"
+                        onCancel={() => setDeleting(false)}
+                        onDelete={async () => {
+                          await api.deleteInstance(instance.uuid, instance.name);
+                          // Toast auf dem Dashboard anzeigen (die Detailseite wird verlassen)
+                          navigate("/", { state: { toast: t("srv.deleted", { name: instance.name }) } });
+                        }}
                       />
                     ) : (
-                      <span style={{ fontSize: 13, fontFamily: "monospace" }}>{varEdits[v.env_var] ?? "–"}</span>
+                      <div>
+                        <button type="button" onClick={startDeleting} className="btn btn-danger-text" style={{ borderColor: "var(--danger-border)" }}>
+                          {t("srv.deleteBtn")}
+                        </button>
+                      </div>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {viewableVars.some(v => v.user_editable) && (
-            <div style={{ marginTop: 12 }}>
-              <button onClick={handleSaveVariables} disabled={varSaving} style={{ ...btnPrimary, opacity: varSaving ? 0.6 : 1 }}>
-                {varSaving ? "Speichern..." : "Variablen speichern"}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+                  </section>
+                )}
+              </>
+            )}
+          </div>
 
-      {/* Console */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Konsole</h3>
-        <ServerConsole instanceUuid={instance.uuid} />
-      </div>
-
-      {/* Files */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Dateien</h3>
-        <FileBrowser instanceUuid={instance.uuid} />
-      </div>
-
-      {/* Backups */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Backups</h3>
-        <BackupManager instanceUuid={instance.uuid} />
-      </div>
-
-      {/* Routines */}
-      {instance.role === "owner" && (
-        <div style={cardStyle}>
-          <h3 style={{ marginTop: 0 }}>Routinen</h3>
-          <RoutineManager instanceUuid={instance.uuid} />
-        </div>
-      )}
-
-      {/* Collaborators */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Mitbenutzer</h3>
-        <CollaboratorManager
-          instanceUuid={instance.uuid}
-          isOwner={instance.role === "owner"}
-        />
-      </div>
-
-      {/* Activity */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Aktivität</h3>
-        <ActivityLog instanceUuid={instance.uuid} />
-      </div>
-
-      {/* Gefahrenzone: nur Owner */}
-      {instance.role === "owner" && (
-        <div style={{ ...cardStyle, borderColor: "var(--border-red)" }}>
-          <h3 style={{ marginTop: 0, color: "var(--c-red)" }}>Server löschen</h3>
-          {instance.status === "suspended" ? (
-            <p style={{ margin: 0, fontSize: 13, color: "var(--fg-muted)" }}>
-              Gesperrt, bitte Support kontaktieren.
-            </p>
-          ) : deleting ? (
-            <DeleteInstanceForm
-              name={instance.name}
-              status={instance.status}
-              notice={orderNotice}
-              idPrefix="detail-del"
-              onCancel={() => setDeleting(false)}
-              onDelete={async () => {
-                await api.deleteInstance(instance.uuid, instance.name);
-                // Toast auf dem Dashboard anzeigen (die Detailseite wird verlassen)
-                navigate("/", { state: { toast: `Server "${instance.name}" wurde gelöscht.` } });
-              }}
-            />
-          ) : (
-            <button type="button" onClick={startDeleting} style={{ ...btnDefault, color: "var(--c-red)", borderColor: "var(--border-red)" }}>
-              Server löschen…
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Details */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Details</h3>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <tbody>
-            <DetailRow label="UUID" value={instance.uuid} mono />
-            <DetailRow label="Lifecycle" value={status} />
-            <DetailRow label="Container" value={instance.container_state ?? "–"} />
-            <DetailRow label="Agent" value={`#${instance.agent_id}`} />
-            <DetailRow label="Blueprint" value={blueprint ? `${blueprint.name} (#${instance.blueprint_id})` : `#${instance.blueprint_id}`} />
-            <DetailRow label="Owner" value={`#${instance.owner_id}`} />
-            <DetailRow label="Image" value={instance.image ?? "–"} mono />
-            <DetailRow label="Startup" value={instance.startup_command ?? "–"} mono />
-          </tbody>
-        </table>
-      </div>
-
-      {/* Konfigurierte Limits */}
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Konfigurierte Limits</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-          <ResourceBox label="Memory" value={`${instance.memory} MB`} />
-          <ResourceBox label="Swap" value={`${instance.swap} MB`} />
-          <ResourceBox label="Disk" value={`${instance.disk} MB`} />
-          <ResourceBox label="CPU" value={`${instance.cpu}%`} />
-          <ResourceBox label="IO" value={`${instance.io}`} />
-          <ResourceBox label="Endpoint" value={instance.primary_endpoint_id ? `#${instance.primary_endpoint_id}` : "–"} />
+          <aside className="detail-aside" aria-label={t("srv.pageTitle")}>
+            <ConnectionPanel instance={instance} />
+            <ResourcesPanel instance={instance} stats={resources} />
+            <TermPanel order={order} onlinePayment={onlinePayment} onRenew={renew} />
+          </aside>
         </div>
       </div>
     </PageLayout>
@@ -440,41 +431,13 @@ export function InstanceDetailPage() {
 
 // ── Hilfskomponenten ───────────────────────────────────
 
+const thSmall: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontSize: 12, fontWeight: 500, color: "var(--text-2)" };
+
 function DetailRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <tr>
-      <td style={{ padding: "6px 0", fontWeight: 600, fontSize: 13, width: 120 }}>{label}</td>
-      <td style={{ padding: "6px 0", fontSize: 13, fontFamily: mono ? "monospace" : "inherit" }}>{value}</td>
+      <td style={{ padding: "6px 0", fontWeight: 500, fontSize: 13, width: 120, color: "var(--text-2)" }}>{label}</td>
+      <td className={mono ? "mono" : undefined} style={{ padding: "6px 0", fontSize: 13, overflowWrap: "anywhere" }}>{value}</td>
     </tr>
   );
-}
-
-function ResourceBox({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div style={{ padding: 12, backgroundColor: "var(--bg-subtle)", borderRadius: 6, textAlign: "center" }}>
-      <div style={{ fontSize: 11, color: "var(--fg-muted)", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 600 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>{sub}</div>}
-    </div>
-  );
-}
-
-// ── Formatierung ───────────────────────────────────────
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-}
-
-function formatUptime(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
-  return `${Math.floor(seconds / 86400)}d ${Math.floor((seconds % 86400) / 3600)}h`;
-}
-
-function powerBtn(bg: string, fg: string): React.CSSProperties {
-  return { padding: "8px 16px", cursor: "pointer", border: "none", borderRadius: "var(--radius-btn)", color: fg, fontWeight: 500, fontSize: 13, backgroundColor: bg };
 }

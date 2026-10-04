@@ -9,20 +9,13 @@ interface ErrorStateProps {
 
 export function ErrorState({ message, onRetry }: ErrorStateProps) {
   return (
-    <div role="alert" style={{
-      padding: 16, marginBottom: 16, backgroundColor: "var(--tint-red)",
-      border: "1px solid var(--border-red)", borderRadius: 8, color: "var(--c-red)",
-    }}>
-      <div style={{ fontWeight: 600, marginBottom: 4 }}>{t("common.error")}</div>
-      <div style={{ fontSize: 14 }}>{message}</div>
+    <div role="alert" className="banner banner-danger" style={{ marginBottom: 16 }}>
+      <div className="banner-text">
+        <strong style={{ display: "block" }}>{t("common.error")}</strong>
+        <span>{message}</span>
+      </div>
       {onRetry && (
-        <button type="button" onClick={onRetry} style={{
-          marginTop: 8, padding: "6px 16px", borderRadius: 6,
-          border: "1px solid var(--border-red)", backgroundColor: "var(--bg-card)", color: "var(--c-red)",
-          cursor: "pointer", fontSize: 13, fontWeight: 600,
-        }}>
-          {t("common.retry")}
-        </button>
+        <button type="button" className="btn btn-sm" onClick={onRetry}>{t("common.retry")}</button>
       )}
     </div>
   );

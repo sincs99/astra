@@ -26,7 +26,7 @@ export function ThemeSection() {
         onChange={(e) => { if (isLang(e.target.value)) setLang(e.target.value); }}>
         {LANG_OPTIONS.map((o) => <option key={o.value} value={o.value} lang={o.value}>{o.label}</option>)}
       </select>
-      <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--fg-muted)" }}>
+      <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-3)" }}>
         {t("account.browserOnly")} {t("account.languageHint")}
       </p>
     </section>

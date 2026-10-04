@@ -1,16 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, type Agent, type AgentMonitoringEntry, type Endpoint } from "../services/api";
-import { UtilizationBar } from "../components/UtilizationBar";
-import { DaemonStatus } from "../components/DaemonStatus";
+import { DaemonInfo, LoadBar } from "../components/admin/AgentParts";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { parsePortRange } from "../lib/portRange";
 import { EMPTY_AGENT_FORM, agentToForm, toAgentPayload, type AgentFormValues } from "../lib/agentForm";
 import {
-  PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState, ConfirmButton,
-  Toast, useToast,
-  cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, thStyle, tdStyle,
+  PageLayout, AutoRefreshToggle, StatusBadge, ConfirmButton, ScrollRegion, Toast, useToast,
 } from "../components/ui";
+import { Icon } from "../components/ui/Icon";
 import { formatDateTime } from "../lib/dates";
+import { t } from "../i18n";
+
+const GRID: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(180px, 100%), 1fr))", gap: 14 };
 
 export function AdminAgentsPage() {
   const toast = useToast();
@@ -34,23 +35,23 @@ export function AdminAgentsPage() {
   const [epPort, setEpPort] = useState("");
   const [epSubmitting, setEpSubmitting] = useState(false);
 
-  // config.yml-Dialog (M33)
+  // config.yml-Bereich (M33)
   const [configAgent, setConfigAgent] = useState<Agent | null>(null);
   const [configYaml, setConfigYaml] = useState("");
   const [configLoading, setConfigLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
 
   const loadAll = async () => {
     try {
       setLoading(true);
       setError(null);
-      const [agentData, epData] = await Promise.all([
-        api.getAgents(),
-        api.getEndpoints(),
-      ]);
+      const [agentData, epData] = await Promise.all([api.getAgents(), api.getEndpoints()]);
       setAgents(agentData);
       setEndpoints(epData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      setError(err instanceof Error ? err.message : t("aagents.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -94,10 +95,10 @@ export function AdminAgentsPage() {
         cpu_overalloc: payload.cpu_overalloc,
       });
       setForm({ ...EMPTY_AGENT_FORM });
-      toast.success("Agent erstellt. Node-Credentials wurden erzeugt – config.yml abrufen.");
+      toast.success(t("aagents.created"));
       await loadAll();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler beim Erstellen");
+      toast.error(err instanceof Error ? err.message : t("aagents.createFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -116,11 +117,11 @@ export function AdminAgentsPage() {
     try {
       setEditSubmitting(true);
       await api.updateAgent(editId, payload);
-      toast.success("Agent gespeichert. Bei geänderten Ports die config.yml neu abrufen.");
+      toast.success(t("aagents.saved"));
       setEditId(null);
       await loadAll();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler beim Speichern");
+      toast.error(err instanceof Error ? err.message : t("aagents.saveFailed"));
     } finally {
       setEditSubmitting(false);
     }
@@ -137,17 +138,17 @@ export function AdminAgentsPage() {
       setError(null);
       if (range.start === range.end) {
         await api.createEndpoint(epAgentId as number, { ip, port: range.start });
-        toast.success("Endpoint erstellt.");
+        toast.success(t("aagents.ep.created"));
       } else {
         const result = await api.createEndpointsBulk(epAgentId as number, {
           ip, port_start: range.start, port_end: range.end,
         });
-        toast.success(`${result.created} angelegt, ${result.skipped} übersprungen.`);
+        toast.success(t("aagents.ep.bulk", { created: result.created, skipped: result.skipped }));
       }
       setEpPort("");
       await loadAll();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler beim Erstellen");
+      toast.error(err instanceof Error ? err.message : t("aagents.createFailed"));
     } finally {
       setEpSubmitting(false);
     }
@@ -158,10 +159,11 @@ export function AdminAgentsPage() {
       setConfigLoading(true);
       setConfigAgent(agent);
       setConfigYaml("");
+      setCopied(false);
       const cfg = await api.getAgentConfiguration(agent.id);
       setConfigYaml(cfg.yaml);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "config.yml konnte nicht geladen werden");
+      toast.error(err instanceof Error ? err.message : t("aagents.cfg.loadFailed"));
       setConfigAgent(null);
     } finally {
       setConfigLoading(false);
@@ -171,9 +173,12 @@ export function AdminAgentsPage() {
   const copyConfig = async () => {
     try {
       await navigator.clipboard.writeText(configYaml);
-      toast.success("config.yml in die Zwischenablage kopiert.");
+      setCopied(true);
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(false), 1500);
+      toast.success(t("aagents.cfg.copiedStatus"));
     } catch {
-      toast.error("Kopieren nicht möglich – bitte manuell markieren.");
+      toast.error(t("aagents.cfg.copyFailed"));
     }
   };
 
@@ -186,215 +191,207 @@ export function AdminAgentsPage() {
         await openConfig(result.agent);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Rotation fehlgeschlagen");
+      toast.error(err instanceof Error ? err.message : t("aagents.rotateFailed"));
     }
   };
 
   return (
-    <PageLayout title="Agents">
+    <PageLayout title={t("aagents.title")} subtitle={t("aagents.subtitle")}
+      actions={<AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />}>
       <Toast {...toast} />
-
-      {/* Agent erstellen */}
-      <div style={cardStyle}>
-        <h2 style={{ marginTop: 0, fontSize: 18, fontWeight: 700 }}>Neuer Agent (Wings-Node)</h2>
-        {error && <ErrorState message={error} onRetry={() => setError(null)} />}
-        <form onSubmit={handleAgentSubmit}>
-          <AgentFormFields values={form} onChange={setForm} idPrefix="new" />
-          <button type="submit" disabled={submitting} style={{ ...btnPrimary, marginTop: 12, opacity: submitting ? 0.6 : 1 }}>
-            {submitting ? "…" : "Agent erstellen"}
-          </button>
-        </form>
-        <p style={{ color: "var(--fg-muted)", fontSize: 12, margin: "8px 0 0" }}>
-          Beim Erstellen werden Node-Credentials erzeugt. Die fertige <code>config.yml</code> für Wings
-          gibt es anschließend über den Button beim Agent.
-        </p>
-      </div>
-
-      {/* Endpoint erstellen */}
-      <div style={cardStyle}>
-        <h2 style={{ marginTop: 0, fontSize: 18, fontWeight: 700 }}>Neuer Endpoint</h2>
-        <form onSubmit={handleEndpointSubmit} style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: 140 }}>
-            <label htmlFor="fld-1" style={labelStyle}>Agent *</label>
-            <select id="fld-1"
-              value={epAgentId}
-              onChange={e => setEpAgentId(e.target.value ? Number(e.target.value) : "")}
-              required
-              style={inputStyle}
-            >
-              <option value="">– Wählen –</option>
-              {agents.map(a => (
-                <option key={a.id} value={a.id}>{a.name}</option>
-              ))}
-            </select>
+      <div className="stack">
+        {error && (
+          <div className="banner banner-danger" role="alert">
+            <span className="dot dot-danger" aria-hidden="true" />
+            <span className="banner-text">{error}</span>
+            <button type="button" className="btn btn-sm" onClick={loadAll}>{t("aagents.retry")}</button>
           </div>
-          <div>
-            <label htmlFor="fld-2" style={labelStyle}>IP</label>
-            <input id="fld-2"
-              type="text"
-              value={epIp}
-              onChange={e => setEpIp(e.target.value)}
-              placeholder="0.0.0.0"
-              style={{ ...inputStyle, width: 130 }}
-            />
-          </div>
-          <div>
-            <label htmlFor="fld-3" style={labelStyle}>Port oder Bereich *</label>
-            <input id="fld-3"
-              type="text"
-              inputMode="numeric"
-              value={epPort}
-              onChange={e => setEpPort(e.target.value)}
-              placeholder="25565 oder 25565-25600"
-              required
-              aria-describedby="ep-range-hint"
-              style={{ ...inputStyle, width: 190 }}
-            />
-          </div>
-          <button type="submit" disabled={epSubmitting} style={{ ...btnPrimary, opacity: epSubmitting ? 0.6 : 1 }}>
-            {epSubmitting ? "…" : "Endpoint(s) erstellen"}
-          </button>
-        </form>
-        <p id="ep-range-hint" style={{ color: "var(--fg-muted)", fontSize: 12, margin: "8px 0 0" }}>
-          Ein Bereich wie <code>25565-25600</code> legt alle Ports auf einmal an (max. 1000); vorhandene werden übersprungen.
-        </p>
-      </div>
+        )}
 
-      {/* Agent bearbeiten */}
-      {editId !== null && (
-        <div style={{ ...cardStyle, borderColor: "var(--c-orange)" }}>
-          <h2 style={{ marginTop: 0, fontSize: 18, fontWeight: 700 }}>Agent bearbeiten</h2>
-          <form onSubmit={handleAgentUpdate}>
-            <AgentFormFields values={editForm} onChange={setEditForm} idPrefix="edit" showActive />
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <button type="submit" disabled={editSubmitting} style={{ ...btnPrimary, opacity: editSubmitting ? 0.6 : 1 }}>
-                {editSubmitting ? "…" : "Speichern"}
+        {/* Agent erstellen */}
+        <section className="panel" aria-labelledby="aagents-new">
+          <div className="panel-head"><h2 id="aagents-new">{t("aagents.newTitle")}</h2></div>
+          <form className="panel-body" onSubmit={handleAgentSubmit}>
+            <AgentFormFields values={form} onChange={setForm} idPrefix="new" />
+            <div className="row-actions">
+              <button type="submit" disabled={submitting} className="btn btn-primary">
+                <Icon name="plus" size={14} />{submitting ? t("aagents.saving") : t("aagents.create")}
               </button>
-              <button type="button" onClick={() => setEditId(null)} style={btnDefault}>Abbrechen</button>
             </div>
+            <p className="hint">{t("aagents.createHint")}</p>
           </form>
-        </div>
-      )}
+        </section>
 
-      {/* config.yml-Dialog */}
-      {configAgent && (
-        <div style={{ ...cardStyle, borderColor: "var(--c-blue)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
-              config.yml für {configAgent.name}
-            </h2>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={copyConfig} disabled={!configYaml} style={btnDefault}>📋 Kopieren</button>
-              <button onClick={() => setConfigAgent(null)} style={btnDefault}>Schließen</button>
+        {/* Endpoint erstellen */}
+        <section className="panel" aria-labelledby="aagents-ep">
+          <div className="panel-head"><h2 id="aagents-ep">{t("aagents.ep.title")}</h2></div>
+          <form className="panel-body" onSubmit={handleEndpointSubmit}>
+            <div style={GRID}>
+              <div className="field">
+                <label htmlFor="ep-agent">{t("aagents.ep.agent")} *</label>
+                <select id="ep-agent" className="inp" value={epAgentId} required
+                  onChange={e => setEpAgentId(e.target.value ? Number(e.target.value) : "")}>
+                  <option value="">{t("aagents.ep.choose")}</option>
+                  {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="ep-ip">{t("aagents.ep.ip")}</label>
+                <input id="ep-ip" className="inp mono" type="text" value={epIp} placeholder="0.0.0.0" onChange={e => setEpIp(e.target.value)} />
+              </div>
+              <div className="field">
+                <label htmlFor="ep-port">{t("aagents.ep.port")} *</label>
+                <input id="ep-port" className="inp mono" type="text" inputMode="numeric" value={epPort} required
+                  placeholder={t("aagents.ep.portPh")} aria-describedby="ep-range-hint" onChange={e => setEpPort(e.target.value)} />
+              </div>
             </div>
-          </div>
-          <p style={{ color: "var(--fg-muted)", fontSize: 12, margin: "8px 0" }}>
-            Auf dem Node nach <code>/etc/pterodactyl/config.yml</code> speichern und Wings neu starten.
-            Diese Datei enthält das Node-Secret – nicht weitergeben.
-          </p>
-          {configLoading ? (
-            <LoadingState message="config.yml wird erzeugt..." />
-          ) : (
-            <pre style={{ background: "var(--console)", color: "var(--text-console)", padding: 12, borderRadius: 6, fontSize: 12, overflowX: "auto", margin: 0 }}>
-              {configYaml}
-            </pre>
-          )}
-        </div>
-      )}
+            <div className="row-actions">
+              <button type="submit" disabled={epSubmitting} className="btn btn-primary">
+                <Icon name="plus" size={14} />{epSubmitting ? t("aagents.saving") : t("aagents.ep.create")}
+              </button>
+            </div>
+            <p id="ep-range-hint" className="hint">{t("aagents.ep.hint")}</p>
+          </form>
+        </section>
 
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
-      </div>
-
-      {/* Agent-Liste mit Endpoints */}
-      {loading ? (
-        <LoadingState message="Agents werden geladen..." />
-      ) : agents.length === 0 ? (
-        <EmptyState icon="🖥️" message="Noch keine Agents vorhanden." />
-      ) : (
-        agents.map(agent => {
-          const agentEndpoints = endpoints.filter(ep => ep.agent_id === agent.id);
-          return (
-            <div key={agent.id} style={{ ...cardStyle, marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-                <strong style={{ fontSize: 16 }}>{agent.name}</strong>
-                <span style={{ color: "var(--fg-muted)", fontSize: 14 }}>
-                  {agent.scheme}://{agent.fqdn}:{agent.daemon_connect}
-                </span>
-                <StatusBadge status={agent.is_active ? "active" : "inactive"} size="sm" />
-                {health[agent.id] && (
-                  <>
-                    <StatusBadge status={health[agent.id].health_status} size="sm" />
-                    <DaemonStatus {...health[agent.id]} />
-                  </>
-                )}
-                <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-                  <button type="button" onClick={() => startEdit(agent)} style={btnDefault}>✏️ Bearbeiten</button>
-                  <button onClick={() => openConfig(agent)} style={btnDefault}>📄 config.yml</button>
-                  <ConfirmButton
-                    label="🔑 Credentials rotieren"
-                    confirmMessage={`Neue Node-Credentials für "${agent.name}" erzeugen? Wings auf dem Node braucht danach die neue config.yml.`}
-                    onConfirm={() => rotateCredentials(agent)}
-                    size="sm"
-                  />
-                </span>
+        {/* Agent bearbeiten */}
+        {editId !== null && (
+          <section className="panel" aria-labelledby="aagents-edit">
+            <div className="panel-head"><h2 id="aagents-edit">{t("aagents.editTitle")}</h2></div>
+            <form className="panel-body" onSubmit={handleAgentUpdate}>
+              <AgentFormFields values={editForm} onChange={setEditForm} idPrefix="edit" showActive />
+              <div className="row-actions">
+                <button type="submit" disabled={editSubmitting} className="btn btn-primary">
+                  <Icon name="save" size={14} />{editSubmitting ? t("aagents.saving") : t("aagents.save")}
+                </button>
+                <button type="button" className="btn" onClick={() => setEditId(null)}>{t("aagents.cancel")}</button>
               </div>
-              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12, color: "var(--fg-soft)", marginBottom: 8 }}>
-                <span><strong>Token-ID:</strong> <code>{agent.daemon_token_id ?? "–"}</code></span>
-                <span><strong>Listen:</strong> {agent.daemon_listen}</span>
-                <span><strong>SFTP:</strong> {agent.daemon_sftp}</span>
-                <span><strong>Daten:</strong> <code>{agent.daemon_base}</code></span>
-                {agent.behind_proxy && <span>Hinter Proxy</span>}
-                <span><strong>Zuletzt gesehen:</strong> {agent.last_seen_at ? formatDateTime(agent.last_seen_at) : "noch nie"}</span>
-              </div>
+            </form>
+          </section>
+        )}
 
-              {health[agent.id] && (
-                <div style={{ display: "flex", gap: 24, flexWrap: "wrap", margin: "0 0 12px" }}>
-                  <UtilizationBar label="Memory" unit="MB"
-                    used={health[agent.id].utilization.used_memory_mb}
-                    total={health[agent.id].capacity.effective_memory_mb}
-                    percent={health[agent.id].utilization.memory_utilization} />
-                  <UtilizationBar label="Disk" unit="MB"
-                    used={health[agent.id].utilization.used_disk_mb}
-                    total={health[agent.id].capacity.effective_disk_mb}
-                    percent={health[agent.id].utilization.disk_utilization} />
-                  <UtilizationBar label="CPU" unit="%"
-                    used={health[agent.id].utilization.used_cpu_percent}
-                    total={health[agent.id].capacity.effective_cpu_percent}
-                    percent={health[agent.id].utilization.cpu_utilization} />
+        {/* config.yml */}
+        {configAgent && (
+          <section className="panel" aria-labelledby="aagents-cfg">
+            <div className="panel-head">
+              <h2 id="aagents-cfg">{t("aagents.cfg.title", { name: configAgent.name })}</h2>
+              <div className="row-actions" style={{ marginTop: 0 }}>
+                <button type="button" className="btn btn-sm" onClick={copyConfig} disabled={!configYaml} aria-label={t("aagents.cfg.copyAria")}>
+                  <Icon name="copy" size={13} />{copied ? t("aagents.cfg.copied") : t("aagents.cfg.copy")}
+                </button>
+                <button type="button" className="btn btn-sm" onClick={() => setConfigAgent(null)}>{t("aagents.close")}</button>
+              </div>
+            </div>
+            <div className="panel-body">
+              <p className="hint">{t("aagents.cfg.hint")}</p>
+              {configLoading ? (
+                <p className="hint" role="status">{t("aagents.cfg.loading")}</p>
+              ) : (
+                <div role="region" tabIndex={0} aria-label={t("aagents.cfg.contentAria")} style={{ overflowX: "auto" }}>
+                  <pre className="box-console mono" style={{ margin: 0, fontSize: "var(--fs-small)" }}>{configYaml}</pre>
                 </div>
               )}
-
-              {agentEndpoints.length === 0 ? (
-                <p style={{ color: "var(--fg-muted)", margin: "4px 0 0", fontSize: 13 }}>Keine Endpoints</p>
-              ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ backgroundColor: "var(--bg-subtle)" }}>
-                      <th style={thStyle}>ID</th>
-                      <th style={thStyle}>IP:Port</th>
-                      <th style={thStyle}>Status</th>
-                      <th style={thStyle}>Instance</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {agentEndpoints.map(ep => (
-                      <tr key={ep.id}>
-                        <td style={tdStyle}>{ep.id}</td>
-                        <td style={tdStyle}><code>{ep.ip}:{ep.port}</code></td>
-                        <td style={tdStyle}>
-                          {ep.is_locked ? "🔒 Gesperrt" : ep.instance_id ? "🟢 Belegt" : "⚪ Frei"}
-                        </td>
-                        <td style={tdStyle}>{ep.instance_id ? `Instance #${ep.instance_id}` : "–"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+              <span role="status" className="sr-only">{copied ? t("aagents.cfg.copiedStatus") : ""}</span>
             </div>
-          );
-        })
-      )}
+          </section>
+        )}
+
+        {/* Agent-Liste mit Endpoints */}
+        {loading ? (
+          <p className="hint" role="status">{t("aagents.loading")}</p>
+        ) : agents.length === 0 ? (
+          !error && <div className="card-empty">{t("aagents.empty")}</div>
+        ) : (
+          agents.map(agent => {
+            const agentEndpoints = endpoints.filter(ep => ep.agent_id === agent.id);
+            const h = health[agent.id];
+            return (
+              <section key={agent.id} className="panel" aria-label={agent.name}>
+                <div className="panel-head" style={{ flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
+                    <h2>{agent.name}</h2>
+                    <span className="mono hint">{agent.scheme}://{agent.fqdn}:{agent.daemon_connect}</span>
+                    <StatusBadge status={agent.is_active ? "active" : "inactive"} size="sm" />
+                    {h && (
+                      <>
+                        <StatusBadge status={h.health_status} size="sm" />
+                        <DaemonInfo {...h} />
+                      </>
+                    )}
+                  </div>
+                  <div className="row-actions" style={{ marginTop: 0 }}>
+                    <button type="button" className="btn btn-sm" onClick={() => startEdit(agent)} aria-label={t("aagents.editAria", { name: agent.name })}>
+                      <Icon name="pencil" size={13} />{t("aagents.edit")}
+                    </button>
+                    <button type="button" className="btn btn-sm" onClick={() => openConfig(agent)} aria-label={t("aagents.cfg.openAria", { name: agent.name })}>
+                      <Icon name="download" size={13} />{t("aagents.cfg.open")}
+                    </button>
+                    <ConfirmButton
+                      label={t("aagents.rotate")}
+                      confirmMessage={t("aagents.rotateConfirm", { name: agent.name })}
+                      onConfirm={() => rotateCredentials(agent)}
+                      size="sm"
+                    />
+                  </div>
+                </div>
+                <div className="panel-body">
+                  <div style={GRID}>
+                    <div className="kv"><span>{t("aagents.tokenId")}</span><span className="mono">{agent.daemon_token_id ?? t("aagents.dash")}</span></div>
+                    <div className="kv"><span>{t("aagents.listen")}</span><span className="mono">{agent.daemon_listen}</span></div>
+                    <div className="kv"><span>{t("aagents.sftp")}</span><span className="mono">{agent.daemon_sftp}</span></div>
+                    <div className="kv"><span>{t("aagents.data")}</span><span className="mono">{agent.daemon_base}</span></div>
+                    <div className="kv"><span>{t("aagents.lastSeen")}</span><span>{agent.last_seen_at ? formatDateTime(agent.last_seen_at) : t("aagents.never")}</span></div>
+                    {agent.behind_proxy && <div className="kv"><span>{t("aagents.proxy")}</span><span>{t("aagents.dash")}</span></div>}
+                  </div>
+
+                  {h && (
+                    <div style={GRID}>
+                      <LoadBar showLabel label={t("aagents.memory")} unit="MB" used={h.utilization.used_memory_mb}
+                        total={h.capacity.effective_memory_mb} percent={h.utilization.memory_utilization} />
+                      <LoadBar showLabel label={t("aagents.disk")} unit="MB" used={h.utilization.used_disk_mb}
+                        total={h.capacity.effective_disk_mb} percent={h.utilization.disk_utilization} />
+                      <LoadBar showLabel label={t("aagents.cpu")} unit="%" used={h.utilization.used_cpu_percent}
+                        total={h.capacity.effective_cpu_percent} percent={h.utilization.cpu_utilization} />
+                    </div>
+                  )}
+
+                  {agentEndpoints.length === 0 ? (
+                    <p className="hint">{t("aagents.ep.none")}</p>
+                  ) : (
+                    <ScrollRegion label={t("aagents.ep.tableAria", { name: agent.name })}>
+                      <table className="tbl tbl-cards">
+                        <thead>
+                          <tr>
+                            <th scope="col">{t("aagents.ep.colId")}</th>
+                            <th scope="col">{t("aagents.ep.colAddr")}</th>
+                            <th scope="col">{t("aagents.ep.colStatus")}</th>
+                            <th scope="col">{t("aagents.ep.colInstance")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {agentEndpoints.map(ep => (
+                            <tr key={ep.id}>
+                              <td data-label={t("aagents.ep.colId")}>{ep.id}</td>
+                              <td data-label={t("aagents.ep.colAddr")} className="mono">{ep.ip}:{ep.port}</td>
+                              <td data-label={t("aagents.ep.colStatus")}>
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                  <span className={`dot ${ep.is_locked ? "dot-danger" : ep.instance_id ? "dot-warn" : "dot-ok"}`} aria-hidden="true" />
+                                  {ep.is_locked ? t("aagents.ep.locked") : ep.instance_id ? t("aagents.ep.used") : t("aagents.ep.free")}
+                                </span>
+                              </td>
+                              <td data-label={t("aagents.ep.colInstance")}>{ep.instance_id ? t("aagents.ep.instance", { id: ep.instance_id }) : t("aagents.dash")}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </ScrollRegion>
+                  )}
+                </div>
+              </section>
+            );
+          })
+        )}
+      </div>
     </PageLayout>
   );
 }
@@ -413,107 +410,95 @@ function AgentFormFields({ values, onChange, idPrefix, showActive }: AgentFormFi
   const set = <K extends keyof AgentFormValues>(key: K, value: AgentFormValues[K]) =>
     onChange({ ...values, [key]: value });
   const id = (name: string) => `${idPrefix}-${name}`;
-  const portInput = { ...inputStyle, width: 100 };
 
   return (
     <>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 160 }}>
-          <label htmlFor={id("name")} style={labelStyle}>Name *</label>
-          <input id={id("name")} type="text" value={values.name} onChange={e => set("name", e.target.value)}
-            placeholder="z.B. Node-ZH-01" required style={inputStyle} />
+      <div style={GRID}>
+        <div className="field">
+          <label htmlFor={id("name")}>{t("aagents.f.name")} *</label>
+          <input id={id("name")} className="inp" type="text" value={values.name} onChange={e => set("name", e.target.value)}
+            placeholder={t("aagents.f.namePh")} required />
         </div>
-        <div style={{ flex: 1, minWidth: 160 }}>
-          <label htmlFor={id("fqdn")} style={labelStyle}>FQDN *</label>
-          <input id={id("fqdn")} type="text" value={values.fqdn} onChange={e => set("fqdn", e.target.value)}
-            placeholder="node01.astra.dev" required style={inputStyle} />
+        <div className="field">
+          <label htmlFor={id("fqdn")}>{t("aagents.f.fqdn")} *</label>
+          <input id={id("fqdn")} className="inp mono" type="text" value={values.fqdn} onChange={e => set("fqdn", e.target.value)}
+            placeholder="node01.astra.dev" required />
         </div>
-      </div>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8, alignItems: "flex-end" }}>
-        <div>
-          <label htmlFor={id("scheme")} style={labelStyle}>Schema</label>
-          <select id={id("scheme")} value={values.scheme} onChange={e => set("scheme", e.target.value)} style={{ ...inputStyle, width: 110 }}>
+        <div className="field">
+          <label htmlFor={id("scheme")}>{t("aagents.f.scheme")}</label>
+          <select id={id("scheme")} className="inp" value={values.scheme} onChange={e => set("scheme", e.target.value)}>
             <option value="https">https</option>
             <option value="http">http</option>
           </select>
         </div>
-        <div>
-          <label htmlFor={id("connect")} style={labelStyle} title="Port, über den das Panel Wings erreicht (z.B. 443 hinter Caddy)">Connect-Port</label>
-          <input id={id("connect")} type="number" value={values.connect} min={1} max={65535} style={portInput}
+        <div className="field">
+          <label htmlFor={id("connect")}>{t("aagents.f.connect")}</label>
+          <input id={id("connect")} className="inp mono" type="number" value={values.connect} min={1} max={65535}
             onChange={e => onChange({ ...values, connect: e.target.value, connectTouched: true })} />
         </div>
-        <div>
-          <label htmlFor={id("listen")} style={labelStyle} title="Port, auf dem Wings lokal lauscht (z.B. 8080)">Listen-Port</label>
-          <input id={id("listen")} type="number" value={values.listen} min={1} max={65535} style={portInput}
+        <div className="field">
+          <label htmlFor={id("listen")}>{t("aagents.f.listen")}</label>
+          <input id={id("listen")} className="inp mono" type="number" value={values.listen} min={1} max={65535}
             onChange={e => onChange({
               ...values,
               listen: e.target.value,
               connect: values.connectTouched ? values.connect : e.target.value,
             })} />
         </div>
-        <div>
-          <label htmlFor={id("sftp")} style={labelStyle}>SFTP-Port</label>
-          <input id={id("sftp")} type="number" value={values.sftp} onChange={e => set("sftp", e.target.value)} min={1} max={65535} style={portInput} />
+        <div className="field">
+          <label htmlFor={id("sftp")}>{t("aagents.f.sftp")}</label>
+          <input id={id("sftp")} className="inp mono" type="number" value={values.sftp} onChange={e => set("sftp", e.target.value)} min={1} max={65535} />
         </div>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <label htmlFor={id("base")} style={labelStyle}>Datenverzeichnis</label>
-          <input id={id("base")} type="text" value={values.base} onChange={e => set("base", e.target.value)} style={inputStyle} />
+        <div className="field">
+          <label htmlFor={id("base")}>{t("aagents.f.base")}</label>
+          <input id={id("base")} className="inp mono" type="text" value={values.base} onChange={e => set("base", e.target.value)} />
         </div>
         {showActive && (
-          <div>
-            <label htmlFor={id("upload")} style={labelStyle}>Max. Upload (MB)</label>
-            <input id={id("upload")} type="number" value={values.uploadSize} onChange={e => set("uploadSize", e.target.value)} min={1} style={portInput} />
+          <div className="field">
+            <label htmlFor={id("upload")}>{t("aagents.f.upload")}</label>
+            <input id={id("upload")} className="inp mono" type="number" value={values.uploadSize} onChange={e => set("uploadSize", e.target.value)} min={1} />
           </div>
         )}
       </div>
-      <fieldset style={{ border: "1px solid var(--border)", borderRadius: 6, marginTop: 12, padding: "8px 12px" }}>
-        <legend style={{ fontSize: 13, fontWeight: 600, color: "var(--fg-soft)", padding: "0 4px" }}>Kapazität (0 = kein Limit)</legend>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+      <fieldset className="fieldset">
+        <legend className="panel-title" style={{ marginBottom: 10 }}>{t("aagents.f.capacity")}</legend>
+        <div style={GRID}>
           {([
-            ["memory", "Memory gesamt (MB)", "memoryTotal"],
-            ["disk", "Disk gesamt (MB)", "diskTotal"],
-            ["cpu", "CPU gesamt (%)", "cpuTotal"],
+            ["memory-total", t("aagents.f.memTotal"), "memoryTotal"],
+            ["disk-total", t("aagents.f.diskTotal"), "diskTotal"],
+            ["cpu-total", t("aagents.f.cpuTotal"), "cpuTotal"],
           ] as const).map(([key, label, field]) => (
-            <div key={key}>
-              <label htmlFor={id(`${key}-total`)} style={labelStyle}>{label}</label>
-              <input id={id(`${key}-total`)} type="number" min={0} value={values[field]}
-                onChange={e => set(field, e.target.value)} style={{ ...inputStyle, width: 150 }} />
+            <div className="field" key={key}>
+              <label htmlFor={id(key)}>{label}</label>
+              <input id={id(key)} className="inp mono" type="number" min={0} value={values[field]} onChange={e => set(field, e.target.value)} />
+            </div>
+          ))}
+          {([
+            ["memory-over", t("aagents.f.memOver"), "memoryOveralloc"],
+            ["disk-over", t("aagents.f.diskOver"), "diskOveralloc"],
+            ["cpu-over", t("aagents.f.cpuOver"), "cpuOveralloc"],
+          ] as const).map(([key, label, field]) => (
+            <div className="field" key={key}>
+              <label htmlFor={id(key)}>{label}</label>
+              <input id={id(key)} className="inp mono" type="number" min={0} max={1000} value={values[field]} onChange={e => set(field, e.target.value)} />
             </div>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
-          {([
-            ["memory", "Memory-Überallokation (%)", "memoryOveralloc"],
-            ["disk", "Disk-Überallokation (%)", "diskOveralloc"],
-            ["cpu", "CPU-Überallokation (%)", "cpuOveralloc"],
-          ] as const).map(([key, label, field]) => (
-            <div key={key}>
-              <label htmlFor={id(`${key}-over`)} style={labelStyle}>{label}</label>
-              <input id={id(`${key}-over`)} type="number" min={0} max={1000} value={values[field]}
-                onChange={e => set(field, e.target.value)} style={{ ...inputStyle, width: 190 }} />
-            </div>
-          ))}
-        </div>
-        <small style={{ color: "var(--fg-muted)", fontSize: 12 }}>
-          Effektive Kapazität = Gesamt × (1 + Überallokation). Bei 0 wird der Agent bei der automatischen Platzierung nicht nach dieser Dimension begrenzt.
-        </small>
+        <p className="hint">{t("aagents.f.capacityHint")}</p>
       </fieldset>
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
-        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+      <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "var(--fs-small)" }}>
           <input type="checkbox" checked={values.behindProxy} onChange={e => set("behindProxy", e.target.checked)} />
-          Hinter Reverse Proxy (TLS extern)
+          {t("aagents.f.behindProxy")}
         </label>
         {showActive && (
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "var(--fs-small)" }}>
             <input type="checkbox" checked={values.isActive} onChange={e => set("isActive", e.target.checked)} />
-            Aktiv
+            {t("aagents.f.active")}
           </label>
         )}
       </div>
-      <p style={{ color: "var(--fg-muted)", fontSize: 12, margin: "8px 0 0" }}>
-        <strong>Connect-Port:</strong> unter diesem Port erreicht das Panel Wings (z.B. 443 hinter Caddy).{" "}
-        <strong>Listen-Port:</strong> hier lauscht Wings lokal (z.B. 8080).
-      </p>
+      <p className="hint">{t("aagents.f.portHint")}</p>
     </>
   );
 }

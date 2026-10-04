@@ -32,9 +32,9 @@ export function AccountPage() {
           <section style={cardStyle} aria-labelledby="profile-title">
             <h2 id="profile-title" style={{ marginTop: 0, fontSize: 18 }}>{t("account.profile")}</h2>
             <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "max-content 1fr", gap: "4px 16px" }}>
-              <dt style={{ color: "var(--fg-soft)" }}>{t("account.username")}</dt><dd style={{ margin: 0 }}>{user.username}</dd>
-              <dt style={{ color: "var(--fg-soft)" }}>{t("account.email")}</dt><dd style={{ margin: 0 }}>{user.email}</dd>
-              <dt style={{ color: "var(--fg-soft)" }}>{t("account.role")}</dt><dd style={{ margin: 0 }}>{user.is_admin ? t("account.roleAdmin") : t("account.roleCustomer")}</dd>
+              <dt style={{ color: "var(--text-2)" }}>{t("account.username")}</dt><dd style={{ margin: 0 }}>{user.username}</dd>
+              <dt style={{ color: "var(--text-2)" }}>{t("account.email")}</dt><dd style={{ margin: 0 }}>{user.email}</dd>
+              <dt style={{ color: "var(--text-2)" }}>{t("account.role")}</dt><dd style={{ margin: 0 }}>{user.is_admin ? t("account.roleAdmin") : t("account.roleCustomer")}</dd>
             </dl>
             <p style={{ marginBottom: 0 }}>
               <Link to="/account/ssh-keys" style={linkStyle}>{t("account.manageKeys")}</Link>

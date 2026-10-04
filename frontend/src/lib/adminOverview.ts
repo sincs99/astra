@@ -1,6 +1,27 @@
 /** Clientseitige Aggregation fuer die Admin-Uebersicht (aus GET /admin/orders und /admin/agents/monitoring). */
 import type { AgentMonitoringEntry, Order, OrderStatus, PaymentEvent } from "../services/api";
 import { parseUtc } from "./dates";
+import { dateLocale, t, type MessageKey } from "../i18n";
+
+/** Wählt je nach Sprache die Singular- oder Pluralform eines Schlüsselpaars und setzt {n} (weitere Parameter optional). */
+export function plural(n: number, one: MessageKey, other: MessageKey, params: Record<string, string | number> = {}): string {
+  const form = new Intl.PluralRules(dateLocale()).select(n);
+  return t(form === "one" ? one : other, { n, ...params });
+}
+
+export interface RevenueTrend {
+  /** "none": kein Vergleich moeglich (Vorzeitraum 0 oder nicht vorhanden) */
+  kind: "up" | "down" | "flat" | "none";
+  /** Gerundete Veraenderung in Prozent (vorzeichenbehaftet) */
+  percent: number;
+}
+
+/** Veraenderung zum gleich langen Vorzeitraum; ohne Vorzeitraum-Umsatz (> 0) gibt es keinen Vergleich. */
+export function revenueTrend(current: number, previous: number | undefined): RevenueTrend {
+  if (previous === undefined || !(previous > 0)) return { kind: "none", percent: 0 };
+  const percent = Math.round(((current - previous) / previous) * 100);
+  return { kind: percent > 0 ? "up" : percent < 0 ? "down" : "flat", percent };
+}
 
 const DAY_MS = 86_400_000;
 
@@ -85,4 +106,77 @@ export function mergeEvents(...lists: PaymentEvent[][]): PaymentEvent[] {
   const all: PaymentEvent[] = [];
   for (const l of lists) for (const e of l) if (!seen.has(e.id)) { seen.add(e.id); all.push(e); }
   return all.sort((a, b) => (b.received_at ?? "").localeCompare(a.received_at ?? "") || b.id - a.id);
+}
+
+// ── Admin-Übersicht (D6) ───────────────────────────────
+
+export interface OrderPeriodStats {
+  total: number;
+  paid: number;
+  waiting: number;
+  overdue: number;
+}
+
+/** Bestellungen, die in den letzten `days` Tagen angelegt wurden, nach Zustand aufgeteilt. */
+export function ordersInPeriod(orders: Order[], days = 30, now: number = Date.now()): OrderPeriodStats {
+  const stats: OrderPeriodStats = { total: 0, paid: 0, waiting: 0, overdue: 0 };
+  for (const o of orders) {
+    if (!o.created_at) continue;
+    const t = parseUtc(o.created_at).getTime();
+    if (Number.isNaN(t) || t > now || now - t > days * DAY_MS) continue;
+    stats.total += 1;
+    if (o.status === "past_due") stats.overdue += 1;
+    else if (o.status === "pending_payment" || o.status === "awaiting_provisioning") stats.waiting += 1;
+    else if (o.paid_at) stats.paid += 1;
+  }
+  return stats;
+}
+
+/** Aktive, kostenpflichtige Bestellungen ohne Kündigung, deren Laufzeit in den nächsten `hours` Stunden endet. */
+export function dueWithin(orders: Order[], hours = 24, now: number = Date.now()): Order[] {
+  return orders.filter((o) => {
+    if (o.status !== "active" || o.cancel_at_period_end || o.price_cents <= 0 || !o.current_period_end) return false;
+    const end = parseUtc(o.current_period_end).getTime();
+    return !Number.isNaN(end) && end > now && end - now <= hours * 3_600_000;
+  });
+}
+
+/** Aktive Nodes, die nicht erreichbar oder beeinträchtigt sind. */
+export function problemNodes(agents: AgentMonitoringEntry[]): AgentMonitoringEntry[] {
+  return agents.filter((a) => a.is_active && (a.health_status === "unreachable" || a.health_status === "degraded"));
+}
+
+export interface InstanceCounts {
+  total: number;
+  running: number;
+  /** Instances auf Nodes, die nicht erreichbar oder beeinträchtigt sind */
+  onProblemNodes: number;
+}
+
+export function instanceCounts(instances: Array<{ status: string | null; container_state: string | null; agent_id: number }>, problem: AgentMonitoringEntry[]): InstanceCounts {
+  const bad = new Set(problem.map((a) => a.id));
+  let running = 0;
+  let onProblemNodes = 0;
+  for (const i of instances) {
+    if ((i.status ?? "ready") === "ready" && i.container_state === "running") running += 1;
+    if (bad.has(i.agent_id)) onProblemNodes += 1;
+  }
+  return { total: instances.length, running, onProblemNodes };
+}
+
+export interface NodeBar {
+  label: string;
+  used: number;
+  /** Effektive Kapazität (inkl. Überallokation); 0 = kein Limit hinterlegt */
+  capacity: number;
+  /** Nominale Kapazität ohne Überallokation */
+  nominal: number;
+  percent: number | null;
+  overbooked: boolean;
+}
+
+/** Balkendaten für Memory/Disk eines Nodes; "überbucht", sobald mehr vergeben ist als nominal vorhanden. */
+export function nodeBar(label: string, used: number, nominal: number, capacity: number): NodeBar {
+  const percent = capacity > 0 ? Math.round((used / capacity) * 100) : null;
+  return { label, used, capacity, nominal, percent, overbooked: nominal > 0 && used > nominal };
 }

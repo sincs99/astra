@@ -1,39 +1,16 @@
 /*
  * Farben, Schrift und Maße kommen aus styles/tokens.css (Kopie von design/tokens.css).
- * Diese Datei ergänzt nur: color-scheme für native Controls und Kompatibilitäts-Aliase für die bisherigen
- * Variablennamen, damit ältere Komponenten im neuen Look laufen. Neue Komponenten nutzen die Token-Namen direkt.
+ * Diese Datei ergänzt nur: color-scheme für native Controls und abgeleitete Werte (--console-dim).
  */
 @import "./styles/tokens.css";
+@import "./styles/shell.css";
+@import "./styles/ui.css";
+@import "./styles/landing.css";
 
 :root { color-scheme: dark; }
 html[data-theme="light"] { color-scheme: light; }
 
 :root {
-  /* Alias -> Token */
-  --bg-page: var(--bg);
-  --bg-card: var(--surface);
-  --bg-subtle: var(--surface-2);
-  --fg: var(--text);
-  --fg-soft: var(--text-2);
-  --fg-muted: var(--text-3);
-  --border-strong: var(--border);
-
-  --c-blue: var(--accent);
-  --c-green: var(--ok);
-  --c-red: var(--danger);
-  --c-orange: var(--warn);
-  --c-yellow: var(--warn);
-  --c-purple: var(--accent);
-
-  --tint-blue: var(--accent-soft);
-  --tint-green: color-mix(in srgb, var(--ok) 12%, transparent);
-  --tint-red: var(--danger-soft);
-  --tint-orange: var(--warn-soft);
-  --tint-yellow: var(--warn-soft);
-  --tint-purple: var(--accent-soft);
-
-  --border-blue: color-mix(in srgb, var(--accent) 35%, transparent);
-  --border-green: color-mix(in srgb, var(--ok) 35%, transparent);
-  --border-red: var(--danger-border);
-  --border-orange: var(--warn-border);
+  /* Gedämpfter Text auf der (immer dunklen) Konsole */
+  --console-dim: color-mix(in srgb, var(--text-console) 72%, var(--console));
 }

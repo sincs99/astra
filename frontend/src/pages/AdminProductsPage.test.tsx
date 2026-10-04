@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter } from "react-router-dom";
 import { AdminProductsPage } from "./AdminProductsPage";
 import { api } from "../services/api";
+import { setLang } from "../i18n";
 import { makeProduct } from "../test/fixtures";
 
 const product = makeProduct({ description: "Klein" });
@@ -21,7 +22,7 @@ beforeEach(() => {
   vi.spyOn(window, "confirm").mockReturnValue(true);
   window.scrollTo = vi.fn() as never;
 });
-afterEach(() => { cleanup(); localStorage.clear(); });
+afterEach(() => { cleanup(); localStorage.clear(); setLang("de"); });
 
 describe("AdminProductsPage", () => {
   it("zeigt Produkte mit Preis, Ressourcen und Aktiv-Badge", async () => {
@@ -93,5 +94,43 @@ describe("AdminProductsPage", () => {
     mount();
     fireEvent.click(await screen.findByRole("button", { name: "Löschen" }));
     expect(await screen.findByText("Produkt hat noch Bestellungen")).toBeTruthy();
+  });
+});
+
+describe("AdminProductsPage Zustaende und Sprache", () => {
+  it("zeigt einen Ladefehler als Alert mit Erneut-versuchen", async () => {
+    vi.spyOn(api, "getAdminProducts").mockRejectedValue(new Error("Backend down"));
+    mount();
+    expect((await screen.findByRole("alert")).textContent).toMatch(/Backend down/);
+    expect(screen.getByRole("button", { name: "Erneut versuchen" })).toBeTruthy();
+  });
+
+  it("zeigt den Backend-Fehler beim Anlegen im Formular", async () => {
+    vi.spyOn(api, "createProduct").mockRejectedValue(new Error("Name bereits vergeben"));
+    mount();
+    await screen.findByText("Starter");
+    fireEvent.change(screen.getByLabelText("Name *"), { target: { value: "Pro" } });
+    fireEvent.change(screen.getByLabelText("Blueprint *"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Preis (€) *"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Produkt erstellen" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/Name bereits vergeben/);
+  });
+
+  it("zeigt Leerzustand, wenn es keine Produkte gibt", async () => {
+    vi.spyOn(api, "getAdminProducts").mockResolvedValue([]);
+    mount();
+    expect(await screen.findByText("Noch keine Produkte vorhanden.")).toBeTruthy();
+  });
+
+  it("zeigt Oberflaeche, Preis und Validierungsfehler auf Englisch", async () => {
+    setLang("en");
+    mount();
+    expect(await screen.findByText("Starter")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "New product" })).toBeTruthy();
+    expect(screen.getByText(/2048 MB RAM · 10240 MB disk · 150% CPU/)).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Resources" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Deactivate" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Create product" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("Please enter a name.");
   });
 });

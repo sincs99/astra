@@ -7,10 +7,5 @@ interface LoadingStateProps {
 }
 
 export function LoadingState({ message = t("common.loading") }: LoadingStateProps) {
-  return (
-    <div role="status" aria-busy="true" style={{ padding: 32, textAlign: "center", color: "var(--fg-muted)" }}>
-      <div style={{ fontSize: 24, marginBottom: 8 }}>&#8987;</div>
-      <div style={{ fontSize: 14 }}>{message}</div>
-    </div>
-  );
+  return <p role="status" aria-busy="true" className="hint" style={{ padding: 24, textAlign: "center" }}>{message}</p>;
 }

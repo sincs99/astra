@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, type WebhookEntry, type WebhookEventInfo } from "../services/api";
-import {
-  PageLayout, StatusBadge, LoadingState, EmptyState, ErrorState, ConfirmButton,
-  Toast, useToast,
-  cardStyle, inputStyle, labelStyle, btnPrimary, btnDefault, thStyle, tdStyle,
-  ScrollRegion,
-} from "../components/ui";
+import { PageLayout, StatusBadge, ConfirmButton, Toast, useToast } from "../components/ui";
+import { Icon } from "../components/ui/Icon";
+import { t } from "../i18n";
 
 export function AdminWebhooksPage() {
   const toast = useToast();
@@ -34,7 +31,7 @@ export function AdminWebhooksPage() {
       setWebhooks(whData);
       setAvailableEvents(evData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      setError(err instanceof Error ? err.message : t("asys.hooks.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -69,7 +66,7 @@ export function AdminWebhooksPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!endpointUrl.trim() || selectedEvents.length === 0) {
-      setError("URL und mindestens ein Event sind erforderlich");
+      setError(t("asys.hooks.required"));
       return;
     }
     try {
@@ -83,7 +80,7 @@ export function AdminWebhooksPage() {
           secret_token: secretToken || undefined,
           is_active: isActive,
         });
-        toast.success("Webhook aktualisiert.");
+        toast.success(t("asys.hooks.updated"));
       } else {
         await api.createWebhook({
           endpoint_url: endpointUrl.trim(),
@@ -92,12 +89,12 @@ export function AdminWebhooksPage() {
           secret_token: secretToken.trim() || undefined,
           is_active: isActive,
         });
-        toast.success("Webhook erstellt.");
+        toast.success(t("asys.hooks.created"));
       }
       resetForm();
       await loadAll();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler beim Speichern");
+      toast.error(err instanceof Error ? err.message : t("asys.hooks.saveFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -107,11 +104,11 @@ export function AdminWebhooksPage() {
     try {
       setError(null);
       await api.deleteWebhook(id);
-      toast.success("Webhook gelöscht.");
+      toast.success(t("asys.hooks.deleted"));
       if (editId === id) resetForm();
       await loadAll();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler beim Löschen");
+      toast.error(err instanceof Error ? err.message : t("asys.hooks.deleteFailed"));
     }
   };
 
@@ -119,12 +116,12 @@ export function AdminWebhooksPage() {
     try {
       const result = await api.testWebhook(id);
       if (result.success) {
-        toast.success(`Test erfolgreich: ${result.message}`);
+        toast.success(t("asys.hooks.testOk", { message: result.message }));
       } else {
-        toast.error(`Test fehlgeschlagen: ${result.message}`);
+        toast.error(t("asys.hooks.testFail", { message: result.message }));
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler beim Testen");
+      toast.error(err instanceof Error ? err.message : t("asys.hooks.testFailedError"));
     }
   };
 
@@ -133,179 +130,157 @@ export function AdminWebhooksPage() {
       await api.updateWebhook(wh.id, { is_active: !wh.is_active });
       await loadAll();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fehler beim Umschalten");
+      toast.error(err instanceof Error ? err.message : t("asys.hooks.toggleFailed"));
     }
   };
 
+  const secretNote = t("asys.hooks.secretHint");
   return (
-    <PageLayout title="Webhooks">
+    <PageLayout title={t("asys.hooks.title")} subtitle={t("asys.hooks.subtitle")}>
       <Toast {...toast} />
-
-      {/* Formular */}
-      <div style={cardStyle}>
-        <h2 style={{ marginTop: 0, fontSize: 18, fontWeight: 700 }}>
-          {editId ? "Webhook bearbeiten" : "Neuer Webhook"}
-        </h2>
-        {error && <ErrorState message={error} onRetry={() => setError(null)} />}
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>Endpoint-URL *</label>
-            <input
-              type="url"
-              value={endpointUrl}
-              onChange={e => setEndpointUrl(e.target.value)}
-              placeholder="https://example.com/webhook"
-              required
-              style={{ ...inputStyle, width: "100%" }}
-            />
+      <div className="stack">
+        <section className="panel">
+          <div className="panel-head">
+            <h2>{editId ? t("asys.hooks.formEdit") : t("asys.hooks.formNew")}</h2>
           </div>
-
-          <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>Beschreibung</label>
-            <input
-              type="text"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="z.B. Slack-Benachrichtigung"
-              style={{ ...inputStyle, width: "100%" }}
-            />
-          </div>
-
-          <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>Events * ({selectedEvents.length} ausgewählt)</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: 10, border: "1px solid var(--border)", borderRadius: 6, backgroundColor: "var(--bg-page)" }}>
-              {availableEvents.map(ev => (
-                <label
-                  key={ev.event}
-                  title={ev.description}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 4, cursor: "pointer",
-                    padding: "3px 8px", borderRadius: 4, fontSize: 12,
-                    backgroundColor: selectedEvents.includes(ev.event) ? "var(--tint-blue)" : "var(--bg-subtle)",
-                    color: selectedEvents.includes(ev.event) ? "var(--c-blue)" : "var(--fg-soft)",
-                    fontWeight: selectedEvents.includes(ev.event) ? 600 : 400,
-                    border: `1px solid ${selectedEvents.includes(ev.event) ? "var(--border-blue)" : "var(--border)"}`,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedEvents.includes(ev.event)}
-                    onChange={() => toggleEvent(ev.event)}
-                    style={{ accentColor: "var(--accent)" }}
-                  />
-                  {ev.event}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-            <div style={{ flex: 1, minWidth: 160 }}>
-              <label style={labelStyle}>Secret Token</label>
-              <input
-                type="text"
-                value={secretToken}
-                onChange={e => setSecretToken(e.target.value)}
-                placeholder="Wird automatisch generiert"
-                style={{ ...inputStyle, width: "100%" }}
-              />
-              <small style={{ color: "var(--fg-muted)", fontSize: 11 }}>Leer lassen für automatische Generierung</small>
-            </div>
-            <div>
-              <label style={labelStyle}>Status</label>
-              <div style={{ paddingTop: 10 }}>
-                <label style={{ cursor: "pointer", fontSize: 13 }}>
-                  <input
-                    type="checkbox"
-                    checked={isActive}
-                    onChange={e => setIsActive(e.target.checked)}
-                    style={{ marginRight: 6 }}
-                  />
-                  Aktiv
-                </label>
+          <form className="panel-body" onSubmit={handleSubmit}>
+            {error && (
+              <div className="banner banner-danger" role="alert">
+                <span className="dot dot-danger" aria-hidden="true" />
+                <span className="banner-text">{error}</span>
+                <button type="button" className="btn btn-sm" onClick={() => setError(null)}>{t("common.close")}</button>
               </div>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="submit" disabled={submitting} style={{ ...btnPrimary, opacity: submitting ? 0.6 : 1 }}>
-              {submitting ? "…" : editId ? "Webhook aktualisieren" : "Webhook erstellen"}
-            </button>
-            {editId && (
-              <button type="button" onClick={resetForm} style={btnDefault}>Abbrechen</button>
             )}
-          </div>
-        </form>
-      </div>
+            <div className="field">
+              <label htmlFor="wh-url">{t("asys.hooks.url")} *</label>
+              <input id="wh-url" className="inp" type="url" value={endpointUrl}
+                onChange={(e) => setEndpointUrl(e.target.value)}
+                placeholder={t("asys.hooks.urlPlaceholder")} required />
+            </div>
 
-      {/* Webhook-Liste */}
-      {loading ? (
-        <LoadingState message="Webhooks werden geladen..." />
-      ) : webhooks.length === 0 ? (
-        <EmptyState icon="🔗" message="Noch keine Webhooks vorhanden." />
-      ) : (
-        <ScrollRegion label="Webhooks-Tabelle">
-          <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid var(--border)" }}>
-            <thead>
-              <tr style={{ backgroundColor: "var(--bg-subtle)" }}>
-                <th style={thStyle}>URL</th>
-                <th style={thStyle}>Beschreibung</th>
-                <th style={thStyle}>Events</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Aktionen</th>
-              </tr>
-            </thead>
-            <tbody>
-              {webhooks.map(wh => (
-                <tr key={wh.id}>
-                  <td style={tdStyle}>
-                    <span style={{ fontFamily: "monospace", fontSize: 12, wordBreak: "break-all" }}>
-                      {wh.endpoint_url}
-                    </span>
-                  </td>
-                  <td style={tdStyle}>{wh.description || "–"}</td>
-                  <td style={tdStyle}>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                      {(wh.events || []).map(ev => (
-                        <span key={ev} style={{ display: "inline-block", padding: "2px 6px", borderRadius: 4, backgroundColor: "var(--tint-blue)", color: "var(--c-blue)", fontSize: 11, fontFamily: "monospace" }}>
-                          {ev}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td style={tdStyle}>
-                    <span
-                      style={{ cursor: "pointer" }}
-                      onClick={() => handleToggleActive(wh)}
-                      title="Klicken zum Umschalten"
-                    >
-                      <StatusBadge status={wh.is_active ? "active" : "inactive"} size="sm" />
-                    </span>
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: "flex", gap: 4 }}>
-                      <button onClick={() => startEdit(wh)} style={actionBtn} title="Bearbeiten">✏️</button>
-                      <button onClick={() => handleTest(wh.id)} style={actionBtn} title="Test senden">🧪</button>
-                      <ConfirmButton
-                        label="🗑️"
-                        confirmMessage={`Webhook "${wh.endpoint_url}" löschen?`}
-                        onConfirm={() => handleDelete(wh.id)}
-                        danger
-                        size="sm"
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </ScrollRegion>
-      )}
+            <div className="field">
+              <label htmlFor="wh-desc">{t("asys.hooks.description")}</label>
+              <input id="wh-desc" className="inp" type="text" value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t("asys.hooks.descriptionPlaceholder")} />
+            </div>
+
+            <fieldset className="fieldset">
+              <legend style={{ fontSize: "var(--fs-small)", fontWeight: 500, marginBottom: 6 }}>
+                {t("asys.hooks.events")} * ({t("asys.hooks.eventsCount", { n: selectedEvents.length })})
+              </legend>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {availableEvents.map((ev) => {
+                  const on = selectedEvents.includes(ev.event);
+                  return (
+                    <label key={ev.event} title={ev.description} className="mono"
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer",
+                        padding: "3px 8px", borderRadius: "var(--radius-badge)", fontSize: "var(--fs-hint)",
+                        background: on ? "var(--accent-soft)" : "var(--surface-2)",
+                        border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`,
+                        fontWeight: on ? 500 : 400,
+                      }}>
+                      <input type="checkbox" checked={on} onChange={() => toggleEvent(ev.event)} style={{ accentColor: "var(--accent)" }} />
+                      {ev.event}
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            <div className="field">
+              <label htmlFor="wh-secret">{t("asys.hooks.secret")}</label>
+              <input id="wh-secret" className="inp mono" type="text" value={secretToken} autoComplete="off"
+                onChange={(e) => setSecretToken(e.target.value)}
+                placeholder={t("asys.hooks.secretPlaceholder")} aria-describedby="wh-secret-hint" />
+              <p id="wh-secret-hint" className="hint">{secretNote}</p>
+            </div>
+
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} style={{ accentColor: "var(--accent)" }} />
+              {t("asys.hooks.active")}
+            </label>
+
+            <div className="row-actions">
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? "…" : editId ? t("asys.hooks.update") : t("asys.hooks.create")}
+              </button>
+              {editId && (
+                <button type="button" className="btn" onClick={resetForm}>{t("asys.hooks.cancel")}</button>
+              )}
+            </div>
+          </form>
+        </section>
+
+        {loading ? (
+          <p className="hint" role="status" aria-busy="true">{t("asys.hooks.loading")}</p>
+        ) : webhooks.length === 0 ? (
+          <div className="card-empty">{t("asys.hooks.empty")}</div>
+        ) : (
+          <section className="panel">
+            <div className="panel-head"><h2>{t("asys.hooks.listTitle")}</h2></div>
+            <div role="region" aria-label={t("asys.hooks.tableLabel")} tabIndex={0} style={{ overflowX: "auto" }}>
+              <table className="tbl tbl-cards">
+                <thead>
+                  <tr>
+                    <th scope="col">{t("asys.hooks.colUrl")}</th>
+                    <th scope="col">{t("asys.hooks.colDescription")}</th>
+                    <th scope="col">{t("asys.hooks.colEvents")}</th>
+                    <th scope="col">{t("asys.hooks.colStatus")}</th>
+                    <th scope="col">{t("asys.hooks.colActions")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {webhooks.map((wh) => (
+                    <tr key={wh.id}>
+                      <td data-label={t("asys.hooks.colUrl")}><span className="mono" style={{ overflowWrap: "anywhere" }}>{wh.endpoint_url}</span></td>
+                      <td data-label={t("asys.hooks.colDescription")}>{wh.description || "–"}</td>
+                      <td data-label={t("asys.hooks.colEvents")}>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "inherit" }}>
+                          {(wh.events || []).map((ev) => (
+                            <span key={ev} className="mono" style={{
+                              padding: "1px 6px", borderRadius: "var(--radius-badge)", background: "var(--accent-soft)",
+                              fontSize: "var(--fs-hint)",
+                            }}>{ev}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td data-label={t("asys.hooks.colStatus")}>
+                        <button type="button" className="btn btn-ghost btn-sm" style={{ padding: 0 }}
+                          aria-label={t("asys.hooks.toggle", { url: wh.endpoint_url })}
+                          title={t("asys.hooks.toggle", { url: wh.endpoint_url })}
+                          onClick={() => handleToggleActive(wh)}>
+                          <StatusBadge status={wh.is_active ? "active" : "inactive"} size="sm" />
+                        </button>
+                      </td>
+                      <td data-label={t("asys.hooks.colActions")}>
+                        <div className="row-actions" style={{ marginTop: 0 }}>
+                          <button type="button" className="btn btn-sm btn-icon" onClick={() => startEdit(wh)}
+                            aria-label={t("asys.hooks.editAria", { url: wh.endpoint_url })} title={t("asys.hooks.edit")}>
+                            <Icon name="pencil" />
+                          </button>
+                          <button type="button" className="btn btn-sm" onClick={() => handleTest(wh.id)}
+                            aria-label={t("asys.hooks.testAria", { url: wh.endpoint_url })}>
+                            {t("asys.hooks.test")}
+                          </button>
+                          <ConfirmButton
+                            label={t("asys.hooks.delete")}
+                            confirmMessage={t("asys.hooks.deleteConfirm", { url: wh.endpoint_url })}
+                            onConfirm={() => handleDelete(wh.id)}
+                            danger
+                            size="sm"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+      </div>
     </PageLayout>
   );
 }
-
-const actionBtn: React.CSSProperties = {
-  padding: "4px 8px", borderRadius: 4, border: "1px solid var(--border)",
-  backgroundColor: "var(--bg-card)", cursor: "pointer", fontSize: 13,
-};

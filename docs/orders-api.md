@@ -256,9 +256,9 @@ Beweise für Streitfälle, vorzeitiges Löschen eines erstatteten Servers (Admin
 | `GET /api/client/billing-info` | öffentlich | aktiver Zahlungsweg |
 | `POST /api/payments/stripe` | Stripe | Webhook (Signatur statt Login) |
 | `GET/POST /api/admin/products`, `GET/PATCH/DELETE /{id}` | Admin | Pakete verwalten |
-| `GET /api/admin/orders?status=&user_id=`, `/{uuid}` | Admin | alle Bestellungen |
+| `GET /api/admin/orders?status=&user_id=&q=`, `/{uuid}` | Admin | alle Bestellungen; `q` (M65, max. 100 Zeichen, sonst 400) sucht ohne Gross-/Kleinschreibung im Verwendungszweck (`payment_purpose`, auch Präfix wie `ASTRA-0042`), Servernamen, Nutzernamen und als UUID-Präfix |
 | `GET /api/admin/billing/status` | Admin | Läuft der Billing-Tick? Letzter Lauf, Alter, Ergebnis, Bestellungen je Status |
-| `GET /api/admin/stats/revenue?days=30` | Admin | Umsatz der letzten `days` Tage (1 bis 365, sonst 400) auf Basis der Zahlungsbelege (`receipts.issued_at`, M62): `{days, since, by_currency: {"EUR": cents}, paid_count (Erstzahlungen), renewals_count, refunded_cents_by_currency}`. Erstattungen (M59) getrennt je Währung, nicht verrechnet; Zahlungen vor M62 und Gratis-Pakete fehlen |
+| `GET /api/admin/stats/revenue?days=30` | Admin | Umsatz der letzten `days` Tage (1 bis 365, sonst 400) auf Basis der Zahlungsbelege (`receipts.issued_at`, M62): `{days, since, by_currency: {"EUR": cents}, paid_count (Erstzahlungen), renewals_count, refunded_cents_by_currency}, prev_since, prev_by_currency, prev_paid_count, prev_renewals_count}`; `prev_*` (M66) ist der gleich lange Zeitraum davor für den Trend in der Admin-Übersicht. Erstattungen (M59) getrennt je Währung, nicht verrechnet; Zahlungen vor M62 und Gratis-Pakete fehlen |
 | `GET /api/admin/payment-events?status=&order_uuid=&limit=` | Admin | Zahlungsereignisse des Anbieters (nur lesen, neueste zuerst, `limit` 1 bis 500); `mismatch` und `unapplied` brauchen Aufmerksamkeit |
 | `POST /api/admin/orders/{uuid}/mark-paid` | Admin | `{payment_reference?}` Zahlung bestätigen und Instance bereitstellen; auf `active`/`past_due` ist die Referenz Pflicht (Verlängerung) |
 
@@ -286,7 +286,9 @@ Beleg ist **kein Steuerbeleg**: keine Umsatzsteuer, keine Anschrift des Kunden (
 | Aufruf | Antwort |
 |---|---|
 | `GET /api/client/orders`, `/{uuid}` (und die Admin-Liste) | enthält `receipts: [{number, issued_at, amount_cents, currency}]`, älteste zuerst |
-| `GET /api/client/orders/{uuid}/receipt?number=&format=` | Beleg der eigenen Bestellung. `number` = Belegnummer (Standard: neuester), `format` = `html` (Standard, eigenständige Seite), `text` oder `json` (`number, issued_at, amount_cents, currency, payment_reference, product_name, instance_name, billing_period_days, customer`). 404 bei fremder/unbekannter Bestellung, unbekannter Nummer oder wenn es keinen Beleg gibt; 400 bei falschem `format`; 401 ohne Anmeldung |
+| `GET /api/client/orders`, `/{uuid}` (und die Admin-Liste) | enthält `blueprint_name` (Spiel-Vorlage des Produkts) und `payment_purpose` (M64): kurzer Verwendungszweck für die Überweisung, Form `ASTRA-NNNN-XX` (laufende Bestell-ID plus zwei Prüfzeichen aus der UUID), stabil pro Bestellung. Steht auch in der Erinnerungs- und Sperr-Mail sowie im Beleg; der Admin ordnet den Zahlungseingang damit zu und trägt die Bankreferenz bei `mark-paid` ein |
+| `GET /api/client/instances`, `/{uuid}` (und die Admin-Liste) | enthält `blueprint_name` (M64), z. B. für die Unterzeile „Minecraft (Paper 1.21) · Crew“ |
+| `GET /api/client/orders/{uuid}/receipt?number=&format=` | Beleg der eigenen Bestellung. `number` = Belegnummer (Standard: neuester), `format` = `html` (Standard, eigenständige Seite), `text` oder `json` (`number, issued_at, amount_cents, currency, payment_reference, product_name, blueprint_name, payment_purpose, instance_name, billing_period_days, customer`). 404 bei fremder/unbekannter Bestellung, unbekannter Nummer oder wenn es keinen Beleg gibt; 400 bei falschem `format`; 401 ohne Anmeldung |
 
 Das HTML escaped alle Werte (auch den vom Kunden gewählten Servernamen) und wird mit `nosniff`, einer
 restriktiven Content-Security-Policy und `no-store` ausgeliefert. Ein Link im Browser trägt keinen

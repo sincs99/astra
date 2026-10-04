@@ -2,23 +2,26 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { LoginPage } from "../pages/LoginPage";
 import { DashboardPage } from "../pages/DashboardPage";
-import { InstanceDetailPage } from "../pages/InstanceDetailPage";
-import { AccountPage } from "../pages/AccountPage";
-import { SshKeysPage } from "../pages/SshKeysPage";
+import { LandingPage } from "../pages/LandingPage";
 import { RegisterPage } from "../pages/RegisterPage";
 import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "../pages/ResetPasswordPage";
 import { VerifyEmailPage } from "../pages/VerifyEmailPage";
 import { ShopPage } from "../pages/ShopPage";
 import { OrdersPage } from "../pages/OrdersPage";
-import { ImpressumPage, DatenschutzPage, AgbPage } from "../pages/LegalPages";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { loginUrl } from "../lib/redirect";
 import { isAuthenticated } from "../services/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { LoadingState } from "../components/ui";
 
-// Admin-Seiten werden erst bei Bedarf geladen (Kunden brauchen sie nie)
+// Selten gebrauchte Seiten und der Admin-Bereich werden erst bei Bedarf geladen; Dashboard, Shop und Bestellungen bleiben im Haupt-Chunk
+const InstanceDetailPage = lazy(() => import("../pages/InstanceDetailPage").then((m) => ({ default: m.InstanceDetailPage })));
+const AccountPage = lazy(() => import("../pages/AccountPage").then((m) => ({ default: m.AccountPage })));
+const SshKeysPage = lazy(() => import("../pages/SshKeysPage").then((m) => ({ default: m.SshKeysPage })));
+const ImpressumPage = lazy(() => import("../pages/LegalPages").then((m) => ({ default: m.ImpressumPage })));
+const DatenschutzPage = lazy(() => import("../pages/LegalPages").then((m) => ({ default: m.DatenschutzPage })));
+const AgbPage = lazy(() => import("../pages/LegalPages").then((m) => ({ default: m.AgbPage })));
 const AdminOverviewPage = lazy(() => import("../pages/AdminOverviewPage").then((m) => ({ default: m.AdminOverviewPage })));
 const AdminAgentsPage = lazy(() => import("../pages/AdminAgentsPage").then((m) => ({ default: m.AdminAgentsPage })));
 const AdminAgentsMonitoringPage = lazy(() => import("../pages/AdminAgentsMonitoringPage").then((m) => ({ default: m.AdminAgentsMonitoringPage })));
@@ -53,6 +56,11 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** "/": angemeldet das Dashboard "Meine Server", sonst die öffentliche Landingpage. */
+function HomeRoute() {
+  return isAuthenticated() ? <DashboardPage /> : <LandingPage />;
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
@@ -66,7 +74,7 @@ export function AppRouter() {
         <Route path="/password-reset" element={<ForgotPasswordPage />} />
         <Route path="/password-reset/confirm" element={<ResetPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
-        <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/" element={<HomeRoute />} />
         <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminOverviewPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/admin/agents" element={<ProtectedRoute><AdminRoute><AdminAgentsPage /></AdminRoute></ProtectedRoute>} />
         <Route path="/admin/agents/monitoring" element={<ProtectedRoute><AdminRoute><AdminAgentsMonitoringPage /></AdminRoute></ProtectedRoute>} />

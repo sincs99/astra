@@ -1,14 +1,13 @@
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { useEffect, useState } from "react";
 import { api, type JobEntry, type JobSummary } from "../services/api";
-import {
-  PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState,
-  cardStyle, inputStyle, labelStyle, btnDefault, thStyle, tdStyle,
-  ScrollRegion,
-} from "../components/ui";
+import { PageLayout, AutoRefreshToggle, StatusBadge, statusLabel } from "../components/ui";
 import { formatLogTime } from "../lib/dates";
+import { t } from "../i18n";
 
 type StatusFilter = "" | "pending" | "running" | "completed" | "failed" | "retrying";
+
+const STATUSES: Exclude<StatusFilter, "">[] = ["pending", "running", "completed", "failed", "retrying"];
 
 export function AdminJobsPage() {
   const [jobs, setJobs] = useState<JobEntry[]>([]);
@@ -37,7 +36,7 @@ export function AdminJobsPage() {
       setSummary(summaryData);
     } catch (err) {
       // Bei stillem Refresh vorhandene Daten nicht durch Fehler ersetzen
-      if (!silent) setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      if (!silent) setError(err instanceof Error ? err.message : t("asys.jobs.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -47,125 +46,124 @@ export function AdminJobsPage() {
 
   useAutoRefresh(() => loadData(true), 15000, autoRefresh);
 
+  const refreshButton = (
+    <button type="button" className="btn btn-sm" onClick={() => loadData()}>{t("asys.jobs.refresh")}</button>
+  );
+
   return (
-    <PageLayout title="Background Jobs">
-
-      {/* Summary Kacheln */}
-      {summary && (
-        <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-          <MiniCard label="Gesamt" value={summary.total} />
-          <MiniCard label="Pending" value={summary.by_status?.pending || 0} color="var(--c-blue)" />
-          <MiniCard label="Running" value={summary.by_status?.running || 0} color="var(--c-orange)" />
-          <MiniCard label="Completed" value={summary.by_status?.completed || 0} color="var(--c-green)" />
-          <MiniCard label="Failed" value={summary.by_status?.failed || 0} color="var(--c-red)" />
-          <MiniCard label="Retrying" value={summary.by_status?.retrying || 0} color="var(--c-purple)" />
-        </div>
-      )}
-
-      {/* Filter */}
-      <div style={{ ...cardStyle, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <div>
-          <label htmlFor="fld-6" style={labelStyle}>Status</label>
-          <select id="fld-6" value={statusFilter} onChange={e => { setStatusFilter(e.target.value as StatusFilter); setPage(1); }} style={inputStyle}>
-            <option value="">Alle</option>
-            <option value="pending">Pending</option>
-            <option value="running">Running</option>
-            <option value="completed">Completed</option>
-            <option value="failed">Failed</option>
-            <option value="retrying">Retrying</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor="fld-7" style={labelStyle}>Typ</label>
-          <select id="fld-7" value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }} style={inputStyle}>
-            <option value="">Alle</option>
-            {summary && Object.keys(summary.by_type ?? {}).map(t => (
-              <option key={t} value={t}>{t} ({summary.by_type?.[t]})</option>
+    <PageLayout title={t("asys.jobs.title")} actions={refreshButton}>
+      <div className="stack">
+        {summary && (
+          <div className="tiles" role="group" aria-label={t("asys.jobs.summaryLabel")}>
+            <Tile label={t("asys.jobs.tileTotal")} value={summary.total} />
+            {STATUSES.map((s) => (
+              <Tile key={s} label={statusLabel(s)} value={summary.by_status?.[s] || 0} />
             ))}
-          </select>
-        </div>
-        <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
-        <button onClick={() => loadData()} style={{ ...btnDefault, alignSelf: "flex-end" }}>
-          ↻ Aktualisieren
-        </button>
-        <span style={{ fontSize: 13, color: "var(--fg-muted)", alignSelf: "flex-end" }}>
-          {total} Jobs total, Seite {page}/{pages || 1}
-        </span>
-      </div>
+          </div>
+        )}
 
-      {error && <ErrorState message={error} onRetry={() => loadData()} />}
-
-      {loading ? (
-        <LoadingState message="Jobs werden geladen..." />
-      ) : jobs.length === 0 ? (
-        <EmptyState icon="⚙️" message="Keine Jobs gefunden." />
-      ) : (
-        <>
-          <ScrollRegion label="Jobs-Tabelle">
-            <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid var(--border)" }}>
-              <thead>
-                <tr style={{ backgroundColor: "var(--bg-subtle)" }}>
-                  <th style={thStyle}>ID</th>
-                  <th style={thStyle}>Typ</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Versuche</th>
-                  <th style={thStyle}>Erstellt</th>
-                  <th style={thStyle}>Gestartet</th>
-                  <th style={thStyle}>Beendet</th>
-                  <th style={thStyle}>Ergebnis / Fehler</th>
-                </tr>
-              </thead>
-              <tbody>
-                {jobs.map(job => (
-                  <tr key={job.id}>
-                    <td style={tdStyle}>
-                      <span title={job.uuid} style={{ fontSize: 12, fontFamily: "monospace" }}>#{job.id}</span>
-                    </td>
-                    <td style={tdStyle}><code style={{ fontSize: 12 }}>{job.job_type}</code></td>
-                    <td style={tdStyle}><StatusBadge status={job.status} size="sm" /></td>
-                    <td style={{ ...tdStyle, textAlign: "center" }}>{job.attempts}/{job.max_attempts}</td>
-                    <td style={{ ...tdStyle, fontSize: 12, whiteSpace: "nowrap" }}>{formatDate(job.created_at)}</td>
-                    <td style={{ ...tdStyle, fontSize: 12, whiteSpace: "nowrap" }}>{formatDate(job.started_at)}</td>
-                    <td style={{ ...tdStyle, fontSize: 12, whiteSpace: "nowrap" }}>{formatDate(job.finished_at)}</td>
-                    <td style={{ ...tdStyle, fontSize: 12, maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {job.error ? (
-                        <span style={{ color: "var(--c-red)" }} title={job.error}>
-                          {job.error.substring(0, 80)}{job.error.length > 80 ? "..." : ""}
-                        </span>
-                      ) : job.result ? (
-                        <span style={{ color: "var(--c-green)" }} title={job.result}>
-                          {job.result.substring(0, 80)}{job.result.length > 80 ? "..." : ""}
-                        </span>
-                      ) : (
-                        <span style={{ color: "var(--fg-muted)" }}>-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </ScrollRegion>
-
-          {pages > 1 && (
-            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 16 }}>
-              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} style={btnDefault}>Prev</button>
-              <span style={{ padding: "8px 12px" }}>Seite {page} / {pages}</span>
-              <button disabled={page >= pages} onClick={() => setPage(p => p + 1)} style={btnDefault}>Next</button>
+        <section className="panel">
+          <div className="panel-body" style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "flex-end" }}>
+            <div className="field">
+              <label htmlFor="jobs-status">{t("asys.jobs.filterStatus")}</label>
+              <select id="jobs-status" className="inp" value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value as StatusFilter); setPage(1); }}>
+                <option value="">{t("asys.jobs.all")}</option>
+                {STATUSES.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
+              </select>
             </div>
-          )}
-        </>
-      )}
+            <div className="field">
+              <label htmlFor="jobs-type">{t("asys.jobs.filterType")}</label>
+              <select id="jobs-type" className="inp" value={typeFilter}
+                onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}>
+                <option value="">{t("asys.jobs.all")}</option>
+                {summary && Object.keys(summary.by_type ?? {}).map((ty) => (
+                  <option key={ty} value={ty}>{ty} ({summary.by_type?.[ty]})</option>
+                ))}
+              </select>
+            </div>
+            <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
+            <span className="hint" style={{ paddingBottom: 10 }}>
+              {t("asys.jobs.totalInfo", { total, page, pages: pages || 1 })}
+            </span>
+          </div>
+        </section>
+
+        {error && (
+          <div className="banner banner-danger" role="alert">
+            <span className="dot dot-danger" aria-hidden="true" />
+            <span className="banner-text">{error}</span>
+            <button type="button" className="btn btn-sm" onClick={() => loadData()}>{t("common.retry")}</button>
+          </div>
+        )}
+
+        {loading ? (
+          <p className="hint" role="status" aria-busy="true">{t("asys.jobs.loading")}</p>
+        ) : jobs.length === 0 ? (
+          !error && <div className="card-empty">{t("asys.jobs.empty")}</div>
+        ) : (
+          <section className="panel">
+            <div role="region" aria-label={t("asys.jobs.tableLabel")} tabIndex={0} style={{ overflowX: "auto" }}>
+              <table className="tbl tbl-cards">
+                <thead>
+                  <tr>
+                    <th scope="col">{t("asys.jobs.colId")}</th>
+                    <th scope="col">{t("asys.jobs.colType")}</th>
+                    <th scope="col">{t("asys.jobs.colStatus")}</th>
+                    <th scope="col">{t("asys.jobs.colAttempts")}</th>
+                    <th scope="col">{t("asys.jobs.colCreated")}</th>
+                    <th scope="col">{t("asys.jobs.colStarted")}</th>
+                    <th scope="col">{t("asys.jobs.colFinished")}</th>
+                    <th scope="col">{t("asys.jobs.colResult")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobs.map((job) => (
+                    <tr key={job.id}>
+                      <td data-label={t("asys.jobs.colId")}><span className="mono" title={job.uuid}>#{job.id}</span></td>
+                      <td data-label={t("asys.jobs.colType")}><span className="mono">{job.job_type}</span></td>
+                      <td data-label={t("asys.jobs.colStatus")}><StatusBadge status={job.status} size="sm" /></td>
+                      <td data-label={t("asys.jobs.colAttempts")} className="mono">{job.attempts}/{job.max_attempts}</td>
+                      <td data-label={t("asys.jobs.colCreated")} style={{ whiteSpace: "nowrap" }}>{formatLogTime(job.created_at)}</td>
+                      <td data-label={t("asys.jobs.colStarted")} style={{ whiteSpace: "nowrap" }}>{formatLogTime(job.started_at)}</td>
+                      <td data-label={t("asys.jobs.colFinished")} style={{ whiteSpace: "nowrap" }}>{formatLogTime(job.finished_at)}</td>
+                      <td data-label={t("asys.jobs.colResult")} style={{ maxWidth: 300, overflowWrap: "anywhere" }}>
+                        {job.error ? (
+                          <span className="text-danger" title={job.error}>{clip(job.error)}</span>
+                        ) : job.result ? (
+                          <span title={job.result}>{clip(job.result)}</span>
+                        ) : (
+                          <span className="hint">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {pages > 1 && (
+              <nav className="panel-foot" aria-label={t("asys.jobs.pagination")} style={{ justifyContent: "center", alignItems: "center" }}>
+                <button type="button" className="btn btn-sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>{t("asys.jobs.prev")}</button>
+                <span>{t("asys.jobs.pageOf", { page, pages })}</span>
+                <button type="button" className="btn btn-sm" disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>{t("asys.jobs.next")}</button>
+              </nav>
+            )}
+          </section>
+        )}
+      </div>
     </PageLayout>
   );
 }
 
-function MiniCard({ label, value, color }: { label: string; value: number; color?: string }) {
+function clip(s: string): string {
+  return s.length > 80 ? `${s.substring(0, 80)}...` : s;
+}
+
+function Tile({ label, value }: { label: string; value: number }) {
   return (
-    <div style={{ ...cardStyle, textAlign: "center", padding: "10px 18px", minWidth: 80 }}>
-      <div style={{ fontSize: 11, color: "var(--fg-muted)", textTransform: "uppercase", fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: color || "var(--fg)" }}>{value}</div>
+    <div className="tile">
+      <div className="big">{value}</div>
+      <div className="lbl">{label}</div>
     </div>
   );
 }
-
-const formatDate = formatLogTime;

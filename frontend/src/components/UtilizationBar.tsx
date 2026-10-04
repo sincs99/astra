@@ -10,10 +10,10 @@ export function formatValue(val: number, unit: string): string {
 
 /** Farben erfuellen WCAG AA (4.5:1) auch als Text. */
 export function utilizationColor(percent: number): string {
-  if (percent >= 90) return "var(--c-red)";
-  if (percent >= 70) return "var(--c-orange)";
-  if (percent >= 50) return "var(--c-yellow)";
-  return "var(--c-green)";
+  if (percent >= 90) return "var(--danger)";
+  if (percent >= 70) return "var(--warn)";
+  if (percent >= 50) return "var(--warn)";
+  return "var(--ok)";
 }
 
 interface UtilizationBarProps {
@@ -29,27 +29,27 @@ export function UtilizationBar({ used, total, percent, unit, label }: Utilizatio
   if (total <= 0) {
     return (
       <div style={{ minWidth: 100 }}>
-        {label && <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>{label}</div>}
-        <span style={{ color: "var(--fg-muted)", fontSize: 12 }}>kein Limit</span>
-        {used > 0 && <span style={{ color: "var(--fg-muted)", fontSize: 11 }}> ({formatValue(used, unit)} belegt)</span>}
+        {label && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{label}</div>}
+        <span style={{ color: "var(--text-3)", fontSize: 12 }}>kein Limit</span>
+        {used > 0 && <span style={{ color: "var(--text-3)", fontSize: 11 }}> ({formatValue(used, unit)} belegt)</span>}
       </div>
     );
   }
   const color = utilizationColor(percent);
   return (
     <div style={{ minWidth: 100 }}>
-      {label && <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>{label}</div>}
+      {label && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{label}</div>}
       <div
         role="progressbar"
         aria-label={label ? `${label} Auslastung` : "Auslastung"}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.min(Math.round(percent), 100)}
-        style={{ height: 6, borderRadius: 3, backgroundColor: "var(--bg-subtle)", overflow: "hidden" }}
+        style={{ height: 6, borderRadius: 3, backgroundColor: "var(--surface-2)", overflow: "hidden" }}
       >
         <div style={{ width: `${Math.min(percent, 100)}%`, height: "100%", backgroundColor: color, borderRadius: 3, transition: "width 0.3s" }} />
       </div>
-      <div style={{ fontSize: 11, color: "var(--fg-muted)", marginTop: 2 }}>
+      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
         {formatValue(used, unit)} / {formatValue(total, unit)} ({percent}%)
       </div>
     </div>

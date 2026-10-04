@@ -286,6 +286,10 @@ export interface Order {
   status: OrderStatus;
   product_id: number;
   product_name: string | null;
+  /** Spiel-Vorlage des Produkts, z.B. "Minecraft Paper 1.21" (M64) */
+  blueprint_name?: string | null;
+  /** Verwendungszweck fuer die Ueberweisung, Form "ASTRA-0042-7F", stabil pro Bestellung (M64) */
+  payment_purpose?: string | null;
   instance_name: string;
   instance_uuid: string | null;
   instance_status: string | null;
@@ -492,6 +496,8 @@ export interface Instance {
   owner_id: number;
   agent_id: number;
   blueprint_id: number;
+  /** Name der Spiel-Vorlage (M64) */
+  blueprint_name?: string | null;
   primary_endpoint_id: number | null;
   status: string | null;
   container_state: string | null;
@@ -846,6 +852,11 @@ export interface RevenueStats {
   paid_count: number;
   renewals_count: number;
   refunded_cents_by_currency: Record<string, number>;
+  /** Gleich langer Zeitraum davor (M66), fuer den Trend; fehlt bei aelterem Backend */
+  prev_since?: string;
+  prev_by_currency?: Record<string, number>;
+  prev_paid_count?: number;
+  prev_renewals_count?: number;
 }
 
 export type PaymentEventStatus = "processed" | "ignored" | "unapplied" | "mismatch" | "received";
@@ -1403,8 +1414,14 @@ export const api = {
     request<Order>(`/client/orders/${uuid}/cancel`, { method: "POST", body: JSON.stringify({}) }),
 
   // ── Phase 4: Bestellungen (Admin) ────────────────────
-  getAdminOrders: (status?: OrderStatus | "") =>
-    request<Order[]>(`/admin/orders${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  /** `q` (M65): Suche in Verwendungszweck, Servername, Nutzername und UUID-Praefix (max. 100 Zeichen). */
+  getAdminOrders: (status?: OrderStatus | "", q?: string) => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (q && q.trim()) params.set("q", q.trim().slice(0, 100));
+    const qs = params.toString();
+    return request<Order[]>(`/admin/orders${qs ? `?${qs}` : ""}`);
+  },
   /** Bei awaiting_provisioning erneut bereitstellen (Zahlung wird nicht doppelt verbucht). */
   markOrderPaid: (uuid: string, paymentReference?: string) =>
     request<Order>(`/admin/orders/${uuid}/mark-paid`, {

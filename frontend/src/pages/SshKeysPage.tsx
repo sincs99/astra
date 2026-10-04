@@ -149,7 +149,7 @@ export function SshKeysPage() {
         <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ backgroundColor: "var(--bg-page)" }}>
+              <tr style={{ backgroundColor: "var(--bg)" }}>
                 <th style={thStyle}>{t("ssh.name")}</th>
                 <th style={thStyle}>{t("ssh.fingerprint")}</th>
                 <th style={thStyle}>{t("ssh.publicKey")}</th>
@@ -161,13 +161,13 @@ export function SshKeysPage() {
               {keys.map((key) => (
                 <tr key={key.id}>
                   <td style={{ ...tdStyle, fontWeight: 600 }}>{key.name}</td>
-                  <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: 12, color: "var(--fg-soft)" }}>
+                  <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: 12, color: "var(--text-2)" }}>
                     {key.fingerprint}
                   </td>
-                  <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: 11, color: "var(--fg-muted)" }}>
+                  <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: 11, color: "var(--text-3)" }}>
                     {truncateKey(key.public_key)}
                   </td>
-                  <td style={{ ...tdStyle, fontSize: 13, color: "var(--fg-muted)", whiteSpace: "nowrap" }}>
+                  <td style={{ ...tdStyle, fontSize: 13, color: "var(--text-3)", whiteSpace: "nowrap" }}>
                     {formatDate(key.created_at)}
                   </td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>
@@ -189,8 +189,8 @@ export function SshKeysPage() {
       {/* Info-Box */}
       <div style={{
         marginTop: 24, padding: "12px 16px",
-        backgroundColor: "var(--tint-blue)", borderRadius: 8,
-        border: "1px solid var(--border-blue)", fontSize: 13, color: "var(--c-blue)",
+        backgroundColor: "var(--accent-soft)", borderRadius: 8,
+        border: "1px solid color-mix(in srgb, var(--accent) 35%, transparent)", fontSize: 13, color: "var(--accent)",
       }}>
         <strong>{t("ssh.infoTitle")}</strong> {t("ssh.infoText")}{" "}
         <code>ssh-ed25519</code>, <code>ssh-rsa</code>, <code>ecdsa-sha2-nistp256/384/521</code>.

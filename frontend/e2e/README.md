@@ -1,4 +1,4 @@
-# E2E-Durchlauf (Playwright)
+# E2E-Durchlauf und Barrierefreiheitsprüfung (Playwright, axe-core)
 
 Ein Browser-Durchlauf gegen das **echte Backend** (SQLite, Stub-Runner, `PAYMENT_PROVIDER=manual`):
 
@@ -7,6 +7,11 @@ Ein Browser-Durchlauf gegen das **echte Backend** (SQLite, Stub-Runner, `PAYMENT
 3. Kunde bestellt das Paket im Shop (Status "Zahlung ausstehend")
 4. Admin markiert die Bestellung als bezahlt
 5. Kunde sieht den Server im Dashboard
+
+Danach läuft `e2e/a11y.mjs`: axe-core (WCAG 2.0/2.1 A und AA, aus `node_modules`, kein CDN) prüft gegen dieselbe Preview und dasselbe Backend
+die Routen Landing, Login, Dashboard, Shop, Bestellungen, Server-Detail (Konsole-Tab), Admin-Übersicht und Admin-Bestellungen, jeweils dunkel und
+hell (`astra_theme`) bei 390 und 1100 px (32 Prüfungen, rund 30 s). Zusätzlich gilt horizontales Seiten-Scrollen als Fehler. Bei Verstößen
+endet der Lauf mit Exit 1 und listet Seite, Theme, Breite, Regel und betroffene Selektoren. Gemeinsame Helfer (API, Grunddaten, Browser-Start) stehen in `e2e/lib.mjs`.
 
 ## Lokal starten
 
@@ -25,7 +30,7 @@ Das Skript legt eine temporäre Datenbank an, startet Backend (Port 5000) und Fr
 
 ## CI
 
-`.github/workflows/e2e.yml` führt denselben Durchlauf aus (manuell und bei Änderungen an `frontend/e2e/**`).
+`.github/workflows/e2e.yml` führt denselben Durchlauf aus (Kundenfluss und Barrierefreiheitsprüfung; manuell und bei Änderungen an `frontend/e2e/**`, `frontend/src/**` und den Tokens).
 Der Job wurde lokal, aber noch nicht auf GitHub-Runnern verifiziert. Läuft er dort nicht stabil, bleibt der lokale Lauf der
 Referenzweg und der Job kann auf `workflow_dispatch` beschränkt oder entfernt werden.
 

@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import type { Agent, AgentUpdate } from "../services/api";
 
 export interface AgentFormValues {
@@ -51,28 +52,28 @@ export function validPort(value: string): number | null {
 
 /** Liefert den API-Payload oder eine Fehlermeldung (string). */
 export function toAgentPayload(v: AgentFormValues): AgentUpdate | string {
-  if (!v.name.trim() || !v.fqdn.trim()) return "Name und FQDN sind erforderlich.";
+  if (!v.name.trim() || !v.fqdn.trim()) return t("sform.agentNameFqdn");
   const connect = validPort(v.connect);
   const listen = validPort(v.listen);
   const sftp = validPort(v.sftp);
-  if (connect === null) return "Connect-Port muss zwischen 1 und 65535 liegen.";
-  if (listen === null) return "Listen-Port muss zwischen 1 und 65535 liegen.";
-  if (sftp === null) return "SFTP-Port muss zwischen 1 und 65535 liegen.";
+  if (connect === null) return t("sform.agentPort", { field: "Connect-Port" });
+  if (listen === null) return t("sform.agentPort", { field: "Listen-Port" });
+  if (sftp === null) return t("sform.agentPort", { field: "SFTP-Port" });
   const upload = Number(v.uploadSize);
   const total = (value: string) => { const n = Number(value); return Number.isInteger(n) && n >= 0 ? n : null; };
   const over = (value: string) => { const n = total(value); return n !== null && n <= 1000 ? n : null; };
   const memoryTotal = total(v.memoryTotal);
   const diskTotal = total(v.diskTotal);
   const cpuTotal = total(v.cpuTotal);
-  if (memoryTotal === null) return "Memory gesamt muss eine ganze Zahl >= 0 sein (0 = kein Limit).";
-  if (diskTotal === null) return "Disk gesamt muss eine ganze Zahl >= 0 sein (0 = kein Limit).";
-  if (cpuTotal === null) return "CPU gesamt muss eine ganze Zahl >= 0 sein (0 = kein Limit).";
+  if (memoryTotal === null) return t("sform.agentTotal", { field: "Memory" });
+  if (diskTotal === null) return t("sform.agentTotal", { field: "Disk" });
+  if (cpuTotal === null) return t("sform.agentTotal", { field: "CPU" });
   const memoryOveralloc = over(v.memoryOveralloc);
   const diskOveralloc = over(v.diskOveralloc);
   const cpuOveralloc = over(v.cpuOveralloc);
-  if (memoryOveralloc === null) return "Memory-Überallokation muss zwischen 0 und 1000 % liegen.";
-  if (diskOveralloc === null) return "Disk-Überallokation muss zwischen 0 und 1000 % liegen.";
-  if (cpuOveralloc === null) return "CPU-Überallokation muss zwischen 0 und 1000 % liegen.";
+  if (memoryOveralloc === null) return t("sform.agentOver", { field: "Memory" });
+  if (diskOveralloc === null) return t("sform.agentOver", { field: "Disk" });
+  if (cpuOveralloc === null) return t("sform.agentOver", { field: "CPU" });
   return {
     name: v.name.trim(),
     fqdn: v.fqdn.trim(),

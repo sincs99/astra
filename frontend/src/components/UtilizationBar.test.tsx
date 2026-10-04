@@ -30,8 +30,8 @@ describe("Hilfsfunktionen", () => {
   it("formatiert MB und waehlt Schwellenfarben", () => {
     expect(formatMB(512)).toBe("512 MB");
     expect(formatMB(1536)).toBe("1.5 GB");
-    expect(utilizationColor(10)).toBe("var(--c-green)");
-    expect(utilizationColor(75)).toBe("var(--c-orange)");
-    expect(utilizationColor(95)).toBe("var(--c-red)");
+    expect(utilizationColor(10)).toBe("var(--ok)");
+    expect(utilizationColor(75)).toBe("var(--warn)");
+    expect(utilizationColor(95)).toBe("var(--danger)");
   });
 });

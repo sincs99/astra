@@ -5,6 +5,56 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – M65/M66)
+- Admin-Bestellungen: Suchfeld (verzoegert ~300 ms, `?q=` in der URL, Escape/Leeren-Button, "Keine Treffer fuer ...") ueber `GET /admin/orders?q=`
+- Admin-Uebersicht: Umsatz-Kachel mit Trend je Waehrung zum gleich langen Vorzeitraum ("+12 % zum Vorzeitraum", gruen/rot ueber Tokens); nur bei Vorzeitraum > 0, sonst "kein Vergleich", bei Backend ohne `prev_*` keine Trendzeile
+
+### Added (Frontend – D11)
+- `frontend/e2e/a11y.mjs`: automatische Barrierefreiheitspruefung mit axe-core (devDependency, kein CDN) gegen Preview und echtes Backend: Landing, Login, Dashboard, Shop, Bestellungen, Server-Detail, Admin-Uebersicht, Admin-Bestellungen, dunkel/hell, 390/1100 px; Verstoesse (WCAG A/AA) oder horizontales Scrollen beenden den Lauf mit Exit 1. Laeuft in `e2e/run-local.sh` nach `flow.mjs` und im Workflow `e2e.yml` (jetzt auch bei Aenderungen an `frontend/src/**` und den Tokens); gemeinsame Helfer in `e2e/lib.mjs`
+- `docs/ui-conventions.md` neu: Checkliste fuer Seiten, Tokens/`sync:tokens`, `ui.css`-Bausteine, Status-Regeln, i18n-Namespaces und Plural-Konvention, Theme, Mobil-Regeln, bewusst nicht uebernommene Mockup-Inhalte
+
+### Changed (Frontend – D10 Restmigration)
+- Alle Komponenten und Seiten nutzen direkte Tokens; die Kompatibilitaets-Aliase (`--bg-page`, `--fg`, `--c-*`, `--tint-*` …) sind aus `theme.css` entfernt
+- Uebersetzt (DE/EN): Transfer- und Loeschformular, Billing-Tick-Karte, offene Bestellungen, SFTP-Kopierbuttons, Validierungsmeldungen fuer Agents und Portbereiche, die gesamte Admin-Uebersicht (Plural sauber ueber `Intl.PluralRules`)
+- Performance: Server-Detail, Konto, SSH-Keys und Rechtstexte werden per `React.lazy` nachgeladen (Haupt-Chunk 541 kB -> 441 kB); Dashboard, Shop, Bestellungen und Landing bleiben im Haupt-Chunk
+
+### Changed (Frontend – D9 Admin-Seiten)
+- Admin Bestellungen, Agents, Fleet Monitoring, Instances, Blueprints (inkl. Import), Produkte, Jobs, System und Webhooks im neuen Look-and-Feel und vollstaendig DE/EN (Namespaces `aorders`, `aagents`, `ainst`, `asys`). Tabellen sind mobil Karten (`tbl-cards` mit `data-label`), Formulare in `.panel`/`.field`, Fehler als `role=alert`, Loeschen/Rotieren mit Bestaetigung, Secrets nie in Labels
+- Bestellungen: Statusfilter und Dialog "Als bezahlt markieren" mit Zahlungsreferenz, vorbelegt mit dem Verwendungszweck (`payment_purpose`)
+- Gemeinsame Komponenten `ErrorState`, `EmptyState`, `LoadingState`, `ConfirmButton`, `AutoRefreshToggle`, `OrderNotice` auf `ui.css`-Klassen und Tokens (keine Emojis, keine alten Farb-Aliase); Icons Papierkorb, Stift, Speichern
+- Bekannt: `TransferInstanceForm`, `DeleteInstanceForm`, `UtilizationBar`, `SftpAccess`, `ReceiptViewer` u. a. nutzen noch alte Farb-Aliase und teils feste deutsche Texte; Validierungsmeldungen in `lib/agentForm.ts` und `lib/portRange.ts` sind deutsch. Eine Admin-Nutzerseite gibt es nicht
+
+### Changed (Frontend – D8b Server-Unterkomponenten)
+- Konsole, Dateien, Backups, Routinen, Mitbenutzer und Aktivitaet im neuen Look-and-Feel (nur Tokens und `ui.css`-Klassen, keine Emojis, Icon-Buttons mit `aria-label`, Tabellen mit `scope=col`, Fehler `role=alert`), funktionsgleich; alle Texte DE/EN (Namespaces `sconsole`, `sfiles`, `sbackups`, `sroutines`, `susers`). Konsolenzeilen tragen ihre Art (`kind`) statt eines Textpraefixes, die Farbe haengt nicht mehr am uebersetzten Text. Neue Tests je Komponente. Toast auf direkte Tokens umgestellt
+- Nicht uebersetzt bleiben Texte vom Server (Backup-/Restore-Antworten, Aktivitaets-Ereigniscodes und -beschreibungen). Farbige Ereignis-Badges im Aktivitaetslog entfallen (neutrales Badge)
+
+### Added (Frontend – M64-Nachtraege)
+- Spielname und Verwendungszweck aus M64: Unterzeile "Spiel · Paket" an Server- und Bestellkarten (ohne Spielname nur das Paket), Verwendungszweck (`payment_purpose`, Monospace mit Kopieren-Button) in der Dashboard-Bestellkarte bei offener Ueberweisung, neben dem Zahlungshinweis auf der Bestellungen-Seite und als Zeile in der Admin-Bestellliste
+
+### Added (Frontend – D7 Landingpage)
+- Oeffentliche Startseite `/` nach `design/mockups/Landing.html` (ausgeloggt; angemeldet zeigt `/` weiter das Dashboard "Meine Server"): Kopf mit Logo, Anker-Navigation und "Anmelden"/"Jetzt bestellen" (mobil Menue), Hero, Pakete aus `GET /api/client/products` (Preis, RAM/CPU, Speicher, Spiel; "Jetzt bestellen" fuehrt zu `/shop?plan=<id>` und waehlt das Paket vor), Spiele nur aus den Blueprint-Namen der Pakete, "So funktioniert's" passend zum Zahlungsweg, Fuss mit Rechtslinks und Sprachumschalter. DE/EN. Der Shop liest `?plan=` zur Vorauswahl
+- Aus dem Mockup bewusst nicht uebernommen, weil nicht belegbar: "Server in Deutschland", "Taegliche Backups", Spielerzahlen, Backup-Anzahl je Paket, "Beliebt"-Marke, MwSt-Hinweis, feste Spieleliste. Die Ueberschrift "In drei Minuten online" ist Mockup-Text und vom Betreiber zu bestaetigen
+
+### Changed (Frontend – D6 Admin-Uebersicht nach Mockup)
+- `/admin` nach `design/mockups/AdminOverview.html`: Warnbanner (rot, role=alert) bei nicht erreichbaren oder beeintraechtigten Nodes mit Heartbeat und betroffenen Instances, gebuendelter Hinweis (role=status) zu Zahlungen mit Fehlstatus, in 24 h ablaufenden Bestellungen, ausfallendem Abrechnungs-Tick und zu lange wartenden Bestellungen; vier Kennzahlen (Umsatz exakt aus `stats/revenue` mit Rueckfall, Bestellungen im Zeitraum mit bezahlt/wartend/ueberfaellig, laufende Instances aus `GET /admin/instances`, Abrechnungs-Tick); Zeitraum waehlbar (7/30/90 Tage); Node-Auslastung mit RAM-/Festplattenbalken (Warnfarbe ab 80 %, "ueberbucht" mit schraffiertem Anteil, kein Limit/keine Daten) und Tabelle der auffaelligen Zahlungen (`payment-events`); Aktualisierung alle 30 s, jede Quelle faellt einzeln aus
+- Nicht aus den APIs verfuegbar und daher weggelassen: Trend "+12 % zum Vormonat", Betrag je Zahlungsereignis, naechster Tick-Lauf, "Erinnerung senden"
+- Status-Badge: "nicht erreichbar" ist rot
+
+### Changed (Frontend – D5 Server-Detail)
+- Server-Detailseite nach Mockup: Zurueck-Link "Meine Server", Titel mit Status-Badge und Kurz-ID, Start/Neustart/Stop/Kill im Seitenkopf (passend zum Container-Zustand; Kill mit Rueckfrage), Tabs Konsole / Dateien / Backups / Einstellungen (Tastatursteuerung, Tab in der URL `?tab=`), rechts Infospalte mit Verbindung (Adresse, IP, Node), Ressourcen (Balken fuer CPU, RAM, Festplatte, Netzwerk, Uptime; ab 80 % Warnfarbe) und Laufzeit (Paket, Laufzeitende, Verlaengerungspreis, "Verlaengern"; nur mit zugehoeriger Bestellung). Einstellungen enthalten Variablen, SFTP-Zugang, Routinen, Mitbenutzer, Aktivitaet, Details, Limits und "Server loeschen". Seitentexte DE/EN; die Unterkomponenten (Konsole, Dateien, Backups, Routinen, Mitbenutzer) bleiben deutsch
+
+### Changed (Frontend – D4 Shop "Neuer Server")
+- Shop nach Mockup: nummerierte Schritte (1 Paket als Auswahlkarten mit Preis und Ressourcen, 2 Servername, 3 Zahlungsweg), Zusammenfassung rechts (mobil darunter), `inputStyle` und Eingabefelder nach Design. Der Zahlungsweg kommt aus `GET /api/client/billing-info`: bei Online-Zahlung "Weiter zur Zahlung" (Bestellung anlegen, dann direkt zum Checkout; bei Fehler bleibt die Bestellung offen und ist unter Bestellungen bezahlbar), bei Ueberweisung "Verbindlich bestellen" mit Hinweistext des Betreibers, kostenlose Pakete ohne Zahlungsschritt. Nicht angeboten, weil das Backend es nicht kennt: Spielauswahl (ein Paket gehoert zu genau einem Blueprint), Standort, Wechsel zwischen Paketen, MwSt-Angabe
+
+### Changed (Frontend – D3 Kunden-Dashboard "Meine Server")
+- Dashboard nach Mockup: Titel "Meine Server" mit Untertitel "N Server · M laufen", Primaerbutton "Neuer Server" (mobil 44-px-Icon-Button), Hinweisbanner fuer offene Zahlungen ("Zahlungsdaten anzeigen" bzw. "Jetzt mit Karte bezahlen"), Serverkarten im Grid (Adresse in der Konsolen-Zeile mit Kopieren, Zeilen nur aus echten Daten: RAM, Speicher, Laufzeitende aus der Bestellung, bald faellig in Warnfarbe mit "Verlaengern"; Aktionen Stop/Start/Neustart/Oeffnen ueber die Power-API), Karten fuer Bestellungen ohne Server (wartet auf Zahlung/Platz) mit Stornieren, gestrichelter Leerzustand, Fussnote
+- Status-Badge einheitlich nach Design (Punkt + Text, --surface-2, 1 px --border), Buttons mobil mit 44-px-Touch-Zielen; Bausteine in `src/styles/ui.css`
+- Nicht aus der API verfuegbar und daher nicht angezeigt: Spieler, RAM-Auslastung, Spielname, Verwendungszweck der Ueberweisung
+
+### Changed (Frontend – D2 App-Shell)
+- Neue App-Shell nach `design/mockups`: Seitenleiste links (240 px, einklappbar auf 56 px nur Icons mit `aria-label`/`title`, Zustand in localStorage), Logo (SVG-Stern in `--accent`, Satellit in `--text`), Navigation mit Icon + Text und aktivem Eintrag in `--accent-soft` (laengster Pfadpraefix), Admin-Gruppen nur fuer Admins, unten Nutzermenue (Avatar-Initialen, Sprache, Design, Konto, Abmelden). Mobil ab 760 px: Kopfzeile mit Logo, Avatar und 44-px-Hamburger sowie Vollbild-Overlay-Menue. Seitenkopf mit Titel, optionalem Untertitel und Aktionen (`PageLayout` Props `subtitle`, `actions`). Skip-Link und Tab-Titel bleiben; Sprachumschalter in der Fusszeile nur noch ausgeloggt
+- Design-Darstellung im Konto: "Wie das Geraet" heisst jetzt "System"
+
 ### Changed (Frontend – D1 Design-Tokens)
 - `design/tokens.css` ist die Quelle der Farben, Schrift und Maße; `frontend/src/styles/tokens.css` ist eine Kopie (Docker-Build-Kontext ist `frontend/`), `npm run sync:tokens` aktualisiert sie, ein Test prueft die Gleichheit. `src/theme.css` bindet sie ein und liefert Kompatibilitaets-Aliase fuer die bisherigen Variablennamen. Dunkel ist Standard, hell ueber `data-theme="light"`; `lib/theme.ts` setzt `data-theme` immer explizit (System-Praeferenz wird erkannt und verfolgt)
 - Schrift Geist / Geist Mono selbst gehostet (`@fontsource/geist`, `@fontsource/geist-mono`, nur Latin-Subsets, kein externer Abruf wegen DSGVO)

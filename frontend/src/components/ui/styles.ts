@@ -7,15 +7,18 @@ export const cardStyle: React.CSSProperties = {
   borderRadius: 8,
   padding: 16,
   marginBottom: 16,
-  backgroundColor: "var(--bg-card)",
+  backgroundColor: "var(--surface)",
 };
 
 export const inputStyle: React.CSSProperties = {
-  padding: "8px 12px",
+  padding: "6px 12px",
+  minHeight: "var(--control-h)",
   boxSizing: "border-box",
   width: "100%",
-  borderRadius: 6,
-  border: "1px solid var(--border-strong)",
+  borderRadius: "var(--radius-btn)",
+  border: "1px solid var(--border)",
+  backgroundColor: "var(--surface-2)",
+  color: "var(--text)",
   fontSize: 14,
   lineHeight: 1.5,
 };
@@ -25,7 +28,7 @@ export const labelStyle: React.CSSProperties = {
   marginBottom: 4,
   fontWeight: 600,
   fontSize: 13,
-  color: "var(--fg-soft)",
+  color: "var(--text-2)",
 };
 
 export const btnPrimary: React.CSSProperties = {
@@ -73,18 +76,18 @@ export const thStyle: React.CSSProperties = {
   borderBottom: "2px solid var(--border)",
   fontSize: 13,
   fontWeight: 600,
-  color: "var(--fg-soft)",
+  color: "var(--text-2)",
   whiteSpace: "nowrap",
 };
 
 export const tdStyle: React.CSSProperties = {
   padding: 10,
   verticalAlign: "middle",
-  borderBottom: "1px solid var(--bg-subtle)",
+  borderBottom: "1px solid var(--surface-2)",
 };
 
 export const linkStyle: React.CSSProperties = {
-  color: "var(--c-blue)",
+  color: "var(--accent)",
   textDecoration: "none",
   fontWeight: 500,
 };

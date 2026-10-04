@@ -1,14 +1,12 @@
-import { UtilizationBar, utilizationColor, formatMB } from "../components/UtilizationBar";
-import { DaemonStatus } from "../components/DaemonStatus";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { useEffect, useState, useMemo } from "react";
 import { api, type AgentMonitoringEntry, type FleetSummary } from "../services/api";
-import {
-  PageLayout, AutoRefreshToggle, StatusBadge, LoadingState, EmptyState, ErrorState,
-  cardStyle, inputStyle, labelStyle, btnDefault, thStyle, tdStyle,
-  ScrollRegion,
-} from "../components/ui";
+import { DaemonInfo, LoadBar } from "../components/admin/AgentParts";
+import { PageLayout, AutoRefreshToggle, StatusBadge, ConfirmButton, ScrollRegion } from "../components/ui";
+import { Icon } from "../components/ui/Icon";
 import { formatTimeAgo } from "../lib/dates";
+import { formatMemory } from "../lib/dashboard";
+import { dateLocale, t } from "../i18n";
 
 type HealthFilter = "" | "healthy" | "stale" | "degraded" | "unreachable";
 type SortKey = "name" | "last_seen_at" | "memory" | "disk" | "cpu" | "instances";
@@ -38,7 +36,7 @@ export function AdminAgentsMonitoringPage() {
       setSummary(summaryData);
     } catch (err) {
       // Bei stillem Refresh vorhandene Daten nicht durch Fehler ersetzen
-      if (!silent) setError(err instanceof Error ? err.message : "Fehler beim Laden");
+      if (!silent) setError(err instanceof Error ? err.message : t("aagents.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -73,174 +71,188 @@ export function AdminAgentsMonitoringPage() {
     else { setSortKey(key); setSortAsc(true); }
   };
 
-  const sortIndicator = (key: SortKey) => sortKey === key ? (sortAsc ? " ▲" : " ▼") : "";
+  const sortTh = (key: SortKey, label: string) => (
+    <th scope="col" aria-sort={sortKey === key ? (sortAsc ? "ascending" : "descending") : "none"}>
+      <button type="button" className="btn-ghost" onClick={() => toggleSort(key)} aria-label={t("aagents.m.sortAria", { col: label })}
+        style={{ font: "inherit", color: "inherit", background: "transparent", border: 0, padding: 0, cursor: "pointer", display: "inline-flex", gap: 4, alignItems: "center" }}>
+        {label}
+        <span aria-hidden="true">{sortKey === key ? (sortAsc ? "▲" : "▼") : ""}</span>
+      </button>
+    </th>
+  );
+
+  const [actionError, setActionError] = useState<string | null>(null);
 
   return (
-    <PageLayout title="Fleet Monitoring">
+    <PageLayout title={t("aagents.m.title")} subtitle={t("aagents.m.subtitle")}
+      actions={<AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />}>
+      <div className="stack">
+        {summary && <FleetSummaryTiles summary={summary} />}
 
-      {/* Fleet Summary */}
-      {summary && <FleetSummaryCards summary={summary} />}
+        {/* Filter & Suche */}
+        <div className="card" style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div className="field">
+            <label htmlFor="mon-filter">{t("aagents.m.filter")}</label>
+            <select id="mon-filter" className="inp" value={healthFilter} onChange={e => setHealthFilter(e.target.value as HealthFilter)}>
+              <option value="">{t("aagents.m.filterAll")}</option>
+              <option value="healthy">{t("status.healthy")}</option>
+              <option value="stale">{t("status.stale")}</option>
+              <option value="degraded">{t("status.degraded")}</option>
+              <option value="unreachable">{t("status.unreachable")}</option>
+            </select>
+          </div>
+          <div className="field" style={{ flex: "1 1 220px" }}>
+            <label htmlFor="mon-search">{t("aagents.m.search")}</label>
+            <input id="mon-search" className="inp" type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder={t("aagents.m.searchPh")} />
+          </div>
+          <button type="button" className="btn" onClick={() => loadData()}>
+            <Icon name="restart" size={14} />{t("aagents.m.refresh")}
+          </button>
+        </div>
 
-      {/* Filter & Suche */}
-      <div style={{ ...cardStyle, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <div>
-          <label htmlFor="fld-4" style={labelStyle}>Status-Filter</label>
-          <select id="fld-4"
-            value={healthFilter}
-            onChange={e => setHealthFilter(e.target.value as HealthFilter)}
-            style={inputStyle}
-          >
-            <option value="">Alle</option>
-            <option value="healthy">🟢 Healthy</option>
-            <option value="stale">🟡 Stale</option>
-            <option value="degraded">🔴 Degraded</option>
-            <option value="unreachable">⚫ Unreachable</option>
-          </select>
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fld-5" style={labelStyle}>Suche (Name / FQDN)</label>
-          <input id="fld-5"
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="z.B. node01 oder astra.dev"
-            style={{ ...inputStyle, width: "100%" }}
-          />
-        </div>
-        <AutoRefreshToggle enabled={autoRefresh} onChange={setAutoRefresh} intervalSeconds={15} />
-        <button onClick={() => loadData()} style={{ ...btnDefault, alignSelf: "flex-end" }}>↻ Aktualisieren</button>
+        {error && (
+          <div className="banner banner-danger" role="alert">
+            <span className="dot dot-danger" aria-hidden="true" />
+            <span className="banner-text"><strong>{t("aagents.m.errorTitle")}:</strong> {error}</span>
+            <button type="button" className="btn btn-sm" onClick={() => loadData()}>{t("aagents.retry")}</button>
+          </div>
+        )}
+        {actionError && (
+          <div className="banner banner-danger" role="alert">
+            <span className="dot dot-danger" aria-hidden="true" />
+            <span className="banner-text">{actionError}</span>
+          </div>
+        )}
+
+        {/* Agent-Tabelle */}
+        {loading ? (
+          <p className="hint" role="status">{t("aagents.m.loading")}</p>
+        ) : sortedAgents.length === 0 ? (
+          !error && <div className="card-empty">{t("aagents.m.empty")}</div>
+        ) : (
+          <section className="panel">
+            <ScrollRegion label={t("aagents.m.tableAria")}>
+              <table className="tbl tbl-cards">
+                <thead>
+                  <tr>
+                    {sortTh("name", t("aagents.m.colAgent"))}
+                    <th scope="col">{t("aagents.m.colStatus")}</th>
+                    {sortTh("last_seen_at", t("aagents.m.colSeen"))}
+                    {sortTh("instances", t("aagents.m.colInstances"))}
+                    {sortTh("memory", t("aagents.m.colMemory"))}
+                    {sortTh("disk", t("aagents.m.colDisk"))}
+                    {sortTh("cpu", t("aagents.m.colCpu"))}
+                    <th scope="col">{t("aagents.m.colEndpoints")}</th>
+                    <th scope="col">{t("aagents.m.colMaintenance")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedAgents.map(agent => (
+                    <AgentRow key={agent.id} agent={agent} onRefresh={() => loadData(true)} onError={setActionError} />
+                  ))}
+                </tbody>
+              </table>
+            </ScrollRegion>
+          </section>
+        )}
       </div>
-
-      {error && <ErrorState message={error} onRetry={() => loadData()} />}
-
-      {/* Agent-Tabelle */}
-      {loading ? (
-        <LoadingState message="Agents werden geladen..." />
-      ) : sortedAgents.length === 0 ? (
-        <EmptyState icon="🖥️" message="Keine Agents gefunden." />
-      ) : (
-        <ScrollRegion label="Agents-Tabelle">
-          <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid var(--border)", marginTop: 8 }}>
-            <thead>
-              <tr style={{ backgroundColor: "var(--bg-subtle)" }}>
-                <th style={{ ...thStyle, cursor: "pointer" }} onClick={() => toggleSort("name")}>Agent{sortIndicator("name")}</th>
-                <th style={thStyle}>Status</th>
-                <th style={{ ...thStyle, cursor: "pointer" }} onClick={() => toggleSort("last_seen_at")}>Zuletzt gesehen{sortIndicator("last_seen_at")}</th>
-                <th style={{ ...thStyle, cursor: "pointer" }} onClick={() => toggleSort("instances")}>Instances{sortIndicator("instances")}</th>
-                <th style={{ ...thStyle, cursor: "pointer" }} onClick={() => toggleSort("memory")}>Memory{sortIndicator("memory")}</th>
-                <th style={{ ...thStyle, cursor: "pointer" }} onClick={() => toggleSort("disk")}>Disk{sortIndicator("disk")}</th>
-                <th style={{ ...thStyle, cursor: "pointer" }} onClick={() => toggleSort("cpu")}>CPU{sortIndicator("cpu")}</th>
-                <th style={thStyle}>Endpoints</th>
-                <th style={thStyle}>Maintenance</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedAgents.map(agent => (
-                <AgentRow key={agent.id} agent={agent} onRefresh={() => loadData()} />
-              ))}
-            </tbody>
-          </table>
-        </ScrollRegion>
-      )}
     </PageLayout>
   );
 }
 
-// ── Fleet Summary Cards ──────────────────────────────────
+// ── Fleet Summary ────────────────────────────────────────
 
-function FleetSummaryCards({ summary }: { summary: FleetSummary }) {
+function FleetSummaryTiles({ summary }: { summary: FleetSummary }) {
+  const loc = dateLocale();
+  const tone = (p: number) => (p > 100 ? " text-danger" : p >= 80 ? " text-warn" : "");
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 20 }}>
-      <SummaryCard
-        label="Agents"
-        value={summary.total_agents}
-        detail={`🟢 ${summary.healthy_agents} · 🟡 ${summary.stale_agents} · 🔴 ${summary.degraded_agents} · ⚫ ${summary.unreachable_agents}`}
-      />
-      <SummaryCard label="Instances" value={summary.total_instances} />
-      <SummaryCard
-        label="Memory"
-        value={`${summary.memory_utilization}%`}
-        detail={`${formatMB(summary.used_memory_mb)} / ${formatMB(summary.total_memory_mb)}`}
-        color={utilizationColor(summary.memory_utilization)}
-      />
-      <SummaryCard
-        label="Disk"
-        value={`${summary.disk_utilization}%`}
-        detail={`${formatMB(summary.used_disk_mb)} / ${formatMB(summary.total_disk_mb)}`}
-        color={utilizationColor(summary.disk_utilization)}
-      />
-      <SummaryCard
-        label="CPU"
-        value={`${summary.cpu_utilization}%`}
-        detail={`${summary.used_cpu_percent}% / ${summary.total_cpu_percent}%`}
-        color={utilizationColor(summary.cpu_utilization)}
-      />
-      <SummaryCard
-        label="Endpoints"
-        value={summary.assigned_endpoints}
-        detail={`von ${summary.total_endpoints} belegt`}
-      />
-    </div>
-  );
-}
-
-function SummaryCard({ label, value, detail, color }: { label: string; value: string | number; detail?: string; color?: string }) {
-  return (
-    <div style={{ ...cardStyle, textAlign: "center", padding: 14 }}>
-      <div style={{ fontSize: 12, color: "var(--fg-muted)", textTransform: "uppercase", fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: color || "var(--fg)", marginTop: 4 }}>{value}</div>
-      {detail && <div style={{ fontSize: 11, color: "var(--fg-muted)", marginTop: 4 }}>{detail}</div>}
+    <div className="tiles" role="group" aria-label={t("aagents.m.sum.aria")}>
+      <div className="tile">
+        <span className="lbl">{t("aagents.m.sum.agents")}</span>
+        <span className="big">{summary.total_agents}</span>
+        <div className="legend">
+          <span><span className="dot dot-ok" aria-hidden="true" />{summary.healthy_agents} {t("aagents.m.sum.healthy")}</span>
+          <span><span className="dot dot-warn" aria-hidden="true" />{summary.stale_agents} {t("aagents.m.sum.stale")}</span>
+          <span><span className="dot dot-danger" aria-hidden="true" />{summary.degraded_agents} {t("aagents.m.sum.degraded")}</span>
+          <span>{summary.unreachable_agents} {t("aagents.m.sum.unreachable")}</span>
+        </div>
+      </div>
+      <div className="tile">
+        <span className="lbl">{t("aagents.m.sum.instances")}</span>
+        <span className="big">{summary.total_instances}</span>
+      </div>
+      <div className="tile">
+        <span className="lbl">{t("aagents.memory")}</span>
+        <span className={`big${tone(summary.memory_utilization)}`}>{summary.memory_utilization} %</span>
+        <span className="sub mono">{formatMemory(summary.used_memory_mb, loc)} / {formatMemory(summary.total_memory_mb, loc)}</span>
+      </div>
+      <div className="tile">
+        <span className="lbl">{t("aagents.disk")}</span>
+        <span className={`big${tone(summary.disk_utilization)}`}>{summary.disk_utilization} %</span>
+        <span className="sub mono">{formatMemory(summary.used_disk_mb, loc)} / {formatMemory(summary.total_disk_mb, loc)}</span>
+      </div>
+      <div className="tile">
+        <span className="lbl">{t("aagents.cpu")}</span>
+        <span className={`big${tone(summary.cpu_utilization)}`}>{summary.cpu_utilization} %</span>
+        <span className="sub mono">{summary.used_cpu_percent} % / {summary.total_cpu_percent} %</span>
+      </div>
+      <div className="tile">
+        <span className="lbl">{t("aagents.m.sum.endpoints")}</span>
+        <span className="big">{summary.assigned_endpoints}</span>
+        <span className="sub">{t("aagents.m.sum.endpointsDetail", { total: summary.total_endpoints })}</span>
+      </div>
     </div>
   );
 }
 
 // ── Agent Row ────────────────────────────────────────────
 
-function AgentRow({ agent, onRefresh }: { agent: AgentMonitoringEntry; onRefresh: () => void }) {
+function AgentRow({ agent, onRefresh, onError }: { agent: AgentMonitoringEntry; onRefresh: () => void; onError: (m: string | null) => void }) {
   const u = agent.utilization;
   const c = agent.capacity;
   const ep = agent.endpoint_summary;
 
   return (
-    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-      <td style={tdStyle}>
+    <tr>
+      <td data-label={t("aagents.m.colAgent")}>
         <div>
           <strong>{agent.name}</strong>
-          <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>{agent.fqdn}</div>
+          <div className="hint mono">{agent.fqdn}</div>
         </div>
       </td>
-      <td style={tdStyle}>
+      <td data-label={t("aagents.m.colStatus")}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
           <StatusBadge status={agent.health_status} size="sm" />
-          <DaemonStatus {...agent} />
+          <DaemonInfo {...agent} />
         </div>
       </td>
-      <td style={tdStyle}>
+      <td data-label={t("aagents.m.colSeen")}>
         {agent.last_seen_at ? (
           <span title={agent.last_seen_at}>{formatTimeAgo(agent.last_seen_at)}</span>
         ) : (
-          <span style={{ color: "var(--fg-muted)" }}>nie</span>
+          <span className="hint">{t("aagents.m.never")}</span>
         )}
       </td>
-      <td style={{ ...tdStyle, textAlign: "center" }}>{agent.instance_count}</td>
-      <td style={tdStyle}>
-        <UtilizationBar used={u.used_memory_mb} total={c.effective_memory_mb} percent={u.memory_utilization} unit="MB" />
+      <td data-label={t("aagents.m.colInstances")}>{agent.instance_count}</td>
+      <td data-label={t("aagents.m.colMemory")}>
+        <LoadBar label={t("aagents.memory")} used={u.used_memory_mb} total={c.effective_memory_mb} percent={u.memory_utilization} unit="MB" />
       </td>
-      <td style={tdStyle}>
-        <UtilizationBar used={u.used_disk_mb} total={c.effective_disk_mb} percent={u.disk_utilization} unit="MB" />
+      <td data-label={t("aagents.m.colDisk")}>
+        <LoadBar label={t("aagents.disk")} used={u.used_disk_mb} total={c.effective_disk_mb} percent={u.disk_utilization} unit="MB" />
       </td>
-      <td style={tdStyle}>
-        <UtilizationBar used={u.used_cpu_percent} total={c.effective_cpu_percent} percent={u.cpu_utilization} unit="%" />
+      <td data-label={t("aagents.m.colCpu")}>
+        <LoadBar label={t("aagents.cpu")} used={u.used_cpu_percent} total={c.effective_cpu_percent} percent={u.cpu_utilization} unit="%" />
       </td>
-      <td style={{ ...tdStyle, fontSize: 12 }}>
+      <td data-label={t("aagents.m.colEndpoints")}>
         {ep.total > 0 ? (
-          <span>{ep.assigned}/{ep.total}{ep.locked > 0 && <span style={{ color: "var(--fg-muted)" }}> (🔒{ep.locked})</span>}</span>
+          <span className="mono">{ep.assigned}/{ep.total}{ep.locked > 0 && <span className="hint"> ({ep.locked} {t("aagents.m.locked")})</span>}</span>
         ) : (
-          <span style={{ color: "var(--fg-muted)" }}>-</span>
+          <span className="hint">{t("aagents.dash")}</span>
         )}
       </td>
-      <td style={{ ...tdStyle, textAlign: "center" }}>
-        <MaintenanceToggle agent={agent} onRefresh={onRefresh} />
+      <td data-label={t("aagents.m.colMaintenance")}>
+        <MaintenanceToggle agent={agent} onRefresh={onRefresh} onError={onError} />
       </td>
     </tr>
   );
@@ -248,54 +260,36 @@ function AgentRow({ agent, onRefresh }: { agent: AgentMonitoringEntry; onRefresh
 
 // ── Maintenance Toggle ────────────────────────────────────
 
-function MaintenanceToggle({ agent, onRefresh }: { agent: AgentMonitoringEntry; onRefresh: () => void }) {
-  const [toggling, setToggling] = useState(false);
-
+function MaintenanceToggle({ agent, onRefresh, onError }: { agent: AgentMonitoringEntry; onRefresh: () => void; onError: (m: string | null) => void }) {
   const handleToggle = async () => {
-    const action = agent.maintenance_mode ? "deaktivieren" : "aktivieren";
-    if (!confirm(`Maintenance für "${agent.name}" ${action}?`)) return;
-    setToggling(true);
+    onError(null);
     try {
       if (agent.maintenance_mode) {
         await api.disableAgentMaintenance(agent.id);
       } else {
-        const reason = prompt("Grund (optional):");
+        const reason = prompt(t("aagents.m.maint.reason"));
         await api.enableAgentMaintenance(agent.id, reason ? { reason } : {});
       }
       onRefresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Fehler");
-    } finally {
-      setToggling(false);
+      onError(err instanceof Error ? err.message : t("aagents.m.maint.failed"));
     }
   };
 
   return (
-    <div>
-      {agent.maintenance_mode && (
-        <StatusBadge status="maintenance" size="sm" />
-      )}
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+      {agent.maintenance_mode && <StatusBadge status="maintenance" size="sm" />}
       {agent.maintenance_reason && (
-        <div style={{ fontSize: 10, color: "var(--fg-muted)", marginTop: 2 }} title={agent.maintenance_reason}>
-          {agent.maintenance_reason.substring(0, 30)}
-        </div>
+        <div className="hint" title={agent.maintenance_reason}>{agent.maintenance_reason.substring(0, 30)}</div>
       )}
-      <button
-        onClick={handleToggle}
-        disabled={toggling}
-        style={{
-          marginTop: 4, padding: "2px 8px", fontSize: 11, cursor: "pointer",
-          border: "1px solid var(--border)", borderRadius: 4,
-          backgroundColor: agent.maintenance_mode ? "var(--tint-green)" : "var(--tint-orange)",
-        }}
-      >
-        {toggling ? "..." : agent.maintenance_mode ? "Deaktivieren" : "Aktivieren"}
-      </button>
+      <ConfirmButton
+        label={agent.maintenance_mode ? t("aagents.m.maint.disable") : t("aagents.m.maint.enable")}
+        confirmMessage={agent.maintenance_mode
+          ? t("aagents.m.maint.disableConfirm", { name: agent.name })
+          : t("aagents.m.maint.enableConfirm", { name: agent.name })}
+        onConfirm={handleToggle}
+        size="sm"
+      />
     </div>
   );
 }
-
-// ── Utilization Bar ──────────────────────────────────────
-
-// ── Hilfsfunktionen ──────────────────────────────────────
-

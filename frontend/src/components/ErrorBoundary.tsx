@@ -28,7 +28,7 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div role="alert" style={{ maxWidth: 480, margin: "15vh auto", padding: 24, textAlign: "center" }}>
           <h1 style={{ fontSize: 22 }}>{t("boundary.updateTitle")}</h1>
-          <p style={{ color: "var(--fg)" }}>
+          <p style={{ color: "var(--text)" }}>
             {t("boundary.updateText")}
           </p>
           <button style={btnPrimary} onClick={() => window.location.reload()}>{t("boundary.reload")}</button>
@@ -38,10 +38,10 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div role="alert" style={{ maxWidth: 480, margin: "15vh auto", padding: 24, textAlign: "center" }}>
         <h1 style={{ fontSize: 22 }}>{t("boundary.title")}</h1>
-        <p style={{ color: "var(--fg)" }}>
+        <p style={{ color: "var(--text)" }}>
           {t("boundary.text")}
         </p>
-        <details style={{ margin: "12px 0", color: "var(--fg-muted)", fontSize: 13, textAlign: "left" }}>
+        <details style={{ margin: "12px 0", color: "var(--text-3)", fontSize: 13, textAlign: "left" }}>
           <summary style={{ cursor: "pointer" }}>{t("boundary.details")}</summary>
           <code style={{ display: "block", marginTop: 8, wordBreak: "break-word" }}>{this.state.error.message}</code>
         </details>

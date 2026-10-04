@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+import { TypeName } from "./ui/TypeName";
 import { useEffect, useState } from "react";
 import { api, type Agent } from "../services/api";
 import { formatDateTime } from "../lib/dates";
@@ -54,7 +56,7 @@ export function TransferInstanceForm({ instanceUuid, instanceName, agents, onTra
       setError(null);
       await onTransfer(target as number);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Transfer fehlgeschlagen");
+      setError(err instanceof Error ? err.message : t("sform.transferFailed"));
       setBusy(false);
     }
   };
@@ -62,41 +64,41 @@ export function TransferInstanceForm({ instanceUuid, instanceName, agents, onTra
   return (
     <form onSubmit={submit} style={{ maxWidth: 520 }}>
       {error && <ErrorState message={error} />}
-      <div role="alert" style={{ padding: "10px 14px", marginBottom: 12, backgroundColor: "var(--tint-red)", border: "1px solid var(--border-red)", borderRadius: 8, color: "var(--c-red)", fontSize: 13, fontWeight: 600 }}>
-        Achtung: Beim Transfer werden die Serverdaten NICHT übertragen. Vorher ein Backup erstellen und danach wiederherstellen.
+      <div role="alert" style={{ padding: "10px 14px", marginBottom: 12, backgroundColor: "var(--danger-soft)", border: "1px solid var(--danger-border)", borderRadius: 8, color: "var(--danger)", fontSize: 13, fontWeight: 600 }}>
+        {t("sform.transferWarn")}
       </div>
 
       <div style={{ fontSize: 13, marginBottom: 12 }} role="status">
-        {check.state === "loading" && <span style={{ color: "var(--fg-muted)" }}>Backups werden geprüft…</span>}
+        {check.state === "loading" && <span style={{ color: "var(--text-3)" }}>{t("sform.backupChecking")}</span>}
         {check.state === "ok" && (
-          <span style={{ color: "var(--c-green)" }}>Letztes erfolgreiches Backup: {formatDateTime(check.lastAt)}</span>
+          <span style={{ color: "var(--ok)" }}>{t("sform.backupLast", { date: formatDateTime(check.lastAt) })}</span>
         )}
         {check.state === "none" && (
-          <span style={{ color: "var(--c-red)", fontWeight: 600 }}>
-            Für diese Instance gibt es kein erfolgreiches Backup. Erstelle zuerst eines, sonst gehen die Daten verloren.
+          <span style={{ color: "var(--danger)", fontWeight: 600 }}>
+            {t("sform.backupNone")}
           </span>
         )}
         {check.state === "unknown" && (
-          <span style={{ color: "var(--fg-muted)" }}>Die Backups konnten nicht geprüft werden. Bitte stelle selbst sicher, dass ein aktuelles Backup existiert.</span>
+          <span style={{ color: "var(--text-3)" }}>{t("sform.backupUnknown")}</span>
         )}
       </div>
 
       <div style={{ marginBottom: 12 }}>
-        <label htmlFor={`${idPrefix}-target`} style={labelStyle}>Ziel-Agent</label>
+        <label htmlFor={`${idPrefix}-target`} style={labelStyle}>{t("sform.targetAgent")}</label>
         <select id={`${idPrefix}-target`} value={target} style={inputStyle}
           onChange={(e) => setTarget(e.target.value ? Number(e.target.value) : "")}>
-          <option value="">– Ziel-Agent wählen –</option>
+          <option value="">{t("sform.targetPlaceholder")}</option>
           {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
       </div>
 
       <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, marginBottom: 12 }}>
         <input type="checkbox" checked={hasBackup} onChange={(e) => setHasBackup(e.target.checked)} style={{ marginTop: 2 }} />
-        <span>Ich habe ein aktuelles Backup</span>
+        <span>{t("sform.haveBackup")}</span>
       </label>
 
       <label htmlFor={`${idPrefix}-confirm`} style={labelStyle}>
-        Zur Bestätigung den Namen <code>{instanceName}</code> eingeben
+        <TypeName name={instanceName} />
       </label>
       <input id={`${idPrefix}-confirm`} type="text" autoComplete="off" value={typed}
         onChange={(e) => setTyped(e.target.value)} style={inputStyle} />
@@ -104,9 +106,9 @@ export function TransferInstanceForm({ instanceUuid, instanceName, agents, onTra
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
         <button type="submit" disabled={!ready || busy}
           style={{ ...btnDanger, opacity: !ready || busy ? 0.5 : 1, cursor: ready && !busy ? "pointer" : "not-allowed" }}>
-          {busy ? "Wird gestartet…" : "Transfer starten"}
+          {busy ? t("sform.starting") : t("sform.startTransfer")}
         </button>
-        <button type="button" onClick={onCancel} disabled={busy} style={btnDefault}>Abbrechen</button>
+        <button type="button" onClick={onCancel} disabled={busy} style={btnDefault}>{t("sform.cancel")}</button>
       </div>
     </form>
   );
