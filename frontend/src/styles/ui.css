@@ -160,6 +160,17 @@ a.card-title:hover { color: var(--accent); }
 .tbl th { text-align: left; font-size: var(--fs-hint); font-weight: 500; color: var(--text-2); background: var(--surface-2); padding: 8px 12px; white-space: nowrap; }
 .tbl td { padding: 10px 12px; border-bottom: 1px solid var(--border-soft); font-size: var(--fs-small); vertical-align: top; }
 .tbl tbody tr:last-child td { border-bottom: 0; }
+/* Mobil: Tabellenzeilen als Karten; jede Zelle braucht data-label mit der Spaltenüberschrift */
+@media (max-width: 760px) {
+  .tbl-cards { min-width: 0; }
+  .tbl-cards thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .tbl-cards, .tbl-cards tbody, .tbl-cards tr, .tbl-cards td { display: block; }
+  .tbl-cards tr { border-bottom: 1px solid var(--border); padding: 6px 0; }
+  .tbl-cards tbody tr:last-child { border-bottom: 0; }
+  .tbl-cards td { display: flex; justify-content: space-between; gap: 12px; border-bottom: 0; padding: 5px 12px; text-align: right; }
+  .tbl-cards td::before { content: attr(data-label); color: var(--text-2); flex: 0 0 38%; text-align: left; }
+  .tbl-cards td:not([data-label])::before { content: none; }
+}
 .tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
 .bar-hatch { background: repeating-linear-gradient(135deg, var(--danger) 0 3px, var(--surface) 3px 6px); }
 .bar-stack { display: flex; }

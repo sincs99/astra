@@ -7,6 +7,10 @@ import { nav } from "./de/nav";
 import { orders } from "./de/orders";
 import { shop } from "./de/shop";
 import { srv } from "./de/srv";
+import { asys } from "./de/asys";
+import { ainst } from "./de/ainst";
+import { aagents } from "./de/aagents";
+import { aorders } from "./de/aorders";
 import { susers } from "./de/susers";
 import { sroutines } from "./de/sroutines";
 import { sbackups } from "./de/sbackups";
@@ -24,6 +28,10 @@ export const de = {
   ...orders,
   ...shop,
   ...srv,
+  ...asys,
+  ...ainst,
+  ...aagents,
+  ...aorders,
   ...susers,
   ...sroutines,
   ...sbackups,
