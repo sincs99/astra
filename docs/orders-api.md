@@ -243,6 +243,19 @@ header = f"t={t},v1={sig}"          # als Header "Stripe-Signature" senden
 Activity- und Webhook-Events: `order:created`, `order:paid`, `order:provision_failed`, `order:cancelled`,
 `order:past_due`, `order:renewed`, `order:expired`, `order:reminder`, `order:payment_unapplied`, `order:provisioned`.
 
+## Admin-Benachrichtigung (M58)
+
+Astra meldet Störungen aktiv, sobald `ADMIN_ALERT_EMAIL` und/oder `ADMIN_ALERT_WEBHOOK_URL` gesetzt sind (Standard: aus):
+
+| Auslöser | Wann |
+|---|---|
+| `billing_tick` | Tick lief länger als `BILLING_TICK_MAX_AGE_MINUTES` nicht, obwohl Bestellungen auf ihn warten |
+| `billing_errors` | der letzte Tick meldete Fehler |
+| `waiting_orders` | bezahlte Bestellung wartet länger als `BILLING_WAIT_WARN_HOURS` auf einen Node |
+| Zahlungsereignis `mismatch` / `unapplied` | Betrag/Währung weicht ab bzw. Bestellung nicht mehr bezahlbar: Erstattung im Zahlungsanbieter prüfen (einmal je Bestellung und Status) |
+
+Eine Störung wird beim Wechsel auf „gestört“ gemeldet und danach höchstens alle `ADMIN_ALERT_COOLDOWN_MINUTES` (Standard 360) erneut; ist sie behoben, folgt einmalig eine Entwarnung. `python cli.py alert-test` schickt eine Testnachricht, `python cli.py alert-check` prüft alle Auslöser (läuft im Compose-Service `alerts` alle 5 Minuten, unabhängig vom Billing-Tick).
+
 ## Noch nicht enthalten
 
 Siehe [known-limitations.md](known-limitations.md), Abschnitt „Abrechnung und Shop“: unter anderem Rechnungen mit

@@ -113,6 +113,11 @@ class Config:
     # M53: Warnung, wenn der Billing-Tick laenger als so viele Minuten nicht gelaufen ist (Tick laeuft alle ~5 Minuten)
     BILLING_TICK_MAX_AGE_MINUTES = max(int(os.getenv("BILLING_TICK_MAX_AGE_MINUTES", "15")), 1)
     BILLING_WAIT_WARN_HOURS = max(int(os.getenv("BILLING_WAIT_WARN_HOURS", "24")), 1)
+    # M58: aktive Admin-Benachrichtigung (leer = aus); Entprellung in Minuten, Entwarnung einmalig
+    ADMIN_ALERT_EMAIL = os.getenv("ADMIN_ALERT_EMAIL", "").strip()
+    ADMIN_ALERT_WEBHOOK_URL = os.getenv("ADMIN_ALERT_WEBHOOK_URL", "").strip()
+    ADMIN_ALERT_COOLDOWN_MINUTES = max(int(os.getenv("ADMIN_ALERT_COOLDOWN_MINUTES", "360")), 1)
+    ADMIN_ALERT_RECOVERY = os.getenv("ADMIN_ALERT_RECOVERY", "true").lower() == "true"
     # M46: Erinnerungsmail so viele Tage vor Laufzeitende (0 = keine Erinnerung)
     BILLING_REMINDER_DAYS = max(int(os.getenv("BILLING_REMINDER_DAYS", "3")), 0)
     # M48: Zahlungsanbieter: "manual" (Admin bestaetigt Zahlungen) oder "stripe" (Checkout + Webhook)
