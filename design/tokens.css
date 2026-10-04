@@ -1,6 +1,8 @@
 /* Astra – Design-Tokens
    Dunkel ist Standard (:root). Hell über <html data-theme="light">.
-   Quelle: Claude-Design-Canvas "Astra Game-Server-Panel", Artboard "Tokens". */
+   Quelle: Claude-Design-Canvas "Astra Game-Server-Panel", Artboard "Tokens".
+   Kontrast-Korrektur (axe, WCAG AA): dunkel --text-3 #7d8794 -> #8892a0, neu --on-danger;
+   hell --text-3 #6f7a88 -> #616c7a, --accent #0b7f92 -> #09707f, --ok #1a7f37 -> #177034. */
 
 :root {
   /* Flächen */
@@ -14,7 +16,7 @@
   /* Text */
   --text: #e6e9ef;
   --text-2: #9aa5b4;
-  --text-3: #7d8794;
+  --text-3: #8892a0;
   --text-console: #c9d1d9;
 
   /* Akzent – nur eine Akzentfarbe */
@@ -27,6 +29,7 @@
   --ok: #3fb950;
   --warn: #d29922;
   --danger: #f85149;
+  --on-danger: #0b1118;        /* Text auf --danger-Fläche: dunkel (5,66:1), weiß wäre nur 3,35:1 */
   --neutral: #6e7681;
   --warn-soft: rgba(210, 153, 34, 0.10);
   --warn-border: rgba(210, 153, 34, 0.35);
@@ -76,17 +79,18 @@ html[data-theme="light"] {
 
   --text: #1b222b;
   --text-2: #556070;
-  --text-3: #6f7a88;
+  --text-3: #616c7a;
   --text-console: #c9d1d9;
 
-  --accent: #0b7f92;
+  --accent: #09707f;
   --accent-hover: #096a7a;
   --accent-soft: rgba(11, 127, 146, 0.12);
   --on-accent: #ffffff;
 
-  --ok: #1a7f37;
+  --ok: #177034;
   --warn: #9a6700;
   --danger: #cf222e;
+  --on-danger: #ffffff;
   --neutral: #6e7781;
   --warn-soft: rgba(154, 103, 0, 0.10);
   --warn-border: rgba(154, 103, 0, 0.35);

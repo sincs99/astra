@@ -13,7 +13,7 @@ Dunkel, ruhig, technisch, freundlich. Vorbilder: Vercel, Linear, Railway. Kein N
 - Genau eine Akzentfarbe (`--accent`): Links, Primärbutton, Fokusring, aktiver Nav-Eintrag, Logo. Sparsam.
 - Text auf Akzentfläche ist `--on-accent` (dunkel im Dark-Theme, weiß im Light-Theme), nie fest weiß.
 - Statusfarben überall gleich: `--ok` = läuft/bezahlt/gesund, `--warn` = wartet/Warnung/bald fällig, `--danger` = gestoppt/Fehler/überfällig/löschen, `--neutral` = inaktiv/unbekannt.
-- Primärtext `--text` (helles Grau, kein Weiß), Sekundärtext `--text-2`, Beschriftungen `--text-3`. Alle Kombinationen erfüllen WCAG AA.
+- Primärtext `--text` (helles Grau, kein Weiß), Sekundärtext `--text-2`, Beschriftungen `--text-3`. Alle Kombinationen erfüllen WCAG AA (nach der Kontrast-Korrektur in `tokens.css`: `--text-3`, hell `--accent` und `--ok`, neu `--on-danger`).
 - Konsole ist der dunkelste Bereich (`--console`), auch im hellen Theme.
 
 ## Typografie
@@ -33,7 +33,7 @@ Dunkel, ruhig, technisch, freundlich. Vorbilder: Vercel, Linear, Railway. Kein N
 
 ## Komponenten (siehe `mockups/Components.html`)
 
-- **Button**: Höhe 36 px (klein 32, Touch 44), Radius 6 px, Gewicht 500. Primär = `--accent`/`--on-accent`. Sekundär = `--surface-2` mit `--border`. Gefährlich = `--danger` mit weißem Text. Geist = transparent, `--text-2`. Icon-only immer mit `aria-label`. Fokus: 2 px Ring in `--accent` mit 2 px Abstand.
+- **Button**: Höhe 36 px (klein 32, Touch 44), Radius 6 px, Gewicht 500. Primär = `--accent`/`--on-accent`. Sekundär = `--surface-2` mit `--border`. Gefährlich = `--danger` mit `--on-danger` (dunkel im Dark-Theme, weiß im Light-Theme; reines Weiß auf `--danger` erreicht im Dark-Theme kein AA). Geist = transparent, `--text-2`. Icon-only immer mit `aria-label`. Fokus: 2 px Ring in `--accent` mit 2 px Abstand.
 - **Input/Select**: 36 px, `--surface-2`, `--border`, Radius 6 px; Fokus `--accent` + weicher Ring; Fehler `--danger` + Meldung darunter. Label immer sichtbar und per `for` verbunden.
 - **Status-Badge**: 7 px Punkt + Text, 12/500, `--surface-2`, 1 px `--border`, Radius 4 px. Immer dieselbe Form, nur Punktfarbe und Text wechseln. Wartungsmodus nutzt `--accent-soft`.
 - **Statistik-Kachel**: Zahl 28/600 tabular, Beschriftung 13 in `--text-2`, optional Trend/Zusatz 12 in Statusfarbe.
