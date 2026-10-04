@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – D5 Server-Detail)
+- Server-Detailseite nach Mockup: Zurueck-Link "Meine Server", Titel mit Status-Badge und Kurz-ID, Start/Neustart/Stop/Kill im Seitenkopf (passend zum Container-Zustand; Kill mit Rueckfrage), Tabs Konsole / Dateien / Backups / Einstellungen (Tastatursteuerung, Tab in der URL `?tab=`), rechts Infospalte mit Verbindung (Adresse, IP, Node), Ressourcen (Balken fuer CPU, RAM, Festplatte, Netzwerk, Uptime; ab 80 % Warnfarbe) und Laufzeit (Paket, Laufzeitende, Verlaengerungspreis, "Verlaengern"; nur mit zugehoeriger Bestellung). Einstellungen enthalten Variablen, SFTP-Zugang, Routinen, Mitbenutzer, Aktivitaet, Details, Limits und "Server loeschen". Seitentexte DE/EN; die Unterkomponenten (Konsole, Dateien, Backups, Routinen, Mitbenutzer) bleiben deutsch
+
 ### Changed (Frontend – D4 Shop "Neuer Server")
 - Shop nach Mockup: nummerierte Schritte (1 Paket als Auswahlkarten mit Preis und Ressourcen, 2 Servername, 3 Zahlungsweg), Zusammenfassung rechts (mobil darunter), `inputStyle` und Eingabefelder nach Design. Der Zahlungsweg kommt aus `GET /api/client/billing-info`: bei Online-Zahlung "Weiter zur Zahlung" (Bestellung anlegen, dann direkt zum Checkout; bei Fehler bleibt die Bestellung offen und ist unter Bestellungen bezahlbar), bei Ueberweisung "Verbindlich bestellen" mit Hinweistext des Betreibers, kostenlose Pakete ohne Zahlungsschritt. Nicht angeboten, weil das Backend es nicht kennt: Spielauswahl (ein Paket gehoert zu genau einem Blueprint), Standort, Wechsel zwischen Paketen, MwSt-Angabe
 

@@ -92,3 +92,6 @@
 
 .sb-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; margin: 0 -4px; padding: 0 4px; }
 .seg button { white-space: nowrap; }
+
+.back-link { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small); color: var(--text-2); text-decoration: none; margin-bottom: 10px; }
+.back-link:hover { color: var(--text); }

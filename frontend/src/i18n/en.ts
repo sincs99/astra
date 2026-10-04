@@ -6,6 +6,7 @@ import { dash } from "./en/dash";
 import { nav } from "./en/nav";
 import { orders } from "./en/orders";
 import { shop } from "./en/shop";
+import { srv } from "./en/srv";
 import { ssh } from "./en/ssh";
 
 export const en: Record<MessageKey, string> = {
@@ -16,5 +17,6 @@ export const en: Record<MessageKey, string> = {
   ...nav,
   ...orders,
   ...shop,
+  ...srv,
   ...ssh,
 };

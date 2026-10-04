@@ -36,6 +36,8 @@ html[data-theme="light"] {
   --fg-soft: var(--text-2);
   --fg-muted: var(--text-3);
   --border-strong: var(--border);
+  /* Gedämpfter Text auf der (immer dunklen) Konsole */
+  --console-dim: color-mix(in srgb, var(--text-console) 72%, var(--console));
 
   --c-blue: var(--accent);
   --c-green: var(--ok);

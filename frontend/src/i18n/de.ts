@@ -5,6 +5,7 @@ import { dash } from "./de/dash";
 import { nav } from "./de/nav";
 import { orders } from "./de/orders";
 import { shop } from "./de/shop";
+import { srv } from "./de/srv";
 import { ssh } from "./de/ssh";
 
 export const de = {
@@ -15,6 +16,7 @@ export const de = {
   ...nav,
   ...orders,
   ...shop,
+  ...srv,
   ...ssh,
 } as const;
 
