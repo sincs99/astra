@@ -5,7 +5,7 @@
  * In Produktion:  VITE_API_BASE_URL oder /api (hinter Nginx)
  */
 
-import { friendlyApiMessage, NETWORK_ERROR_MESSAGE } from "../lib/errors";
+import { friendlyApiMessage, networkErrorMessage } from "../lib/errors";
 
 /** 401 bedeutet hier "falsches Passwort", nicht "Sitzung abgelaufen". */
 const CREDENTIAL_ENDPOINTS = ["/auth/login", "/auth/change-password"];
@@ -103,7 +103,7 @@ async function request<T = unknown>(
   try {
     response = await fetch(url, { ...options, headers });
   } catch {
-    throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
+    throw new ApiError(networkErrorMessage(), 0);
   }
 
   if (!response.ok) {

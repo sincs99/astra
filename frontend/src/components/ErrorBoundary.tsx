@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { btnPrimary } from "./ui";
+import { t } from "../i18n";
 
 interface Props { children: ReactNode }
 interface State { error: Error | null }
@@ -26,27 +27,26 @@ export class ErrorBoundary extends Component<Props, State> {
     if (isChunkLoadError(this.state.error)) {
       return (
         <div role="alert" style={{ maxWidth: 480, margin: "15vh auto", padding: 24, textAlign: "center" }}>
-          <h1 style={{ fontSize: 22 }}>Neue Version verfügbar</h1>
+          <h1 style={{ fontSize: 22 }}>{t("boundary.updateTitle")}</h1>
           <p style={{ color: "var(--fg)" }}>
-            Astra wurde aktualisiert. Bitte lade die Seite neu, um mit der neuen Version weiterzuarbeiten.
+            {t("boundary.updateText")}
           </p>
-          <button style={btnPrimary} onClick={() => window.location.reload()}>Seite neu laden</button>
+          <button style={btnPrimary} onClick={() => window.location.reload()}>{t("boundary.reload")}</button>
         </div>
       );
     }
     return (
       <div role="alert" style={{ maxWidth: 480, margin: "15vh auto", padding: 24, textAlign: "center" }}>
-        <h1 style={{ fontSize: 22 }}>Etwas ist schiefgelaufen</h1>
+        <h1 style={{ fontSize: 22 }}>{t("boundary.title")}</h1>
         <p style={{ color: "var(--fg)" }}>
-          Das tut uns leid. Bitte lade die Seite neu oder gehe zur Startseite. Wenn das Problem bleibt,
-          melde dich beim Support und nenne die technischen Details unten.
+          {t("boundary.text")}
         </p>
         <details style={{ margin: "12px 0", color: "var(--fg-muted)", fontSize: 13, textAlign: "left" }}>
-          <summary style={{ cursor: "pointer" }}>Technische Details</summary>
+          <summary style={{ cursor: "pointer" }}>{t("boundary.details")}</summary>
           <code style={{ display: "block", marginTop: 8, wordBreak: "break-word" }}>{this.state.error.message}</code>
         </details>
         <button style={btnPrimary} onClick={() => window.location.assign("/")}>
-          Zur Startseite
+          {t("boundary.home")}
         </button>
       </div>
     );

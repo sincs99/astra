@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { t } from "../i18n";
 import { api, isAuthenticated, setAccessToken, MIN_PASSWORD_LENGTH } from "../services/api";
 import { inputStyle, labelStyle, btnPrimary, linkStyle } from "../components/ui";
 import { safeRedirectPath } from "../lib/redirect";
@@ -23,11 +24,11 @@ export function RegisterPage() {
   if (isAuthenticated()) return <Navigate to={redirectTo} replace />;
 
   const validate = (): string | null => {
-    if (!username.trim() || !email.trim() || !password) return "Bitte alle Felder ausfüllen";
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return "Bitte eine gültige E-Mail-Adresse eingeben";
+    if (!username.trim() || !email.trim() || !password) return t("auth.reg.missing");
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return t("auth.emailInvalid");
     if (password.length < MIN_PASSWORD_LENGTH) return `Das Passwort muss mindestens ${MIN_PASSWORD_LENGTH} Zeichen lang sein`;
-    if (password !== confirm) return "Die Passwörter stimmen nicht überein";
-    if (!acceptedTerms) return "Bitte akzeptiere die AGB und die Datenschutzerklärung";
+    if (password !== confirm) return t("auth.pwMismatch");
+    if (!acceptedTerms) return t("auth.reg.terms");
     return null;
   };
 
@@ -48,7 +49,7 @@ export function RegisterPage() {
         setVerifyPending(true);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Registrierung fehlgeschlagen";
+      const message = err instanceof Error ? err.message : t("auth.reg.failed");
       // 403 kommt mit "Registrierung ist deaktiviert"; ein fehlender Endpunkt (404) bedeutet dasselbe
       if (/deaktiviert|403|404/.test(message)) setDisabled(true);
       else setError(message);
@@ -58,51 +59,51 @@ export function RegisterPage() {
   };
 
   return (
-    <AuthCard title="Konto erstellen">
+    <AuthCard title={t("auth.login.register")}>
       {verifyPending ? (
         <>
           <AuthMessage kind="success">
-            Fast geschafft: Wir haben eine E-Mail an {email.trim()} geschickt. Bitte klicke auf den Link darin, um deine Adresse zu bestätigen.
+            {t("auth.reg.verifyPending", { email: email.trim() })}
           </AuthMessage>
-          {resent && <AuthMessage kind="success">Die E-Mail wurde erneut gesendet.</AuthMessage>}
+          {resent && <AuthMessage kind="success">{t("auth.reg.resentOk")}</AuthMessage>}
           <p style={{ textAlign: "center", fontSize: 14 }}>
-            Nichts erhalten?{" "}
+            {t("auth.reg.nothing")}{" "}
             <button type="button" style={{ ...linkStyle, background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}
               onClick={async () => {
                 try { await api.resendVerification(email.trim()); setResent(true); } catch { /* neutral */ }
               }}>
-              Erneut senden
+              {t("auth.reg.resend")}
             </button>
           </p>
-          <p style={{ textAlign: "center" }}><Link to="/login" style={linkStyle}>Zum Login</Link></p>
+          <p style={{ textAlign: "center" }}><Link to="/login" style={linkStyle}>{t("auth.toLogin")}</Link></p>
         </>
       ) : disabled ? (
         <>
-          <AuthMessage kind="warning">Registrierung ist deaktiviert. Bitte wende dich an einen Administrator.</AuthMessage>
-          <p style={{ textAlign: "center" }}><Link to="/login" style={linkStyle}>Zurück zum Login</Link></p>
+          <AuthMessage kind="warning">{t("auth.reg.disabled")}</AuthMessage>
+          <p style={{ textAlign: "center" }}><Link to="/login" style={linkStyle}>{t("auth.backToLogin")}</Link></p>
         </>
       ) : (
         <form onSubmit={handleSubmit} noValidate>
           {error && <AuthMessage kind="error">{error}</AuthMessage>}
 
           <div style={{ marginBottom: 16 }}>
-            <label htmlFor="username" style={labelStyle}>Benutzername</label>
+            <label htmlFor="username" style={labelStyle}>{t("auth.username")}</label>
             <input id="username" type="text" autoComplete="username" autoFocus value={username}
               onChange={(e) => setUsername(e.target.value)} style={inputStyle} />
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label htmlFor="email" style={labelStyle}>E-Mail</label>
+            <label htmlFor="email" style={labelStyle}>{t("auth.email")}</label>
             <input id="email" type="email" autoComplete="email" value={email}
               onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label htmlFor="password" style={labelStyle}>Passwort</label>
+            <label htmlFor="password" style={labelStyle}>{t("auth.password")}</label>
             <input id="password" type="password" autoComplete="new-password" value={password}
               onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
-            <small style={{ color: "var(--fg-muted)", fontSize: 12 }}>Mindestens {MIN_PASSWORD_LENGTH} Zeichen</small>
+            <small style={{ color: "var(--fg-muted)", fontSize: 12 }}>{t("auth.minLength", { n: MIN_PASSWORD_LENGTH })}</small>
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label htmlFor="confirm" style={labelStyle}>Passwort wiederholen</label>
+            <label htmlFor="confirm" style={labelStyle}>{t("auth.pwRepeat")}</label>
             <input id="confirm" type="password" autoComplete="new-password" value={confirm}
               onChange={(e) => setConfirm(e.target.value)} style={inputStyle} />
           </div>
@@ -111,20 +112,20 @@ export function RegisterPage() {
               <input id="terms" type="checkbox" checked={acceptedTerms} required aria-required="true"
                 onChange={(e) => setAcceptedTerms(e.target.checked)} style={{ marginTop: 2 }} />
               <span>
-                Ich akzeptiere die{" "}
-                <Link to="/agb" target="_blank" rel="noopener noreferrer" style={linkStyle}>AGB</Link>
-                {" "}und die{" "}
-                <Link to="/datenschutz" target="_blank" rel="noopener noreferrer" style={linkStyle}>Datenschutzerklärung</Link>.
+                {t("auth.reg.accept")}{" "}
+                <Link to="/agb" target="_blank" rel="noopener noreferrer" style={linkStyle}>{t("auth.reg.termsLink")}</Link>
+                {" "}{t("auth.reg.and")}{" "}
+                <Link to="/datenschutz" target="_blank" rel="noopener noreferrer" style={linkStyle}>{t("auth.reg.privacy")}</Link>.
               </span>
             </label>
           </div>
 
           <button type="submit" disabled={loading}
             style={{ ...btnPrimary, width: "100%", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1 }}>
-            {loading ? "Wird erstellt..." : "Konto erstellen"}
+            {loading ? t("auth.reg.busy") : t("auth.login.register")}
           </button>
           <p style={{ textAlign: "center", fontSize: 14 }}>
-            Schon ein Konto? <Link to={redirectTo === "/" ? "/login" : `/login?redirect=${encodeURIComponent(redirectTo)}`} style={linkStyle}>Anmelden</Link>
+            {t("auth.reg.have")} <Link to={redirectTo === "/" ? "/login" : `/login?redirect=${encodeURIComponent(redirectTo)}`} style={linkStyle}>{t("auth.login.submit")}</Link>
           </p>
         </form>
       )}

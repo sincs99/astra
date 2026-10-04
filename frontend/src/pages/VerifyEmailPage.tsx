@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { t } from "../i18n";
 import { api } from "../services/api";
 import { linkStyle } from "../components/ui";
 import { AuthCard, AuthMessage } from "../components/AuthCard";
@@ -20,34 +21,34 @@ export function VerifyEmailPage() {
       .then(() => { if (!cancelled) setState("ok"); })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Bestätigung fehlgeschlagen");
+        setError(err instanceof Error ? err.message : t("auth.verify.failed"));
         setState("error");
       });
     return () => { cancelled = true; };
   }, [token]);
 
   return (
-    <AuthCard title="E-Mail bestätigen">
-      {state === "loading" && <AuthMessage kind="success">Deine Adresse wird bestätigt...</AuthMessage>}
+    <AuthCard title={t("auth.verify.title")}>
+      {state === "loading" && <AuthMessage kind="success">{t("auth.verify.loading")}</AuthMessage>}
       {state === "ok" && (
         <>
-          <AuthMessage kind="success">Deine E-Mail-Adresse wurde bestätigt. Du kannst dich jetzt anmelden.</AuthMessage>
-          <p style={{ textAlign: "center" }}><Link to="/login" style={linkStyle}>Zum Login</Link></p>
+          <AuthMessage kind="success">{t("auth.verify.ok")}</AuthMessage>
+          <p style={{ textAlign: "center" }}><Link to="/login" style={linkStyle}>{t("auth.toLogin")}</Link></p>
         </>
       )}
       {state === "error" && (
         <>
           <AuthMessage kind="error">{error}</AuthMessage>
           <p style={{ textAlign: "center", fontSize: 14 }}>
-            Der Link kann abgelaufen sein. Melde dich an, dort kannst du eine neue Mail anfordern.{" "}
-            <Link to="/login" style={linkStyle}>Zum Login</Link>
+            {t("auth.verify.expiredHint")}{" "}
+            <Link to="/login" style={linkStyle}>{t("auth.toLogin")}</Link>
           </p>
         </>
       )}
       {state === "missing" && (
         <>
-          <AuthMessage kind="error">Der Link ist unvollständig (Token fehlt).</AuthMessage>
-          <p style={{ textAlign: "center" }}><Link to="/login" style={linkStyle}>Zum Login</Link></p>
+          <AuthMessage kind="error">{t("auth.verify.missing")}</AuthMessage>
+          <p style={{ textAlign: "center" }}><Link to="/login" style={linkStyle}>{t("auth.toLogin")}</Link></p>
         </>
       )}
     </AuthCard>
