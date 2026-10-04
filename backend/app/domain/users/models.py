@@ -28,6 +28,10 @@ class User(db.Model):
     # M67: Sprache fuer Mails und Belege ("de"/"en"), NULL = Deutsch
     locale = db.Column(db.String(5), nullable=True)
 
+    # M70: Rechnungsempfaenger (optional, wird auf Rechnungen gedruckt, wenn hinterlegt)
+    billing_name = db.Column(db.String(200), nullable=True)
+    billing_address = db.Column(db.Text, nullable=True)
+
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -56,6 +60,8 @@ class User(db.Model):
             "mfa_recovery_codes_remaining": len(self.mfa_recovery_codes or []) if self.mfa_enabled else 0,
             "email_verified": self.email_verified_at is not None,
             "locale": normalize_locale(self.locale),
+            "billing_name": self.billing_name,
+            "billing_address": self.billing_address,
             "created_at": iso_utc(self.created_at),
             "updated_at": iso_utc(self.updated_at),
         }
