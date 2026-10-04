@@ -5,6 +5,10 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – D11)
+- `frontend/e2e/a11y.mjs`: automatische Barrierefreiheitspruefung mit axe-core (devDependency, kein CDN) gegen Preview und echtes Backend: Landing, Login, Dashboard, Shop, Bestellungen, Server-Detail, Admin-Uebersicht, Admin-Bestellungen, dunkel/hell, 390/1100 px; Verstoesse (WCAG A/AA) oder horizontales Scrollen beenden den Lauf mit Exit 1. Laeuft in `e2e/run-local.sh` nach `flow.mjs` und im Workflow `e2e.yml` (jetzt auch bei Aenderungen an `frontend/src/**` und den Tokens); gemeinsame Helfer in `e2e/lib.mjs`
+- `docs/ui-conventions.md` neu: Checkliste fuer Seiten, Tokens/`sync:tokens`, `ui.css`-Bausteine, Status-Regeln, i18n-Namespaces und Plural-Konvention, Theme, Mobil-Regeln, bewusst nicht uebernommene Mockup-Inhalte
+
 ### Changed (Frontend – D10 Restmigration)
 - Alle Komponenten und Seiten nutzen direkte Tokens; die Kompatibilitaets-Aliase (`--bg-page`, `--fg`, `--c-*`, `--tint-*` …) sind aus `theme.css` entfernt
 - Uebersetzt (DE/EN): Transfer- und Loeschformular, Billing-Tick-Karte, offene Bestellungen, SFTP-Kopierbuttons, Validierungsmeldungen fuer Agents und Portbereiche, die gesamte Admin-Uebersicht (Plural sauber ueber `Intl.PluralRules`)

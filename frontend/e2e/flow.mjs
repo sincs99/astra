@@ -1,48 +1,9 @@
 // E2E-Durchlauf gegen das echte Backend (Stub-Runner, manuelle Zahlung).
 // Start ueber e2e/run-local.sh (startet Backend + Frontend und ruft dieses Skript auf).
-import { existsSync } from "node:fs";
-import { chromium } from "playwright-core";
-
-const BASE = process.env.E2E_BASE_URL ?? "http://localhost:4190";
-const API = process.env.E2E_API_URL ?? "http://localhost:5000/api";
-// Vorinstalliertes Chromium (z.B. Cloud-Umgebung) oder das von `npx playwright-core install chromium` geladene
-const PREINSTALLED = "/opt/pw-browsers/chromium";
-const CHROMIUM = process.env.CHROMIUM_PATH ?? (existsSync(PREINSTALLED) ? PREINSTALLED : undefined);
-const ADMIN = { login: process.env.E2E_ADMIN_USER ?? "admin", password: process.env.E2E_ADMIN_PASSWORD ?? "adminpass123" };
-const run = Date.now().toString(36);
-const customer = { username: `kunde_${run}`, email: `kunde_${run}@example.com`, password: "kundenpass123" };
-const serverName = `E2E Server ${run}`;
-
-async function api(method, path, body, token) {
-  const res = await fetch(API + path, {
-    method,
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`${method} ${path} -> ${res.status} ${JSON.stringify(data)}`);
-  return data;
-}
+import { BASE, ADMIN, customer, serverName, seed, launchBrowser } from "./lib.mjs";
 
 let step = 0;
 const log = (msg) => console.log(`[e2e] ${++step}. ${msg}`);
-
-/** Admin-Grunddaten per API anlegen (ein Blueprint, ein Node mit Endpoints, ein Paket). */
-async function seed() {
-  const { access_token: token } = await api("POST", "/auth/login", ADMIN);
-  const blueprint = await api("POST", "/admin/blueprints", {
-    name: `E2E Blueprint ${run}`, docker_image: "itzg/minecraft-server", startup_command: "java -jar server.jar",
-  }, token);
-  const agent = await api("POST", "/admin/agents", {
-    name: `E2E-Node-${run}`, fqdn: `e2e-${run}.example.com`, memory_total: 16384, disk_total: 500000, cpu_total: 800,
-  }, token);
-  const start = 30000 + Math.floor(Math.random() * 20000);
-  await api("POST", `/admin/agents/${agent.id}/endpoints/bulk`, { ip: "0.0.0.0", port_start: start, port_end: start + 5 }, token);
-  const product = await api("POST", "/admin/products", {
-    name: `E2E-Paket ${run}`, blueprint_id: blueprint.id, memory: 1024, disk: 5120, cpu: 100, price_cents: 499,
-  }, token);
-  return product;
-}
 
 async function expectVisible(page, locator, what, timeout = 10000) {
   try {
@@ -53,7 +14,7 @@ async function expectVisible(page, locator, what, timeout = 10000) {
   }
 }
 
-const browser = await chromium.launch({ ...(CHROMIUM ? { executablePath: CHROMIUM } : {}), args: ["--no-sandbox"] });
+const browser = await launchBrowser();
 try {
   const product = await seed();
   log(`Grunddaten angelegt (Paket "${product.name}")`);

@@ -49,5 +49,7 @@ for url in "http://127.0.0.1:$BACKEND_PORT/health" "http://127.0.0.1:$FRONTEND_P
   curl -fsS "$url" >/dev/null || { echo "[e2e] $url nicht erreichbar"; tail -n 20 "$WORK"/*.log; exit 1; }
 done
 
-E2E_BASE_URL="http://127.0.0.1:$FRONTEND_PORT" E2E_API_URL="http://127.0.0.1:$BACKEND_PORT/api" \
-E2E_ADMIN_PASSWORD="$ADMIN_PASSWORD" node e2e/flow.mjs || { echo "[e2e] FEHLGESCHLAGEN, Backend-Log:"; tail -30 "$WORK/backend.log"; exit 1; }
+export E2E_BASE_URL="http://127.0.0.1:$FRONTEND_PORT" E2E_API_URL="http://127.0.0.1:$BACKEND_PORT/api" E2E_ADMIN_PASSWORD="$ADMIN_PASSWORD"
+for script in flow a11y; do
+  node "e2e/$script.mjs" || { echo "[e2e] $script.mjs FEHLGESCHLAGEN, Backend-Log:"; tail -30 "$WORK/backend.log"; exit 1; }
+done
