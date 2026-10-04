@@ -47,4 +47,13 @@ export const orders = {
   "orders.receiptShowAria": "Beleg {number} anzeigen",
   "orders.receiptFailed": "Beleg konnte nicht geladen werden",
   "orders.receiptNote": "Vereinfachter Zahlungsbeleg, keine Rechnung mit Umsatzsteuer.",
+  "orders.kindInvoice": "Rechnung",
+  "orders.kindCreditNote": "Gutschrift",
+  "orders.kindReceipt": "Beleg",
+  "orders.creditNoteRef": "zu Rechnung {number}",
+  "orders.invoiceDialog": "Rechnung {number}",
+  "orders.creditNoteDialog": "Gutschrift {number}",
+  "orders.invoiceFrame": "Rechnung {number}",
+  "orders.creditNoteFrame": "Gutschrift {number}",
+  "orders.receiptShowKindAria": "{kind} {number} anzeigen",
 } as const;

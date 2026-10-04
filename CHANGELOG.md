@@ -5,6 +5,19 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – M72 Fehlertexte in der Nutzersprache)
+- Jeder API-Aufruf sendet `Accept-Language: de|en` (Sprache der Oberflaeche). Fehlerdarstellung: der Server-Text gewinnt, nur technische Statuscodes ("Request failed: 500") und Netzwerkfehler kommen aus der Frontend-Uebersetzung; die ASCII-Umlaut-Korrektur alter deutscher Meldungen gilt nur noch in der deutschen Oberflaeche. Sonderfaelle (`manual`, `captcha_failed`, `rate_limited`, `reminder_cooldown`, `invalid_locale`, `email_not_verified`) werden am `code` bzw. Status erkannt, nicht am Text (Registrierung deaktiviert: Status 403/404)
+
+### Added (Frontend – M70 Rechnungen)
+- Konto: Abschnitt "Rechnungsadresse" (Name/Firma, mehrzeilige Anschrift, optional, "Erscheint auf deinen Rechnungen") ueber `PATCH /client/account`; wird ausgeblendet, wenn das Backend die Felder nicht liefert
+- Bestellungen: Belegliste nennt "Rechnung" bzw. "Gutschrift" (mit Verweis "zu Rechnung ...", falls `references_number` in der Uebersicht steht), der Dialog traegt den passenden Titel und Dateinamen (`rechnung-...`/`gutschrift-...`); der Hinweis "Vereinfachter Zahlungsbeleg" erscheint nur noch bei Belegen ohne `kind`
+- Admin: neue Seite "Rechnungen" (Verkauf) mit Monatsauswahl, Tabelle (Nummer, Art, Datum, Kunde, Netto, USt., Brutto, Waehrung; mobil als Karten) aus `GET /admin/invoices?format=json` und CSV-Download (`format=csv`, Blob). `/account` und `/admin/invoices` sind Teil der automatischen Barrierefreiheitspruefung
+
+### Added (Frontend – M71 Registrierungsschutz)
+- Registrierung und "Passwort vergessen" laden `GET /auth/captcha` (404/Netzfehler = kein Captcha) und rendern bei Turnstile/hCaptcha das Widget; das Script wird nur dann und nur von `challenges.cloudflare.com` bzw. `js.hcaptcha.com` geladen (Theme aus `data-theme`, Sprache aus `astra_lang`), ohne Anbieter gibt es keinen externen Aufruf. Das Token geht als `captcha_token` in den Body, nach einem Fehlversuch wird das Widget zurueckgesetzt. Datenschutzhinweis unter dem Formular (Text in `legal/captcha.ts` anpassbar)
+- Honeypot-Feld `website` (ausserhalb des Bildschirms, nicht per Tab erreichbar, `aria-hidden`); ist es gefuellt, wird nichts gesendet
+- 429 `rate_limited` bei Registrierung, Login und Passwort-Reset: "Zu viele Versuche, bitte in N Minuten erneut", Button so lange gesperrt (`ApiError.data.retry_after_seconds`); `captcha_failed` (400) und `captcha_unavailable` (503) mit eigenen Hinweisen. `/register` ist Teil der automatischen Barrierefreiheitspruefung
+
 ### Added (Frontend – M69 Zahlungserinnerung, vorbereitet)
 - "Erinnerung senden" je Bestellung (active/past_due/pending_payment) auf der Admin-Bestellseite und bei den bald ablaufenden Bestellungen in der Admin-Uebersicht: `POST /admin/orders/<uuid>/remind`; 200 -> "Erinnerung gesendet", 429 `reminder_cooldown` -> "wieder moeglich in N h" (aus `retry_after_seconds`), 409 -> Button ausgeblendet. `ApiError.data` enthaelt die rohe Fehlerantwort
 

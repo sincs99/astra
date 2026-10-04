@@ -7,6 +7,7 @@ import { PasswordSection } from "../components/account/PasswordSection";
 import { MfaSection } from "../components/account/MfaSection";
 import { ApiKeysSection } from "../components/account/ApiKeysSection";
 import { ThemeSection } from "../components/account/ThemeSection";
+import { BillingAddressSection } from "../components/account/BillingAddressSection";
 
 /** Konto-Seite für alle eingeloggten Nutzer. */
 export function AccountPage() {
@@ -41,6 +42,10 @@ export function AccountPage() {
             </p>
           </section>
 
+          {/* Älteres Backend ohne Rechnungsfelder: Abschnitt ausblenden */}
+          {(user.billing_name !== undefined || user.billing_address !== undefined) && (
+            <BillingAddressSection user={user} onSaved={toast.success} />
+          )}
           <ThemeSection />
           <PasswordSection onChanged={toast.success} />
           <MfaSection

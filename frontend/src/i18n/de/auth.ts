@@ -66,4 +66,10 @@ export const auth = {
   "auth.login.recoveryUsed": "Recovery-Code verwendet, noch {n} übrig.",
   "auth.login.recoveryLow": "Recovery-Code verwendet, nur noch {n} übrig. Erzeuge neue Codes, bevor sie ausgehen.",
   "auth.login.recoveryLink": "Zum Konto",
+  "auth.rate.wait": "Zu viele Versuche, bitte in {n} Minuten erneut.",
+  "auth.captcha.required": "Bitte schließe die Sicherheitsprüfung ab.",
+  "auth.captcha.failed": "Die Sicherheitsprüfung ist fehlgeschlagen. Bitte versuche es erneut.",
+  "auth.captcha.unavailable": "Der Prüfdienst ist gerade nicht erreichbar. Bitte versuche es später erneut.",
+  "auth.captcha.loadFailed": "Die Sicherheitsprüfung konnte nicht geladen werden. Bitte prüfe deine Verbindung oder Browser-Erweiterungen.",
+  "auth.rate.waitOne": "Zu viele Versuche, bitte in 1 Minute erneut.",
 } as const;
