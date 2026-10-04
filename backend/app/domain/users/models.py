@@ -24,6 +24,9 @@ class User(db.Model):
     # M38: E-Mail-Verifizierung (None = nicht bestaetigt)
     email_verified_at = db.Column(db.DateTime, nullable=True)
 
+    # M67: Sprache fuer Mails und Belege ("de"/"en"), NULL = Deutsch
+    locale = db.Column(db.String(5), nullable=True)
+
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -51,6 +54,7 @@ class User(db.Model):
             "mfa_enabled": self.mfa_enabled or False,
             "mfa_recovery_codes_remaining": len(self.mfa_recovery_codes or []) if self.mfa_enabled else 0,
             "email_verified": self.email_verified_at is not None,
+            "locale": self.locale or "de",
             "created_at": iso_utc(self.created_at),
             "updated_at": iso_utc(self.updated_at),
         }

@@ -98,7 +98,7 @@ def register():
 
     data = request.get_json() or {}
     try:
-        user = register_user(data.get("username"), data.get("email"), data.get("password"))
+        user = register_user(data.get("username"), data.get("email"), data.get("password"), data.get("locale"))
     except AccountError as e:
         return jsonify({"error": e.message}), e.status_code
 
