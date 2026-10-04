@@ -224,10 +224,10 @@ export function ServerConsole({ instanceUuid }: Props) {
   }, []);
 
   const stateColor: Record<ConnectionState, string> = {
-    disconnected: "#666",
-    connecting: "#f0ad4e",
-    connected: "#5cb85c",
-    error: "#d9534f",
+    disconnected: "var(--neutral)",
+    connecting: "var(--warn)",
+    connected: "var(--ok)",
+    error: "var(--danger)",
   };
 
   const stateLabel: Record<ConnectionState, string> = {
@@ -296,7 +296,7 @@ export function ServerConsole({ instanceUuid }: Props) {
       {/* Output */}
       <div ref={outputRef} style={consoleOutputStyle}>
         {lines.length === 0 ? (
-          <div style={{ color: "#9e9e9e" }}>
+          <div style={{ color: "var(--text-3)" }}>
             Klicke "Verbinden" um die Console zu starten...
           </div>
         ) : (
@@ -310,7 +310,7 @@ export function ServerConsole({ instanceUuid }: Props) {
 
       {/* Input */}
       <div style={consoleInputContainer}>
-        <span style={{ color: "#5cb85c", marginRight: 4 }}>{">"}</span>
+        <span style={{ color: "var(--ok)", marginRight: 4 }}>{">"}</span>
         <input
           type="text"
           value={command}
@@ -349,43 +349,43 @@ function lineStyle(line: string): React.CSSProperties {
   };
 
   if (line.startsWith("[System]")) {
-    return { ...base, color: "#5bc0de" };
+    return { ...base, color: "var(--accent)" };
   }
   if (line.startsWith("[Status]")) {
-    return { ...base, color: "#f0ad4e" };
+    return { ...base, color: "var(--warn)" };
   }
   if (line.startsWith("[Fehler]") || line.startsWith("[Daemon]")) {
-    return { ...base, color: "#d9534f" };
+    return { ...base, color: "var(--danger)" };
   }
   if (line.startsWith(">")) {
-    return { ...base, color: "#5cb85c", fontWeight: 600 };
+    return { ...base, color: "var(--ok)", fontWeight: 600 };
   }
-  return { ...base, color: "#ddd" };
+  return { ...base, color: "var(--text-console)" };
 }
 
 // ── Styles ──────────────────────────────────────────
 
 const consoleOutputStyle: React.CSSProperties = {
-  backgroundColor: "#1a1a2e",
-  color: "#ddd",
+  backgroundColor: "var(--console)",
+  color: "var(--text-console)",
   fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
   fontSize: 13,
   padding: 12,
   borderRadius: "4px 4px 0 0",
   height: 300,
   overflowY: "auto",
-  border: "1px solid #333",
+  border: "1px solid var(--border)",
   borderBottom: "none",
 };
 
 const consoleInputContainer: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  backgroundColor: "#1a1a2e",
+  backgroundColor: "var(--console)",
   padding: "8px 12px",
   borderRadius: "0 0 4px 4px",
-  border: "1px solid #333",
-  borderTop: "1px solid #444",
+  border: "1px solid var(--border)",
+  borderTop: "1px solid var(--border)",
   fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
 };
 
@@ -394,25 +394,25 @@ const consoleInputStyle: React.CSSProperties = {
   backgroundColor: "transparent",
   border: "none",
   outline: "none",
-  color: "#eee",
+  color: "var(--text)",
   fontFamily: "inherit",
   fontSize: 13,
 };
 
 const consoleBtnStyle: React.CSSProperties = {
   padding: "4px 10px",
-  border: "1px solid #555",
+  border: "1px solid var(--border)",
   borderRadius: 4,
-  backgroundColor: "#333",
-  color: "#eee",
+  backgroundColor: "var(--surface-2)",
+  color: "var(--text)",
   cursor: "pointer",
   fontSize: 12,
 };
 
 const consoleErrorStyle: React.CSSProperties = {
-  backgroundColor: "#3a1a1a",
-  border: "1px solid #d9534f",
-  color: "#f99",
+  backgroundColor: "var(--danger-soft)",
+  border: "1px solid var(--danger-border)",
+  color: "var(--danger)",
   padding: 8,
   borderRadius: 4,
   marginBottom: 8,

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { THEME_STORAGE_KEY, applyTheme, getThemePreference, setThemePreference } from "./theme";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { THEME_STORAGE_KEY, applyTheme, getThemePreference, resolveTheme, setThemePreference, watchSystemTheme } from "./theme";
 
 beforeEach(() => { localStorage.clear(); document.documentElement.removeAttribute("data-theme"); });
 afterEach(() => { localStorage.clear(); document.documentElement.removeAttribute("data-theme"); });
@@ -21,12 +21,36 @@ describe("theme", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
-  it("'system' entfernt Speicherwert und data-theme wieder", () => {
+  it("'system' entfernt den Speicherwert und setzt data-theme explizit nach der System-Einstellung", () => {
+    vi.stubGlobal("matchMedia", (q: string) => ({ matches: q.includes("light"), media: q, addEventListener: () => {}, removeEventListener: () => {} }));
     setThemePreference("dark");
     setThemePreference("system");
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
-    expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
-    applyTheme("light");
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    vi.stubGlobal("matchMedia", (q: string) => ({ matches: false, media: q, addEventListener: () => {}, removeEventListener: () => {} }));
+    applyTheme("system");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    vi.unstubAllGlobals();
+  });
+
+  it("gilt ohne matchMedia als dunkel (Standard)", () => {
+    expect(resolveTheme("system")).toBe("dark");
+  });
+
+  it("folgt Systemwechseln nur bei der Wahl 'system'", () => {
+    let listener: () => void = () => {};
+    let light = false;
+    vi.stubGlobal("matchMedia", (q: string) => ({
+      get matches() { return light && q.includes("light"); }, media: q,
+      addEventListener: (_: string, l: () => void) => { listener = l; }, removeEventListener: () => {},
+    }));
+    const stop = watchSystemTheme();
+    light = true; listener();
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    setThemePreference("dark");
+    light = false; listener();
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    stop();
+    vi.unstubAllGlobals();
   });
 });

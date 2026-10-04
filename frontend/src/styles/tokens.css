@@ -1,0 +1,114 @@
+/* KOPIE von ../design/tokens.css (Quelle). Nicht hier bearbeiten: `npm run sync:tokens` ausführen. Der Docker-Build-Kontext ist frontend/, daher die Kopie. */
+/* Astra – Design-Tokens
+   Dunkel ist Standard (:root). Hell über <html data-theme="light">.
+   Quelle: Claude-Design-Canvas "Astra Game-Server-Panel", Artboard "Tokens". */
+
+:root {
+  /* Flächen */
+  --bg: #0f1419;
+  --surface: #161b22;
+  --surface-2: #1c232d;
+  --console: #0a0d12;
+  --border: #2a313c;
+  --border-soft: #222935;
+
+  /* Text */
+  --text: #e6e9ef;
+  --text-2: #9aa5b4;
+  --text-3: #7d8794;
+  --text-console: #c9d1d9;
+
+  /* Akzent – nur eine Akzentfarbe */
+  --accent: #2bb8cc;
+  --accent-hover: #5fd0e0;
+  --accent-soft: rgba(43, 184, 204, 0.14);
+  --on-accent: #0b1118;
+
+  /* Status – überall gleich */
+  --ok: #3fb950;
+  --warn: #d29922;
+  --danger: #f85149;
+  --neutral: #6e7681;
+  --warn-soft: rgba(210, 153, 34, 0.10);
+  --warn-border: rgba(210, 153, 34, 0.35);
+  --danger-soft: rgba(248, 81, 73, 0.10);
+  --danger-border: rgba(248, 81, 73, 0.35);
+
+  /* Typografie */
+  --font-ui: "Geist", "Inter", system-ui, sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+  --fs-base: 14px;
+  --lh-base: 1.5;
+  --fs-title: 24px;   /* Seitentitel, 600 */
+  --fs-card: 16px;    /* Kartentitel, 600 */
+  --fs-small: 13px;
+  --fs-hint: 12px;
+  --fs-stat: 28px;    /* Statistik-Kachel, 600, tabular-nums */
+
+  /* Form */
+  --radius-card: 8px;
+  --radius-btn: 6px;
+  --radius-badge: 4px;
+  --space-page: 24px;
+  --space-card: 16px;
+  --content-max: 1200px;
+  --sidebar-w: 240px;
+  --sidebar-w-collapsed: 56px;
+  --control-h: 36px;
+  --control-h-sm: 32px;
+  --control-h-touch: 44px;
+
+  /* Bewegung */
+  --dur: 150ms;
+  --ease: ease-out;
+
+  /* Schatten (nur Toast/Dialog) */
+  --shadow-toast: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-dialog: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+html[data-theme="light"] {
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --console: #0f1419;          /* Konsole bleibt dunkel */
+  --border: #d5dbe3;
+  --border-soft: #e3e8ee;
+
+  --text: #1b222b;
+  --text-2: #556070;
+  --text-3: #6f7a88;
+  --text-console: #c9d1d9;
+
+  --accent: #0b7f92;
+  --accent-hover: #096a7a;
+  --accent-soft: rgba(11, 127, 146, 0.12);
+  --on-accent: #ffffff;
+
+  --ok: #1a7f37;
+  --warn: #9a6700;
+  --danger: #cf222e;
+  --neutral: #6e7781;
+  --warn-soft: rgba(154, 103, 0, 0.10);
+  --warn-border: rgba(154, 103, 0, 0.35);
+  --danger-soft: rgba(207, 34, 46, 0.08);
+  --danger-border: rgba(207, 34, 46, 0.35);
+
+  --shadow-toast: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-dialog: 0 16px 48px rgba(0, 0, 0, 0.18);
+}
+
+/* Basis */
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  line-height: var(--lh-base);
+}
+a { color: var(--accent); }
+a:hover { color: var(--accent-hover); }
+.mono, code, pre, kbd { font-family: var(--font-mono); }
+.tnum { font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

@@ -265,8 +265,8 @@ describe("OrdersPage", () => {
       vi.spyOn(api, "getMyOrders").mockResolvedValue([active, overdue2]);
       mount();
       const [normal, urgent] = await screen.findAllByRole("button", { name: "Verlängern und bezahlen" });
-      expect((normal as HTMLElement).style.backgroundColor).toBe("rgb(25, 118, 210)");
-      expect((urgent as HTMLElement).style.backgroundColor).toBe("rgb(211, 47, 47)");
+      expect((normal as HTMLElement).style.backgroundColor).toBe("var(--accent)");
+      expect((urgent as HTMLElement).style.backgroundColor).toBe("var(--danger)");
     });
 
     it("lädt die Liste neu, wenn der Checkout invalid_status meldet", async () => {

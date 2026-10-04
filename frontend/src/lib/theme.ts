@@ -23,11 +23,29 @@ export function getThemePreference(): ThemePreference {
   }
 }
 
-/** Setzt data-theme am <html>-Element; "system" entfernt es, dann entscheidet prefers-color-scheme. */
+/** Löst "system" über prefers-color-scheme auf; ohne matchMedia gilt Dunkel (Standard des Designs). */
+export function resolveTheme(pref: ThemePreference): "light" | "dark" {
+  if (pref !== "system") return pref;
+  try {
+    return window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  } catch {
+    return "dark";
+  }
+}
+
+/** Setzt data-theme immer explizit ("light" oder "dark"), da tokens.css keinen prefers-color-scheme-Block hat. */
 export function applyTheme(pref: ThemePreference): void {
-  const root = document.documentElement;
-  if (pref === "system") root.removeAttribute("data-theme");
-  else root.setAttribute("data-theme", pref);
+  document.documentElement.setAttribute("data-theme", resolveTheme(pref));
+}
+
+/** Folgt Änderungen der System-Einstellung, solange die Wahl "Wie das Gerät" ist. Gibt eine Abmeldefunktion zurück. */
+export function watchSystemTheme(): () => void {
+  let mq: MediaQueryList | undefined;
+  try { mq = window.matchMedia?.("(prefers-color-scheme: light)"); } catch { mq = undefined; }
+  if (!mq) return () => {};
+  const onChange = () => { if (getThemePreference() === "system") applyTheme("system"); };
+  mq.addEventListener?.("change", onChange);
+  return () => mq!.removeEventListener?.("change", onChange);
 }
 
 export function setThemePreference(pref: ThemePreference): void {

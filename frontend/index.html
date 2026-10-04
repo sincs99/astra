@@ -4,10 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Astra</title>
-    <meta name="color-scheme" content="light dark" />
+    <meta name="color-scheme" content="dark light" />
     <script>
-      // Gewähltes Farbschema vor dem ersten Rendern setzen (vermeidet Aufblitzen)
-      try { var t = localStorage.getItem("astra_theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+      // Farbschema vor dem ersten Rendern setzen (vermeidet Aufblitzen): gespeicherte Wahl, sonst System, sonst dunkel
+      try {
+        var t = localStorage.getItem("astra_theme");
+        if (t !== "light" && t !== "dark") t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) { document.documentElement.setAttribute("data-theme", "dark"); }
     </script>
   </head>
   <body>
