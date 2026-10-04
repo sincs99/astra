@@ -49,6 +49,7 @@ class User(db.Model):
             "email": self.email,
             "is_admin": self.is_admin,
             "mfa_enabled": self.mfa_enabled or False,
+            "mfa_recovery_codes_remaining": len(self.mfa_recovery_codes or []) if self.mfa_enabled else 0,
             "email_verified": self.email_verified_at is not None,
             "created_at": iso_utc(self.created_at),
             "updated_at": iso_utc(self.updated_at),

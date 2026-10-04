@@ -19,7 +19,7 @@
 - Database-Provisioning (M18) erstellt Metadaten, verbindet sich aber nicht mit echten Datenbankservern.
 
 ### Auth / MFA
-- MFA-Verifizierung ist implementiert, aber kein Recovery-Code-Flow fuer verlorene Authenticator-Apps.
+- MFA mit TOTP und seit M60 mit 10 einmaligen Recovery-Codes (nur Hashes gespeichert, Neu-Erzeugen mit Passwort, siehe `docs/mfa-recovery-codes.md`). Es gibt keinen Reset per E-Mail: wer weder Authenticator noch Codes hat, braucht einen Admin. MFA deaktivieren verlangt kein Passwort.
 - API-Key-Rotation erfordert manuelles Loeschen und Neuerstellen.
 
 ### Agent Maintenance
