@@ -3,6 +3,7 @@
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from app.extensions import db
+from app.i18n import normalize_locale
 from datetime import datetime, timezone
 from app.utils.timeutil import iso_utc
 
@@ -54,7 +55,7 @@ class User(db.Model):
             "mfa_enabled": self.mfa_enabled or False,
             "mfa_recovery_codes_remaining": len(self.mfa_recovery_codes or []) if self.mfa_enabled else 0,
             "email_verified": self.email_verified_at is not None,
-            "locale": self.locale or "de",
+            "locale": normalize_locale(self.locale),
             "created_at": iso_utc(self.created_at),
             "updated_at": iso_utc(self.updated_at),
         }

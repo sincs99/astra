@@ -78,14 +78,13 @@ def send_verification_email(user: User) -> bool:
     token = _verify_serializer().dumps({"uid": user.id, "email": user.email})
     base = current_app.config.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
     hours = current_app.config.get("EMAIL_VERIFICATION_TTL_HOURS", 48)
+    from app.i18n import tr
     return send_mail(
         current_app,
         user.email,
-        "Astra: E-Mail-Adresse bestätigen",
-        f"Hallo {user.username},\n\n"
-        f"bitte bestätige deine E-Mail-Adresse (gültig {hours} Stunden):\n"
-        f"{base}/verify-email?token={token}\n\n"
-        f"Falls du dich nicht registriert hast, ignoriere diese Mail.\n",
+        tr(user.locale, "mail.verify.subject"),
+        tr(user.locale, "mail.verify.body", username=user.username, hours=hours,
+           link=f"{base}/verify-email?token={token}"),
     )
 
 
@@ -140,14 +139,12 @@ def request_password_reset(email: str) -> None:
     base = current_app.config.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
     link = f"{base}/password-reset/confirm?token={token}"
     minutes = current_app.config.get("PASSWORD_RESET_TTL_MINUTES", 60)
+    from app.i18n import tr
     send_mail(
         current_app,
         user.email,
-        "Astra: Passwort zurücksetzen",
-        f"Hallo {user.username},\n\n"
-        f"über diesen Link kannst du dein Passwort zurücksetzen "
-        f"(gültig {minutes} Minuten):\n{link}\n\n"
-        f"Falls du das nicht angefordert hast, ignoriere diese Mail.\n",
+        tr(user.locale, "mail.password_reset.subject"),
+        tr(user.locale, "mail.password_reset.body", username=user.username, minutes=minutes, link=link),
     )
 
 

@@ -282,12 +282,7 @@ def mark_order_paid(order: Order, payment_reference: str | None = None, actor_id
         order = fulfill_order(order, now)
     except BillingError:
         if first_payment:
-            _mail_order(
-                order, "Astra: Zahlung eingegangen",
-                f"Hallo,\n\ndeine Zahlung für '{order.instance_name}' ist eingegangen. Aktuell ist auf unseren "
-                f"Servern kein Platz frei; dein Server wird automatisch bereitgestellt, sobald wieder Platz da ist. "
-                f"Die Laufzeit beginnt erst dann.\nBestellung: {order.uuid}\n",
-            )
+            _mail_order(order, "payment_waiting")
         raise
     if order.price_cents > 0:
         _mail_server_ready(order, paid_now=first_payment)
@@ -339,11 +334,7 @@ def renew_order(order: Order, payment_reference: str | None, actor_id: int | Non
           "current_period_end": iso_utc(order.current_period_end)})
     _issue_receipt(order, payment_reference, now)
     if order.price_cents > 0:
-        _mail_order(
-            order, "Astra: Zahlung eingegangen, Server verlängert",
-            f"Hallo,\n\ndeine Zahlung ist eingegangen. Dein Server '{order.instance_name}' läuft jetzt bis "
-            f"{order.current_period_end:%d.%m.%Y %H:%M} UTC.\nBestellung: {order.uuid}\n",
-        )
+        _mail_order(order, "renewed", end=order.current_period_end)
     return order
 
 
@@ -537,39 +528,46 @@ def get_tick_status(now: datetime | None = None) -> dict:
 # ── Billing-Tick (M46) ──────────────────────────────────
 
 
-def _mail_order(order: Order, subject: str, body: str) -> None:
+def _mail_order(order: Order, name: str, **fmt) -> None:
+    """Mail an den Kunden in seiner Sprache (users.locale, M67). Texte stehen in app/i18n/messages.py unter
+    `mail.<name>.subject/body`. Datumswerte (datetime) und `price_cents` werden je Sprache formatiert."""
     try:
+        from datetime import datetime as _dt
         from flask import current_app
+        from app.i18n import format_datetime, format_money, tr
+        from app.i18n.messages import MESSAGES
         from app.infrastructure.mail import send_mail
         user = db.session.get(User, order.user_id)
         if user and user.email:
-            send_mail(current_app, user.email, subject, body)
+            loc = user.locale
+            values = {"instance_name": order.instance_name, "uuid": order.uuid, "purpose": order.payment_purpose}
+            for key, value in fmt.items():
+                values[key] = format_datetime(loc, value) if isinstance(value, _dt) else value
+            if "price_cents" in values:
+                values["price"] = format_money(loc, values["price_cents"], order.currency)
+            if "reason_key" in values:
+                key = f"expire_reason.{values['reason_key']}"
+                values["reason"] = tr(loc, key if key in MESSAGES["de"] else "expire_reason.default")
+            send_mail(current_app, user.email, tr(loc, f"mail.{name}.subject"), tr(loc, f"mail.{name}.body", **values))
     except Exception:  # pragma: no cover - Mail darf den Tick nie stoppen
         logger.exception("Mail zur Bestellung %s fehlgeschlagen", order.uuid)
 
 
 def _mail_server_ready(order: Order, paid_now: bool = False) -> None:
     """Mail "Server ist bereit" mit Verbindungsadresse (falls schon bekannt)."""
+    from app.i18n import tr
+    user = db.session.get(User, order.user_id)
+    loc = user.locale if user else None
     instance = db.session.get(Instance, order.instance_id) if order.instance_id else None
     info = instance.connection_info() if instance else None
-    address = f"\nVerbindungsadresse: {info['address']}\n" if info else ""
-    intro = "deine Zahlung ist eingegangen und dein Server" if paid_now else "dein Server"
-    _mail_order(
-        order, "Astra: Dein Server ist bereit",
-        f"Hallo,\n\n{intro} '{order.instance_name}' wurde bereitgestellt und kann jetzt genutzt werden.\n"
-        f"{address}Bestellung: {order.uuid}\n",
-    )
+    address_block = tr(loc, "mail.server_ready.address", address=info["address"]) if info else ""
+    intro = tr(loc, "mail.server_ready.intro_paid" if paid_now else "mail.server_ready.intro_plain")
+    _mail_order(order, "server_ready", intro=intro, address_block=address_block)
 
 
 def _blocking_status(instance: Instance) -> bool:
     from app.domain.instances.service import _DELETE_BLOCKING_STATUSES
     return instance.status in _DELETE_BLOCKING_STATUSES
-
-
-_EXPIRE_REASON_TEXT = {
-    "cancelled_at_period_end": "Kündigung zum Laufzeitende",
-    "refunded": "Zahlung erstattet",
-}
 
 
 def _expire_order(order: Order, instance: Instance | None, reason: str) -> None:
@@ -586,12 +584,7 @@ def _expire_order(order: Order, instance: Instance | None, reason: str) -> None:
         order.past_due_at = None
         db.session.commit()
         log_orders_expired([order.id], reason)
-    _mail_order(
-        order, "Astra: Dein Server wurde beendet",
-        f"Hallo,\n\ndein Server '{order.instance_name}' wurde beendet und gelöscht "
-        f"({_EXPIRE_REASON_TEXT.get(reason, 'Zahlung nicht eingegangen')}).\n"
-        f"Bestellung: {order.uuid}\n",
-    )
+    _mail_order(order, "expired", reason_key=reason)
 
 
 def _suspend_for_payment(order: Order, instance: Instance, now: datetime) -> bool:
@@ -620,12 +613,7 @@ def _suspend_for_payment(order: Order, instance: Instance, now: datetime) -> boo
          {"suspended": newly_suspended, "current_period_end": iso_utc(order.current_period_end)})
     from flask import current_app
     days = current_app.config.get("BILLING_GRACE_DAYS", 7)
-    _mail_order(
-        order, "Astra: Zahlung überfällig – dein Server wurde gesperrt",
-        f"Hallo,\n\ndie Laufzeit deines Servers '{order.instance_name}' ist abgelaufen, der Server wurde gesperrt.\n"
-        f"Bitte begleiche die Zahlung innerhalb von {days} Tagen, sonst wird er gelöscht.\n"
-        f"Verwendungszweck: {order.payment_purpose}\nBestellung: {order.uuid}\n",
-    )
+    _mail_order(order, "past_due", days=days)
     return True
 
 
@@ -652,20 +640,10 @@ def _remind_if_due(order: Order, end: datetime, now: datetime, reminder: timedel
          "Löschhinweis vor Laufzeitende verschickt" if cancelled else "Erinnerung vor Laufzeitende verschickt",
          {"current_period_end": iso_utc(end), "kind": "deletion_notice" if cancelled else "expiry_reminder"})
     if cancelled:
-        _mail_order(
-            order, "Astra: Dein Server wird bald gelöscht",
-            f"Hallo,\n\nwegen deiner Kündigung wird dein Server '{order.instance_name}' am "
-            f"{end:%d.%m.%Y %H:%M} UTC gelöscht. Sichere vorher deine Dateien.\n"
-            f"Bestellung: {order.uuid}\n",
-        )
+        _mail_order(order, "deletion_notice", end=end)
     else:
-        _mail_order(
-            order, "Astra: Die Laufzeit deines Servers endet bald",
-            f"Hallo,\n\ndie Laufzeit deines Servers '{order.instance_name}' endet am {end:%d.%m.%Y %H:%M} UTC.\n"
-            f"Bitte veranlasse rechtzeitig die Zahlung ({order.price_cents / 100:.2f} {order.currency} für "
-            f"{order.billing_period_days} Tage), sonst wird der Server gesperrt und nach der Karenzzeit gelöscht.\n"
-            f"Verwendungszweck: {order.payment_purpose}\nBestellung: {order.uuid}\n",
-        )
+        _mail_order(order, "expiry_reminder", end=end, price_cents=order.price_cents,
+                    period_days=order.billing_period_days)
     return True
 
 
@@ -947,12 +925,7 @@ def _apply_refund(order: Order, ev, now: datetime, source: str) -> str:
          {**amount, "full": True, "service_ended": True, "suspended": suspended})
     from flask import current_app
     days = current_app.config.get("BILLING_GRACE_DAYS", 7)
-    _mail_order(
-        order, "Astra: Zahlung erstattet – dein Server wurde gesperrt",
-        f"Hallo,\n\ndeine Zahlung wurde erstattet, daher wurde dein Server '{order.instance_name}' gesperrt. "
-        f"Er wird nach {days} Tagen gelöscht; sichere vorher deine Dateien oder melde dich beim Support.\n"
-        f"Bestellung: {order.uuid}\n",
-    )
+    _mail_order(order, "refunded", days=days)
     return "voll erstattet, Instance gesperrt"
 
 
