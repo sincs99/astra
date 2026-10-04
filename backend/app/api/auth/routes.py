@@ -189,13 +189,18 @@ def change_password_endpoint():
 
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
-    """Logout – Server-seitig nur Activity-Log, Token-Invalidierung ist clientseitig."""
+    """Logout: das verwendete Access-Token wird bis zu seinem Ablauf gesperrt (M61).
+
+    Andere Tokens des Kontos (andere Geraete) bleiben gueltig. API-Keys und der Dev-Header X-User-Id haben
+    kein Token, das sich sperren liesse.
+    """
     user, err = require_auth()
     if err:
         return err
 
+    revoked = _revoke_current_token(user)
     _log_auth_event("auth:logout", user.id, f"Logout: {user.username}")
-    return jsonify({"message": "Erfolgreich ausgeloggt"})
+    return jsonify({"message": "Erfolgreich ausgeloggt", "token_revoked": revoked})
 
 
 @auth_bp.route("/me", methods=["GET"])
@@ -334,6 +339,26 @@ def mfa_recovery_codes():
 
 
 # ── Hilfsfunktionen ─────────────────────────────────────
+
+
+def _revoke_current_token(user) -> bool:
+    """Sperrt das JWT des aktuellen Requests. False, wenn keins verwendet wurde (API-Key, Dev-Header) oder es fehlschlug."""
+    header = request.headers.get("Authorization", "")
+    if not header.startswith("Bearer ") or header[7:].startswith("astra_"):
+        return False
+    try:
+        from datetime import datetime, timezone
+        from flask_jwt_extended import decode_token
+        from app.domain.auth.blocklist import revoke_token
+        decoded = decode_token(header[7:])
+        jti, exp = decoded.get("jti"), decoded.get("exp")
+        if not jti or exp is None:
+            return False  # Token ohne jti (aelter): bleibt bis zum Ablauf gueltig
+        revoke_token(jti, datetime.fromtimestamp(exp, tz=timezone.utc), user.id)
+        return True
+    except Exception:  # Logout darf nie scheitern: der Client verwirft das Token trotzdem
+        current_app.logger.exception("Logout: Token konnte nicht gesperrt werden")
+        return False
 
 
 def _notify_recovery_used(user, remaining: int) -> None:

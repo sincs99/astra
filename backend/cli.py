@@ -118,10 +118,11 @@ def cmd_billing_tick(args):
 
 
 def cmd_cleanup_jobs(args):
-    """Loescht alte, beendete Job-Eintraege (completed/failed)."""
+    """Loescht alte, beendete Job-Eintraege (completed/failed) und abgelaufene Logout-Sperren."""
     import json
 
     from app import create_app
+    from app.domain.auth.blocklist import cleanup_revoked_tokens
     from app.infrastructure.jobs.cleanup import cleanup_jobs
 
     app = create_app()
@@ -131,6 +132,7 @@ def cmd_cleanup_jobs(args):
         except ValueError as e:
             print(f"Fehler: {e}")
             return 2
+        summary["revoked_tokens"] = cleanup_revoked_tokens(dry_run=args.dry_run)
     print(json.dumps(summary, ensure_ascii=False))
     return 0
 

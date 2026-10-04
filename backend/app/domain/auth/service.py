@@ -82,6 +82,10 @@ def get_current_user() -> User | None:
         # 1b. JWT-Token decodieren
         try:
             decoded = decode_token(token)
+            from app.domain.auth.blocklist import is_revoked
+            if is_revoked(decoded.get("jti")):
+                logger.debug("JWT per Logout widerrufen")
+                return None
             identity = decoded.get("sub")
             if identity:
                 user = db.session.get(User, int(identity))
