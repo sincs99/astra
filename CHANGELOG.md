@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – M76 Tests unabhaengig von legal/operator.ts)
+- `src/test/setup.ts` ersetzt `legal/operator` in allen Tests durch eine Fixture (brand "Astra", jurisdiction "DE", Platzhalter); die Suite ist damit gruen, egal welche echten Betreiberdaten eingetragen sind. `legal/operator.test.ts` prueft nur die Form der echten Datei. Regel in `docs/ui-conventions.md`
+
 ### Added (Frontend – M75 konfigurierbare Marke)
 - `OPERATOR.brand` in `legal/operator.ts` (Standard "Astra"): der Markenname erscheint in der Logo-Wortmarke (Symbol bleibt), im Tab-Titel (Muster "Seite · Marke"), in der Landingpage (Titel, Kopf, Fussnote), in der Anmelde-/Registrierkarte und in allen Texten mit festem "Astra" (neuer Platzhalter `{brand}`, in jedem i18n-Text verfuegbar), im Dateinamen der Recovery-Codes und im `<title>` von `index.html` (Build-Zeit ueber ein Vite-Plugin aus `operator.ts`). "Astra" bleibt der Name der Software; Domain-Beispiele (`node01.astra.dev`) und interne Bezeichner bleiben unveraendert
 

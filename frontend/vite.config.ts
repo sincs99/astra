@@ -25,6 +25,7 @@ export default defineConfig(({ mode }) => ({
   },
   test: {
     globalSetup: ["./src/test/tz.ts"],
+    setupFiles: ["./src/test/setup.ts"],
   },
   // Build-Konfiguration fuer Produktion
   build: {
