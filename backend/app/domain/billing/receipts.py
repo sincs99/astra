@@ -24,7 +24,7 @@ from flask import current_app
 
 from app.extensions import db
 from app.domain.billing.models import InvoiceCounter, Order, Receipt
-from app.i18n import format_date, format_money, normalize_locale, tr
+from app.i18n import format_date, format_money, normalize_locale, site_name, tr
 from app.utils.timeutil import iso_utc
 
 logger = logging.getLogger(__name__)
@@ -142,6 +142,9 @@ def _document_snapshot(order: Order, gross: int, period: tuple | None) -> dict:
         "seller": _seller_snapshot(),
         "country": _country(),
     }
+    brand = site_name()
+    if brand != "Astra":  # M75: Markenname im Belegkopf (der Standard "Astra" bleibt wie bisher unsichtbar)
+        snap["site_name"] = brand
     billing = _billing_snapshot(customer)
     if billing:
         snap["customer_billing"] = billing
@@ -234,6 +237,9 @@ def issue_credit_note(order: Order, invoice: Receipt, refunded_total_cents: int,
                      "references_number": inv.number})
         if old.get("seller"):
             snap["seller"] = old["seller"]
+        snap.pop("site_name", None)
+        if old.get("site_name"):
+            snap["site_name"] = old["site_name"]  # Markenname der Rechnung (M75)
         snap["country"] = old.get("country") or "DE"  # Altbestand ohne Feld: wie die Rechnung (Deutschland)
         if old.get("customer_billing"):
             snap["customer_billing"] = old["customer_billing"]
@@ -265,7 +271,11 @@ def _seller(snap: dict) -> tuple[list[str], str | None]:
     seller = snap.get("seller")
     if seller is None:  # Altbestand: aktuelle Konfiguration
         seller = _seller_snapshot()
-    return list(seller.get("lines") or []), seller.get("vat_id")
+    lines = list(seller.get("lines") or [])
+    brand = snap.get("site_name")
+    if brand and not (lines and lines[0].casefold() == brand.casefold()):
+        lines.insert(0, brand)
+    return lines, seller.get("vat_id")
 
 
 def _rate_text(loc, rate) -> str:

@@ -22,6 +22,14 @@ class _KeepMissing(dict):
         return "{" + key + "}"
 
 
+def site_name() -> str:
+    """Markenname des Betriebs (SITE_NAME, Standard "Astra", M75); einzeilig, hoechstens 60 Zeichen."""
+    from flask import current_app, has_app_context
+    name = current_app.config.get("SITE_NAME") if has_app_context() else None
+    name = " ".join(str(name or "").split())[:60]
+    return name or "Astra"
+
+
 def tr(locale, key: str, **fmt) -> str:
     """Text zum Schluessel in der Sprache des Kunden; unbekannte Sprache oder fehlender Eintrag: Deutsch,
     fehlt auch dort: der Schluessel selbst."""
@@ -29,6 +37,8 @@ def tr(locale, key: str, **fmt) -> str:
     text = MESSAGES.get(normalize_locale(locale), {}).get(key)
     if text is None:
         text = MESSAGES[DEFAULT_LOCALE].get(key, key)
+    if "{site}" in text:
+        fmt.setdefault("site", site_name())
     return text.format_map(_KeepMissing(fmt))
 
 

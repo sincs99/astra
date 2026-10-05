@@ -5,6 +5,18 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – M75 konfigurierbare Marke)
+- `OPERATOR.brand` in `legal/operator.ts` (Standard "Astra"): der Markenname erscheint in der Logo-Wortmarke (Symbol bleibt), im Tab-Titel (Muster "Seite · Marke"), in der Landingpage (Titel, Kopf, Fussnote), in der Anmelde-/Registrierkarte und in allen Texten mit festem "Astra" (neuer Platzhalter `{brand}`, in jedem i18n-Text verfuegbar), im Dateinamen der Recovery-Codes und im `<title>` von `index.html` (Build-Zeit ueber ein Vite-Plugin aus `operator.ts`). "Astra" bleibt der Name der Software; Domain-Beispiele (`node01.astra.dev`) und interne Bezeichner bleiben unveraendert
+
+### Fixed (Backend – M75)
+- `MFA_ISSUER_NAME` wirkt jetzt: der Authenticator-Eintrag nutzt die Variable statt eines fest verdrahteten Namens. Standard bleibt „Astra Panel“ (bestehende Einträge ändern sich nicht); der Wert folgt bewusst nicht `SITE_NAME` und ist vor dem ersten Kunden zu setzen
+
+### Added (Deployment – M75 Weiterleitungs-Domains)
+- `REDIRECT_DOMAINS` (kommagetrennt, leer = aus): `scripts/deploy.sh` erzeugt aus `deploy/redirect.caddy.template` die Caddy-Site `deploy/sites/redirect.caddy` (ein Site-Block mit allen Domains, eigenes Zertifikat je Domain, `redir https://PANEL_DOMAIN{uri} permanent` = 301 mit Pfad und Query); Einträge werden geprüft (nur Domainnamen, nicht `PANEL_DOMAIN`/`NODE_DOMAIN`). `scripts/smoke-test.sh` prüft mit `REDIRECT_DOMAINS=…` je Domain 301 und `Location`. Runbook: Abschnitt „Weiterleitungs-Domains“ mit DNS-Tabelle
+
+### Added (Backend – M75 Markenname)
+- `SITE_NAME` (Standard „Astra“, max. 60 Zeichen, im Produktions-Check KRITISCH bei Überlänge oder Steuerzeichen) und `MAIL_FROM_NAME` (leer = `SITE_NAME`): alle Mail-Betreffe („Astrahost: …“, Platzhalter `{site}` in den Nachrichtenvorlagen), Absendername („Name <adresse>“, Zeilenumbrüche werden entschärft; enthält `MAIL_FROM` schon einen Namen, bleibt er), Admin-Alerts und CLI-Testalert. Der Rechnungskopf zeigt den Markennamen als erste Zeile, wenn er vom Standard abweicht; der Name steht im Beleg-Schnappschuss (`site_name`), Gutschriften übernehmen ihn von der Rechnung
+
 ### Added (Backend – M74 Schweiz-Tauglichkeit)
 - `INVOICE_COUNTRY` (`DE`|`CH`, Standard `DE`; unbekannter Wert ist im Produktions-Check KRITISCH). Der Schnappschuss jeder Rechnung/Gutschrift hält `country`, Belege ohne Feld gelten als Deutschland; ein späterer Wechsel ändert alte Belege nicht
 - CH: Standardhinweis „Nicht mehrwertsteuerpflichtig (Art. 10 Abs. 2 lit. a MWSTG)“ / „Not subject to Swiss VAT (Art. 10 para. 2 lit. a VAT Act)“, Beschriftung „MWST“/„VAT“ und „MWST-Nr.“/„VAT no.“; ein gesetzter `INVOICE_SMALL_BUSINESS_NOTE` gilt weiter in beiden Sprachen (Standardwert der Config ist jetzt leer)

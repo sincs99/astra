@@ -6,6 +6,7 @@ import re
 import secrets
 
 import pyotp
+from flask import current_app
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.extensions import db
@@ -104,7 +105,7 @@ def setup_mfa(user: User) -> dict:
     totp = pyotp.TOTP(secret)
     provisioning_uri = totp.provisioning_uri(
         name=user.email,
-        issuer_name="Astra Panel",
+        issuer_name=current_app.config.get("MFA_ISSUER_NAME") or "Astra Panel",
     )
 
     return {

@@ -29,7 +29,7 @@ export const shop: Record<keyof typeof de, string> = {
   "shop.perPeriodHint": "Prices per term. No subscription: the server expires if you do not renew.",
   "shop.nameHint": "Only visible to you. If left empty, we assign a name.",
   "shop.payCardTitle": "Card, Apple Pay, Google Pay",
-  "shop.payCardText": "Active right after payment. Handled by Stripe, Astra never sees your card details.",
+  "shop.payCardText": "Active right after payment. Handled by Stripe, {brand} never sees your card details.",
   "shop.payTransferTitle": "Bank transfer",
   "shop.payTransferText": "The server starts once the payment has arrived. You will find the payment details under Orders after ordering.",
   "shop.payFreeTitle": "Free",

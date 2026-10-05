@@ -24,7 +24,7 @@ export const ainst: Record<keyof typeof de, string> = {
   "ainst.inst.endpoint": "Endpoint (optional – otherwise automatic)",
   "ainst.inst.endpointAuto": "– Assign automatically –",
   "ainst.inst.noFreeEndpoints": "No free endpoints available on this agent.",
-  "ainst.inst.autoHint": "Astra picks the agent with a free endpoint and enough capacity and assigns the endpoint automatically.",
+  "ainst.inst.autoHint": "{brand} picks the agent with a free endpoint and enough capacity and assigns the endpoint automatically.",
   "ainst.inst.resources": "Resources",
   "ainst.inst.memory": "Memory (MB)",
   "ainst.inst.swap": "Swap (MB)",

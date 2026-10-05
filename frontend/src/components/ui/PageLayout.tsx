@@ -18,6 +18,7 @@ import { t } from "../../i18n";
 import { NAV_ITEMS, activeHref, initials, type NavItem } from "../shell/navItems";
 import { UserActions, UserMenu } from "../shell/UserMenu";
 import type { User } from "../../services/api";
+import { OPERATOR } from "../../legal/operator";
 
 interface PageLayoutProps {
   title: string;
@@ -87,7 +88,7 @@ export function PageLayout({ title, subtitle, actions, back, children, maxWidth 
   const user = useCurrentUser();
 
   // Browser-Tab-Titel folgt der Seite
-  useEffect(() => { document.title = `${title} – Astra`; }, [title]);
+  useEffect(() => { document.title = `${title} · ${OPERATOR.brand}`; }, [title]);
 
   // Overlay schliessen bei Seitenwechsel, Escape oder Wechsel zur Desktop-Ansicht
   useEffect(() => { setMenuOpen(false); }, [location.pathname, isMobile]);

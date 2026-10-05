@@ -1,5 +1,5 @@
 export const landing = {
-  "landing.title": "Astra – Game-Server mieten",
+  "landing.title": "{brand} – Game-Server mieten",
   "landing.navPackages": "Pakete",
   "landing.navGames": "Spiele",
   "landing.navSteps": "So funktioniert’s",
@@ -34,6 +34,6 @@ export const landing = {
   "landing.step2Transfer": "Per Überweisung – der Server startet, sobald die Zahlung eingegangen ist.",
   "landing.step3": "Spielen",
   "landing.step3Text": "Adresse kopieren, Freunden schicken, los. Konsole, Dateien und Backups findest du im Panel.",
-  "landing.footerBrand": "Astra",
+  "landing.footerBrand": "{brand}",
   "landing.footerNav": "Rechtliches",
 } as const;

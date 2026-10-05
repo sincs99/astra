@@ -12,6 +12,8 @@ export const PLACEHOLDER = "[vom Betreiber auszufüllen]";
 export type Jurisdiction = "DE" | "CH";
 
 export interface Operator {
+  /** Marke, unter der das Panel betrieben wird (Logo-Wortmarke, Tab-Titel, Texte) */
+  brand: string;
   jurisdiction: Jurisdiction;
   name: string;
   legalForm: string;
@@ -30,6 +32,8 @@ export interface Operator {
 }
 
 export const OPERATOR: Operator = {
+  /** Markenname der Oberfläche; "Astra" ist der Name der Software, ein Betreiber kann hier seine eigene Marke eintragen */
+  brand: "Astra",
   /** "DE" (Standard) oder "CH" (Schweiz: Anbieterkennzeichnung nach UWG, Datenschutz nach DSG, kein Widerrufsrecht) */
   jurisdiction: "DE",
   /** Name der Firma bzw. des Betreibers */
