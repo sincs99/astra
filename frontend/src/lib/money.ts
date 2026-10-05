@@ -24,7 +24,7 @@ export function centsToEuroInput(cents: number): string {
 /** "9,99 €" (Waehrung nach ISO-Code, Standard EUR). */
 export function formatMoney(cents: number, currency = "EUR"): string {
   try {
-    return new Intl.NumberFormat(moneyLocale(), { style: "currency", currency }).format(cents / 100);
+    return new Intl.NumberFormat(moneyLocale(currency), { style: "currency", currency }).format(cents / 100);
   } catch {
     return `${centsToEuroInput(cents).replace(".", ",")} ${currency}`;
   }

@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { ShopPage } from "./ShopPage";
 import { api } from "../services/api";
 import { resetCurrentUserCache } from "../hooks/useCurrentUser";
+import { OPERATOR } from "../legal/operator";
 import { makeOrder, makeProduct } from "../test/fixtures";
 
 // Oeffentliche Produktdaten: ohne interne Felder (kein Blueprint, kein is_active)
@@ -23,9 +24,23 @@ beforeEach(() => {
   vi.spyOn(api, "getCurrentUser").mockResolvedValue({ id: 2, username: "bob", is_admin: false } as never);
   vi.spyOn(api, "getBillingInfo").mockResolvedValue({ payment_provider: "manual", online_payment: false });
 });
-afterEach(() => { cleanup(); localStorage.clear(); });
+afterEach(() => { cleanup(); localStorage.clear(); OPERATOR.jurisdiction = "DE"; });
 
 describe("ShopPage", () => {
+  it("zeigt nur bei Betreiber in der Schweiz den Hinweis 'Leistung beginnt sofort, kein Widerrufsrecht'", async () => {
+    vi.spyOn(api, "getShopProducts").mockResolvedValue([starter]);
+    mount();
+    await screen.findByRole("radiogroup", { name: "Paket" });
+    expect(screen.queryByText(/kein allgemeines Widerrufsrecht/)).toBeNull();
+    cleanup();
+    OPERATOR.jurisdiction = "CH";
+    mount();
+    const note = await screen.findByRole("note");
+    expect(note.textContent).toMatch(/Die Leistung beginnt sofort nach Bezahlung/);
+    expect(note.textContent).toMatch(/kein allgemeines Widerrufsrecht/);
+    expect(within(note).getByRole("link", { name: "AGB" }).getAttribute("href")).toBe("/agb");
+  });
+
   it("zeigt Pakete als Auswahlkarten mit Preis und Ressourcen; das erste ist vorgewaehlt", async () => {
     vi.spyOn(api, "getShopProducts").mockResolvedValue([starter, crew]);
     mount();

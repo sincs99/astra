@@ -48,4 +48,6 @@ export const shop: Record<keyof typeof de, string> = {
   "shop.redirecting": "Redirecting to payment…",
   "shop.specs": "{ram} RAM · {cpu} % CPU · {disk}",
   "shop.loginHint": "Please sign in to order.",
+  "shop.chNotice": "The service starts immediately after payment. In Switzerland there is no general right of withdrawal for online purchases, so the order is binding. See the {agb} for details.",
+  "shop.chNoticeAgb": "terms and conditions",
 };

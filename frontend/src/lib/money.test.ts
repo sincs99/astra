@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { setLang } from "../i18n";
 import { centsToEuroInput, formatMoney, formatPeriod, formatPrice, parseEuroToCents } from "./money";
 
 const plain = (s: string) => s.replace(/ | /g, " ");
@@ -37,5 +38,23 @@ describe("Formatierung", () => {
   it("formatPeriod", () => {
     expect(formatPeriod(1)).toBe("1 Tag");
     expect(formatPeriod(30)).toBe("30 Tage");
+  });
+});
+
+describe("Schweizer Franken (CHF)", () => {
+  const norm = (s: string) => s.replace(/[\u00a0\u202f]/g, " ").replace(/[\u2019']/g, "'");
+  afterEach(() => setLang("de"));
+
+  it("formatiert CHF mit Schweizer Locale (de-CH), EUR/USD unverändert", () => {
+    expect(norm(formatMoney(123456, "CHF"))).toBe("CHF 1'234.56");
+    expect(norm(formatMoney(999, "CHF"))).toBe("CHF 9.99");
+    expect(plain(formatMoney(999, "EUR"))).toBe("9,99 €");
+    expect(norm(formatPrice(123456, "CHF", 30))).toBe("CHF 1'234.56 / 30 Tage");
+  });
+
+  it("nutzt in der englischen Oberfläche en-CH, andere Währungen bleiben en-GB", () => {
+    setLang("en");
+    expect(norm(formatMoney(123456, "CHF"))).toMatch(/^CHF 1[,']234\.56$/);
+    expect(plain(formatMoney(999, "EUR"))).toBe("€9.99");
   });
 });
