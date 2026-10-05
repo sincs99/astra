@@ -613,6 +613,71 @@ def revenue_stats_route():
     return jsonify(revenue_stats(days))
 
 
+_INVOICE_CSV_COLUMNS = ("number", "kind", "issued_at", "order_uuid", "username", "net_cents", "vat_cents", "vat_rate",
+                        "gross_cents", "currency", "payment_reference", "references_number")
+_INVOICE_CSV_TEXT = {"number", "kind", "order_uuid", "username", "currency", "payment_reference", "references_number"}
+
+
+def _csv_text(value) -> str:
+    """Textzelle fuer CSV: Formeln (=, +, -, @) werden entschaerft (CSV-Injection ueber Benutzernamen u.a.)."""
+    text = "" if value is None else str(value)
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
+def _decimal_de(cents) -> str:
+    if cents is None:
+        return ""
+    sign = "-" if cents < 0 else ""
+    return f"{sign}{abs(cents) // 100},{abs(cents) % 100:02d}"
+
+
+@admin_bp.route("/invoices", methods=["GET"])
+def list_invoices():
+    """Rechnungen und Gutschriften (M70) fuer die Buchhaltung: ?from=YYYY-MM-DD&to=YYYY-MM-DD&format=json|csv.
+
+    Standard: der laufende Monat (UTC) als JSON. `from` und `to` gelten einschliesslich, hoechstens 366 Tage.
+    JSON: Liste mit number, kind, issued_at, order_uuid, username, net_cents, vat_cents, vat_rate, gross_cents, currency,
+    payment_reference, references_number (Gutschrift -> Nummer der Rechnung); bei Dokumenten vor M70 sind net_cents, vat_cents
+    und vat_rate null. CSV: Semikolon, UTF-8 mit BOM, dieselben Spalten plus net, vat, gross als Dezimalzahl mit Komma,
+    Dateiname rechnungen-JJJJ-MM.csv. Fehler: 400 `invalid_date`, `invalid_range`, `range_too_large`, `invalid_format`.
+    """
+    import calendar
+    import csv
+    import io
+    from datetime import date, datetime, timezone
+    from flask import Response
+    from app.domain.billing.service import list_invoice_documents
+
+    fmt = request.args.get("format", "json").lower()
+    if fmt not in ("json", "csv"):
+        return jsonify({"error": "format muss json oder csv sein", "code": "invalid_format"}), 400
+    today = datetime.now(timezone.utc).date()
+    try:
+        start = date.fromisoformat(request.args["from"]) if request.args.get("from") else today.replace(day=1)
+        end = (date.fromisoformat(request.args["to"]) if request.args.get("to")
+               else date(start.year, start.month, calendar.monthrange(start.year, start.month)[1]))
+    except ValueError:
+        return jsonify({"error": "from und to müssen Datumsangaben im Format JJJJ-MM-TT sein", "code": "invalid_date"}), 400
+    if start > end:
+        return jsonify({"error": "from darf nicht nach to liegen", "code": "invalid_range"}), 400
+    if (end - start).days > 366:
+        return jsonify({"error": "Der Zeitraum darf höchstens 366 Tage umfassen", "code": "range_too_large"}), 400
+
+    docs = list_invoice_documents(start, end)
+    if fmt == "json":
+        return jsonify(docs)
+    buf = io.StringIO()
+    writer = csv.writer(buf, delimiter=";", lineterminator="\r\n")
+    writer.writerow(list(_INVOICE_CSV_COLUMNS) + ["net", "vat", "gross"])
+    for d in docs:
+        row = [_csv_text(d[c]) if c in _INVOICE_CSV_TEXT else ("" if d[c] is None else d[c]) for c in _INVOICE_CSV_COLUMNS]
+        writer.writerow(row + [_decimal_de(d["net_cents"]), _decimal_de(d["vat_cents"]), _decimal_de(d["gross_cents"])])
+    name = (f"rechnungen-{start:%Y-%m}.csv" if (start.year, start.month) == (end.year, end.month)
+            else f"rechnungen-{start.isoformat()}_{end.isoformat()}.csv")
+    return Response("\ufeff" + buf.getvalue(), mimetype="text/csv", headers={
+        "Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "private, no-store"})
+
+
 @admin_bp.route("/payment-events", methods=["GET"])
 def list_payment_events():
     """Zahlungsereignisse des Anbieters (nur lesen), neueste zuerst.

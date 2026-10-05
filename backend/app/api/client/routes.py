@@ -223,21 +223,39 @@ def _current_db_user():
 
 @client_bp.route("/account", methods=["PATCH"])
 def update_my_account():
-    """Aendert Kontoeinstellungen des eingeloggten Nutzers. Body: {"locale": "de"|"en"} (Sprache der Mails und Belege).
+    """Aendert Kontoeinstellungen des eingeloggten Nutzers. Body (mindestens ein Feld):
 
-    Andere Werte fuer `locale` ergeben 400. Antwort: das Nutzerobjekt (wie /api/auth/me).
+    - `locale`: "de" | "en" (Sprache der Mails und Belege), sonst 400 `invalid_locale`
+    - `billing_name` (Text, hoechstens 200 Zeichen) und `billing_address` (Text, hoechstens 500 Zeichen): Rechnungsempfaenger,
+      ein leerer Text loescht den Wert; zu lang oder kein Text: 400 `invalid_billing_name` bzw. `invalid_billing_address`
+    Antwort: das Nutzerobjekt (wie /api/auth/me).
     """
     from app.i18n import validate_locale
     user, err = _current_db_user()
     if err:
         return err
     data = request.get_json(silent=True) or {}
-    if "locale" not in data:
-        return jsonify({"error": "Nichts zu ändern (erlaubt: locale)"}), 400
-    locale = validate_locale(data["locale"])
-    if locale is None:
-        return jsonify({"error": "Ungültige Sprache (erlaubt: de, en)", "code": "invalid_locale"}), 400
-    user.locale = locale
+    known = ("locale", "billing_name", "billing_address")
+    if not any(k in data for k in known):
+        return jsonify({"error": "Nichts zu ändern (erlaubt: locale, billing_name, billing_address)"}), 400
+
+    updates = {}
+    if "locale" in data:
+        locale = validate_locale(data["locale"])
+        if locale is None:
+            return jsonify({"error": "Ungültige Sprache (erlaubt: de, en)", "code": "invalid_locale"}), 400
+        updates["locale"] = locale
+    for field, max_len in (("billing_name", 200), ("billing_address", 500)):
+        if field in data:
+            value = data[field]
+            if value is not None and not isinstance(value, str):
+                return jsonify({"error": f"{field} muss ein Text sein", "code": f"invalid_{field}"}), 400
+            value = (value or "").strip()
+            if len(value) > max_len:
+                return jsonify({"error": f"{field} darf höchstens {max_len} Zeichen lang sein", "code": f"invalid_{field}"}), 400
+            updates[field] = value or None
+    for field, value in updates.items():
+        setattr(user, field, value)
     db.session.commit()
     return jsonify(user.to_dict())
 
@@ -290,7 +308,11 @@ def get_my_receipt(uuid: str):
         return jsonify({"error": "format muss html, text oder json sein"}), 400
     query = Receipt.query.filter_by(order_id=order.id)
     number = request.args.get("number")
-    receipt = (query.filter_by(number=number).first() if number else query.order_by(Receipt.id.desc()).first())
+    if number:
+        receipt = query.filter_by(number=number).first()
+    else:  # Standard: die neueste Rechnung (Gutschriften nur ueber ?number=)
+        receipt = (query.filter_by(kind="invoice").order_by(Receipt.id.desc()).first()
+                   or query.order_by(Receipt.id.desc()).first())
     if not receipt:
         return jsonify({"error": "Für diese Bestellung gibt es keinen Beleg"}), 404
     if fmt == "json":

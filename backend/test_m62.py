@@ -158,7 +158,7 @@ check("ungueltiges Format: Standardformat statt Fehler", fallback == f"AST-{YEAR
 print("Sichtbarkeit in der Bestellung")
 d = c.get(f"/api/client/orders/{o2}", headers=U1).json
 check("Kunde sieht receipts mit Nummer, Datum, Betrag", d["receipts"] == [{"number": f"AST-{YEAR}-00003", "issued_at": d["receipts"][0]["issued_at"],
-                                                                         "amount_cents": 499, "currency": "EUR"}] and d["receipts"][0]["issued_at"].endswith("+00:00"), str(d["receipts"]))
+                                                                         "amount_cents": 499, "currency": "EUR", "kind": "invoice", "references_number": None}] and d["receipts"][0]["issued_at"].endswith("+00:00"), str(d["receipts"]))
 check("Liste enthaelt receipts je Bestellung", all("receipts" in x for x in c.get("/api/client/orders", headers=U1).json))
 check("Admin-Liste enthaelt receipts", all("receipts" in x for x in c.get("/api/admin/orders", headers=AH).json))
 
@@ -168,15 +168,15 @@ html_body = r.get_data(as_text=True)
 check("HTML ist der Standard, neuester Beleg", r.status_code == 200 and r.mimetype == "text/html" and f"AST-{YEAR + 1}-00003" in html_body, html_body[:200])
 r = c.get(f"/api/client/orders/{o1}/receipt?number=AST-{YEAR}-00001", headers=U1)
 html_body = r.get_data(as_text=True)
-check("?number= waehlt einen Beleg", f"AST-{YEAR}-00001" in html_body and "4,99 EUR" in html_body and "30 Tage" in html_body)
+check("?number= waehlt einen Beleg", f"AST-{YEAR}-00001" in html_body and "4,99 EUR" in html_body and "Leistungszeitraum" in html_body)
 check("Anbieter, Kunde, Referenz und Fusszeile im Beleg", all(x in html_body for x in ["Beispiel Hosting", "Musterstr. 1", "k1", "k1@t.local", "pi_1", "Kleinunternehmer ohne USt-Ausweis"]))
-check("Hinweis: kein Steuerbeleg", "keine Rechnung im Sinne des Umsatzsteuergesetzes" in html_body)
+check("Rechnung ohne USt: Kleinunternehmer-Hinweis (M70)", "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet." in html_body and "<h1>Rechnung</h1>" in html_body)
 check("Servername ist HTML-escaped", "&lt;b&gt;Server&lt;/b&gt;" in html_body and "<b>Server</b>" not in html_body)
 check("Sicherheits-Header", r.headers["X-Content-Type-Options"] == "nosniff" and "default-src 'none'" in r.headers["Content-Security-Policy"]
       and "no-store" in r.headers["Cache-Control"] and "charset=utf-8" in r.headers["Content-Type"])
 r = c.get(f"/api/client/orders/{o1}/receipt?format=text&number=AST-{YEAR}-00002", headers=U1)
-check("format=text: text/plain mit Nummer und Betrag", r.mimetype == "text/plain" and "Belegnummer: AST-%d-00002" % YEAR in r.get_data(as_text=True)
-      and "Betrag: 4,99 EUR" in r.get_data(as_text=True) and "ZAHLUNGSBELEG" in r.get_data(as_text=True))
+check("format=text: text/plain mit Nummer und Betrag", r.mimetype == "text/plain" and "Rechnungsnummer: AST-%d-00002" % YEAR in r.get_data(as_text=True)
+      and "Betrag: 4,99 EUR" in r.get_data(as_text=True) and "RECHNUNG" in r.get_data(as_text=True))
 r = c.get(f"/api/client/orders/{o1}/receipt?format=json&number=AST-{YEAR}-00001", headers=U1)
 check("format=json: Felder", r.status_code == 200 and r.json["number"] == f"AST-{YEAR}-00001" and r.json["amount_cents"] == 499
       and r.json["product_name"] == "Klein" and r.json["customer"]["username"] == "k1" and r.json["payment_reference"] == "pi_1", str(r.json))

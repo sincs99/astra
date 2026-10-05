@@ -94,6 +94,21 @@ MESSAGES: dict[str, dict[str, str]] = {
             "Dies ist ein Zahlungsbeleg und keine Rechnung im Sinne des Umsatzsteuergesetzes; "
             "er enthält keine Umsatzsteuerangaben."
         ),
+        "invoice.title": "Rechnung",
+        "invoice.title_text": "RECHNUNG",
+        "invoice.number": "Rechnungsnummer",
+        "credit.title": "Gutschrift / Stornorechnung",
+        "credit.title_text": "GUTSCHRIFT / STORNORECHNUNG",
+        "credit.number": "Gutschriftnummer",
+        "receipt.credit_ref_label": "Bezug",
+        "receipt.credit_ref": "zu Rechnung Nr. {number}",
+        "receipt.period": "Leistungszeitraum",
+        "receipt.period_after_setup": "{days} Tage ab Bereitstellung",
+        "receipt.net": "Nettobetrag",
+        "receipt.vat": "Umsatzsteuer {rate} %",
+        "receipt.gross": "Bruttobetrag",
+        "receipt.vat_id": "USt-IdNr.",
+        "receipt.small_business_note": "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.",
     },
     "en": {
         "mail.verify.subject": "Astra: Confirm your email address",
@@ -182,5 +197,20 @@ MESSAGES: dict[str, dict[str, str]] = {
             "This is a payment receipt, not an invoice for VAT purposes; "
             "it does not contain any VAT information."
         ),
+        "invoice.title": "Invoice",
+        "invoice.title_text": "INVOICE",
+        "invoice.number": "Invoice number",
+        "credit.title": "Credit note",
+        "credit.title_text": "CREDIT NOTE",
+        "credit.number": "Credit note number",
+        "receipt.credit_ref_label": "Reference",
+        "receipt.credit_ref": "for invoice no. {number}",
+        "receipt.period": "Service period",
+        "receipt.period_after_setup": "{days} days from set-up",
+        "receipt.net": "Net amount",
+        "receipt.vat": "VAT {rate}%",
+        "receipt.gross": "Gross amount",
+        "receipt.vat_id": "VAT ID",
+        "receipt.small_business_note": "No VAT is charged (small business exemption, section 19 of the German VAT Act).",
     },
 }

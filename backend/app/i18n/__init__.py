@@ -39,9 +39,10 @@ _EN_SYMBOLS = {"EUR": "€", "USD": "$", "GBP": "£"}
 def format_money(locale, cents: int, currency: str) -> str:
     """DE: "1.234,56 EUR", EN: "€1,234.56" (bekannte Symbole, sonst "CHF 1,234.56")."""
     if normalize_locale(locale) == "en":
-        amount = f"{cents / 100:,.2f}"
+        amount = f"{abs(cents) / 100:,.2f}"
+        sign = "-" if cents < 0 else ""
         symbol = _EN_SYMBOLS.get(currency)
-        return f"{symbol}{amount}" if symbol else f"{currency} {amount}"
+        return f"{sign}{symbol}{amount}" if symbol else f"{sign}{currency} {amount}"
     return f"{cents / 100:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") + f" {currency}"
 
 
@@ -57,3 +58,29 @@ def format_datetime(locale, dt) -> str:
     if normalize_locale(locale) == "en":
         return f"{format_date('en', dt)}, {dt:%H:%M} UTC"
     return f"{dt:%d.%m.%Y %H:%M} UTC"
+
+
+def request_locale() -> str:
+    """Sprache des aktuellen Requests (M72): angemeldeter Nutzer -> users.locale (nicht gesetzt = Deutsch); sonst der erste
+    passende Eintrag von Accept-Language (de/en, nach q-Wert); sonst Deutsch. Das Ergebnis gilt je Request."""
+    from flask import g, has_request_context, request
+    if not has_request_context():
+        return DEFAULT_LOCALE
+    cached = g.get("_request_locale")
+    if cached:
+        return cached
+    locale = None
+    try:
+        from app.domain.auth.service import get_current_user
+        user = get_current_user()
+        if user is not None:
+            locale = normalize_locale(user.locale)
+    except Exception:  # Sprachwahl darf nie an der Anmeldepruefung scheitern
+        locale = None
+    if locale is None:
+        try:
+            locale = request.accept_languages.best_match(list(SUPPORTED_LOCALES)) or DEFAULT_LOCALE
+        except Exception:
+            locale = DEFAULT_LOCALE
+    g._request_locale = locale
+    return locale

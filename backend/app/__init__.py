@@ -109,6 +109,7 @@ def create_app(config_name: str | None = None) -> Flask:
 
     # Rate Limiting (lightweight, ohne externe Abhaengigkeit)
     _register_rate_limiting(app)
+    _register_error_localization(app)
 
     # Ops-Endpunkte registrieren
     _register_ops_endpoints(app)
@@ -172,37 +173,78 @@ def _register_security_headers(app: Flask) -> None:
 
 
 def _register_rate_limiting(app: Flask) -> None:
-    """Rate Limiting fuer Auth-Endpunkte (Redis, Fallback In-Memory)."""
+    """Rate Limiting fuer Auth-Endpunkte (Redis, Fallback In-Memory).
+
+    Je IP: Registrierung (RATELIMIT_REGISTER_PER_HOUR, Standard 5/Stunde), Login (RATELIMIT_LOGIN_PER_MINUTE, 10/Minute),
+    Passwort-Reset-Anfrage (RATELIMIT_PASSWORD_RESET_PER_HOUR, 3/Stunde); die uebrigen Auth-Routen teilen sich
+    RATELIMIT_AUTH_PER_MINUTE. Zusaetzlich zaehlt der Login Fehlversuche je Konto (siehe auth routes).
+    Die IP kommt aus `request.remote_addr`; hinter einem Proxy setzt ProxyFix (PROXY_FIX_ENABLED, PROXY_FIX_X_FOR)
+    die echte Adresse aus X-Forwarded-For, aber nur fuer die konfigurierte Anzahl vertrauenswuerdiger Proxys.
+    """
     from app.infrastructure import ratelimit
+
+    # Pfad -> (Name, Config-Schluessel, Standardwert, Fenster in Sekunden)
+    rules = {
+        "/api/auth/register": ("register", "RATELIMIT_REGISTER_PER_HOUR", 5, ratelimit.HOUR_SECONDS),
+        "/api/auth/login": ("login", "RATELIMIT_LOGIN_PER_MINUTE", 10, ratelimit.WINDOW_SECONDS),
+        "/api/auth/password-reset/request": ("pwreset", "RATELIMIT_PASSWORD_RESET_PER_HOUR", 3, ratelimit.HOUR_SECONDS),
+    }
+    general_paths = [
+        "/api/auth/change-password",
+        "/api/auth/verify-email",
+        "/api/auth/resend-verification",
+        "/api/auth/password-reset/confirm",
+    ]
 
     @app.before_request
     def check_rate_limit():
-        if not app.config.get("RATELIMIT_ENABLED", True):
+        if not app.config.get("RATELIMIT_ENABLED", True) or request.method == "OPTIONS":
             return None
 
-        # Nur Auth-Endpunkte limitieren
-        auth_paths = [
-            "/api/auth/login",
-            "/api/auth/register",
-            "/api/auth/change-password",
-            "/api/auth/verify-email",
-            "/api/auth/resend-verification",
-            "/api/auth/password-reset/request",
-            "/api/auth/password-reset/confirm",
-        ]
-        if request.path not in auth_paths:
-            return None
-
-        max_per_minute = app.config.get("RATELIMIT_AUTH_PER_MINUTE", 20)
         client_ip = request.remote_addr or "unknown"
-        key = f"{client_ip}:{request.path}"
+        if request.path in rules:
+            name, config_key, default, window = rules[request.path]
+            limit = int(app.config.get(config_key, default))
+            key = f"{name}:{client_ip}"
+        elif request.path in general_paths:
+            limit, window = int(app.config.get("RATELIMIT_AUTH_PER_MINUTE", 20)), ratelimit.WINDOW_SECONDS
+            key = f"{client_ip}:{request.path}"
+        else:
+            return None
 
-        if not ratelimit.allow(key, max_per_minute, app.config.get("REDIS_URL")):
-            return jsonify({
-                "error": "Rate limit exceeded",
-                "retry_after": ratelimit.WINDOW_SECONDS,
-            }), 429
+        allowed, retry_after = ratelimit.hit(key, limit, window, app.config.get("REDIS_URL"))
+        if not allowed:
+            return ratelimit.limited_response(retry_after)
         return None
+
+
+# ── Fehlertexte (M72) ───────────────────────────────────
+
+
+def _register_error_localization(app: Flask) -> None:
+    """Kundenseitige Fehlerantworten (/api/auth, /api/client) einheitlich als {error, code} in der Sprache des Aufrufers.
+
+    Der Text kommt aus dem Katalog `app/i18n/errors.py` (Deutsch bleibt wortgleich); fehlt ein Code, wird er aus dem Katalog
+    oder dem HTTP-Status ergaenzt. Admin-Routen und Zahlungs-Webhooks bleiben unberuehrt.
+    """
+    import json
+
+    @app.after_request
+    def localize_api_errors(response):
+        if response.status_code < 400 or not request.path.startswith(("/api/auth/", "/api/client/")):
+            return response
+        if response.mimetype != "application/json":
+            return response
+        data = response.get_json(silent=True)
+        if not isinstance(data, dict) or not isinstance(data.get("error"), str):
+            return response
+        from app.i18n import request_locale
+        from app.i18n.errors import localize_error
+        text, code = localize_error(data["error"], data.get("code"), response.status_code, request_locale())
+        if text != data["error"] or data.get("code") != code:
+            data["error"], data["code"] = text, code
+            response.set_data(json.dumps(data, ensure_ascii=False))
+        return response
 
 
 # ── Runner-Init ─────────────────────────────────────────

@@ -37,12 +37,15 @@ try {
   const routes = [
     { path: "/", role: null, name: "Landing" },
     { path: "/login", role: null, name: "Login" },
+    { path: "/register", role: null, name: "Registrierung" },
     { path: "/", role: "customer", name: "Dashboard", ready: "h1" },
     { path: "/shop", role: "customer", name: "Shop", ready: "h1" },
     { path: "/orders", role: "customer", name: "Bestellungen", ready: "h1" },
     { path: `/instances/${instanceUuid}?tab=console`, role: "customer", name: "Server-Detail (Konsole)", ready: "h1" },
     { path: "/admin", role: "admin", name: "Admin-Übersicht", ready: "h1" },
     { path: "/admin/orders", role: "admin", name: "Admin-Bestellungen", ready: "h1" },
+    { path: "/admin/invoices", role: "admin", name: "Admin-Rechnungen", ready: "h1" },
+    { path: "/account", role: "customer", name: "Konto", ready: "h1" },
   ];
   const tokens = { customer: customerToken, admin: adminToken };
 

@@ -68,4 +68,10 @@ export const auth: Record<keyof typeof de, string> = {
   "auth.login.recoveryUsed": "Recovery code used, {n} left.",
   "auth.login.recoveryLow": "Recovery code used, only {n} left. Generate new codes before you run out.",
   "auth.login.recoveryLink": "Go to account",
+  "auth.rate.wait": "Too many attempts, please try again in {n} minutes.",
+  "auth.captcha.required": "Please complete the security check.",
+  "auth.captcha.failed": "The security check failed. Please try again.",
+  "auth.captcha.unavailable": "The verification service is currently unavailable. Please try again later.",
+  "auth.captcha.loadFailed": "The security check could not be loaded. Please check your connection or browser extensions.",
+  "auth.rate.waitOne": "Too many attempts, please try again in 1 minute.",
 };

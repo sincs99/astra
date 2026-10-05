@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import re
 import uuid as _uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from app.extensions import db
 from app.domain.billing.models import (
@@ -266,6 +266,7 @@ def mark_order_paid(order: Order, payment_reference: str | None = None, actor_id
     order = db.session.query(Order).filter_by(id=order.id).with_for_update().one()
     now = _utc_naive(now) or _now()
     ref = (payment_reference or "").strip()[:191] or None
+    new_payment = False  # True, wenn diese Zahlung neu verbucht wurde (Rechnung ausstellen)
 
     if order.status in (ORDER_ACTIVE, ORDER_PAST_DUE):
         return renew_order(order, ref, actor_id, now)
@@ -278,14 +279,18 @@ def mark_order_paid(order: Order, payment_reference: str | None = None, actor_id
         order.payment_references = [ref] if ref else []
         db.session.commit()
         _log("order:paid", order, actor_id, "Bestellung als bezahlt markiert", {"payment_reference": ref})
-        _issue_receipt(order, ref, now)
+        new_payment = True
     first_payment = order.price_cents > 0 and order.status == ORDER_PENDING_PAYMENT
     try:
         order = fulfill_order(order, now)
     except BillingError:
+        if new_payment:
+            _issue_receipt(order, ref, now, None)  # Zahlung ist verbucht, der Leistungszeitraum beginnt erst mit der Bereitstellung
         if first_payment:
             _mail_order(order, "payment_waiting")
         raise
+    if new_payment:
+        _issue_receipt(order, ref, now, (now, order.current_period_end))
     if order.price_cents > 0:
         _mail_server_ready(order, paid_now=first_payment)
     return order
@@ -334,17 +339,17 @@ def renew_order(order: Order, payment_reference: str | None, actor_id: int | Non
     _log("order:renewed", order, actor_id, "Bestellung verlängert",
          {"payment_reference": payment_reference, "was_past_due": was_past_due, "unsuspended": lifted,
           "current_period_end": iso_utc(order.current_period_end)})
-    _issue_receipt(order, payment_reference, now)
+    _issue_receipt(order, payment_reference, now, (base, order.current_period_end))
     if order.price_cents > 0:
         _mail_order(order, "renewed", end=order.current_period_end)
     return order
 
 
-def _issue_receipt(order: Order, payment_reference: str | None, now: datetime) -> None:
-    """Beleg mit fortlaufender Nummer (M62), best effort: darf die Zahlung nie blockieren."""
+def _issue_receipt(order: Order, payment_reference: str | None, now: datetime, period: tuple | None = None) -> None:
+    """Rechnung mit fortlaufender Nummer (M62/M70), best effort: darf die Zahlung nie blockieren."""
     try:
         from app.domain.billing.receipts import issue_receipt
-        issue_receipt(order, payment_reference, now)
+        issue_receipt(order, payment_reference, now, period)
     except Exception:  # pragma: no cover
         db.session.rollback()
         logger.exception("Beleg fuer Bestellung %s fehlgeschlagen", order.uuid)
@@ -409,13 +414,16 @@ def log_orders_expired(order_ids: list[int], reason: str) -> None:
 
 
 def revenue_stats(days: int = 30, now: datetime | None = None) -> dict:
-    """Umsatz der letzten `days` Tage auf Basis der Zahlungsbelege (M62, `receipts.issued_at`).
+    """Umsatz der letzten `days` Tage auf Basis der Rechnungen (M62/M70, `receipts.issued_at`, nur `kind=invoice`).
 
-    Je verbuchter Zahlung gibt es einen Beleg; der erste Beleg einer Bestellung ist die Erstzahlung
-    (`paid_count`), weitere sind Verlaengerungen (`renewals_count`). Kostenlose Pakete haben keine Belege.
-    Zahlungen vor M62 haben keinen Beleg und fehlen. Erstattungen (M59, Events `order:refunded`) werden
-    getrennt je Waehrung ausgewiesen (`refunded_cents_by_currency`) und nicht verrechnet; fehlt im Event
-    der erstattete Betrag, zaehlt der Betrag der Zahlung. Keine Waehrungsumrechnung.
+    Je verbuchter Zahlung gibt es eine Rechnung; die erste Rechnung einer Bestellung ist die Erstzahlung
+    (`paid_count`), weitere sind Verlaengerungen (`renewals_count`). Kostenlose Pakete haben keine Rechnungen.
+    Zahlungen vor M62 haben keinen Beleg und fehlen. `by_currency` ist brutto. Seit M70 zusaetzlich `net_by_currency` und
+    `vat_by_currency` (Summe der Steuerfelder; Belege aus der Zeit vor M70 haben keine und fehlen dort). Erstattungen
+    werden getrennt je Waehrung ausgewiesen (`refunded_cents_by_currency`) und nicht verrechnet. Seit M73 ist das die
+    Summe der Gutschriften im Zeitraum (inkl. verlorener Zahlungsstreite); nur Erstattungs-Events aus der Zeit vor M70
+    (ohne Feld `credit_note`) zaehlen wie bisher aus `order:refunded` (erstatteter Betrag, sonst Betrag der Zahlung).
+    Keine Waehrungsumrechnung.
     Zusaetzlich (M66) derselbe Zeitraum davor (`prev_since` bis `since`, gleich lang): `prev_by_currency`,
     `prev_paid_count`, `prev_renewals_count` fuer den Trend in der Admin-Uebersicht.
     """
@@ -424,36 +432,74 @@ def revenue_stats(days: int = 30, now: datetime | None = None) -> dict:
     now = _utc_naive(now) or _now()
     since = now - timedelta(days=days)
     prev_since = since - timedelta(days=days)
-    first_ids = {rid for (rid,) in db.session.query(db.func.min(Receipt.id)).group_by(Receipt.order_id).all()}
+    first_ids = {rid for (rid,) in db.session.query(db.func.min(Receipt.id)).filter(Receipt.kind == "invoice")
+                 .group_by(Receipt.order_id).all()}
 
-    def totals(start: datetime, end: datetime) -> tuple[dict[str, int], int, int]:
-        sums: dict[str, int] = {}
+    def add(target: dict, currency: str, cents: int) -> None:
+        target[currency] = target.get(currency, 0) + cents
+
+    def totals(start: datetime, end: datetime) -> tuple[dict, dict, dict, int, int]:
+        gross: dict[str, int] = {}
+        net: dict[str, int] = {}
+        vat: dict[str, int] = {}
         first = later = 0
-        for rid, cents, currency in (db.session.query(Receipt.id, Receipt.amount_cents, Receipt.currency)
-                                     .filter(Receipt.issued_at >= start, Receipt.issued_at < end).all()):
-            sums[currency] = sums.get(currency, 0) + cents
+        for rid, cents, currency, snap in (db.session.query(Receipt.id, Receipt.amount_cents, Receipt.currency, Receipt.snapshot)
+                                           .filter(Receipt.kind == "invoice", Receipt.issued_at >= start, Receipt.issued_at < end).all()):
+            add(gross, currency, cents)
+            snap = snap or {}
+            if isinstance(snap.get("net_cents"), int) and isinstance(snap.get("vat_cents"), int):
+                add(net, currency, snap["net_cents"])
+                add(vat, currency, snap["vat_cents"])
             if rid in first_ids:
                 first += 1
             else:
                 later += 1
-        return dict(sorted(sums.items())), first, later
+        return dict(sorted(gross.items())), dict(sorted(net.items())), dict(sorted(vat.items())), first, later
 
     # Zeitraum [since, now], Vorzeitraum [prev_since, since) gleich lang (M66, fuer den Trend in der Uebersicht)
-    by_currency, paid, renewals = totals(since, now + timedelta(microseconds=1))
-    prev_by_currency, prev_paid, prev_renewals = totals(prev_since, since)
+    by_currency, net_by_currency, vat_by_currency, paid, renewals = totals(since, now + timedelta(microseconds=1))
+    prev_by_currency, _, _, prev_paid, prev_renewals = totals(prev_since, since)
     refunded: dict[str, int] = {}
+    # Seit M73: Summe der Gutschriften (deckt nur den Zuwachs je Erstattung ab, keine Doppelzaehlung kumulierter Teilerstattungen)
+    for cents, currency in db.session.query(Receipt.amount_cents, Receipt.currency).filter(
+            Receipt.kind == "credit_note", Receipt.issued_at >= since, Receipt.issued_at < now + timedelta(microseconds=1)).all():
+        refunded[currency] = refunded.get(currency, 0) - cents
     for (props,) in db.session.query(ActivityLog.properties).filter(
             ActivityLog.event == "order:refunded", ActivityLog.created_at >= since).all():
         props = props or {}
+        if "credit_note" in props:
+            continue  # seit M70 ueber die Gutschrift gezaehlt (auch wenn keine ausgestellt werden konnte: dann kein Betrag)
         cents = props.get("refunded_cents") if isinstance(props.get("refunded_cents"), int) else props.get("amount_cents")
         currency = props.get("currency")
         if isinstance(cents, int) and currency:
             refunded[currency] = refunded.get(currency, 0) + cents
     return {"days": days, "since": iso_utc(since), "by_currency": by_currency,
+            "net_by_currency": net_by_currency, "vat_by_currency": vat_by_currency,
             "paid_count": paid, "renewals_count": renewals,
             "refunded_cents_by_currency": dict(sorted(refunded.items())),
             "prev_since": iso_utc(prev_since), "prev_by_currency": prev_by_currency,
             "prev_paid_count": prev_paid, "prev_renewals_count": prev_renewals}
+
+
+def list_invoice_documents(start: date, end: date) -> list[dict]:
+    """Alle Rechnungen und Gutschriften mit Ausstelldatum von `start` bis `end` einschliesslich (UTC), aelteste zuerst (M70)."""
+    from app.domain.billing.models import Receipt
+    lower = datetime(start.year, start.month, start.day)
+    upper = datetime(end.year, end.month, end.day) + timedelta(days=1)
+    rows = (db.session.query(Receipt, Order.uuid, User.username)
+            .join(Order, Order.id == Receipt.order_id).join(User, User.id == Order.user_id)
+            .filter(Receipt.issued_at >= lower, Receipt.issued_at < upper)
+            .order_by(Receipt.issued_at, Receipt.id).all())
+    out = []
+    for doc, order_uuid, username in rows:
+        d = doc.to_dict()
+        out.append({
+            "number": doc.number, "kind": doc.kind, "issued_at": iso_utc(doc.issued_at), "order_uuid": order_uuid,
+            "username": username, "net_cents": d["net_cents"], "vat_cents": d["vat_cents"], "vat_rate": d["vat_rate"],
+            "gross_cents": doc.amount_cents, "currency": doc.currency, "payment_reference": doc.payment_reference,
+            "references_number": d["references_number"],
+        })
+    return out
 
 
 # ── Betriebszustand des Billing-Ticks (M53) ─────────────
@@ -972,13 +1018,37 @@ def _suspend_for(order: Order, instance: Instance | None, reason: str) -> bool:
     return True
 
 
+def _issue_credit_note(order: Order, ev, now: datetime, total: int | None = None) -> str | None:
+    """Gutschrift zur erstatteten Rechnung (M70), best effort. Rueckgabe: Nummer oder None (keine Rechnung zur Zahlung,
+    schon vollstaendig gutgeschrieben, Fehler). Idempotent je Erstattungs-Ereignis. `total` (M73) ueberschreibt den
+    erstatteten Gesamtbetrag, z.B. beim verlorenen Zahlungsstreit."""
+    try:
+        from app.domain.billing.models import Receipt
+        from app.domain.billing.receipts import issue_credit_note
+        invoice = Receipt.query.filter_by(order_id=order.id, kind="invoice", payment_reference=ev.payment_reference).first() \
+            if ev.payment_reference else None
+        if invoice is None:
+            return None
+        if total is None:
+            total = ev.refunded_cents if isinstance(ev.refunded_cents, int) else (invoice.amount_cents if ev.full_refund else None)
+        if total is None:
+            return None
+        note = issue_credit_note(order, invoice, total, ev.event_id, now)
+        return note.number if note else None
+    except Exception:  # pragma: no cover - darf die Verarbeitung der Erstattung nie stoppen
+        db.session.rollback()
+        logger.exception("Gutschrift zur Bestellung %s fehlgeschlagen", order.uuid)
+        return None
+
+
 def _apply_refund(order: Order, ev, now: datetime, source: str) -> str:
     """Erstattung: voll (nur fuer die zuletzt verbuchte Zahlung) beendet den Dienst, sonst nur Hinweis."""
     refs = list(order.payment_references or [])
     latest = (refs[-1] if refs else order.payment_reference)
     is_latest = ev.payment_reference is not None and ev.payment_reference == latest
     amount = {"refunded_cents": ev.refunded_cents, "amount_cents": ev.amount_cents, "currency": ev.currency,
-              "payment_reference": ev.payment_reference, "source": source}
+              "payment_reference": ev.payment_reference, "source": source,
+              "credit_note": _issue_credit_note(order, ev, now)}
 
     if not ev.full_refund or not is_latest:
         why = "teilweise erstattet" if not ev.full_refund else "ältere Zahlung vollständig erstattet"
@@ -1026,7 +1096,9 @@ def _apply_dispute(order: Order, ev, now: datetime) -> str:
 
     # dispute_closed
     if ev.dispute_status == "lost":
-        # Streit verloren: Geld ist weg wie bei einer Erstattung (unabhaengig davon, welche Zahlung betroffen war)
+        # Streit verloren: Geld ist weg wie bei einer Erstattung (unabhaengig davon, welche Zahlung betroffen war);
+        # dazu gehoert auch die Gutschrift (M73), idempotent je Ereignis, hoechstens bis zum Rechnungsbetrag
+        base["credit_note"] = _issue_credit_note(order, ev, now, total=ev.amount_cents if isinstance(ev.amount_cents, int) else None)
         if order.status not in (ORDER_REFUNDED, ORDER_CANCELLED, ORDER_EXPIRED):
             suspended = _suspend_for(order, instance, REFUND_SUSPEND_REASON)
             order.status = ORDER_REFUNDED

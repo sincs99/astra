@@ -89,4 +89,12 @@ export const account: Record<keyof typeof de, string> = {
   "account.mfa.regenerateWrongPw": "The password is incorrect.",
   "account.mfa.regenerated": "New recovery codes generated.",
   "account.mfa.regenerateCancel": "Cancel",
+  "account.billing.title": "Billing address",
+  "account.billing.name": "Name or company",
+  "account.billing.address": "Address",
+  "account.billing.hint": "Optional. Appears on your invoices.",
+  "account.billing.save": "Save",
+  "account.billing.saving": "Saving…",
+  "account.billing.saved": "Billing address saved",
+  "account.billing.failed": "The billing address could not be saved",
 };

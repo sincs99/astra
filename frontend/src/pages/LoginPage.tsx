@@ -5,6 +5,7 @@ import { api, ApiError, isAuthenticated, setAccessToken } from "../services/api"
 import { SiteFooter } from "../components/SiteFooter";
 import { setFlash } from "../lib/flash";
 import { adoptUserLocale } from "../lib/locale";
+import { useRateLimit } from "../hooks/useRateLimit";
 import { safeRedirectPath } from "../lib/redirect";
 import { inputStyle, labelStyle, btnPrimary, linkStyle } from "../components/ui";
 
@@ -23,6 +24,7 @@ export function LoginPage() {
   const [useRecovery, setUseRecovery] = useState(false);
   const [unverified, setUnverified] = useState(false);
   const [resent, setResent] = useState(false);
+  const rate = useRateLimit();
 
   // Bereits eingeloggt -> direkt zum Dashboard (nicht bei abgelaufener Sitzung)
   if (isAuthenticated() && !expired) return <Navigate to={redirectTo} replace />;
@@ -60,6 +62,7 @@ export function LoginPage() {
       }
       navigate(redirectTo);
     } catch (err) {
+      if (rate.apply(err)) return;
       if (err instanceof ApiError && err.code === "email_not_verified") setUnverified(true);
       setError(err instanceof Error ? err.message : t("auth.login.failed"));
     } finally {
@@ -86,6 +89,14 @@ export function LoginPage() {
           borderRadius: 6, marginBottom: 16, fontSize: 14,
         }}>
           {t("auth.login.expired")}
+        </div>
+      )}
+
+      {rate.message && (
+        <div role="alert" style={{
+          padding: "10px 14px", backgroundColor: "var(--warn-soft)", color: "var(--warn)", borderRadius: 6, marginBottom: 16, fontSize: 14,
+        }}>
+          {rate.message}
         </div>
       )}
 
@@ -176,12 +187,12 @@ export function LoginPage() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || rate.blocked}
           style={{
             ...btnPrimary,
             width: "100%",
-            backgroundColor: loading ? "var(--neutral)" : btnPrimary.backgroundColor,
-            cursor: loading ? "not-allowed" : "pointer",
+            backgroundColor: loading || rate.blocked ? "var(--neutral)" : btnPrimary.backgroundColor,
+            cursor: loading || rate.blocked ? "not-allowed" : "pointer",
           }}
         >
           {loading ? t("auth.login.busy") : mfaRequired ? t("auth.login.confirm") : t("auth.login.submit")}

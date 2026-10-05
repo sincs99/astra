@@ -34,9 +34,17 @@ def login():
     if not login_field or not password:
         return jsonify({"error": "Fields 'login' and 'password' are required"}), 400
 
+    # M71: zu viele Fehlversuche fuer dieses Konto in der letzten Stunde: gesperrt (auch mit richtigem Passwort)
+    blocked, retry_after = _login_failures_blocked(login_field)
+    if blocked:
+        _log_auth_event("auth:login_blocked", None, f"Login gesperrt (zu viele Fehlversuche) für '{login_field}'",
+                        {"login": str(login_field)[:120]})
+        return _limited(retry_after)
+
     user = authenticate_user(login_field, password)
 
     if not user:
+        _record_login_failure(login_field)
         _log_auth_event("auth:login_failed", None,
                         f"Fehlgeschlagener Login-Versuch für '{login_field}'",
                         {"login": login_field})
@@ -64,6 +72,7 @@ def login():
         from app.domain.auth.mfa_service import recovery_codes_remaining, verify_mfa_login
         method = verify_mfa_login(user, mfa_code)
         if method is None:
+            _record_login_failure(login_field)
             _log_auth_event("auth:login_failed", user.id,
                             f"MFA-Verifikation fehlgeschlagen für {user.username}")
             return jsonify({"error": "Ungültiger MFA-Code"}), 401
@@ -91,12 +100,25 @@ def login():
 # ── Registrierung / Passwort-Reset ───────────────────────
 
 
+@auth_bp.route("/captcha", methods=["GET"])
+def captcha_config():
+    """Oeffentlich: CAPTCHA-Anbieter und Site-Key fuer das Widget (`provider` = none, turnstile oder hcaptcha)."""
+    from app.domain.accounts.captcha import public_config
+    return jsonify(public_config())
+
+
 @auth_bp.route("/register", methods=["POST"])
 def register():
     """Selbstregistrierung (nur wenn REGISTRATION_ENABLED=true)."""
     from app.domain.accounts.service import AccountError, register_user
 
     data = request.get_json() or {}
+    # M71: Honigtopf-Feld (fuer Menschen unsichtbar): gefuellt = Bot, kein Konto, bewusst nichtssagende Antwort
+    if data.get("website"):
+        return jsonify({"error": "Ungültige Anfrage", "code": "invalid_request"}), 400
+    captcha_error = _check_captcha(data)
+    if captcha_error:
+        return captcha_error
     try:
         user = register_user(data.get("username"), data.get("email"), data.get("password"), data.get("locale"))
     except AccountError as e:
@@ -146,6 +168,9 @@ def password_reset_request():
     from app.domain.accounts.service import request_password_reset
 
     data = request.get_json() or {}
+    captcha_error = _check_captcha(data)
+    if captcha_error:
+        return captcha_error
     request_password_reset(data.get("email"))
     return jsonify({"message": "Falls die Adresse existiert, wurde eine E-Mail versendet"})
 
@@ -359,6 +384,48 @@ def _revoke_current_token(user) -> bool:
     except Exception:  # Logout darf nie scheitern: der Client verwirft das Token trotzdem
         current_app.logger.exception("Logout: Token konnte nicht gesperrt werden")
         return False
+
+
+def _limited(retry_after: int):
+    from app.infrastructure.ratelimit import limited_response
+    return limited_response(retry_after)
+
+
+def _login_failure_key(login_field) -> str:
+    return "loginfail:" + str(login_field).strip().lower()[:200]
+
+
+def _login_failures_blocked(login_field) -> tuple[bool, int]:
+    """Sperre je Konto: RATELIMIT_LOGIN_FAILURES_PER_HOUR Fehlversuche pro Stunde (nur bei aktivem Rate Limiting)."""
+    if not current_app.config.get("RATELIMIT_ENABLED", True):
+        return False, 0
+    from app.infrastructure import ratelimit
+    limit = int(current_app.config.get("RATELIMIT_LOGIN_FAILURES_PER_HOUR", 20))
+    return ratelimit.blocked(_login_failure_key(login_field), limit, ratelimit.HOUR_SECONDS,
+                             current_app.config.get("REDIS_URL"))
+
+
+def _record_login_failure(login_field) -> None:
+    if not current_app.config.get("RATELIMIT_ENABLED", True):
+        return
+    from app.infrastructure import ratelimit
+    ratelimit.record(_login_failure_key(login_field), ratelimit.HOUR_SECONDS, current_app.config.get("REDIS_URL"))
+
+
+def _check_captcha(data: dict):
+    """None, wenn kein CAPTCHA verlangt wird oder es bestanden ist; sonst die Fehlerantwort (400/503)."""
+    from app.domain.accounts import captcha
+    if not captcha.required():
+        return None
+    try:
+        ok = captcha.verify(data.get("captcha_token"), request.remote_addr)
+    except captcha.CaptchaUnavailable:
+        return jsonify({"error": "Die Sicherheitsprüfung ist gerade nicht erreichbar, bitte später erneut versuchen",
+                        "code": "captcha_unavailable"}), 503
+    if not ok:
+        return jsonify({"error": "Sicherheitsprüfung fehlgeschlagen, bitte erneut versuchen",
+                        "code": "captcha_failed"}), 400
+    return None
 
 
 def _notify_recovery_used(user, remaining: int) -> None:

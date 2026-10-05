@@ -193,7 +193,7 @@ check("stamp + upgrade ok, Spalten vorhanden, Altzeile unveraendert (NULL)", sta
       and {"amount_cents", "currency"} <= cols and keep == [("evt_alt", None, None)], up.stderr[-300:])
 check("zweites upgrade (Inspector-Guard) ok", up2.returncode == 0)
 check("downgrade entfernt beide Spalten", down.returncode == 0 and not ({"amount_cents", "currency"} & cols_down), down.stderr[-300:])
-check("einziger Head x4s5t6u7v8w9", heads.stdout.strip().endswith("x4s5t6u7v8w9 (head)") and heads.stdout.count("(head)") == 1, heads.stdout[-100:])
+check("genau ein Migrations-Head", heads.stdout.count("(head)") == 1, heads.stdout[-100:])
 
 print(f"\n{passed} OK, {failed} FAIL")
 sys.exit(1 if failed else 0)
