@@ -30,7 +30,7 @@ Reihenfolge für den ersten echten Betrieb. Jeder Punkt verweist auf den Abschni
 - [ ] **`.env`** aus `.env.prod.example` erstellen (Runbook 3). Mindestens:
       `PANEL_DOMAIN=astrahost.ch`, `NODE_DOMAIN=node1.astrahost.ch`, `REDIRECT_DOMAINS=www.astrahost.ch,astrahost.gg,www.astrahost.gg`,
       `ACME_EMAIL`, `SECRET_KEY`/`JWT_SECRET_KEY`/`POSTGRES_PASSWORD`/`REDIS_PASSWORD` (jeweils `openssl rand -hex 32`),
-      `ADMIN_*`, `SITE_NAME=Astrahost`, `INVOICE_COUNTRY=CH`, `VAT_RATE`, `INVOICE_SELLER` (Name, Adresse, CHE-Nummer),
+      `ADMIN_*`, `SITE_NAME=Astrahost`, `MFA_ISSUER_NAME=Astrahost` (vor dem ersten Kunden setzen, danach nie ändern), `INVOICE_COUNTRY=CH`, `VAT_RATE`, `INVOICE_SELLER` (Name, Adresse, CHE-Nummer),
       `MAIL_*`, `PAYMENT_PROVIDER=stripe` + `STRIPE_*`, optional `CAPTCHA_*`, `ADMIN_ALERT_WEBHOOK_URL`.
 - [ ] **Panel starten** (Runbook 4) und `./scripts/smoke-test.sh https://astrahost.ch` ausführen.
 - [ ] **Stripe-Webhook** in Stripe auf `https://astrahost.ch/api/payments/stripe` anlegen, Ereignisse aus Runbook 9a,
