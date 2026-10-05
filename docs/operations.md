@@ -182,7 +182,7 @@ in der Agents-Ansicht. Details: `docs/wings-remote-api.md`.
 | Variable | Beschreibung | Default |
 |----------|-------------|---------|
 | `JWT_ACCESS_TOKEN_EXPIRES_HOURS` | Token-Gültigkeit | 24 |
-| `MFA_ISSUER_NAME` | TOTP Issuer | Astra |
+| `MFA_ISSUER_NAME` | Name im Authenticator-Eintrag (TOTP-Issuer). **Vor dem ersten Kunden setzen, danach nicht mehr ändern** (bestehende Einträge behalten den alten Namen). Folgt bewusst nicht `SITE_NAME` | Astra Panel |
 | `RATELIMIT_ENABLED` | Rate Limiting aktiv | true |
 | `PAYMENT_PROVIDER` | Zahlungsweg: `manual` oder `stripe` (siehe orders-api.md) | manual |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Stripe-Zugang (nur Umgebung, nie ins Repository) | – |

@@ -304,6 +304,22 @@ with app.app_context():
     src_alerts = inspect.getsource(alerts)
 check("keine fest verdrahteten 'Astra: ' Betreffe mehr im Alert-Modul", '"Astra: ' not in src_alerts and "'Astra: '" not in src_alerts)
 
+print("MFA-Issuer (bleibt stabil, nur ueber MFA_ISSUER_NAME aenderbar)")
+from urllib.parse import unquote
+from app.domain.auth import mfa_service
+with app.app_context():
+    u_m = User.query.get(ids["u1"])
+    uri = unquote(mfa_service.setup_mfa(u_m)["provisioning_uri"])
+    check("Standard-Issuer unveraendert 'Astra Panel', auch mit SITE_NAME=Astrahost", "issuer=Astra Panel" in uri and "Astrahost" not in uri, uri)
+    u_m.mfa_secret = None
+    db.session.commit()
+    app.config["MFA_ISSUER_NAME"] = "Astrahost"
+    uri = unquote(mfa_service.setup_mfa(u_m)["provisioning_uri"])
+    check("MFA_ISSUER_NAME=Astrahost wirkt im Authenticator-Eintrag", "issuer=Astrahost" in uri and "Astrahost:" in uri, uri)
+    app.config["MFA_ISSUER_NAME"] = "Astra Panel"
+from app.config import Config
+check("Config-Standard 'Astra Panel'", Config.MFA_ISSUER_NAME == "Astra Panel")
+
 print("Produktions-Check")
 from app.config import ProductionConfig
 mk = lambda **kw: type("C", (ProductionConfig,), kw)
