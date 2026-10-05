@@ -4,7 +4,7 @@ export const auth: Record<keyof typeof de, string> = {
   "auth.login.missing": "Please enter your username/email and password",
   "auth.login.missingCode": "Please enter the code from your authenticator app",
   "auth.login.failed": "Sign-in failed",
-  "auth.login.title": "Astra Sign in",
+  "auth.login.title": "{brand} Sign in",
   "auth.login.resetDone": "Your password has been changed. Please sign in now.",
   "auth.login.expired": "Your session has expired. Please sign in again.",
   "auth.login.resentOk": "We have sent you a new confirmation email.",

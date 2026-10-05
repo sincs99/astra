@@ -5,6 +5,7 @@
  */
 import { useSyncExternalStore } from "react";
 import { de, type MessageKey } from "./de";
+import { OPERATOR } from "../legal/operator";
 import { en } from "./en";
 
 export type Lang = "de" | "en";
@@ -62,8 +63,9 @@ export function hasKey(key: string): key is MessageKey {
 /** Übersetzt einen Schlüssel; {name}-Platzhalter werden aus params ersetzt. */
 export function t(key: MessageKey, params?: Record<string, string | number>): string {
   const text = MESSAGES[current][key] ?? de[key];
-  if (!params) return text;
-  return text.replace(/\{(\w+)\}/g, (m, name: string) => (name in params ? String(params[name]) : m));
+  // {brand} steht in jedem Text zur Verfügung (Markenname des Betreibers)
+  const all: Record<string, string | number> = { brand: OPERATOR.brand, ...params };
+  return text.replace(/\{(\w+)\}/g, (m, name: string) => (name in all ? String(all[name]) : m));
 }
 
 /** BCP-47-Tag für Datums- und Zahlenformate der aktuellen Sprache. */

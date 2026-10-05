@@ -30,7 +30,7 @@ export const common = {
   "boundary.details": "Technische Details",
   "boundary.home": "Zur Startseite",
   "boundary.updateTitle": "Neue Version verfügbar",
-  "boundary.updateText": "Astra wurde aktualisiert. Bitte lade die Seite neu, um mit der neuen Version weiterzuarbeiten.",
+  "boundary.updateText": "{brand} wurde aktualisiert. Bitte lade die Seite neu, um mit der neuen Version weiterzuarbeiten.",
   "boundary.reload": "Seite neu laden",
   "lang.label": "Sprache",
   "lang.hint": "Die Auswahl gilt nur für diesen Browser. Meldungen des Servers erscheinen teilweise weiterhin auf Deutsch.",

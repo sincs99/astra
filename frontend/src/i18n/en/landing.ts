@@ -1,7 +1,7 @@
 import type { landing as de } from "../de/landing";
 
 export const landing: Record<keyof typeof de, string> = {
-  "landing.title": "Astra – rent a game server",
+  "landing.title": "{brand} – rent a game server",
   "landing.navPackages": "Plans",
   "landing.navGames": "Games",
   "landing.navSteps": "How it works",
@@ -36,6 +36,6 @@ export const landing: Record<keyof typeof de, string> = {
   "landing.step2Transfer": "Pay by bank transfer – your server starts as soon as the payment has arrived.",
   "landing.step3": "Play",
   "landing.step3Text": "Copy the address, send it to your friends, go. Console, files and backups are in the panel.",
-  "landing.footerBrand": "Astra",
+  "landing.footerBrand": "{brand}",
   "landing.footerNav": "Legal",
 };

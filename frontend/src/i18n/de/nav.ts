@@ -18,5 +18,5 @@ export const nav = {
   "nav.adminRole": "Admin",
   "nav.customerRole": "Kunde",
   "nav.menu": "Menü",
-  "nav.home": "Astra Startseite",
+  "nav.home": "{brand} Startseite",
 } as const;

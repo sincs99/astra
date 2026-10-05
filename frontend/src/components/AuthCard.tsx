@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { SiteFooter } from "./SiteFooter";
+import { OPERATOR } from "../legal/operator";
 
 interface AuthCardProps {
   title: string;
@@ -8,7 +9,7 @@ interface AuthCardProps {
 
 /** Zentrierte Karte für öffentliche Seiten (Login, Registrierung, Passwort-Reset). */
 export function AuthCard({ title, children }: AuthCardProps) {
-  useEffect(() => { document.title = `${title} – Astra`; }, [title]);
+  useEffect(() => { document.title = `${title} · ${OPERATOR.brand}`; }, [title]);
   return (
     <div style={{ maxWidth: 400, margin: "clamp(24px, 10vh, 80px) auto", padding: 24 }}>
       <h1 style={{ textAlign: "center", marginBottom: 24 }}>{title}</h1>

@@ -45,7 +45,7 @@ export function LandingPage() {
       <header className="lp-head">
         <div className="lp-wrap">
           <div className="lp-nav">
-            <Link to="/" className="sb-brand" aria-label="Astra"><Logo size={24} /></Link>
+            <Link to="/" className="sb-brand" aria-label={OPERATOR.brand}><Logo size={24} /></Link>
             <nav aria-label={t("landing.navAria")} className="lp-links">
               <a href="#pakete">{t("landing.navPackages")}</a>
               {games.length > 0 && <a href="#spiele">{t("landing.navGames")}</a>}
