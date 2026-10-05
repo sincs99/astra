@@ -72,7 +72,7 @@ export const account = {
   "account.mailLanguageHint": "Mails und Belege kommen in dieser Sprache.",
   "account.language": "Sprache",
   "account.languageHint": "Meldungen des Servers erscheinen teilweise weiterhin auf Deutsch.",
-  "account.mfa.fileHeader": "Astra Recovery-Codes – jeder Code gilt einmal. Bewahre die Datei sicher auf.",
+  "account.mfa.fileHeader": "{brand} Recovery-Codes – jeder Code gilt einmal. Bewahre die Datei sicher auf.",
   "account.mfa.recoveryList": "Recovery-Codes",
   "account.mfa.download": "Als Textdatei speichern",
   "account.mfa.done": "Fertig",

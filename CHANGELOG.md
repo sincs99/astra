@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – M75 konfigurierbare Marke)
+- `OPERATOR.brand` in `legal/operator.ts` (Standard "Astra"): der Markenname erscheint in der Logo-Wortmarke (Symbol bleibt), im Tab-Titel (Muster "Seite · Marke"), in der Landingpage (Titel, Kopf, Fussnote), in der Anmelde-/Registrierkarte und in allen Texten mit festem "Astra" (neuer Platzhalter `{brand}`, in jedem i18n-Text verfuegbar), im Dateinamen der Recovery-Codes und im `<title>` von `index.html` (Build-Zeit ueber ein Vite-Plugin aus `operator.ts`). "Astra" bleibt der Name der Software; Domain-Beispiele (`node01.astra.dev`) und interne Bezeichner bleiben unveraendert
+
 ### Added (Backend – M74 Schweiz-Tauglichkeit)
 - `INVOICE_COUNTRY` (`DE`|`CH`, Standard `DE`; unbekannter Wert ist im Produktions-Check KRITISCH). Der Schnappschuss jeder Rechnung/Gutschrift hält `country`, Belege ohne Feld gelten als Deutschland; ein späterer Wechsel ändert alte Belege nicht
 - CH: Standardhinweis „Nicht mehrwertsteuerpflichtig (Art. 10 Abs. 2 lit. a MWSTG)“ / „Not subject to Swiss VAT (Art. 10 para. 2 lit. a VAT Act)“, Beschriftung „MWST“/„VAT“ und „MWST-Nr.“/„VAT no.“; ein gesetzter `INVOICE_SMALL_BUSINESS_NOTE` gilt weiter in beiden Sprachen (Standardwert der Config ist jetzt leer)

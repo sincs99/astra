@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { btnDefault } from "../ui";
 import { t } from "../../i18n";
+import { OPERATOR } from "../../legal/operator";
 
 /** Dateiinhalt für "Als Textdatei speichern". */
 export function recoveryCodesFile(codes: string[]): string {
@@ -28,7 +29,7 @@ export function RecoveryCodesPanel({ codes, onDone }: { codes: string[]; onDone:
     const url = URL.createObjectURL(new Blob([recoveryCodesFile(codes)], { type: "text/plain;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = "astra-recovery-codes.txt";
+    a.download = `${OPERATOR.brand.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "astra"}-recovery-codes.txt`;
     document.body.appendChild(a);
     a.click();
     a.remove();

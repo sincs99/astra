@@ -22,7 +22,7 @@ export const ainst = {
   "ainst.inst.endpoint": "Endpoint (optional – sonst automatisch)",
   "ainst.inst.endpointAuto": "– Automatisch zuweisen –",
   "ainst.inst.noFreeEndpoints": "Keine freien Endpoints auf diesem Agent verfügbar.",
-  "ainst.inst.autoHint": "Astra wählt den Agent mit freiem Endpoint und genug Kapazität und weist den Endpoint automatisch zu.",
+  "ainst.inst.autoHint": "{brand} wählt den Agent mit freiem Endpoint und genug Kapazität und weist den Endpoint automatisch zu.",
   "ainst.inst.resources": "Ressourcen",
   "ainst.inst.memory": "Memory (MB)",
   "ainst.inst.swap": "Swap (MB)",

@@ -32,7 +32,7 @@ export const common: Record<keyof typeof de, string> = {
   "boundary.details": "Technical details",
   "boundary.home": "Go to home page",
   "boundary.updateTitle": "New version available",
-  "boundary.updateText": "Astra has been updated. Please reload the page to continue with the new version.",
+  "boundary.updateText": "{brand} has been updated. Please reload the page to continue with the new version.",
   "boundary.reload": "Reload page",
   "lang.label": "Language",
   "lang.hint": "This choice applies to this browser only. Some messages from the server may still appear in German.",

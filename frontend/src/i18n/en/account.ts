@@ -74,7 +74,7 @@ export const account: Record<keyof typeof de, string> = {
   "account.mailLanguageHint": "Emails and receipts are sent in this language.",
   "account.language": "Language",
   "account.languageHint": "Some messages from the server may still appear in German.",
-  "account.mfa.fileHeader": "Astra recovery codes – each code works once. Keep this file safe.",
+  "account.mfa.fileHeader": "{brand} recovery codes – each code works once. Keep this file safe.",
   "account.mfa.recoveryList": "Recovery codes",
   "account.mfa.download": "Save as text file",
   "account.mfa.done": "Done",
