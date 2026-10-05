@@ -5,6 +5,16 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Backend – M74 Schweiz-Tauglichkeit)
+- `INVOICE_COUNTRY` (`DE`|`CH`, Standard `DE`; unbekannter Wert ist im Produktions-Check KRITISCH). Der Schnappschuss jeder Rechnung/Gutschrift hält `country`, Belege ohne Feld gelten als Deutschland; ein späterer Wechsel ändert alte Belege nicht
+- CH: Standardhinweis „Nicht mehrwertsteuerpflichtig (Art. 10 Abs. 2 lit. a MWSTG)“ / „Not subject to Swiss VAT (Art. 10 para. 2 lit. a VAT Act)“, Beschriftung „MWST“/„VAT“ und „MWST-Nr.“/„VAT no.“; ein gesetzter `INVOICE_SMALL_BUSINESS_NOTE` gilt weiter in beiden Sprachen (Standardwert der Config ist jetzt leer)
+- CHF-Betragsformat in Mails und Belegen: DE `CHF 1'234.56`, EN `CHF 1,234.56`; CSV-Export unverändert (reine Zahlen)
+- Docs: Beispielblock in `.env.prod.example`, `docs/deploy-runbook.md` Abschnitt 9b „Betrieb in der Schweiz“, `docs/known-limitations.md`
+
+### Added (Frontend – M74 Schweiz-Tauglichkeit)
+- Rechtstexte umschaltbar ueber `OPERATOR.jurisdiction: "DE" | "CH"` in `legal/operator.ts` (Standard "DE", Texte unveraendert). Bei "CH": Impressum heisst "Anbieterkennzeichnung / Kontakt" (Angaben nach UWG Art. 3 Abs. 1 lit. s, keine TMG-/DDG-Bezuege), Datenschutzerklaerung nach dem Schweizer DSG (Verantwortlicher, Zwecke, Empfaenger inkl. optionalem Captcha-Dienst, Bekanntgabe ins Ausland, Aufbewahrung 10 Jahre nach Art. 958f OR, Rechte, Hinweis auf den EDOEB, DSGVO-Absatz fuer EU-Kunden), AGB mit Schweizer Recht und Gerichtsstand am Sitz des Betreibers und ohne Widerrufsrecht; im Shop erscheint vor dem Kauf der Hinweis, dass die Leistung sofort beginnt. Alle Fassungen DE/EN, Platzhalter und Pruefhinweis ("keine Rechtsberatung") bleiben; der Inhalt der Rechtstexte liegt in `legal/content.tsx`
+- Geldformat: CHF wird mit Schweizer Locale formatiert ("CHF 1’234.56", en-CH in der englischen Oberflaeche), EUR/USD unveraendert; `/datenschutz` ist Teil der automatischen Barrierefreiheitspruefung
+
 ### Changed (Backend – M73 Erstattungen)
 - Umsatzstatistik: `refunded_cents_by_currency` ist die Summe der Gutschriften im Zeitraum; kumulierte Teilerstattungen werden nicht mehr mehrfach gezaehlt (nur Erstattungs-Events vor M70 ohne `credit_note` zaehlen wie bisher)
 - Verlorener Zahlungsstreit (`charge.dispute.closed`, Status `lost`) stellt eine Gutschrift ueber den Streitbetrag aus (hoechstens bis zum Rechnungsbetrag, idempotent je Event); `order:disputed` traegt die Nummer in `credit_note`

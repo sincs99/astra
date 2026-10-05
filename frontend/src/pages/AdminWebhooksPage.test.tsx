@@ -95,7 +95,8 @@ describe("AdminWebhooksPage", () => {
     mount();
     expect(await screen.findByRole("heading", { name: "New webhook" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Create webhook" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Send test to https://hook.example/a" })).toBeTruthy();
+    // Die Liste kommt asynchron: erst auf den Zeilen-Button warten, dann die Spaltenüberschrift prüfen
+    expect(await screen.findByRole("button", { name: "Send test to https://hook.example/a" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "Actions" })).toBeTruthy();
   });
 });

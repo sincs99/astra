@@ -134,8 +134,10 @@ class Config:
     # M70: Umsatzsteuer auf Rechnungen. Preise sind Bruttopreise (B2C). VAT_RATE in Prozent, "0" = Kleinunternehmer (§ 19 UStG)
     VAT_RATE = os.getenv("VAT_RATE", "0").strip()
     INVOICE_SELLER_VAT_ID = os.getenv("INVOICE_SELLER_VAT_ID", "").strip()
-    INVOICE_SMALL_BUSINESS_NOTE = os.getenv(
-        "INVOICE_SMALL_BUSINESS_NOTE", "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.").replace("\\n", "\n").strip()
+    # M74: Land des Betreibers ("DE"|"CH"): Standardhinweis, Beschriftung (USt/MWST) und Betragsformat (CHF) der Rechnung.
+    # INVOICE_SMALL_BUSINESS_NOTE leer = landesueblicher Standardtext; ein gesetzter Text gilt in beiden Sprachen.
+    INVOICE_COUNTRY = (os.getenv("INVOICE_COUNTRY") or "DE").strip().upper()
+    INVOICE_SMALL_BUSINESS_NOTE = os.getenv("INVOICE_SMALL_BUSINESS_NOTE", "").replace("\\n", "\n").strip()
     # M46: Erinnerungsmail so viele Tage vor Laufzeitende (0 = keine Erinnerung)
     BILLING_REMINDER_DAYS = max(int(os.getenv("BILLING_REMINDER_DAYS", "3")), 0)
     # M48: Zahlungsanbieter: "manual" (Admin bestaetigt Zahlungen) oder "stripe" (Checkout + Webhook)
@@ -206,6 +208,9 @@ class Config:
                 f"WARNUNG: CAPTCHA_PROVIDER={cls.CAPTCHA_PROVIDER}, aber CAPTCHA_SITE_KEY und/oder CAPTCHA_SECRET fehlen: "
                 "Registrierung und Passwort-Reset sind dann nicht nutzbar (503 captcha_unavailable)."
             )
+
+        if cls.INVOICE_COUNTRY not in ("DE", "CH"):
+            issues.append(f"KRITISCH: INVOICE_COUNTRY '{cls.INVOICE_COUNTRY}' ist unbekannt (erlaubt: DE, CH).")
 
         from app.domain.billing.receipts import parse_vat_rate
         try:

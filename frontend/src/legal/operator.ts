@@ -8,7 +8,30 @@
  */
 export const PLACEHOLDER = "[vom Betreiber auszufüllen]";
 
-export const OPERATOR = {
+/** Rechtsraum des Betreibers: bestimmt die Fassung der Rechtstexte (Impressum, Datenschutz, AGB) und den Kaufhinweis im Shop. */
+export type Jurisdiction = "DE" | "CH";
+
+export interface Operator {
+  jurisdiction: Jurisdiction;
+  name: string;
+  legalForm: string;
+  street: string;
+  zipCity: string;
+  country: string;
+  email: string;
+  phone: string;
+  representative: string;
+  register: string;
+  vatId: string;
+  supervisoryAuthority: string;
+  hosting: string;
+  paymentProvider: string;
+  lastUpdated: string;
+}
+
+export const OPERATOR: Operator = {
+  /** "DE" (Standard) oder "CH" (Schweiz: Anbieterkennzeichnung nach UWG, Datenschutz nach DSG, kein Widerrufsrecht) */
+  jurisdiction: "DE",
   /** Name der Firma bzw. des Betreibers */
   name: PLACEHOLDER,
   /** Rechtsform, z.B. Einzelunternehmen, GmbH */
@@ -22,9 +45,9 @@ export const OPERATOR = {
   representative: PLACEHOLDER,
   /** Handelsregister und Registernummer, falls vorhanden */
   register: PLACEHOLDER,
-  /** Umsatzsteuer-Identifikationsnummer, falls vorhanden */
+  /** Umsatzsteuer-Identifikationsnummer bzw. in der Schweiz UID/MWST-Nummer, falls vorhanden */
   vatId: PLACEHOLDER,
-  /** Zustaendige Datenschutz-Aufsichtsbehoerde */
+  /** Zustaendige Datenschutz-Aufsichtsbehoerde (nur DE; in der Schweiz ist es der EDÖB) */
   supervisoryAuthority: PLACEHOLDER,
   /** Hosting-Anbieter / Rechenzentrum */
   hosting: PLACEHOLDER,
@@ -32,7 +55,7 @@ export const OPERATOR = {
   paymentProvider: PLACEHOLDER,
   /** Stand der Texte */
   lastUpdated: PLACEHOLDER,
-} as const;
+};
 
 export function isPlaceholder(value: string): boolean {
   return value === PLACEHOLDER;

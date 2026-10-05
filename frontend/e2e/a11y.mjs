@@ -38,6 +38,7 @@ try {
     { path: "/", role: null, name: "Landing" },
     { path: "/login", role: null, name: "Login" },
     { path: "/register", role: null, name: "Registrierung" },
+    { path: "/datenschutz", role: null, name: "Datenschutz" },
     { path: "/", role: "customer", name: "Dashboard", ready: "h1" },
     { path: "/shop", role: "customer", name: "Shop", ready: "h1" },
     { path: "/orders", role: "customer", name: "Bestellungen", ready: "h1" },

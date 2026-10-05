@@ -109,6 +109,9 @@ MESSAGES: dict[str, dict[str, str]] = {
         "receipt.gross": "Bruttobetrag",
         "receipt.vat_id": "USt-IdNr.",
         "receipt.small_business_note": "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.",
+        "receipt.vat.ch": "MWST {rate} %",
+        "receipt.vat_id.ch": "MWST-Nr.",
+        "receipt.small_business_note.ch": "Nicht mehrwertsteuerpflichtig (Art. 10 Abs. 2 lit. a MWSTG)",
     },
     "en": {
         "mail.verify.subject": "Astra: Confirm your email address",
@@ -212,5 +215,8 @@ MESSAGES: dict[str, dict[str, str]] = {
         "receipt.gross": "Gross amount",
         "receipt.vat_id": "VAT ID",
         "receipt.small_business_note": "No VAT is charged (small business exemption, section 19 of the German VAT Act).",
+        "receipt.vat.ch": "VAT {rate}%",
+        "receipt.vat_id.ch": "VAT no.",
+        "receipt.small_business_note.ch": "Not subject to Swiss VAT (Art. 10 para. 2 lit. a VAT Act)",
     },
 }

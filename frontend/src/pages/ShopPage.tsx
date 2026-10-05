@@ -6,6 +6,7 @@ import { formatMoney, formatPeriod, formatPrice } from "../lib/money";
 import { formatMemory } from "../lib/dashboard";
 import { useCheckout } from "../hooks/useCheckout";
 import { manualPaymentNotice } from "../legal/payment";
+import { OPERATOR } from "../legal/operator";
 import { dateLocale, t } from "../i18n";
 import { PageLayout, LoadingState, ErrorState, EmptyState, Toast, useToast } from "../components/ui";
 import { Icon } from "../components/ui/Icon";
@@ -151,6 +152,7 @@ export function ShopPage() {
                   <div className="box-console"><span className="kv"><span>{manualPaymentNotice()}</span></span></div>
                 )}
               </div>
+              {OPERATOR.jurisdiction === "CH" && <ChPurchaseNotice />}
               {loggedIn ? (
                 <div>
                   <button type="submit" className="btn btn-primary btn-lg" disabled={busy || !product}>{submitLabel}</button>
@@ -187,5 +189,15 @@ export function ShopPage() {
         </div>
       )}
     </PageLayout>
+  );
+}
+
+/** Schweiz: kein Widerrufsrecht, daher vor dem Kauf der Hinweis, dass die Leistung sofort beginnt. */
+function ChPurchaseNotice() {
+  const [before, after] = t("shop.chNotice", { agb: "\u0001" }).split("\u0001");
+  return (
+    <p className="hint" role="note" style={{ margin: "0 0 12px", maxWidth: 520 }}>
+      {before}<Link to="/agb" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>{t("shop.chNoticeAgb")}</Link>{after}
+    </p>
   );
 }
