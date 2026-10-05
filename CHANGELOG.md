@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed (Backend – M75)
+- `MFA_ISSUER_NAME` wirkt jetzt: der Authenticator-Eintrag nutzt die Variable statt eines fest verdrahteten Namens. Standard bleibt „Astra Panel“ (bestehende Einträge ändern sich nicht); der Wert folgt bewusst nicht `SITE_NAME` und ist vor dem ersten Kunden zu setzen
+
 ### Added (Deployment – M75 Weiterleitungs-Domains)
 - `REDIRECT_DOMAINS` (kommagetrennt, leer = aus): `scripts/deploy.sh` erzeugt aus `deploy/redirect.caddy.template` die Caddy-Site `deploy/sites/redirect.caddy` (ein Site-Block mit allen Domains, eigenes Zertifikat je Domain, `redir https://PANEL_DOMAIN{uri} permanent` = 301 mit Pfad und Query); Einträge werden geprüft (nur Domainnamen, nicht `PANEL_DOMAIN`/`NODE_DOMAIN`). `scripts/smoke-test.sh` prüft mit `REDIRECT_DOMAINS=…` je Domain 301 und `Location`. Runbook: Abschnitt „Weiterleitungs-Domains“ mit DNS-Tabelle
 

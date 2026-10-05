@@ -77,7 +77,8 @@ class Config:
 
     # ── Auth / Session / MFA ────────────────────────────
     JWT_ACCESS_TOKEN_EXPIRES_HOURS = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_HOURS", "24"))
-    MFA_ISSUER_NAME = os.getenv("MFA_ISSUER_NAME", "Astra")
+    # Name im Authenticator-Eintrag (Issuer). Vor dem ersten Kunden setzen, danach nicht mehr aendern (bestehende Eintraege behalten den alten Namen)
+    MFA_ISSUER_NAME = (os.getenv("MFA_ISSUER_NAME") or "Astra Panel").strip()
     MAX_API_KEYS_PER_USER = int(os.getenv("MAX_API_KEYS_PER_USER", "10"))
 
     # ── CORS / Trusted Hosts / Base URL ─────────────────
