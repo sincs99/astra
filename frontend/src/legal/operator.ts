@@ -33,32 +33,32 @@ export interface Operator {
 
 export const OPERATOR: Operator = {
   /** Markenname der Oberfläche; "Astra" ist der Name der Software, ein Betreiber kann hier seine eigene Marke eintragen */
-  brand: "Astra",
+  brand: "Astrahost",
   /** "DE" (Standard) oder "CH" (Schweiz: Anbieterkennzeichnung nach UWG, Datenschutz nach DSG, kein Widerrufsrecht) */
-  jurisdiction: "DE",
+  jurisdiction: "CH",
   /** Name der Firma bzw. des Betreibers */
-  name: PLACEHOLDER,
+  name: 'Pascal Konezciny',
   /** Rechtsform, z.B. Einzelunternehmen, GmbH */
-  legalForm: PLACEHOLDER,
-  street: PLACEHOLDER,
-  zipCity: PLACEHOLDER,
-  country: PLACEHOLDER,
-  email: PLACEHOLDER,
-  phone: PLACEHOLDER,
+  legalForm: 'EG',
+  street: 'Heimstrasse 5',
+  zipCity: '5430 Wettingen',
+  country: 'Switzerland',
+  email: 'hello@astrahost.ch',
+  phone: '079 123 45 67',
   /** Vertretungsberechtigte Person(en) */
-  representative: PLACEHOLDER,
+  representative: 'Pascal Konezciny',
   /** Handelsregister und Registernummer, falls vorhanden */
-  register: PLACEHOLDER,
+  register: 'CHE-123.456.789',
   /** Umsatzsteuer-Identifikationsnummer bzw. in der Schweiz UID/MWST-Nummer, falls vorhanden */
-  vatId: PLACEHOLDER,
+  vatId: 'CHE-123.456.789',
   /** Zustaendige Datenschutz-Aufsichtsbehoerde (nur DE; in der Schweiz ist es der EDÖB) */
-  supervisoryAuthority: PLACEHOLDER,
+  supervisoryAuthority: 'EDÖB',
   /** Hosting-Anbieter / Rechenzentrum */
-  hosting: PLACEHOLDER,
+  hosting: 'Astrahost',
   /** Zahlungsanbieter, sobald angebunden (z.B. Stripe) */
-  paymentProvider: PLACEHOLDER,
+  paymentProvider: 'Stripe',
   /** Stand der Texte */
-  lastUpdated: PLACEHOLDER,
+  lastUpdated: '05.10.2026',
 };
 
 export function isPlaceholder(value: string): boolean {
