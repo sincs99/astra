@@ -1,0 +1,6 @@
+# Weiterleitungs-Domains (z.B. www.astrahost.ch, astrahost.gg) auf das Panel.
+# Wird von scripts/deploy.sh nach deploy/sites/redirect.caddy erzeugt, wenn REDIRECT_DOMAINS gesetzt ist.
+# Caddy holt fuer jede Domain ein Zertifikat und leitet per 301 auf https://PANEL_DOMAIN weiter (Pfad und Query bleiben).
+__REDIRECT_DOMAINS__ {
+    redir https://{$PANEL_DOMAIN}{uri} permanent
+}

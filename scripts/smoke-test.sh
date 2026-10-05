@@ -5,6 +5,8 @@
 # Verwendung:
 #   ./scripts/smoke-test.sh https://panel.example.com [ADMIN_USER] [ADMIN_PASSWORD]
 #
+# Optional: REDIRECT_DOMAINS="www.astrahost.ch,astrahost.gg" ./scripts/smoke-test.sh ...
+# prueft zusaetzlich je Domain die Weiterleitung auf das Panel (HTTP 301, Location mit Pfad und Query).
 # Ohne Login-Daten werden nur die oeffentlichen Checks ausgefuehrt.
 # Mit Admin-Login werden zusaetzlich Agents gelistet und fuer jeden Agent
 # mit Credentials die Wings Remote-API-Authentifizierung geprueft.
@@ -40,6 +42,25 @@ if [[ "$PANEL" == https://* ]]; then
     if curl -fsS -m 10 -o /dev/null "$PANEL/health"; then ok "TLS-Zertifikat gueltig"; else fail "TLS-Zertifikat" "curl lehnt ab"; fi
     c=$(code "${PANEL/https:/http:}/health")
     { [ "$c" = "308" ] || [ "$c" = "301" ] || [ "$c" = "200" ]; } && ok "HTTP -> HTTPS Redirect (HTTP $c)" || fail "HTTP-Redirect" "HTTP $c"
+fi
+
+# Weiterleitungs-Domains (optional, M75): 301 auf das Panel, Pfad und Query bleiben erhalten
+if [ -n "${REDIRECT_DOMAINS:-}" ]; then
+    SCHEME="${PANEL%%://*}"
+    PANEL_HOST="${PANEL#*://}"
+    IFS=',' read -ra _redirects <<< "$REDIRECT_DOMAINS"
+    for d in "${_redirects[@]}"; do
+        d="$(echo "$d" | tr -d '[:space:]')"
+        [ -n "$d" ] || continue
+        hdr=$(curl -sI -m 10 "$SCHEME://$d/konto?x=1" 2>/dev/null | tr -d '\r')
+        status=$(echo "$hdr" | head -1 | awk '{print $2}')
+        loc=$(echo "$hdr" | awk 'tolower($1)=="location:" {print $2}')
+        if [ "$status" = "301" ] && [ "$loc" = "$SCHEME://$PANEL_HOST/konto?x=1" ]; then
+            ok "Weiterleitung $d -> 301 $loc"
+        else
+            fail "Weiterleitung $d" "HTTP ${status:-keine Antwort}, Location '${loc:-}' (erwartet 301 $SCHEME://$PANEL_HOST/konto?x=1)"
+        fi
+    done
 fi
 
 c=$(code "$PANEL/api/remote/servers")

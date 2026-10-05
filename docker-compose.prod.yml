@@ -13,6 +13,7 @@
 #   Internet :80/:443 -> caddy (TLS via Let's Encrypt)
 #        PANEL_DOMAIN  -> frontend (Nginx, SPA + /api-Proxy) -> backend (Gunicorn)
 #        NODE_DOMAIN   -> Wings auf dem Host :8080 (optional, siehe deploy/Caddyfile)
+#        REDIRECT_DOMAINS -> 301 auf PANEL_DOMAIN (optional; scripts/deploy.sh erzeugt deploy/sites/redirect.caddy)
 #   backend/worker    -> postgres, redis (nur intern)
 # ══════════════════════════════════════════════════════════
 

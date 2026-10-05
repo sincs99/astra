@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Deployment – M75 Weiterleitungs-Domains)
+- `REDIRECT_DOMAINS` (kommagetrennt, leer = aus): `scripts/deploy.sh` erzeugt aus `deploy/redirect.caddy.template` die Caddy-Site `deploy/sites/redirect.caddy` (ein Site-Block mit allen Domains, eigenes Zertifikat je Domain, `redir https://PANEL_DOMAIN{uri} permanent` = 301 mit Pfad und Query); Einträge werden geprüft (nur Domainnamen, nicht `PANEL_DOMAIN`/`NODE_DOMAIN`). `scripts/smoke-test.sh` prüft mit `REDIRECT_DOMAINS=…` je Domain 301 und `Location`. Runbook: Abschnitt „Weiterleitungs-Domains“ mit DNS-Tabelle
+
 ### Added (Backend – M75 Markenname)
 - `SITE_NAME` (Standard „Astra“, max. 60 Zeichen, im Produktions-Check KRITISCH bei Überlänge oder Steuerzeichen) und `MAIL_FROM_NAME` (leer = `SITE_NAME`): alle Mail-Betreffe („Astrahost: …“, Platzhalter `{site}` in den Nachrichtenvorlagen), Absendername („Name <adresse>“, Zeilenumbrüche werden entschärft; enthält `MAIL_FROM` schon einen Namen, bleibt er), Admin-Alerts und CLI-Testalert. Der Rechnungskopf zeigt den Markennamen als erste Zeile, wenn er vom Standard abweicht; der Name steht im Beleg-Schnappschuss (`site_name`), Gutschriften übernehmen ihn von der Rechnung
 

@@ -67,6 +67,26 @@ else
     log "NODE_DOMAIN leer – kein Wings-Proxy ueber Caddy."
 fi
 
+# ── Caddy-Site fuer Weiterleitungs-Domains (optional, M75) ──
+# REDIRECT_DOMAINS: kommagetrennt, z.B. "www.astrahost.ch,astrahost.gg,www.astrahost.gg" -> 301 auf https://PANEL_DOMAIN
+REDIRECT_LIST=""
+IFS=',' read -ra _redirects <<< "${REDIRECT_DOMAINS:-}"
+for d in "${_redirects[@]:-}"; do
+    d="$(echo "$d" | tr -d '[:space:]')"
+    [ -n "$d" ] || continue
+    [[ "$d" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] || die "REDIRECT_DOMAINS: '$d' ist kein gueltiger Domainname."
+    [ "$d" != "$PANEL_DOMAIN" ] || die "REDIRECT_DOMAINS enthaelt PANEL_DOMAIN ($d) – das waere eine Weiterleitungsschleife."
+    [ "$d" != "${NODE_DOMAIN:-}" ] || die "REDIRECT_DOMAINS enthaelt NODE_DOMAIN ($d)."
+    REDIRECT_LIST="${REDIRECT_LIST:+$REDIRECT_LIST, }$d"
+done
+if [ -n "$REDIRECT_LIST" ]; then
+    sed "s/__REDIRECT_DOMAINS__/${REDIRECT_LIST}/" deploy/redirect.caddy.template > deploy/sites/redirect.caddy
+    log "Caddy-Site fuer Weiterleitungen erzeugt: ${REDIRECT_LIST} -> https://${PANEL_DOMAIN}"
+else
+    rm -f deploy/sites/redirect.caddy
+    log "REDIRECT_DOMAINS leer – keine Weiterleitungs-Domains."
+fi
+
 mkdir -p backups/postgres
 
 # ── Build + Start ───────────────────────────────────────

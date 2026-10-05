@@ -13,6 +13,7 @@
 | Linux-Server (Debian 12 / Ubuntu 22.04+), 4 vCPU, 8 GB RAM, 40 GB frei | Panel ~1 GB, Rest für Gameserver |
 | Öffentliche IPv4 oder Portweiterleitung vom Router | Kunden und Wings müssen das Panel erreichen |
 | Eine Domain mit zwei A-Records: `panel.deinedomain.de` und `node1.deinedomain.de` | TLS und späterer Umzug ohne IP-Änderung |
+| Optional: Weiterleitungs-Domains (z.B. `www.deinedomain.de`, Zweitdomain `deinedomain.gg`) mit A-Records auf denselben Server | Besucher landen per 301 auf dem Panel, siehe Abschnitt 3 |
 | Offene eingehende Ports: 80, 443 (Caddy), 2022 (SFTP), 25565–25600 (Gameserver) | Siehe Abschnitt 2 |
 | Root-Zugang per SSH | Docker, Wings, systemd |
 
@@ -70,6 +71,7 @@ In `.env` setzen:
 ```env
 PANEL_DOMAIN=panel.deinedomain.de
 NODE_DOMAIN=node1.deinedomain.de
+REDIRECT_DOMAINS=                       # optional, siehe unten
 ACME_EMAIL=du@deinedomain.de
 SECRET_KEY=<python3 -c "import secrets; print(secrets.token_hex(32))">
 JWT_SECRET_KEY=<ebenso>
@@ -81,6 +83,24 @@ ADMIN_PASSWORD=<starkes Passwort, nach dem ersten Login ändern>
 ```
 
 `REGISTRATION_ENABLED` bleibt vorerst `false`. Mail kann leer bleiben, dann werden Mails nur geloggt.
+
+---
+
+### Weiterleitungs-Domains (optional)
+
+Wenn das Panel unter einer Marke läuft (z. B. `panel.astrahost.ch`) und weitere Adressen auf dasselbe Panel führen sollen, trägst du sie kommagetrennt in `REDIRECT_DOMAINS` ein, zum Beispiel `www.astrahost.ch,astrahost.gg,www.astrahost.gg`. `scripts/deploy.sh` erzeugt daraus `deploy/sites/redirect.caddy`; Caddy holt für jede Domain ein Zertifikat und leitet per **301** auf `https://PANEL_DOMAIN` weiter, Pfad und Query bleiben erhalten (`https://astrahost.gg/konto?x=1` → `https://panel.astrahost.ch/konto?x=1`). Leer = keine Weiterleitung. `deploy.sh` bricht ab, wenn ein Eintrag kein Domainname ist oder `PANEL_DOMAIN`/`NODE_DOMAIN` enthält.
+
+DNS-Einträge (alle auf die IP des Servers, vor dem Start setzen, sonst scheitert die Zertifikatsausstellung):
+
+| Name | Typ | Ziel | Zweck |
+|---|---|---|---|
+| `panel.astrahost.ch` | A (und AAAA) | Server-IP | Panel (`PANEL_DOMAIN`) |
+| `node1.astrahost.ch` | A | Server-IP | Wings-Node (`NODE_DOMAIN`) |
+| `www.astrahost.ch` | A oder CNAME auf `panel.astrahost.ch` | Server-IP | Weiterleitung |
+| `astrahost.gg` | A | Server-IP | Weiterleitung (Zweitdomain) |
+| `www.astrahost.gg` | A oder CNAME auf `astrahost.gg` | Server-IP | Weiterleitung |
+
+Prüfen nach dem Start: `REDIRECT_DOMAINS="www.astrahost.ch,astrahost.gg" ./scripts/smoke-test.sh https://panel.astrahost.ch` (erwartet je Domain 301 mit passender `Location`).
 
 ---
 
