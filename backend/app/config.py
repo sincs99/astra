@@ -155,6 +155,10 @@ class Config:
     MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
     MAIL_FROM = os.getenv("MAIL_FROM", "astra@localhost")
+    # M75: Markenname des Betriebs ("Astra" bleibt der Name der Software). Steht in Mail-Betreffen, Absendername, Belegkopf
+    # und Admin-Alerts. MAIL_FROM_NAME leer = SITE_NAME.
+    SITE_NAME = (os.getenv("SITE_NAME") or "Astra").strip()
+    MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "").strip()
 
     # ── Logging ─────────────────────────────────────────
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -208,6 +212,11 @@ class Config:
                 f"WARNUNG: CAPTCHA_PROVIDER={cls.CAPTCHA_PROVIDER}, aber CAPTCHA_SITE_KEY und/oder CAPTCHA_SECRET fehlen: "
                 "Registrierung und Passwort-Reset sind dann nicht nutzbar (503 captcha_unavailable)."
             )
+
+        if len(cls.SITE_NAME) > 60 or any(ord(ch) < 32 for ch in cls.SITE_NAME):
+            issues.append("KRITISCH: SITE_NAME ist zu lang (max. 60 Zeichen) oder enthaelt Steuerzeichen.")
+        if len(cls.MAIL_FROM_NAME) > 60 or any(ord(ch) < 32 for ch in cls.MAIL_FROM_NAME):
+            issues.append("KRITISCH: MAIL_FROM_NAME ist zu lang (max. 60 Zeichen) oder enthaelt Steuerzeichen.")
 
         if cls.INVOICE_COUNTRY not in ("DE", "CH"):
             issues.append(f"KRITISCH: INVOICE_COUNTRY '{cls.INVOICE_COUNTRY}' ist unbekannt (erlaubt: DE, CH).")

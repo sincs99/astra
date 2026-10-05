@@ -18,6 +18,7 @@ import requests
 from flask import current_app
 
 from app.extensions import db
+from app.i18n import site_name
 from app.utils.timeutil import iso_utc
 
 logger = logging.getLogger(__name__)
@@ -153,25 +154,25 @@ def check_alerts(now: datetime | None = None) -> dict:
         if bad:
             out[key] = "alert" if raise_alert(key, subject, message, now) else "suppressed"
         else:
-            clear_alert(key, f"Astra: Entwarnung – {subject.removeprefix('Astra: ')}", ok_message, now)
+            clear_alert(key, f"{site_name()}: Entwarnung – {subject.removeprefix(site_name() + ': ')}", ok_message, now)
             out[key] = "ok"
 
     status = get_tick_status(now)
     since = "noch nie" if status["age_seconds"] is None else f"vor {status['age_seconds'] // 60} Minuten"
-    apply("billing_tick", not status["healthy"], "Astra: Billing-Tick läuft nicht",
+    apply("billing_tick", not status["healthy"], f"{site_name()}: Billing-Tick läuft nicht",
           f"Der Billing-Tick lief zuletzt {since} (erlaubt: {status['max_age_minutes']} Minuten). "
           f"{status['orders_needing_tick']} Bestellung(en) warten auf ihn: keine Sperren, Erinnerungen oder "
           f"Nachbereitstellungen. Compose-Service 'billing' prüfen.",
           "Der Billing-Tick läuft wieder.")
 
     errors = (status.get("last_summary") or {}).get("errors") or []
-    apply("billing_errors", bool(errors), "Astra: Billing-Tick mit Fehlern",
+    apply("billing_errors", bool(errors), f"{site_name()}: Billing-Tick mit Fehlern",
           f"Der letzte Billing-Tick meldete {len(errors)} Fehler, z.B. {errors[0] if errors else ''}. "
           f"Logs des Service 'billing' prüfen.",
           "Der letzte Billing-Tick lief ohne Fehler.")
 
     wait = status["awaiting_provisioning"]
-    apply("waiting_orders", wait["waiting_too_long"], "Astra: Bezahlte Bestellungen warten auf Platz",
+    apply("waiting_orders", wait["waiting_too_long"], f"{site_name()}: Bezahlte Bestellungen warten auf Platz",
           f"{wait['count']} bezahlte Bestellung(en) warten auf einen freien Node, die älteste seit "
           f"{wait['oldest_wait_hours']} Stunden (Schwelle {wait['warn_after_hours']} Stunden). Kapazität prüfen.",
           "Es warten keine bezahlten Bestellungen mehr zu lange auf einen Node.")
@@ -187,7 +188,7 @@ def alert_payment_problem(order_uuid: str | None, status: str, detail: str | Non
         "dispute_closed": "Zahlungsstreit beendet",
     }.get(status, status)
     return raise_alert(
-        f"payment:{order_uuid or event_id}:{status}", f"Astra: {label}",
+        f"payment:{order_uuid or event_id}:{status}", f"{site_name()}: {label}",
         f"{detail or ''}\nBestellung: {order_uuid or '-'}\nZahlungsereignis: {event_id}\n"
         f"Details unter GET /api/admin/payment-events"
         + ("; Erstattung im Zahlungsanbieter prüfen." if status in ("mismatch", "unapplied") else "."),

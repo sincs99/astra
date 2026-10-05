@@ -143,6 +143,7 @@ def cmd_alert_test(args):
 
     from app import create_app
     from app.domain.system.alerts import configured_channels, send_admin_alert
+    from app.i18n import site_name
 
     app = create_app()
     with app.app_context():
@@ -150,7 +151,7 @@ def cmd_alert_test(args):
         if not channels["email"] and not channels["webhook"]:
             print("Kein Kanal konfiguriert (ADMIN_ALERT_EMAIL und ADMIN_ALERT_WEBHOOK_URL sind leer).")
             return 1
-        result = send_admin_alert("Astra: Testnachricht", "Das ist eine Testnachricht der Admin-Benachrichtigung.")
+        result = send_admin_alert(f"{site_name()}: Testnachricht", "Das ist eine Testnachricht der Admin-Benachrichtigung.")
     print(json.dumps(result))
     return 0 if all(v is not False for v in result.values()) else 1
 
