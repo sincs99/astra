@@ -2,7 +2,7 @@ export const auth = {
   "auth.login.missing": "Bitte Benutzername/E-Mail und Passwort eingeben",
   "auth.login.missingCode": "Bitte den Code aus deiner Authenticator-App eingeben",
   "auth.login.failed": "Anmeldung fehlgeschlagen",
-  "auth.login.title": "Astra Login",
+  "auth.login.title": "{brand} Login",
   "auth.login.resetDone": "Dein Passwort wurde geändert. Bitte melde dich jetzt an.",
   "auth.login.expired": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
   "auth.login.resentOk": "Wir haben dir eine neue Bestätigungs-Mail geschickt.",

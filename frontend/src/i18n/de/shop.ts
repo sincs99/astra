@@ -27,7 +27,7 @@ export const shop = {
   "shop.perPeriodHint": "Preise je Laufzeit. Kein Abo: Der Server läuft aus, wenn du nicht verlängerst.",
   "shop.nameHint": "Nur für dich sichtbar. Ohne Eingabe vergeben wir einen Namen.",
   "shop.payCardTitle": "Karte, Apple Pay, Google Pay",
-  "shop.payCardText": "Sofort aktiv nach Zahlung. Abwicklung über Stripe, Astra sieht keine Kartendaten.",
+  "shop.payCardText": "Sofort aktiv nach Zahlung. Abwicklung über Stripe, {brand} sieht keine Kartendaten.",
   "shop.payTransferTitle": "Überweisung",
   "shop.payTransferText": "Der Server startet nach Zahlungseingang. Die Zahlungsdaten findest du nach der Bestellung unter Bestellungen.",
   "shop.payFreeTitle": "Kostenlos",

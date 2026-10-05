@@ -20,5 +20,5 @@ export const nav: Record<keyof typeof de, string> = {
   "nav.adminRole": "Admin",
   "nav.customerRole": "Customer",
   "nav.menu": "Menu",
-  "nav.home": "Astra home",
+  "nav.home": "{brand} home",
 };

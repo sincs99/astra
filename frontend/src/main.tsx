@@ -10,9 +10,11 @@ import "@fontsource/geist-mono/500.css";
 import "./theme.css";
 import { applyTheme, getThemePreference, watchSystemTheme } from "./lib/theme";
 import { LangRoot } from "./i18n/LangRoot";
+import { OPERATOR } from "./legal/operator";
 import { initLang } from "./i18n";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
+document.title = OPERATOR.brand;
 applyTheme(getThemePreference());
 watchSystemTheme();
 initLang();
