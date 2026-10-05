@@ -195,9 +195,10 @@ in der Agents-Ansicht. Details: `docs/wings-remote-api.md`.
 | `ADMIN_ALERT_RECOVERY` | Einmalige Entwarnung, wenn die Störung behoben ist | true |
 | `INVOICE_NUMBER_FORMAT` | Format der Belegnummer (`{year}`, `{seq}`), nach dem Start nicht mehr ändern | `AST-{year}-{seq:05d}` |
 | `INVOICE_SELLER` / `RECEIPT_FOOTER` | Anbieter-Kopf (Name, Anschrift) und Fußzeile der Rechnungen (`\n` = Zeilenumbruch) | – |
+| `INVOICE_COUNTRY` | Land des Betreibers `DE` oder `CH` (M74): Standardhinweis, Beschriftung USt/MWST, CHF-Format; unbekannter Wert ist im Produktions-Check KRITISCH | DE |
 | `VAT_RATE` | Umsatzsteuersatz in Prozent auf Rechnungen (Preise sind Brutto), `0` = Kleinunternehmer | 0 |
-| `INVOICE_SELLER_VAT_ID` | USt-IdNr. des Anbieters (optional, wird gedruckt) | – |
-| `INVOICE_SMALL_BUSINESS_NOTE` | Hinweistext bei Satz 0 | Gemäß § 19 UStG wird keine Umsatzsteuer berechnet. |
+| `INVOICE_SELLER_VAT_ID` | USt-IdNr. bzw. in der Schweiz MWST-Nr. des Anbieters (optional, wird nur gedruckt, nicht geprüft) | – |
+| `INVOICE_SMALL_BUSINESS_NOTE` | Hinweistext bei Satz 0; leer = Standard je `INVOICE_COUNTRY` (DE: § 19 UStG, CH: Art. 10 Abs. 2 lit. a MWSTG, je auf Deutsch und Englisch), ein gesetzter Text gilt in beiden Sprachen | leer |
 | `BILLING_GRACE_DAYS` | Tage von überfälliger Zahlung bis zur Löschung der Instance (Billing-Tick) | 7 |
 | `REGISTRATION_ENABLED` | Selbstregistrierung erlauben | false |
 | `EMAIL_VERIFICATION_REQUIRED` | Login erst nach bestaetigter E-Mail (braucht funktionierendes SMTP) | false |

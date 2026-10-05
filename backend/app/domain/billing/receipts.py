@@ -107,6 +107,17 @@ def _seller_snapshot() -> dict:
     return {"lines": lines, "vat_id": (current_app.config.get("INVOICE_SELLER_VAT_ID") or "").strip() or None}
 
 
+def _country() -> str:
+    """Land des Betreibers (M74): "DE" oder "CH", unbekannte Werte gelten als "DE"."""
+    value = str(current_app.config.get("INVOICE_COUNTRY") or "DE").strip().upper()
+    return value if value in ("DE", "CH") else "DE"
+
+
+def _k(snap: dict, key: str) -> str:
+    """Nachrichtenschluessel passend zum Land des Belegs (Altbestand ohne `country`: Deutschland)."""
+    return f"{key}.ch" if snap.get("country") == "CH" else key
+
+
 def _billing_snapshot(user) -> dict | None:
     name = (user.billing_name or "").strip() if user else ""
     address = (user.billing_address or "").strip() if user else ""
@@ -129,6 +140,7 @@ def _document_snapshot(order: Order, gross: int, period: tuple | None) -> dict:
         "period_start": iso_utc(period[0]) if period and period[0] else None,
         "period_end": iso_utc(period[1]) if period and period[1] else None,
         "seller": _seller_snapshot(),
+        "country": _country(),
     }
     billing = _billing_snapshot(customer)
     if billing:
@@ -222,6 +234,7 @@ def issue_credit_note(order: Order, invoice: Receipt, refunded_total_cents: int,
                      "references_number": inv.number})
         if old.get("seller"):
             snap["seller"] = old["seller"]
+        snap["country"] = old.get("country") or "DE"  # Altbestand ohne Feld: wie die Rechnung (Deutschland)
         if old.get("customer_billing"):
             snap["customer_billing"] = old["customer_billing"]
         return -amount, snap, invoice_id
@@ -260,9 +273,11 @@ def _rate_text(loc, rate) -> str:
     return text.replace(".", ",") if normalize_locale(loc) == "de" else text
 
 
-def _small_business_note(loc) -> str:
+def _small_business_note(loc, snap: dict) -> str:
+    """Eigener Text (INVOICE_SMALL_BUSINESS_NOTE) in beiden Sprachen, sonst der landesuebliche Standard je Sprache
+    (der alte deutsche Standardtext zaehlt wie "nicht gesetzt")."""
     note = current_app.config.get("INVOICE_SMALL_BUSINESS_NOTE") or DEFAULT_SMALL_BUSINESS_NOTE
-    return tr(loc, "receipt.small_business_note") if note == DEFAULT_SMALL_BUSINESS_NOTE else note
+    return tr(loc, _k(snap, "receipt.small_business_note")) if note == DEFAULT_SMALL_BUSINESS_NOTE else note
 
 
 def _period_text(loc, snap: dict) -> str:
@@ -285,6 +300,7 @@ def _document(receipt: Receipt, loc) -> dict:
                  instance_name=snap.get("instance_name") or "-")
     gross = receipt.amount_cents
     seller_lines, vat_id = _seller(snap)
+    vat_id_label = tr(loc, _k(snap, "receipt.vat_id"))
 
     if legacy:
         title, title_text = tr(loc, "receipt.title"), tr(loc, "receipt.title_text")
@@ -309,12 +325,12 @@ def _document(receipt: Receipt, loc) -> dict:
                  (tr(loc, "receipt.period"), _period_text(loc, snap))]
         if rate:
             rows += [(tr(loc, "receipt.net"), format_money(loc, snap.get("net_cents", gross), receipt.currency)),
-                     (tr(loc, "receipt.vat", rate=_rate_text(loc, rate)), format_money(loc, snap.get("vat_cents", 0), receipt.currency)),
+                     (tr(loc, _k(snap, "receipt.vat"), rate=_rate_text(loc, rate)), format_money(loc, snap.get("vat_cents", 0), receipt.currency)),
                      (tr(loc, "receipt.gross"), format_money(loc, gross, receipt.currency))]
             notes = []
         else:
             rows.append((tr(loc, "receipt.amount"), format_money(loc, gross, receipt.currency)))
-            notes = [_small_business_note(loc)]
+            notes = [_small_business_note(loc, snap)]
         billing = snap.get("customer_billing") or {}
         recipient = [ln.strip() for ln in ([billing.get("name") or ""] + (billing.get("address") or "").splitlines()) if ln.strip()]
     if snap.get("payment_purpose") and not credit:
@@ -322,7 +338,7 @@ def _document(receipt: Receipt, loc) -> dict:
     if receipt.payment_reference and not (credit and str(receipt.payment_reference).startswith("refund:")):
         rows.append((tr(loc, "receipt.reference"), receipt.payment_reference))
     return {"title": title, "title_text": title_text, "rows": rows, "notes": notes, "recipient": recipient,
-            "seller_lines": seller_lines, "vat_id": vat_id}
+            "seller_lines": seller_lines, "vat_id": vat_id, "vat_id_label": vat_id_label}
 
 
 def render_text(receipt: Receipt, locale: str | None = None) -> str:
@@ -330,7 +346,7 @@ def render_text(receipt: Receipt, locale: str | None = None) -> str:
     d = _document(receipt, loc)
     lines = list(d["seller_lines"])
     if d["vat_id"]:
-        lines.append(f"{tr(loc, 'receipt.vat_id')}: {d['vat_id']}")
+        lines.append(f"{d['vat_id_label']}: {d['vat_id']}")
     lines += [""] if lines else []
     if d["recipient"]:
         lines += d["recipient"] + [""]
@@ -347,7 +363,7 @@ def render_html(receipt: Receipt, locale: str | None = None) -> str:
     e = html.escape
     seller = "".join(f"<div>{e(ln)}</div>" for ln in d["seller_lines"])
     if d["vat_id"]:
-        seller += f"<div>{e(tr(loc, 'receipt.vat_id'))}: {e(d['vat_id'])}</div>"
+        seller += f"<div>{e(d['vat_id_label'])}: {e(d['vat_id'])}</div>"
     recipient = ("<div style=\"margin:1rem 0\">" + "".join(f"<div>{e(ln)}</div>" for ln in d["recipient"]) + "</div>") if d["recipient"] else ""
     rows = "".join(f"<tr><th>{e(k)}</th><td>{e(v)}</td></tr>" for k, v in d["rows"])
     notes = "".join(f"<p><small>{e(n)}</small></p>" for n in d["notes"])

@@ -37,7 +37,11 @@ _EN_SYMBOLS = {"EUR": "€", "USD": "$", "GBP": "£"}
 
 
 def format_money(locale, cents: int, currency: str) -> str:
-    """DE: "1.234,56 EUR", EN: "€1,234.56" (bekannte Symbole, sonst "CHF 1,234.56")."""
+    """DE: "1.234,56 EUR", EN: "€1,234.56" (bekannte Symbole, sonst "GBP 1,234.56"). CHF (M74): DE "CHF 1'234.56"
+    (Hochkomma, Punkt, Waehrung vorn), EN "CHF 1,234.56"."""
+    if currency == "CHF" and normalize_locale(locale) == "de":
+        sign = "-" if cents < 0 else ""
+        return f"{sign}CHF " + f"{abs(cents) / 100:,.2f}".replace(",", "'")
     if normalize_locale(locale) == "en":
         amount = f"{abs(cents) / 100:,.2f}"
         sign = "-" if cents < 0 else ""

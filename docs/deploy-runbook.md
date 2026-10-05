@@ -282,6 +282,26 @@ Details zu Endpunkten, Status und Stripe-Einrichtung: `docs/orders-api.md`.
 
 ---
 
+## 9b. Betrieb in der Schweiz (M74)
+
+Für eine Einzelfirma in der Schweiz in der `.env`:
+
+```
+INVOICE_COUNTRY=CH
+VAT_RATE=0                       # 8.1 bei MWST-Pflicht
+INVOICE_SELLER="Max Muster\nBahnhofstrasse 1\n8000 Zuerich"
+INVOICE_SELLER_VAT_ID=CHE-123.456.789 MWST   # nur wenn MWST-pflichtig
+```
+
+Produkte legst du im Admin mit der Währung `CHF` an (Preise sind Bruttopreise). Auf der Rechnung steht dann „MWST“ statt „Umsatzsteuer“, „MWST-Nr.“ statt „USt-IdNr.“ und ohne MWST-Pflicht der Hinweis „Nicht mehrwertsteuerpflichtig (Art. 10 Abs. 2 lit. a MWSTG)“ (englisch: „Not subject to Swiss VAT …“). Beträge erscheinen in Mails und Belegen als `CHF 1'234.56` (englisch `CHF 1,234.56`); der CSV-Export bleibt bei reinen Zahlen. Das Land wird mit jeder Rechnung gespeichert: ein späterer Wechsel von `INVOICE_COUNTRY` ändert alte Belege nicht.
+
+- **MWST-Pflicht** beginnt ab CHF 100'000 Umsatz pro Jahr (weltweit, ohne Befreiung); dann `VAT_RATE=8.1` setzen und die MWST-Nr. eintragen. Satz und Pflicht vorher mit Treuhänder oder ESTV klären.
+- **Stripe** unterstützt CHF; das Stripe-Konto muss dafür eingerichtet sein, die Webhooks sind unverändert.
+- **Aufbewahrung:** Rechnungen sind 10 Jahre aufzubewahren. Den Export `GET /api/admin/invoices?format=csv` einmal im Monat sichern (siehe Abschnitt 9) und zusammen mit den Datenbank-Backups ablegen.
+- Nicht enthalten: QR-Rechnung und E-Rechnung (siehe `docs/known-limitations.md`).
+
+---
+
 ## 10. Umzug auf einen gemieteten Server
 
 Weil alles über Domains läuft, ist der Umzug ein Restore:
