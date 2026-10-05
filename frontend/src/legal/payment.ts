@@ -5,7 +5,7 @@ import { getLang } from "../i18n";
  * Wird angezeigt, solange kein Zahlungsanbieter konfiguriert ist (Checkout antwortet mit 409 "manual").
  */
 export const MANUAL_PAYMENT_NOTICE = "Zahlung per Überweisung, Freischaltung durch den Betreiber.";
-export const MANUAL_PAYMENT_NOTICE_EN = "Payment by bank trassnsfer, activation by the operator.";
+export const MANUAL_PAYMENT_NOTICE_EN = "Payment by bank transfer, activation by the operator.";
 
 /** Hinweistext in der aktuellen Sprache (Betreiber passt beide Texte oben an). */
 export function manualPaymentNotice(): string {
