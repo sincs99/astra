@@ -206,6 +206,7 @@ in der Agents-Ansicht. Details: `docs/wings-remote-api.md`.
 | `PASSWORD_RESET_TTL_MINUTES` | Gueltigkeit des Reset-Links | 60 |
 | `FRONTEND_URL` | Basis-URL fuer Links in Mails | http://localhost:3000 |
 | `MAIL_SERVER` / `MAIL_PORT` / `MAIL_USE_TLS` | SMTP-Server (leer = kein Versand, nur Log) | – / 587 / true |
+| `SITE_NAME` / `MAIL_FROM_NAME` | Markenname des Betriebs (Mail-Betreffe, Absendername, Rechnungskopf, Admin-Alerts; max. 60 Zeichen) und Absendername der Mails (leer = `SITE_NAME`). Der Rechnungskopf zeigt den Namen nur, wenn er vom Standard abweicht, und er wird mit jeder Rechnung gespeichert (spätere Änderungen betreffen alte Belege nicht) | Astra / – |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_FROM` | SMTP-Zugang und Absender | – / – / astra@localhost |
 | `RATELIMIT_AUTH_PER_MINUTE` | Max Anfragen/Min je IP für die übrigen Auth-Routen (Passwort ändern, E-Mail bestätigen, Reset bestätigen) | 20 |
 | `RATELIMIT_REGISTER_PER_HOUR` | Registrierungen je IP und Stunde | 5 |

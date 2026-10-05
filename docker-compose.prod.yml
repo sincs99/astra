@@ -13,6 +13,7 @@
 #   Internet :80/:443 -> caddy (TLS via Let's Encrypt)
 #        PANEL_DOMAIN  -> frontend (Nginx, SPA + /api-Proxy) -> backend (Gunicorn)
 #        NODE_DOMAIN   -> Wings auf dem Host :8080 (optional, siehe deploy/Caddyfile)
+#        REDIRECT_DOMAINS -> 301 auf PANEL_DOMAIN (optional; scripts/deploy.sh erzeugt deploy/sites/redirect.caddy)
 #   backend/worker    -> postgres, redis (nur intern)
 # ══════════════════════════════════════════════════════════
 
@@ -50,6 +51,8 @@ x-backend-env: &backend-env
   MAIL_USERNAME: ${MAIL_USERNAME:-}
   MAIL_PASSWORD: ${MAIL_PASSWORD:-}
   MAIL_FROM: ${MAIL_FROM:-astra@${PANEL_DOMAIN}}
+  SITE_NAME: ${SITE_NAME:-}
+  MAIL_FROM_NAME: ${MAIL_FROM_NAME:-}
   BILLING_GRACE_DAYS: ${BILLING_GRACE_DAYS:-7}
   BILLING_REMINDER_DAYS: ${BILLING_REMINDER_DAYS:-3}
   BILLING_TICK_MAX_AGE_MINUTES: ${BILLING_TICK_MAX_AGE_MINUTES:-15}

@@ -3,7 +3,7 @@
 #
 # PANEL_DOMAIN und ACME_EMAIL kommen aus der .env (docker-compose.prod.yml).
 # Zusaetzliche Sites (z.B. Wings-Node hinter Caddy) liegen in deploy/sites/*.caddy
-# und werden von scripts/deploy.sh aus NODE_DOMAIN erzeugt.
+# und werden von scripts/deploy.sh erzeugt: node.caddy aus NODE_DOMAIN, redirect.caddy aus REDIRECT_DOMAINS (301 auf PANEL_DOMAIN).
 # ══════════════════════════════════════════════════════════
 
 {
