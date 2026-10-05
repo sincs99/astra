@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Frontend – M76b optionale Betreiberangaben)
+- Pflichtfelder in `legal/operator.ts`: brand, jurisdiction, name, street, zipCity, country, email, lastUpdated; alle anderen duerfen leer ("") bleiben (z. B. Telefon, Handelsregister, MWST-Nr., Aufsichtsbehoerde einer Schweizer Einzelfirma). Leere Angaben werden samt Beschriftung ausgelassen, Abschnitte ohne Inhalt (Register/Steuern, Vertretung) entfallen, ohne Rechtsform steht keine leere Klammer; Platzhalter bleiben sichtbar und hervorgehoben
+
 ### Changed (Frontend – M76 Tests unabhaengig von legal/operator.ts)
 - `src/test/setup.ts` ersetzt `legal/operator` in allen Tests durch eine Fixture (brand "Astra", jurisdiction "DE", Platzhalter); die Suite ist damit gruen, egal welche echten Betreiberdaten eingetragen sind. `legal/operator.test.ts` prueft nur die Form der echten Datei. Regel in `docs/ui-conventions.md`
 

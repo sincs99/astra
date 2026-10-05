@@ -3,6 +3,10 @@
  *
  * Diese Datei ist der EINE Ort, an dem der Betreiber seine Daten einträgt. Solange ein Feld den
  * Platzhalter enthaelt, wird es auf den Rechtsseiten hervorgehoben dargestellt.
+ *
+ * Pflichtangaben: brand, jurisdiction, name, street, zipCity, country, email, lastUpdated. Alle anderen Felder sind
+ * optional: leer lassen (""), wenn es sie nicht gibt (z. B. Telefon, Handelsregister oder MWST-Nr. einer Schweizer
+ * Einzelfirma); sie werden dann samt Beschriftung auf den Rechtsseiten ausgelassen.
  * Die Rechtstexte selbst (siehe pages/LegalPages.tsx) sind nur eine Struktur und ersetzen keine
  * Rechtsberatung – sie muessen vom Betreiber geprueft und angepasst werden.
  */
@@ -38,24 +42,25 @@ export const OPERATOR: Operator = {
   jurisdiction: "DE",
   /** Name der Firma bzw. des Betreibers */
   name: PLACEHOLDER,
-  /** Rechtsform, z.B. Einzelunternehmen, GmbH */
+  /** Rechtsform, z.B. Einzelunternehmen, GmbH. Optional: leer lassen (""), wenn nicht vorhanden */
   legalForm: PLACEHOLDER,
   street: PLACEHOLDER,
   zipCity: PLACEHOLDER,
   country: PLACEHOLDER,
   email: PLACEHOLDER,
+  /** Telefon. Optional: leer lassen (""), wenn nicht vorhanden */
   phone: PLACEHOLDER,
-  /** Vertretungsberechtigte Person(en) */
+  /** Vertretungsberechtigte Person(en) (nur DE-Impressum). Optional: leer lassen (""), wenn nicht vorhanden */
   representative: PLACEHOLDER,
-  /** Handelsregister und Registernummer, falls vorhanden */
+  /** Handelsregister und Registernummer. Optional: leer lassen (""), wenn nicht vorhanden */
   register: PLACEHOLDER,
-  /** Umsatzsteuer-Identifikationsnummer bzw. in der Schweiz UID/MWST-Nummer, falls vorhanden */
+  /** Umsatzsteuer-Identifikationsnummer bzw. in der Schweiz UID/MWST-Nummer. Optional: leer lassen (""), wenn nicht vorhanden */
   vatId: PLACEHOLDER,
-  /** Zustaendige Datenschutz-Aufsichtsbehoerde (nur DE; in der Schweiz ist es der EDÖB) */
+  /** Zustaendige Datenschutz-Aufsichtsbehoerde (nur DE; in der Schweiz ist es der EDÖB). Optional: leer lassen (""), wenn nicht vorhanden */
   supervisoryAuthority: PLACEHOLDER,
-  /** Hosting-Anbieter / Rechenzentrum */
+  /** Hosting-Anbieter / Rechenzentrum. Optional: leer lassen (""), wenn nicht vorhanden */
   hosting: PLACEHOLDER,
-  /** Zahlungsanbieter, sobald angebunden (z.B. Stripe) */
+  /** Zahlungsanbieter, sobald angebunden (z.B. Stripe). Optional: leer lassen (""), wenn nicht vorhanden */
   paymentProvider: PLACEHOLDER,
   /** Stand der Texte */
   lastUpdated: PLACEHOLDER,
