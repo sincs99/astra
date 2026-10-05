@@ -70,7 +70,9 @@ export function t(key: MessageKey, params?: Record<string, string | number>): st
 export function dateLocale(): string {
   return current === "en" ? "en-GB" : "de-CH";
 }
-export function moneyLocale(): string {
+/** Format für Geldbeträge; Schweizer Franken folgen der Schweizer Schreibweise ("CHF 1’234.56"), alle anderen der Sprache. */
+export function moneyLocale(currency?: string): string {
+  if (currency === "CHF") return current === "en" ? "en-CH" : "de-CH";
   return current === "en" ? "en-GB" : "de-DE";
 }
 
