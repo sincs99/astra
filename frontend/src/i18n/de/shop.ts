@@ -46,4 +46,6 @@ export const shop = {
   "shop.redirecting": "Weiterleitung zur Zahlung…",
   "shop.specs": "{ram} RAM · {cpu} % CPU · {disk}",
   "shop.loginHint": "Zum Bestellen bitte anmelden.",
+  "shop.chNotice": "Die Leistung beginnt sofort nach Bezahlung. In der Schweiz besteht für Online-Käufe kein allgemeines Widerrufsrecht, die Bestellung ist verbindlich. Details in den {agb}.",
+  "shop.chNoticeAgb": "AGB",
 } as const;
