@@ -174,7 +174,7 @@ describe("AccountPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Schliessen" }));
     expect(screen.queryByText("astra_abc.GEHEIMER-TOKEN")).toBeNull();
     // Die Liste kennt nur die Kennung, nie den Klartext
-    const row = screen.getByRole("row", { name: /Skript/ });
+    const row = await screen.findByRole("row", { name: /Skript/ });
     expect(within(row).getByText("astra_abc")).toBeTruthy();
   });
 

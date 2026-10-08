@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed (Frontend – M77 Ladephasen-Rennen in Tests)
+- Neun Tests fragten Elemente aus asynchron geladenen Daten direkt mit `getBy…` ab (BackupManager, AdminOverview, AccountPage, AdminBlueprints/Instances/System, OrdersPage); sie sind auf `findBy…`/`waitFor` umgestellt, bei Auswahllisten wird auf die Option gewartet. Die Suite ist damit auch mit kuenstlich verzoegerten Mocks (5, 30 und 100 ms) und mehrfach hintereinander gruen. Muster und Nachweis in `docs/ui-conventions.md` unter "Tests"
+
 ### Changed (Frontend – M76b optionale Betreiberangaben)
 - Pflichtfelder in `legal/operator.ts`: brand, jurisdiction, name, street, zipCity, country, email, lastUpdated; alle anderen duerfen leer ("") bleiben (z. B. Telefon, Handelsregister, MWST-Nr., Aufsichtsbehoerde einer Schweizer Einzelfirma). Leere Angaben werden samt Beschriftung ausgelassen, Abschnitte ohne Inhalt (Register/Steuern, Vertretung) entfallen, ohne Rechtsform steht keine leere Klammer; Platzhalter bleiben sichtbar und hervorgehoben
 

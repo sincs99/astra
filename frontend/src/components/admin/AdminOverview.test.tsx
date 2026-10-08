@@ -67,12 +67,13 @@ describe("AdminOverview", () => {
     mockAll();
     mount();
     const nodes = await screen.findByRole("region", { name: "Node-Auslastung" });
-    expect(within(nodes).getByText("de-fra-01")).toBeTruthy();
+    // Node-Zeilen kommen aus einem eigenen, asynchron aufgelösten Abruf: erst warten, dann abfragen
+    expect(await within(nodes).findByText("de-fra-01")).toBeTruthy();
     expect(within(nodes).getByText("19 Instances")).toBeTruthy();
     expect(within(nodes).getByText("46 GB / 64 GB")).toBeTruthy();
     const disk = within(nodes).getByRole("progressbar", { name: "Festplatte 85 %" });
     expect(disk.className).toContain("bar-warn");
-    const pay = screen.getByRole("region", { name: "Auffällige Zahlungen" });
+    const pay = await screen.findByRole("region", { name: "Auffällige Zahlungen" });
     expect(await within(pay).findByText("Betrag weicht ab")).toBeTruthy();
     expect(within(pay).getByText("Erstattung prüfen")).toBeTruthy();
     expect(within(pay).getByText("Bestellung bereits beendet")).toBeTruthy();
