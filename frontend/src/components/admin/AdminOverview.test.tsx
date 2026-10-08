@@ -171,6 +171,16 @@ describe("AdminOverview", () => {
     expect(screen.queryByRole("columnheader", { name: "Betrag" })).toBeNull();
   });
 
+  it("zeigt in der Node-Auslastung bei fehlender Kapazität (0) einen Hinweis mit Link statt Balken", async () => {
+    mockAll();
+    vi.mocked(api.getAgentsMonitoring).mockResolvedValue([agent({ capacity: { memory_total_mb: 0, disk_total_mb: 0, effective_memory_mb: 0, effective_disk_mb: 0, cpu_total_percent: 0, effective_cpu_percent: 0 } })] as never);
+    mount();
+    const nodes = await screen.findByRole("region", { name: "Node-Auslastung" });
+    expect(await within(nodes).findAllByText("Kapazität nicht hinterlegt")).toHaveLength(2);
+    expect(within(nodes).getAllByRole("link", { name: "Kapazität eintragen" })[0].getAttribute("href")).toBe("/admin/agents");
+    expect(within(nodes).queryByRole("progressbar")).toBeNull();
+  });
+
   it("lässt eine ausgefallene Datenquelle nur ihre Kachel betreffen", async () => {
     mockAll();
     vi.mocked(api.getAgentsMonitoring).mockRejectedValue(new Error("boom"));

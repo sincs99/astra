@@ -44,6 +44,7 @@ export function ConnectionPanel({ instance }: { instance: Instance }) {
   return (
     <section className="card" aria-labelledby="panel-conn" style={{ padding: 16, gap: 12 }}>
       <h2 id="panel-conn" className="panel-title">{t("srv.connection")}</h2>
+      <span className="kv-title" id="conn-addr-label" style={{ fontSize: "var(--fs-small)", color: "var(--text-2)" }}>{t("srv.serverAddress")}</span>
       <AddressRow address={c?.address} placeholder={t("dash.addressAfterSetup")} />
       {c?.ip && <div className="kv"><span>{t("srv.ip")}</span><span className="mono">{c.ip}</span></div>}
       {c?.host && <div className="kv"><span>{t("srv.node")}</span><span className="mono">{c.host}</span></div>}

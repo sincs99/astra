@@ -51,7 +51,7 @@ export const aover = {
   "aover.instancesCountOther": "{n} Instances",
   "aover.ram": "RAM",
   "aover.disk": "Festplatte",
-  "aover.noLimit": "kein Limit hinterlegt",
+  "aover.noLimit": "Kapazität nicht hinterlegt",
   "aover.overbooked": "überbucht",
   "aover.paymentsTitle": "Auffällige Zahlungen",
   "aover.paymentsTable": "Auffällige Zahlungen (Tabelle)",
@@ -67,4 +67,5 @@ export const aover = {
   "aover.trend": "{c}{percent} % zum Vorzeitraum",
   "aover.trendNone": "{c}kein Vergleich",
   "aover.colAmount": "Betrag",
+  "aover.setCapacity": "Kapazität eintragen",
 } as const;

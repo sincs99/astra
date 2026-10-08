@@ -9,7 +9,13 @@ function Bar({ bar, noData }: { bar: NodeBar; noData: boolean }) {
   const locale = dateLocale();
   if (bar.capacity <= 0) {
     return (
-      <div className="kv"><span>{bar.label}</span><span className="mono" style={{ color: "var(--text-3)" }}>{t("aover.noLimit")}</span></div>
+      <div className="kv">
+        <span>{bar.label}</span>
+        <span>
+          <span className="text-warn">{t("aover.noLimit")}</span>{" "}
+          <Link to="/admin/agents">{t("aover.setCapacity")}</Link>
+        </span>
+      </div>
     );
   }
   const pct = bar.percent ?? 0;

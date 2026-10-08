@@ -51,7 +51,7 @@ export const aover = {
   "aover.instancesCountOther": "{n} instances",
   "aover.ram": "RAM",
   "aover.disk": "Disk",
-  "aover.noLimit": "no limit set",
+  "aover.noLimit": "capacity not set",
   "aover.overbooked": "overbooked",
   "aover.paymentsTitle": "Flagged payments",
   "aover.paymentsTable": "Flagged payments (table)",
@@ -67,4 +67,5 @@ export const aover = {
   "aover.trend": "{c}{percent}% vs. previous period",
   "aover.trendNone": "{c}no comparison",
   "aover.colAmount": "Amount",
+  "aover.setCapacity": "Set capacity",
 } as const;

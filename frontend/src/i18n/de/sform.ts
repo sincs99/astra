@@ -41,4 +41,5 @@ export const sform = {
   "sform.portOrder": "Der Anfangsport muss kleiner oder gleich dem Endport sein.",
   "sform.portMax": "Maximal {max} Ports pro Aufruf (angefragt: {count}).",
   "sform.lessThanHour": "weniger als einer Stunde",
+  "sform.agentCapacityRequired": "{field} gesamt muss größer als 0 sein (Kapazitätsplanung und Auslastungsanzeige).",
 } as const;
