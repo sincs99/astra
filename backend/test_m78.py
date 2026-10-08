@@ -181,5 +181,43 @@ with tempfile.TemporaryDirectory() as td:
 rc, out, files, reqs, _ = run_install({}, {"DL_PATH": "file:///etc/passwd"})
 check("DL_PATH nur http(s)", rc != 0 and "http(s)" in out and not reqs)
 
+# ── install-wings.sh ─────────────────────────────────────
+print("install-wings.sh")
+WINGS_SH = open(os.path.join(ROOT, "scripts", "install-wings.sh"), encoding="utf-8").read()
+check("Syntax (bash -n)", subprocess.run(["bash", "-n", os.path.join(ROOT, "scripts", "install-wings.sh")], capture_output=True).returncode == 0)
+check("kein Heredoc zusammen mit Here-String mehr", "<<<" not in WINGS_SH)
+m = re.search(r"printf '%s' \"\$RESP\" \| python3 -c '([^']+)' \"\$CONF_DIR/config.yml\"", WINGS_SH)
+check("config.yml-Abruf per printf | python3 -c", m is not None)
+if m:
+    with tempfile.TemporaryDirectory() as td:
+        target = os.path.join(td, "config.yml")
+        payload = json.dumps({"yaml": "debug: false\nremote: https://p.example\nname: Gr\u00fcn\n", "ok": True, "x": None, "y": False})
+        r = subprocess.run(["bash", "-c", f"printf '%s' \"$RESP\" | python3 -c '{m.group(1)}' \"$T\""], env={**os.environ, "RESP": payload, "T": target}, capture_output=True, text=True)
+        check("JSON mit true/false/null wird gelesen (kein NameError), YAML geschrieben",
+              r.returncode == 0 and open(target, encoding="utf-8").read().startswith("debug: false\nremote: https://p.example\nname: Gr\u00fcn"), r.stderr)
+        r = subprocess.run(["bash", "-c", f"printf '%s' \"$RESP\" | python3 -c '{m.group(1)}' \"$T\""], env={**os.environ, "RESP": "kein json", "T": target}, capture_output=True, text=True)
+        check("kaputte Antwort: Fehler (Exit != 0)", r.returncode != 0)
+usage = subprocess.run(["bash", os.path.join(ROOT, "scripts", "install-wings.sh"), "--help"], capture_output=True, text=True)
+check("--help nennt --install-docker und --grub-swapaccount", usage.returncode == 0 and "--install-docker" in usage.stdout and "--grub-swapaccount" in usage.stdout, usage.stdout[-300:])
+a = WINGS_SH.index("get.docker.com")
+lines = WINGS_SH.splitlines()
+idx = next(i for i, ln in enumerate(lines) if "get.docker.com" in ln and not ln.lstrip().startswith("#"))
+check("Docker-Installation nur hinter --install-docker", "if $INSTALL_DOCKER" in " ".join(lines[max(0, idx - 3):idx]), lines[idx - 3:idx])
+g = WINGS_SH.index('sed -i \'s/^GRUB_CMDLINE_LINUX_DEFAULT')
+check("GRUB-Aenderung nur hinter --grub-swapaccount", "if $GRUB_SWAP" in WINGS_SH[WINGS_SH.rfind("if $GRUB_SWAP", 0, g):g])
+if os.geteuid() == 0:
+    with tempfile.TemporaryDirectory() as td:
+        bindir = os.path.join(td, "bin")
+        os.makedirs(bindir)
+        for tool in ("bash", "id", "uname", "grep", "sed", "awk", "cat", "date", "stat", "curl", "mkdir", "head", "tr", "cp", "chmod"):
+            src = subprocess.run(["bash", "-c", f"command -v {tool}"], capture_output=True, text=True).stdout.strip()
+            if src:
+                os.symlink(src, os.path.join(bindir, tool))
+        cfg = os.path.join(td, "c.yml")
+        open(cfg, "w").write("remote: https://p\n")
+        r = subprocess.run([os.path.join(bindir, "bash"), os.path.join(ROOT, "scripts", "install-wings.sh"), "--config", cfg],
+                           env={"PATH": bindir}, capture_output=True, text=True)
+        check("ohne Docker und ohne Flag: Abbruch mit Hinweis, nichts installiert", r.returncode != 0 and "Docker fehlt" in r.stderr and "--install-docker" in r.stderr and "get.docker.com" not in r.stdout, r.stdout + r.stderr)
+
 print(f"\n{passed} OK, {failed} FAIL")
 sys.exit(1 if failed else 0)

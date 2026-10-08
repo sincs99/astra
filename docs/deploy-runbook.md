@@ -170,6 +170,8 @@ sudo ./scripts/install-wings.sh --panel https://panel.deinedomain.de --agent-id 
 
 Das Skript installiert Wings, holt die `config.yml` direkt aus dem Panel (Node-Token, `remote`, Ports), legt den systemd-Dienst an und startet ihn. Für Pelican-Wings `--pelican` anhängen.
 
+Das Skript ändert nichts still am System: **Docker** installiert es nur mit `--install-docker` (sonst bricht es mit einem Hinweis ab, wenn Docker fehlt), die **GRUB-Option `swapaccount=1`** setzt es nur mit `--grub-swapaccount` (nur auf Systemen mit cgroup v1 nötig, auf Ubuntu 22.04+ nicht; wirkt nach einem Reboot). `--no-docker` ist veraltet und ohne Wirkung. Auf einem frischen Server also: `sudo ./scripts/install-wings.sh --install-docker --panel ... --agent-id 1 --token "$TOKEN"`.
+
 Prüfen:
 
 ```bash

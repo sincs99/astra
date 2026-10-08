@@ -2,8 +2,8 @@
 # ══════════════════════════════════════════════════════════
 # Astra – Wings-Node einrichten (auf dem NODE ausfuehren, als root)
 #
-# Installiert Docker (falls noetig) und Wings, holt die config.yml aus dem
-# Astra-Panel und richtet Wings als systemd-Dienst ein.
+# Installiert Wings, holt die config.yml aus dem Astra-Panel und richtet Wings als
+# systemd-Dienst ein. Docker muss vorhanden sein (oder mit --install-docker installiert werden).
 #
 # Verwendung:
 #   sudo ./scripts/install-wings.sh --panel https://panel.example.com --agent-id 1 \
@@ -18,9 +18,13 @@
 #   (Feld access_token) – oder ueber einen API-Key aus dem Panel.
 #
 # Optionen:
-#   --pelican        Pelican-Wings statt Pterodactyl-Wings installieren
-#   --no-docker      Docker-Installation ueberspringen
-#   --no-start       Wings nur installieren, nicht starten
+#   --pelican          Pelican-Wings statt Pterodactyl-Wings installieren
+#   --install-docker   Docker mit get.docker.com installieren, wenn es fehlt (ohne diese Option
+#                      wird nichts am System installiert; fehlt Docker, bricht das Skript ab)
+#   --grub-swapaccount swapaccount=1 in /etc/default/grub setzen (nur cgroup v1 noetig,
+#                      wirkt nach Reboot; ohne Option gibt es nur einen Hinweis)
+#   --no-docker        veraltet, ohne Wirkung (Docker wird seit M78 nie mehr automatisch installiert)
+#   --no-start         Wings nur installieren, nicht starten
 # ══════════════════════════════════════════════════════════
 
 set -euo pipefail
@@ -29,7 +33,7 @@ log() { echo "[wings] $(date '+%H:%M:%S') $*"; }
 die() { echo "[wings] FEHLER: $*" >&2; exit 1; }
 
 PANEL=""; AGENT_ID=""; TOKEN=""; CONFIG_SRC=""
-FLAVOR="pterodactyl"; INSTALL_DOCKER=true; START=true
+FLAVOR="pterodactyl"; INSTALL_DOCKER=false; GRUB_SWAP=false; START=true
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -38,9 +42,11 @@ while [ $# -gt 0 ]; do
         --token)     TOKEN="$2"; shift 2 ;;
         --config)    CONFIG_SRC="$2"; shift 2 ;;
         --pelican)   FLAVOR="pelican"; shift ;;
-        --no-docker) INSTALL_DOCKER=false; shift ;;
+        --install-docker)   INSTALL_DOCKER=true; shift ;;
+        --grub-swapaccount) GRUB_SWAP=true; shift ;;
+        --no-docker) shift ;;  # veraltet: ist seit M78 der Standard
         --no-start)  START=false; shift ;;
-        -h|--help)   sed -n 2,26p "$0"; exit 0 ;;
+        -h|--help)   sed -n 2,34p "$0"; exit 0 ;;
         *) die "Unbekannte Option: $1" ;;
     esac
 done
@@ -67,19 +73,35 @@ case "$ARCH" in
 esac
 
 # ── Docker ──────────────────────────────────────────────
-if $INSTALL_DOCKER; then
-    if command -v docker >/dev/null; then
-        log "Docker vorhanden: $(docker --version)"
-    else
+# Es wird nichts still installiert oder umkonfiguriert: Docker nur mit --install-docker,
+# GRUB nur mit --grub-swapaccount.
+if ! command -v docker >/dev/null; then
+    if $INSTALL_DOCKER; then
         log "Installiere Docker (get.docker.com) ..."
         curl -fsSL https://get.docker.com | sh
+    else
+        die "Docker fehlt. Installiere Docker selbst (https://docs.docker.com/engine/install/) oder starte dieses Skript mit --install-docker."
     fi
-    systemctl enable --now docker
-    # Swap-Accounting fuer Wings-Speicherlimits (wirksam nach Reboot)
-    if [ -f /etc/default/grub ] && ! grep -q "swapaccount=1" /etc/default/grub; then
-        sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 swapaccount=1"/' /etc/default/grub
-        command -v update-grub >/dev/null && update-grub >/dev/null 2>&1 || true
-        log "swapaccount=1 in GRUB gesetzt (wirkt nach Reboot)."
+else
+    log "Docker vorhanden: $(docker --version)"
+fi
+if ! systemctl is-active --quiet docker; then
+    if $INSTALL_DOCKER; then
+        systemctl enable --now docker
+    else
+        die "Der Docker-Dienst laeuft nicht. Starte ihn (systemctl enable --now docker) oder nutze --install-docker."
+    fi
+fi
+# Swap-Accounting fuer Wings-Speicherlimits: nur auf cgroup v1 noetig (cgroup v2, z.B. Ubuntu 22.04+, braucht nichts)
+if [ "$(stat -fc %T /sys/fs/cgroup 2>/dev/null || true)" != "cgroup2fs" ] && ! grep -q "swapaccount=1" /proc/cmdline; then
+    if $GRUB_SWAP && [ -f /etc/default/grub ]; then
+        if ! grep -q "swapaccount=1" /etc/default/grub; then
+            sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 swapaccount=1"/' /etc/default/grub
+            command -v update-grub >/dev/null && update-grub >/dev/null 2>&1 || true
+            log "swapaccount=1 in GRUB gesetzt (wirkt nach Reboot)."
+        fi
+    else
+        log "Hinweis: cgroup v1 ohne swapaccount=1 – Speicherlimits mit Swap greifen evtl. nicht. Mit --grub-swapaccount setzt das Skript es in GRUB (Reboot noetig)."
     fi
 fi
 
@@ -98,11 +120,9 @@ else
     log "Hole config.yml fuer Agent $AGENT_ID von $PANEL ..."
     RESP=$(curl -fsS -m 15 -H "Authorization: Bearer $TOKEN" "$PANEL/api/admin/agents/$AGENT_ID/configuration") \
         || die "config.yml konnte nicht geladen werden (Token, Agent-ID, Panel-URL pruefen)."
-    python3 - "$CONF_DIR/config.yml" <<'PY' <<<"$RESP" || die "Antwort des Panels konnte nicht gelesen werden."
-import json, sys
-data = json.load(sys.stdin)
-open(sys.argv[1], "w").write(data["yaml"])
-PY
+    # Hinweis: Heredoc und Here-String zugleich funktionieren nicht (die Antwort wuerde als Python-Code gelesen)
+    printf '%s' "$RESP" | python3 -c 'import json, sys; open(sys.argv[1], "w").write(json.load(sys.stdin)["yaml"])' "$CONF_DIR/config.yml" \
+        || die "Antwort des Panels konnte nicht gelesen werden."
     log "config.yml geschrieben."
 fi
 chmod 600 "$CONF_DIR/config.yml"
