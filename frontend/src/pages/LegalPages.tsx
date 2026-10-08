@@ -41,7 +41,7 @@ function LegalPage({ build }: { build: (c: LegalContext) => LegalDoc }) {
   return (
     <PageLayout title={doc.title} maxWidth={800}>
       <Notice en={en} />
-      {doc.sections.map((s) => <Section key={s.title} title={s.title}>{s.body}</Section>)}
+      {doc.sections.filter((s) => !s.hidden).map((s) => <Section key={s.title} title={s.title}>{s.body}</Section>)}
       <p style={{ fontSize: 12, color: "var(--text-3)" }}>{en ? "As of" : "Stand"}: <Value>{OPERATOR.lastUpdated}</Value></p>
     </PageLayout>
   );

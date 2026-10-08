@@ -5,7 +5,7 @@ import { type Operator, isPlaceholder } from "./operator";
  * Inhalte der Rechtsseiten je Rechtsraum (DE/CH) und Sprache (Deutsch/Englisch).
  * Die Texte sind eine Struktur mit Platzhaltern und ersetzen keine Rechtsberatung; der Betreiber muss sie prüfen.
  */
-export interface LegalSection { title: string; body: ReactNode }
+export interface LegalSection { title: string; body: ReactNode; /** Abschnitt ohne Inhalt (alle Angaben leer) wird nicht angezeigt */ hidden?: boolean }
 export interface LegalDoc { title: string; sections: LegalSection[] }
 export interface LegalContext { en: boolean; ch: boolean; o: Operator }
 
@@ -21,6 +21,20 @@ export function Value({ children }: { children: string }) {
 const Fill = ({ children }: { children: string }) => <Value>{children}</Value>;
 const ul: React.CSSProperties = { margin: 0, paddingLeft: 20 };
 
+/** Optionale Betreiberangaben bleiben leer (""), wenn es sie nicht gibt; leere Felder werden samt Beschriftung ausgelassen. */
+const has = (value: string) => value.trim() !== "";
+
+/** Zeilen "Beschriftung: Wert" nur für gefüllte Felder (Platzhalter zählen als gefüllt und werden hervorgehoben). */
+function Lines({ items }: { items: [string, string][] }) {
+  const filled = items.filter(([, value]) => has(value));
+  return <>{filled.map(([label, value], i) => <span key={label}>{i > 0 && <br />}{label}: <Value>{value}</Value></span>)}</>;
+}
+
+/** Name des Betreibers mit Rechtsform in Klammern, falls vorhanden. */
+function OperatorName({ o }: { o: Operator }) {
+  return <><Value>{o.name}</Value>{has(o.legalForm) && <> (<Value>{o.legalForm}</Value>)</>}</>;
+}
+
 export function impressum({ en, ch, o }: LegalContext): LegalDoc {
   const V = Value;
   if (ch) {
@@ -31,7 +45,7 @@ export function impressum({ en, ch, o }: LegalContext): LegalDoc {
           title: en ? "Provider" : "Anbieter",
           body: (
             <p style={{ margin: 0 }}>
-              <V>{o.name}</V> (<V>{o.legalForm}</V>)<br />
+              <OperatorName o={o} /><br />
               <V>{o.street}</V><br />
               <V>{o.zipCity}</V><br />
               <V>{o.country}</V>
@@ -40,14 +54,14 @@ export function impressum({ en, ch, o }: LegalContext): LegalDoc {
         },
         {
           title: en ? "Contact" : "Kontakt",
-          body: <p style={{ margin: 0 }}>{en ? "Email" : "E-Mail"}: <V>{o.email}</V>{" "}<br />{en ? "Phone (optional)" : "Telefon (optional)"}: <V>{o.phone}</V></p>,
+          body: <p style={{ margin: 0 }}><Lines items={[[en ? "Email" : "E-Mail", o.email], [en ? "Phone" : "Telefon", o.phone]]} /></p>,
         },
         {
           title: en ? "Register and tax" : "Register und Steuern",
+          hidden: !has(o.register) && !has(o.vatId),
           body: (
             <p style={{ margin: 0 }}>
-              {en ? "Commercial register (if registered)" : "Handelsregister (falls eingetragen)"}: <V>{o.register}</V><br />
-              {en ? "UID / VAT number (if any)" : "UID / MWST-Nummer (falls vorhanden)"}: <V>{o.vatId}</V>
+              <Lines items={[[en ? "Commercial register" : "Handelsregister", o.register], [en ? "UID / VAT number" : "UID / MWST-Nummer", o.vatId]]} />
             </p>
           ),
         },
@@ -67,7 +81,7 @@ export function impressum({ en, ch, o }: LegalContext): LegalDoc {
         title: en ? "Provider" : "Anbieter",
         body: (
           <p style={{ margin: 0 }}>
-            <V>{o.name}</V> (<V>{o.legalForm}</V>)<br />
+            <OperatorName o={o} /><br />
             <V>{o.street}</V><br />
             <V>{o.zipCity}</V><br />
             <V>{o.country}</V>
@@ -76,15 +90,15 @@ export function impressum({ en, ch, o }: LegalContext): LegalDoc {
       },
       {
         title: en ? "Contact" : "Kontakt",
-        body: <p style={{ margin: 0 }}>{en ? "Email" : "E-Mail"}: <V>{o.email}</V><br />{en ? "Phone" : "Telefon"}: <V>{o.phone}</V></p>,
+        body: <p style={{ margin: 0 }}><Lines items={[[en ? "Email" : "E-Mail", o.email], [en ? "Phone" : "Telefon", o.phone]]} /></p>,
       },
-      { title: en ? "Represented by" : "Vertretungsberechtigt", body: <V>{o.representative}</V> },
+      { title: en ? "Represented by" : "Vertretungsberechtigt", hidden: !has(o.representative), body: <V>{o.representative}</V> },
       {
         title: en ? "Register and taxes" : "Register und Steuern",
+        hidden: !has(o.register) && !has(o.vatId),
         body: (
           <p style={{ margin: 0 }}>
-            {en ? "Commercial register" : "Handelsregister"}: <V>{o.register}</V><br />
-            {en ? "VAT identification number" : "Umsatzsteuer-Identifikationsnummer"}: <V>{o.vatId}</V>
+            <Lines items={[[en ? "Commercial register" : "Handelsregister", o.register], [en ? "VAT identification number" : "Umsatzsteuer-Identifikationsnummer", o.vatId]]} />
           </p>
         ),
       },
@@ -141,8 +155,8 @@ export function datenschutz({ en, ch, o }: LegalContext): LegalDoc {
           title: en ? "4. Recipients and processors" : "4. Empfänger und Auftragsbearbeiter",
           body: (
             <>
-              {en ? "Hosting" : "Hosting"}: <V>{o.hosting}</V><br />
-              {en ? "Payment processing" : "Zahlungsabwicklung"}: <V>{o.paymentProvider}</V><br />
+              <Lines items={[["Hosting", o.hosting], [en ? "Payment processing" : "Zahlungsabwicklung", o.paymentProvider]]} />
+              {(has(o.hosting) || has(o.paymentProvider)) && <br />}
               {en ? "Email delivery" : "E-Mail-Versand"}: <Fill>{en ? "[enter provider]" : "[Anbieter eintragen]"}</Fill><br />
               {en
                 ? "Spam protection (only if enabled): Cloudflare Turnstile or hCaptcha. Your browser then connects to the provider when you register or request a password reset."
@@ -214,8 +228,8 @@ export function datenschutz({ en, ch, o }: LegalContext): LegalDoc {
         title: en ? "4. Recipients and processors" : "4. Empfänger und Auftragsverarbeiter",
         body: (
           <>
-            Hosting: <V>{o.hosting}</V><br />
-            {en ? "Payment processing" : "Zahlungsabwicklung"}: <V>{o.paymentProvider}</V><br />
+            <Lines items={[["Hosting", o.hosting], [en ? "Payment processing" : "Zahlungsabwicklung", o.paymentProvider]]} />
+            {(has(o.hosting) || has(o.paymentProvider)) && <br />}
             {en ? "Email delivery" : "E-Mail-Versand"}: <Fill>{en ? "[enter provider]" : "[Anbieter eintragen]"}</Fill>
           </>
         ),
@@ -232,9 +246,8 @@ export function datenschutz({ en, ch, o }: LegalContext): LegalDoc {
             {en
               ? "You have the right to access, rectification, erasure, restriction of processing, data portability and to object. Contact "
               : "Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Wende dich dafür an "}
-            <V>{o.email}</V>.{" "}
-            {en ? "You can also complain to the competent supervisory authority: " : "Du kannst dich außerdem bei der zuständigen Aufsichtsbehörde beschweren: "}
-            <V>{o.supervisoryAuthority}</V>.
+            <V>{o.email}</V>.
+            {has(o.supervisoryAuthority) && <>{" "}{en ? "You can also complain to the competent supervisory authority: " : "Du kannst dich außerdem bei der zuständigen Aufsichtsbehörde beschweren: "}<V>{o.supervisoryAuthority}</V>.</>}
           </>
         ),
       },
@@ -268,8 +281,7 @@ export function agb({ en, ch, o }: LegalContext): LegalDoc {
       {ch ? (en ? " (in Swiss francs unless stated otherwise; VAT is shown where it applies)" : " (in Schweizer Franken, sofern nicht anders angegeben; die MWST wird ausgewiesen, soweit sie anfällt)") : ""}
       {en ? ". Payment method and due date: " : ". Zahlungsweise und Fälligkeit: "}
       <Fill>{en ? "[enter]" : "[eintragen]"}</Fill>
-      {en ? ". Payment provider: " : ". Zahlungsanbieter: "}
-      <V>{o.paymentProvider}</V>.
+      {has(o.paymentProvider) ? <>{en ? ". Payment provider: " : ". Zahlungsanbieter: "}<V>{o.paymentProvider}</V></> : null}.
     </>
   );
   const term = (

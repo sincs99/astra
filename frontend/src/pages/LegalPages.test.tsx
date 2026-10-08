@@ -113,6 +113,66 @@ describe("Rechtsraum (DE/CH)", () => {
   });
 });
 
+describe("Optionale Betreiberangaben", () => {
+  const OPTIONAL = ["legalForm", "phone", "representative", "register", "vatId", "supervisoryAuthority", "hosting", "paymentProvider"] as const;
+  const snapshot = { ...OPERATOR };
+  const fill = () => {
+    Object.assign(OPERATOR, { name: "Max Muster", legalForm: "Einzelunternehmen", street: "Hauptstr. 1", zipCity: "8000 Zürich", country: "Schweiz", email: "hi@example.ch", lastUpdated: "Oktober 2026", phone: "+41 44 000 00 00", representative: "Max Muster", register: "CHE-123", vatId: "CHE-123.456.789 MWST", supervisoryAuthority: "Behörde X", hosting: "Hoster AG", paymentProvider: "Stripe" });
+  };
+  const clearOptional = () => { for (const key of OPTIONAL) OPERATOR[key] = ""; };
+  afterEach(() => Object.assign(OPERATOR, snapshot));
+
+  it("CH: leere Angaben verschwinden samt Beschriftung, gefüllte bleiben", () => {
+    OPERATOR.jurisdiction = "CH";
+    fill();
+    clearOptional();
+    mount(<ImpressumPage />);
+    expect(screen.getByText(/Max Muster/)).toBeTruthy();
+    expect(screen.queryByText(/Telefon/)).toBeNull();
+    expect(screen.queryByText("Register und Steuern")).toBeNull();
+    expect(screen.queryByText(/MWST/)).toBeNull();
+    expect(document.body.textContent).not.toMatch(/\(\)/);
+    expect(document.body.textContent).not.toContain("[vom Betreiber auszufüllen]");
+    cleanup();
+    mount(<DatenschutzPage />);
+    expect(screen.queryByText(/Hosting:/)).toBeNull();
+    expect(screen.queryByText(/Zahlungsabwicklung:/)).toBeNull();
+    cleanup();
+    mount(<AgbPage />);
+    expect(screen.queryByText(/Zahlungsanbieter/)).toBeNull();
+  });
+
+  it("CH: gefüllte optionale Angaben erscheinen mit Beschriftung", () => {
+    OPERATOR.jurisdiction = "CH";
+    fill();
+    mount(<ImpressumPage />);
+    expect(screen.getByText(/Telefon/)).toBeTruthy();
+    expect(screen.getByText("Register und Steuern")).toBeTruthy();
+    expect(document.body.textContent).toContain("CHE-123.456.789 MWST");
+    expect(document.body.textContent).toContain("Max Muster (Einzelunternehmen)");
+  });
+
+  it("DE: leere Angaben (Telefon, Vertretung, Register, USt-IdNr., Aufsichtsbehörde) werden ausgelassen", () => {
+    fill();
+    clearOptional();
+    mount(<ImpressumPage />);
+    expect(screen.queryByText(/Telefon/)).toBeNull();
+    expect(screen.queryByText("Vertretungsberechtigt")).toBeNull();
+    expect(screen.queryByText("Register und Steuern")).toBeNull();
+    cleanup();
+    mount(<DatenschutzPage />);
+    expect(screen.queryByText(/zuständigen Aufsichtsbehörde/)).toBeNull();
+    expect(screen.getByText("7. Deine Rechte")).toBeTruthy();
+  });
+
+  it("Platzhalter bleiben sichtbar und hervorgehoben (nur \"\" blendet aus)", () => {
+    OPERATOR.jurisdiction = "CH";
+    mount(<ImpressumPage />);
+    expect(screen.getByText(/Telefon/)).toBeTruthy();
+    expect(document.querySelectorAll("mark").length).toBeGreaterThan(4);
+  });
+});
+
 describe("ProtectedRoute", () => {
   function app(path: string) {
     return render(
