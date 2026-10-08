@@ -59,7 +59,7 @@ describe("BackupManager", () => {
     fireEvent.click(delBtn);
     await waitFor(() => expect(del).toHaveBeenCalledWith("u1", "abcdef12-0000-0000-0000-000000000000"));
     expect(await screen.findByText("Gelöscht")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Backup Nightly wiederherstellen" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Backup Nightly wiederherstellen" }));
     await waitFor(() => expect(restore).toHaveBeenCalled());
     vi.unstubAllGlobals();
   });

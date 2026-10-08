@@ -33,9 +33,10 @@ describe("AdminSystemPage", () => {
     vi.spyOn(api, "getPreflight").mockResolvedValue(preflight);
     mount();
     expect(await screen.findByText("1.2.3", { selector: "span" })).toBeTruthy();
-    expect(screen.getByText("2 Migration(en)")).toBeTruthy();
-    expect(screen.getByText("Disk low")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Preflight-Prüfung" })).toBeTruthy();
+    // Migration und Preflight kommen aus eigenen asynchronen Abrufen
+    expect(await screen.findByText("2 Migration(en)")).toBeTruthy();
+    expect(await screen.findByText("Disk low")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Preflight-Prüfung" })).toBeTruthy();
   });
 
   it("aktualisiert per Button", async () => {
