@@ -799,11 +799,16 @@ def create_endpoint(agent_id: int):
     if existing:
         return jsonify({"error": f"Endpoint {ip}:{port} existiert bereits auf diesem Agent"}), 409
 
+    auto_assign = data.get("auto_assign", True)
+    if not isinstance(auto_assign, bool):
+        return jsonify({"error": "Field 'auto_assign' must be a boolean"}), 400
+
     endpoint = Endpoint(
         agent_id=agent_id,
         ip=ip,
         port=port,
         is_locked=data.get("is_locked", False),
+        auto_assign=auto_assign,
     )
     db.session.add(endpoint)
     db.session.commit()
@@ -811,20 +816,46 @@ def create_endpoint(agent_id: int):
     return jsonify(endpoint.to_dict()), 201
 
 
+@admin_bp.route("/endpoints/<int:endpoint_id>", methods=["PATCH"])
+def update_endpoint(endpoint_id: int):
+    """Aendert die Flags eines Endpoints (M82). Body: {"auto_assign": bool, "is_locked": bool}, mindestens eines.
+
+    `auto_assign: false` nimmt den Endpoint aus der automatischen Vergabe (z.B. Query-Port eines Spiels), er bleibt aber
+    explizit zuweisbar. `is_locked: true` sperrt ihn auch fuer die explizite Zuweisung. Bereits zugewiesene Endpoints
+    bleiben bei der Instance. 200 mit dem Endpoint, 400 (kein Boolean, nichts zu aendern), 404 unbekannt.
+    """
+    endpoint = db.session.get(Endpoint, endpoint_id)
+    if not endpoint:
+        return jsonify({"error": f"Endpoint mit ID {endpoint_id} nicht gefunden"}), 404
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body is required"}), 400
+    fields = [f for f in ("auto_assign", "is_locked") if f in data]
+    if not fields:
+        return jsonify({"error": "Provide at least one of 'auto_assign', 'is_locked'"}), 400
+    for field in fields:
+        if not isinstance(data[field], bool):
+            return jsonify({"error": f"Field '{field}' must be a boolean"}), 400
+    for field in fields:
+        setattr(endpoint, field, data[field])
+    db.session.commit()
+    return jsonify(endpoint.to_dict())
+
+
 MAX_BULK_ENDPOINTS = 1000
 
 
 def _instance_conn_load():
     """Laedt Agent und primaeren Endpoint mit, damit `connection` keine Query pro Instanz ausloest."""
-    from sqlalchemy.orm import joinedload
-    return [joinedload(Instance.agent), joinedload(Instance.primary_endpoint)]
+    from sqlalchemy.orm import joinedload, selectinload
+    return [joinedload(Instance.agent), joinedload(Instance.primary_endpoint), selectinload(Instance.endpoints)]
 
 
 @admin_bp.route("/agents/<int:agent_id>/endpoints/bulk", methods=["POST"])
 def create_endpoints_bulk(agent_id: int):
     """Legt einen Port-Bereich als Endpoints an (M39).
 
-    Body: {"ip": "0.0.0.0", "port_start": 25565, "port_end": 25600}
+    Body: {"ip": "0.0.0.0", "port_start": 25565, "port_end": 25600, "auto_assign": true}  (auto_assign optional, Standard true)
     Bereits vorhandene Kombinationen aus ip und port werden uebersprungen.
     Antwort: {"created": n, "skipped": n, "endpoints": [<neu angelegte>]}
     """
@@ -854,13 +885,17 @@ def create_endpoints_bulk(agent_id: int):
     except (ValueError, TypeError):
         return jsonify({"error": "Field 'ip' must be a valid IPv4/IPv6 address"}), 400
 
+    auto_assign = data.get("auto_assign", True)
+    if not isinstance(auto_assign, bool):
+        return jsonify({"error": "Field 'auto_assign' must be a boolean"}), 400
+
     existing = {
         port for (port,) in db.session.query(Endpoint.port).filter(
             Endpoint.agent_id == agent_id, Endpoint.ip == ip,
             Endpoint.port >= start, Endpoint.port <= end,
         )
     }
-    new = [Endpoint(agent_id=agent_id, ip=ip, port=port)
+    new = [Endpoint(agent_id=agent_id, ip=ip, port=port, auto_assign=auto_assign)
            for port in range(start, end + 1) if port not in existing]
     db.session.add_all(new)
     db.session.commit()
@@ -983,6 +1018,61 @@ def transfer_instance_route(uuid: str):
         return jsonify(result.to_dict())
     except InstanceActionError as e:
         return jsonify({"error": e.message}), e.status_code
+
+
+# ── Mehrere Endpoints pro Instance (M80) ────────────────
+
+
+def _endpoint_change_response(uuid: str, action, success_status: int = 200, **kwargs):
+    """Gemeinsamer Ablauf der drei Endpoint-Routen: Instance laden, Service aufrufen, Instanz-Dict liefern.
+
+    Die Antwort ist das Instanz-Dict plus `sync` ({success, message} der Wings-Synchronisation, best effort) und
+    `restart_required` (neue Ports wirken erst nach einem Neustart des Servers).
+    """
+    from app.domain.auth.service import get_current_user
+
+    instance = Instance.query.options(*_instance_conn_load()).filter_by(uuid=uuid).first()
+    if not instance:
+        return jsonify({"error": "Instance nicht gefunden"}), 404
+    actor = get_current_user()
+    try:
+        result = action(instance, actor_id=actor.id if actor else None, **kwargs)
+    except InstanceActionError as e:
+        return jsonify({"error": e.message}), e.status_code
+    body = result["instance"].to_dict()
+    body["sync"] = result["sync"]
+    body["restart_required"] = result["sync"] is not None
+    return jsonify(body), success_status
+
+
+@admin_bp.route("/instances/<string:uuid>/endpoints", methods=["POST"])
+def add_instance_endpoint_route(uuid: str):
+    """Weist der Instance einen weiteren freien Endpoint zu. Body: {"endpoint_id": 13}.
+
+    201 mit dem Instanz-Dict; 400 (Feld fehlt/ungueltig), 404 (Instance oder Endpoint unbekannt),
+    409 (anderer Agent, gesperrt oder schon zugeordnet). Neue Ports wirken erst nach einem Neustart.
+    """
+    from app.domain.instances.service import add_instance_endpoint
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or "endpoint_id" not in data:
+        return jsonify({"error": "Field 'endpoint_id' is required"}), 400
+    return _endpoint_change_response(uuid, add_instance_endpoint, 201, endpoint_id=data["endpoint_id"])
+
+
+@admin_bp.route("/instances/<string:uuid>/endpoints/<int:endpoint_id>", methods=["DELETE"])
+def remove_instance_endpoint_route(uuid: str, endpoint_id: int):
+    """Gibt einen zugeordneten Endpoint frei (nicht loeschen). 200 mit Instanz-Dict; 404 (nicht dieser Instance
+    zugeordnet), 409 (primaerer Endpoint)."""
+    from app.domain.instances.service import remove_instance_endpoint
+    return _endpoint_change_response(uuid, remove_instance_endpoint, endpoint_id=endpoint_id)
+
+
+@admin_bp.route("/instances/<string:uuid>/endpoints/<int:endpoint_id>/primary", methods=["PATCH"])
+def set_primary_instance_endpoint_route(uuid: str, endpoint_id: int):
+    """Macht einen zugeordneten Endpoint zum primaeren (SERVER_PORT, `connection`). 200 mit Instanz-Dict;
+    404 (nicht dieser Instance zugeordnet)."""
+    from app.domain.instances.service import set_primary_instance_endpoint
+    return _endpoint_change_response(uuid, set_primary_instance_endpoint, endpoint_id=endpoint_id)
 
 
 # ── Suspension (M29) ────────────────────────────────────

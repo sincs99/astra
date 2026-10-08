@@ -20,6 +20,11 @@ from app.domain.blueprints.models import Blueprint
 from app.domain.users.models import User
 from app.domain.endpoints.models import Endpoint
 from app.infrastructure.runner.protocol import RunnerProtocol, PowerAction
+from app.domain.activity.events import (
+    INSTANCE_ENDPOINT_ADDED as INSTANCE_ENDPOINT_ADDED_EVENT,
+    INSTANCE_ENDPOINT_PRIMARY as INSTANCE_ENDPOINT_PRIMARY_EVENT,
+    INSTANCE_ENDPOINT_REMOVED as INSTANCE_ENDPOINT_REMOVED_EVENT,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -534,6 +539,89 @@ def update_instance_config(instance: Instance, **changes) -> dict:
     }
 
 
+# ── Mehrere Endpoints pro Instance (M80) ───────────────
+
+
+def _lock_endpoint(endpoint_id: int) -> Endpoint | None:
+    """Endpoint mit Zeilensperre laden (Postgres), damit zwei Zuweisungen nicht dasselbe Port greifen."""
+    return db.session.query(Endpoint).filter_by(id=endpoint_id).with_for_update().first()
+
+
+def _endpoint_change_result(instance: Instance, event: str, description: str, endpoint: Endpoint, actor_id: int | None) -> dict:
+    """Commit, Activity-Event und Sync zu Wings nach einer Endpoint-Änderung.
+
+    Der Sync ist best effort (wie bei Limit-Änderungen). Die neuen Ports wirken erst nach einem Neustart des Servers,
+    weil Wings sie beim Erstellen des Containers veröffentlicht.
+    """
+    db.session.commit()
+    from app.domain.activity.events import log_instance_event
+    log_instance_event(event, instance.id, actor_id=actor_id, description=description,
+                       properties={"endpoint_id": endpoint.id, "ip": endpoint.ip, "port": endpoint.port})
+    sync = sync_instance(instance)
+    db.session.refresh(instance)
+    return {"instance": instance, "sync": {"success": bool(sync.get("success")), "message": sync.get("message")}}
+
+
+def _check_endpoint_editable(instance: Instance) -> None:
+    if instance.status == STATUS_TRANSFERRING:
+        raise InstanceActionError(f"Endpoints können im Status '{instance.status}' nicht geändert werden", 409)
+
+
+def add_instance_endpoint(instance: Instance, endpoint_id, actor_id: int | None = None) -> dict:
+    """Weist der Instance einen weiteren freien Endpoint desselben Agents zu.
+
+    Fehler: 400 (kein Integer), 404 (unbekannt), 409 (anderer Agent, gesperrt oder schon zugeordnet).
+    """
+    if isinstance(endpoint_id, bool) or not isinstance(endpoint_id, int):
+        raise InstanceActionError("Field 'endpoint_id' must be an integer", 400)
+    _check_endpoint_editable(instance)
+    endpoint = _lock_endpoint(endpoint_id)
+    if endpoint is None:
+        raise InstanceActionError(f"Endpoint mit ID {endpoint_id} nicht gefunden", 404)
+    if endpoint.agent_id != instance.agent_id:
+        raise InstanceActionError(f"Endpoint {endpoint_id} gehört nicht zum Agent der Instance", 409)
+    if endpoint.is_locked:
+        raise InstanceActionError(f"Endpoint {endpoint_id} ist gesperrt", 409)
+    if endpoint.instance_id is not None:
+        raise InstanceActionError(
+            f"Endpoint {endpoint_id} ist bereits "
+            + ("dieser Instance" if endpoint.instance_id == instance.id else "einer Instance") + " zugeordnet", 409)
+    endpoint.instance_id = instance.id
+    if instance.primary_endpoint_id is None:
+        instance.primary_endpoint_id = endpoint.id
+    return _endpoint_change_result(instance, INSTANCE_ENDPOINT_ADDED_EVENT, f"Endpoint {endpoint.ip}:{endpoint.port} zugewiesen", endpoint, actor_id)
+
+
+def remove_instance_endpoint(instance: Instance, endpoint_id: int, actor_id: int | None = None) -> dict:
+    """Gibt einen zugeordneten, nicht primären Endpoint frei (er wird nicht gelöscht).
+
+    Fehler: 404 (nicht dieser Instance zugeordnet), 409 (primärer Endpoint: erst den primären wechseln).
+    """
+    _check_endpoint_editable(instance)
+    endpoint = _lock_endpoint(endpoint_id)
+    if endpoint is None or endpoint.instance_id != instance.id:
+        raise InstanceActionError(f"Endpoint {endpoint_id} ist dieser Instance nicht zugeordnet", 404)
+    if instance.primary_endpoint_id == endpoint.id:
+        raise InstanceActionError("Der primäre Endpoint kann nicht entfernt werden (zuerst einen anderen zum primären machen)", 409)
+    endpoint.instance_id = None
+    return _endpoint_change_result(instance, INSTANCE_ENDPOINT_REMOVED_EVENT, f"Endpoint {endpoint.ip}:{endpoint.port} freigegeben", endpoint, actor_id)
+
+
+def set_primary_instance_endpoint(instance: Instance, endpoint_id: int, actor_id: int | None = None) -> dict:
+    """Macht einen bereits zugeordneten Endpoint zum primären (SERVER_PORT/SERVER_IP und `connection` wechseln).
+
+    Fehler: 404 (nicht dieser Instance zugeordnet). Idempotent, wenn er schon primär ist.
+    """
+    _check_endpoint_editable(instance)
+    endpoint = _lock_endpoint(endpoint_id)
+    if endpoint is None or endpoint.instance_id != instance.id:
+        raise InstanceActionError(f"Endpoint {endpoint_id} ist dieser Instance nicht zugeordnet", 404)
+    if instance.primary_endpoint_id == endpoint.id:
+        return {"instance": instance, "sync": None}
+    instance.primary_endpoint_id = endpoint.id
+    return _endpoint_change_result(instance, INSTANCE_ENDPOINT_PRIMARY_EVENT, f"Endpoint {endpoint.ip}:{endpoint.port} ist jetzt primär", endpoint, actor_id)
+
+
 # ── Hilfsfunktionen ─────────────────────────────────────
 
 
@@ -745,9 +833,9 @@ def _resolve_endpoint(agent_id: int, endpoint_id: int | None) -> Endpoint:
             )
         return endpoint
 
-    # Automatisch ersten freien Endpoint finden
+    # Automatisch ersten freien Endpoint finden (M82: Endpoints mit auto_assign=false werden nur explizit vergeben)
     endpoint = (
-        Endpoint.query.filter_by(agent_id=agent_id, instance_id=None, is_locked=False)
+        Endpoint.query.filter_by(agent_id=agent_id, instance_id=None, is_locked=False, auto_assign=True)
         .order_by(Endpoint.port.asc())
         .first()
     )

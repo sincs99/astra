@@ -137,6 +137,33 @@ def cmd_cleanup_jobs(args):
     return 0
 
 
+def cmd_update_install_container(args):
+    """Stellt gespeicherte Install-Images von Blueprints um (M82): Standard von pterodactyl/installers:debian
+    (Debian 11, apt scheitert) auf parkervcp/installers:debian (Debian 12). Nur Blueprints mit genau dem alten Wert."""
+    import json
+
+    from app import create_app
+    from app.domain.blueprints.models import DEFAULT_INSTALL_CONTAINER, LEGACY_INSTALL_CONTAINER, Blueprint
+    from app.extensions import db
+
+    old = (args.old or LEGACY_INSTALL_CONTAINER).strip()
+    new = (args.new or DEFAULT_INSTALL_CONTAINER).strip()
+    if not old or not new or old == new:
+        print("Fehler: --from und --to muessen gesetzt und verschieden sein.")
+        return 2
+    app = create_app()
+    with app.app_context():
+        found = Blueprint.query.filter_by(install_container=old).all()
+        names = [bp.name for bp in found]
+        if not args.dry_run:
+            for bp in found:
+                bp.install_container = new
+            db.session.commit()
+    print(json.dumps({"from": old, "to": new, "blueprints": names, "updated": 0 if args.dry_run else len(names),
+                      "dry_run": args.dry_run}, ensure_ascii=False))
+    return 0
+
+
 def cmd_alert_test(args):
     """Schickt eine Testnachricht an die konfigurierten Admin-Kanaele (ADMIN_ALERT_EMAIL, ADMIN_ALERT_WEBHOOK_URL)."""
     import json
@@ -309,6 +336,15 @@ def main():
     p_cleanup.add_argument("--days", type=int, default=30, help="Aufbewahrung in Tagen (Standard 30)")
     p_cleanup.add_argument("--dry-run", action="store_true", help="Nur zaehlen, nichts loeschen")
 
+    # ── update-install-container (M82) ───────────────────
+    p_install = subparsers.add_parser(
+        "update-install-container",
+        help="Stellt das gespeicherte Install-Image bestehender Blueprints auf Debian 12 um (parkervcp/installers:debian)",
+    )
+    p_install.add_argument("--from", dest="old", default=None, help="Altes Image (Standard ghcr.io/pterodactyl/installers:debian)")
+    p_install.add_argument("--to", dest="new", default=None, help="Neues Image (Standard ghcr.io/parkervcp/installers:debian)")
+    p_install.add_argument("--dry-run", action="store_true", help="Nur anzeigen, nichts aendern")
+
     # ── alert-test / alert-check ─────────────────────────
     subparsers.add_parser("alert-test", help="Testnachricht an die Admin-Benachrichtigungskanaele senden")
     subparsers.add_parser(
@@ -351,6 +387,7 @@ def main():
         "import-blueprint": cmd_import_blueprint,
         "billing-tick": cmd_billing_tick,
         "cleanup-jobs": cmd_cleanup_jobs,
+        "update-install-container": cmd_update_install_container,
         "alert-test": cmd_alert_test,
         "alert-check": cmd_alert_check,
         "check-config": cmd_check_config,

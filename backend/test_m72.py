@@ -95,6 +95,9 @@ ADMIN_OR_INTERNAL = [
     r"^Es wurde bereits vor kurzem manuell erinnert$", r"^current_period_end fehlt$", r"^Required fields missing: X$", r"^Field 'name' must be a non-empty string \(max 120 chars\)$",
     r"^Field 'description' must be a string$", r"^Blueprint X nicht gefunden$", r"^Field 'currency' must be a 3-letter ISO code$", r"^Field 'is_active' must be a boolean$",
     r"^Runner ist nicht initialisiert\. Bitte set_runner\(\) aufrufen\.$",
+    # M80: Endpoint-Verwaltung ist Admin-API
+    r"^Endpoints können im Status 'X' nicht geändert werden$", r"^Field 'endpoint_id' must be an integer$", r"^Endpoint X gehört nicht zum Agent der Instance$",
+    r"^Endpoint X ist dieser Instance nicht zugeordnet$", r"^Der primäre Endpoint kann nicht entfernt werden \(zuerst einen anderen zum primären machen\)$",
 ]
 INTERNAL_TEXTS = ("X: X",)  # Zusammenfassung des Billing-Ticks (type(e).__name__: e), wird nie an Kunden ausgeliefert
 

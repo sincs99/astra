@@ -1,5 +1,7 @@
 import { TransferInstanceForm } from "../components/TransferInstanceForm";
 import { DeleteInstanceForm } from "../components/DeleteInstanceForm";
+import { InstancePortsForm } from "../components/admin/InstancePortsForm";
+import { endpointAddress, extraEndpoints } from "../lib/endpoints";
 import { useAutoRefresh, useAutoRefreshSetting } from "../hooks/useAutoRefresh";
 import { Fragment, useEffect, useState } from "react";
 import {
@@ -43,6 +45,13 @@ export function AdminInstancesPage() {
   // Transfer-State
   const [transferringUuid, setTransferringUuid] = useState<string | null>(null);
   const [deletingUuid, setDeletingUuid] = useState<string | null>(null);
+  const [portsUuid, setPortsUuid] = useState<string | null>(null);
+
+  const handlePortsChanged = (updated: Instance, message: string) => {
+    setInstances(list => list.map(i => (i.uuid === updated.uuid ? { ...i, ...updated } : i)));
+    api.getEndpoints().then(setEndpoints).catch(() => {});
+    toast.success(message);
+  };
 
   const handleTransfer = async (inst: Instance, targetAgentId: number) => {
     await api.transferInstance(inst.uuid, targetAgentId);
@@ -252,6 +261,11 @@ export function AdminInstancesPage() {
                           <td data-label={col.endpoint}>
                             {/* Öffentliche Verbindungsadresse (Host:Port), auch wenn der Endpoint automatisch gewählt wurde; die Endpoint-Liste zeigt nur die Bind-IP */}
                             <span className="mono">{inst.connection?.address ?? (ep ? `${ep.ip}:${ep.port}` : t("ainst.none"))}</span>
+                            {extraEndpoints(inst).length > 0 && (
+                              <span className="mono hint" title={extraEndpoints(inst).map(e => endpointAddress(inst, e)).join(", ")}>
+                                {" · "}{extraEndpoints(inst).map(e => `+${e.port}`).join(" · ")}
+                              </span>
+                            )}
                             {inst.connection?.address && ep && <div className="hint mono">{`${ep.ip}:${ep.port}`}</div>}
                           </td>
                           <td data-label={col.resources}>
@@ -261,7 +275,15 @@ export function AdminInstancesPage() {
                             <div className="row-actions" style={{ marginTop: 0 }}>
                               <button
                                 type="button" className="btn btn-sm"
-                                onClick={() => { setTransferringUuid(inst.uuid); setDeletingUuid(null); }}
+                                aria-expanded={portsUuid === inst.uuid}
+                                onClick={() => { setPortsUuid(portsUuid === inst.uuid ? null : inst.uuid); setTransferringUuid(null); setDeletingUuid(null); }}
+                                title={t("ainst.ports.manageTitle", { name: inst.name })}
+                              >
+                                {t("ainst.ports.manage")}
+                              </button>
+                              <button
+                                type="button" className="btn btn-sm"
+                                onClick={() => { setTransferringUuid(inst.uuid); setDeletingUuid(null); setPortsUuid(null); }}
                                 title={t("ainst.inst.transferTitle")}
                               >
                                 {t("ainst.inst.transfer")}
@@ -292,7 +314,7 @@ export function AdminInstancesPage() {
                               )}
                               <button
                                 type="button" className="btn btn-sm btn-danger-text"
-                                onClick={() => { setDeletingUuid(inst.uuid); setTransferringUuid(null); }}
+                                onClick={() => { setDeletingUuid(inst.uuid); setTransferringUuid(null); setPortsUuid(null); }}
                                 title={t("ainst.inst.deleteTitle")}
                               >
                                 <Icon name="trash" size={14} />{t("ainst.inst.delete")}
@@ -300,6 +322,19 @@ export function AdminInstancesPage() {
                             </div>
                           </td>
                         </tr>
+                        {portsUuid === inst.uuid && (
+                          <tr>
+                            <td colSpan={8}>
+                              <InstancePortsForm
+                                instance={inst}
+                                endpoints={endpoints}
+                                idPrefix={`ports-${inst.id}`}
+                                onChanged={handlePortsChanged}
+                                onClose={() => setPortsUuid(null)}
+                              />
+                            </td>
+                          </tr>
+                        )}
                         {isTransferring && (
                           <tr>
                             <td colSpan={8} style={{ background: "var(--danger-soft)" }}>

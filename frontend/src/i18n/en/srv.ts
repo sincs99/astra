@@ -58,5 +58,6 @@ export const srv: Record<keyof typeof de, string> = {
   "srv.suspendedDelete": "Suspended, please contact support.",
   "srv.deleteBtn": "Delete server…",
   "srv.deleted": "Server \"{name}\" was deleted.",
+  "srv.otherPorts": "Other ports",
   "srv.serverAddress": "Server address",
 };

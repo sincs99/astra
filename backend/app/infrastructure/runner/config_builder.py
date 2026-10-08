@@ -104,7 +104,7 @@ def build_install_payload(instance: Instance) -> dict:
     """Payload fuer GET /api/remote/servers/{uuid}/install."""
     blueprint = _get_blueprint(instance)
     if not blueprint:
-        return {"container_image": "ghcr.io/pterodactyl/installers:debian", "entrypoint": "bash", "script": ""}
+        return {"container_image": "ghcr.io/parkervcp/installers:debian", "entrypoint": "bash", "script": ""}
     return {
         "container_image": blueprint.get_install_container(),
         "entrypoint": blueprint.get_install_entrypoint(),

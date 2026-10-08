@@ -100,8 +100,8 @@ def list_my_instances():
         return err
 
     # Owner-Instances
-    from sqlalchemy.orm import joinedload
-    conn = (joinedload(Instance.agent), joinedload(Instance.primary_endpoint))
+    from sqlalchemy.orm import joinedload, selectinload
+    conn = (joinedload(Instance.agent), joinedload(Instance.primary_endpoint), selectinload(Instance.endpoints))
     owned = Instance.query.options(*conn).filter_by(owner_id=user_id).all()
 
     # Collaborator-Instances

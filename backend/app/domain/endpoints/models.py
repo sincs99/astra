@@ -23,6 +23,10 @@ class Endpoint(db.Model):
     # Sperr-Flag
     is_locked = db.Column(db.Boolean, default=False)
 
+    # M82: false nimmt den Endpoint aus der automatischen Vergabe (z.B. Query-Port eines Spiels), ohne ihn zu sperren.
+    # Die explizite Zuweisung (endpoint_id) bleibt moeglich.
+    auto_assign = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
+
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -47,6 +51,7 @@ class Endpoint(db.Model):
             "ip": self.ip,
             "port": self.port,
             "is_locked": self.is_locked,
+            "auto_assign": bool(self.auto_assign) if self.auto_assign is not None else True,
             "created_at": iso_utc(self.created_at),
             "updated_at": iso_utc(self.updated_at),
         }

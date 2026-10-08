@@ -51,7 +51,7 @@ def capacity_problem(agent: Agent, memory: int, disk: int, cpu: int) -> str | No
 
 def has_free_endpoint(agent_id: int) -> bool:
     return db.session.query(Endpoint.id).filter_by(
-        agent_id=agent_id, instance_id=None, is_locked=False
+        agent_id=agent_id, instance_id=None, is_locked=False, auto_assign=True
     ).first() is not None
 
 
