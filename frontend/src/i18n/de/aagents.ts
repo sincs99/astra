@@ -66,7 +66,7 @@ export const aagents = {
   "aagents.cfg.title": "config.yml für {name}",
   "aagents.cfg.open": "config.yml",
   "aagents.cfg.openAria": "config.yml von {name} anzeigen",
-  "aagents.cfg.hint": "Auf dem Node nach /etc/pterodactyl/config.yml speichern und Wings neu starten. Diese Datei enthält das Node-Secret – nicht weitergeben.",
+  "aagents.cfg.hint": "Auf dem Node nach /etc/astra/config.yml speichern und Wings neu starten. Diese Datei enthält das Node-Secret – nicht weitergeben.",
   "aagents.cfg.loading": "config.yml wird erzeugt...",
   "aagents.cfg.loadFailed": "config.yml konnte nicht geladen werden",
   "aagents.cfg.copy": "Kopieren",

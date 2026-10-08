@@ -9,7 +9,7 @@ import { setLang } from "../i18n";
 
 const agent: Agent = {
   id: 1, uuid: "u1", name: "node-zh-01", fqdn: "node01.astra.dev", is_active: true, scheme: "https", behind_proxy: false,
-  daemon_connect: 443, daemon_listen: 8080, daemon_sftp: 2022, daemon_base: "/var/lib/pterodactyl/volumes", upload_size: 100,
+  daemon_connect: 443, daemon_listen: 8080, daemon_sftp: 2022, daemon_base: "/var/lib/astra/volumes", upload_size: 100,
   memory_total: 8192, disk_total: 100000, cpu_total: 400, memory_overalloc: 0, disk_overalloc: 0, cpu_overalloc: 0,
   daemon_token_id: "tok-abc", has_daemon_credentials: true, last_seen_at: null, maintenance_mode: false, created_at: null, updated_at: null,
 };

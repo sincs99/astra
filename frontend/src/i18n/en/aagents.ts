@@ -68,7 +68,7 @@ export const aagents: Record<keyof typeof de, string> = {
   "aagents.cfg.title": "config.yml for {name}",
   "aagents.cfg.open": "config.yml",
   "aagents.cfg.openAria": "Show config.yml of {name}",
-  "aagents.cfg.hint": "Save it on the node as /etc/pterodactyl/config.yml and restart Wings. This file contains the node secret – do not share it.",
+  "aagents.cfg.hint": "Save it on the node as /etc/astra/config.yml and restart Wings. This file contains the node secret – do not share it.",
   "aagents.cfg.loading": "Generating config.yml...",
   "aagents.cfg.loadFailed": "Could not load config.yml",
   "aagents.cfg.copy": "Copy",

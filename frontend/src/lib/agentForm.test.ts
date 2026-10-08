@@ -56,7 +56,7 @@ describe("toAgentPayload", () => {
 
   it("nutzt Defaults für leeres Datenverzeichnis und ungueltige Upload-Groesse", () => {
     const payload = toAgentPayload({ ...valid, base: "  ", uploadSize: "-5" });
-    expect(payload).toMatchObject({ daemon_base: "/var/lib/pterodactyl/volumes", upload_size: 100 });
+    expect(payload).toMatchObject({ daemon_base: "/var/lib/astra/volumes", upload_size: 100 });
   });
 });
 

@@ -28,7 +28,7 @@ export interface AgentFormValues {
 export const EMPTY_AGENT_FORM: AgentFormValues = {
   name: "", fqdn: "", scheme: "https", behindProxy: false,
   connect: "8080", listen: "8080", sftp: "2022",
-  base: "/var/lib/pterodactyl/volumes", uploadSize: "100",
+  base: "/var/lib/astra/volumes", uploadSize: "100",
   memoryTotal: "", diskTotal: "", cpuTotal: "0",
   memoryOveralloc: "0", diskOveralloc: "0", cpuOveralloc: "0",
   isActive: true, connectTouched: false,
@@ -87,7 +87,7 @@ export function toAgentPayload(v: AgentFormValues, opts: { requireCapacity?: boo
     daemon_connect: connect,
     daemon_listen: listen,
     daemon_sftp: sftp,
-    daemon_base: v.base.trim() || "/var/lib/pterodactyl/volumes",
+    daemon_base: v.base.trim() || "/var/lib/astra/volumes",
     upload_size: Number.isFinite(upload) && upload > 0 ? upload : 100,
     is_active: v.isActive,
     memory_total: memoryTotal,
