@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AdminInstancesPage } from "./AdminInstancesPage";
 import { api } from "../services/api";
@@ -179,5 +179,76 @@ describe("AdminInstancesPage Liste", () => {
     expect(screen.getByRole("columnheader", { name: "Resources" })).toBeTruthy();
     expect(screen.getByLabelText("Agent")).toBeTruthy();
     expect(screen.queryByText("Instance erstellen")).toBeNull();
+  });
+});
+
+describe("AdminInstancesPage Ports verwalten", () => {
+  const eps = (list: Array<[number, number, boolean]>) => list.map(([id, port, is_primary]) => ({ id, ip: "0.0.0.0", port, is_primary }));
+  const conn = { host: "n1.x.de", ip: "0.0.0.0", port: 9876, address: "n1.x.de:9876" };
+  const multi = { id: 1, uuid: "u-1", name: "VRising", status: "ready", owner_id: 3, agent_id: 7, blueprint_id: 2,
+    primary_endpoint_id: 21, memory: 512, disk: 1024, cpu: 100, connection: conn, endpoints: eps([[21, 9876, true], [22, 9877, false]]) };
+
+  beforeEach(() => {
+    (api.getEndpoints as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 21, agent_id: 7, instance_id: 1, is_locked: false, ip: "0.0.0.0", port: 9876 },
+      { id: 22, agent_id: 7, instance_id: 1, is_locked: false, ip: "0.0.0.0", port: 9877 },
+      { id: 23, agent_id: 7, instance_id: null, is_locked: false, ip: "0.0.0.0", port: 9878 },
+      { id: 24, agent_id: 8, instance_id: null, is_locked: false, ip: "0.0.0.0", port: 9879 },
+      { id: 25, agent_id: 7, instance_id: null, is_locked: true, ip: "0.0.0.0", port: 9880 },
+    ]);
+    (api.getInstances as ReturnType<typeof vi.fn>).mockResolvedValue([multi]);
+  });
+
+  async function openPorts() {
+    render(<MemoryRouter><AdminInstancesPage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: "Ports verwalten" }));
+    return within(await screen.findByRole("region", { name: "Ports von VRising" }));
+  }
+
+  it("zeigt in der Spalte alle Ports, den primaeren zuerst", async () => {
+    render(<MemoryRouter><AdminInstancesPage /></MemoryRouter>);
+    expect(await screen.findByText("n1.x.de:9876")).toBeTruthy();
+    expect(screen.getByText(/\+9877/)).toBeTruthy();
+  });
+
+  it("listet die Endpoints; beim primaeren sind Primaer-setzen und Entfernen deaktiviert (mit Hinweis)", async () => {
+    const dlg = await openPorts();
+    const list = await dlg.findByRole("list", { name: "Zugeordnete Endpoints" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+    expect((within(list).getByRole("button", { name: "n1.x.de:9876 entfernen" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((within(list).getByRole("button", { name: "n1.x.de:9876 als primären Port setzen" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(list.querySelector("[title*='primäre Port kann nicht entfernt']")).toBeTruthy();
+    expect((within(list).getByRole("button", { name: "n1.x.de:9877 entfernen" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(dlg.getByText(/Portänderungen wirken nach einem Neustart/)).toBeTruthy();
+  });
+
+  it("bietet nur freie, nicht gesperrte Endpoints desselben Agents an und ruft beim Hinzufuegen POST mit endpoint_id", async () => {
+    const add = vi.spyOn(api, "addInstanceEndpoint").mockResolvedValue({ ...multi, endpoints: eps([[21, 9876, true], [22, 9877, false], [23, 9878, false]]) } as never);
+    const dlg = await openPorts();
+    const select = await dlg.findByLabelText("Freien Endpoint hinzufügen") as HTMLSelectElement;
+    await waitFor(() => expect(Array.from(select.options).map(o => o.textContent)).toEqual(["Endpoint wählen…", "0.0.0.0:9878"]));
+    fireEvent.change(select, { target: { value: "23" } });
+    fireEvent.click(dlg.getByRole("button", { name: "Hinzufügen" }));
+    await waitFor(() => expect(add).toHaveBeenCalledWith("u-1", 23));
+    expect(await dlg.findByRole("button", { name: "n1.x.de:9878 entfernen" })).toBeTruthy();
+  });
+
+  it("ruft beim Entfernen DELETE und beim Primaer-setzen PATCH", async () => {
+    const remove = vi.spyOn(api, "removeInstanceEndpoint").mockResolvedValue({ ...multi, endpoints: eps([[21, 9876, true]]) } as never);
+    const primary = vi.spyOn(api, "setPrimaryInstanceEndpoint").mockResolvedValue({ ...multi, primary_endpoint_id: 22, endpoints: eps([[22, 9877, true], [21, 9876, false]]) } as never);
+    const dlg = await openPorts();
+    fireEvent.click(await dlg.findByRole("button", { name: "n1.x.de:9877 als primären Port setzen" }));
+    await waitFor(() => expect(primary).toHaveBeenCalledWith("u-1", 22));
+    // erst wenn 9876 nach dem Primaer-Wechsel nicht mehr primaer (= entfernbar) ist
+    await waitFor(() => expect((dlg.getByRole("button", { name: "n1.x.de:9876 entfernen" }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(dlg.getByRole("button", { name: "n1.x.de:9876 entfernen" }));
+    await waitFor(() => expect(remove).toHaveBeenCalledWith("u-1", 21));
+  });
+
+  it("zeigt einen 409 als Hinweis im Dialog", async () => {
+    vi.spyOn(api, "removeInstanceEndpoint").mockRejectedValue(new Error("Endpoint ist gesperrt oder belegt"));
+    const dlg = await openPorts();
+    fireEvent.click(await dlg.findByRole("button", { name: "n1.x.de:9877 entfernen" }));
+    expect(await dlg.findByText(/gesperrt oder belegt/)).toBeTruthy();
   });
 });

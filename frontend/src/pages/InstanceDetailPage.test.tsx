@@ -76,6 +76,28 @@ describe("InstanceDetailPage", () => {
     expect(within(aside).getByRole("progressbar", { name: "Festplatte" }).getAttribute("aria-valuenow")).toBe("90");
   });
 
+  it("zeigt weitere Ports mit Kopierknopf, aber nur wenn es welche gibt", async () => {
+    const multi = { ...base, endpoints: [
+      { id: 11, ip: "198.51.100.24", port: 9876, is_primary: true },
+      { id: 12, ip: "198.51.100.24", port: 9877, is_primary: false },
+    ] } as Instance;
+    setup(multi);
+    mount();
+    const aside = await screen.findByRole("complementary", { name: "Server" });
+    expect(within(aside).getByText("Weitere Ports")).toBeTruthy();
+    expect(within(aside).getByText("mc.example:9877")).toBeTruthy();
+    expect(within(aside).getByRole("button", { name: /mc\.example:9877 kopieren/ })).toBeTruthy();
+    expect(within(aside).queryByText("mc.example:9876")).toBeNull(); // der primaere steht oben als Serveradresse
+  });
+
+  it("zeigt ohne weitere Ports keinen Abschnitt 'Weitere Ports'", async () => {
+    setup({ ...base, endpoints: [{ id: 11, ip: "198.51.100.24", port: 25565, is_primary: true }] } as Instance);
+    mount();
+    const aside = await screen.findByRole("complementary", { name: "Server" });
+    expect(within(aside).getByText("Serveradresse")).toBeTruthy();
+    expect(within(aside).queryByText("Weitere Ports")).toBeNull();
+  });
+
   it("aktiviert die Power-Buttons passend zum Zustand und sendet Stop", async () => {
     setup();
     const power = vi.spyOn(api, "sendPowerAction").mockResolvedValue({ message: "Stopp gesendet" } as never);

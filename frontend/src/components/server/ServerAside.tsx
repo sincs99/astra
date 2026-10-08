@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { AddressRow } from "../dashboard/AddressRow";
+import { endpointAddress, extraEndpoints } from "../../lib/endpoints";
 import { canRenew, expiryOf, formatMemory } from "../../lib/dashboard";
 import { formatDateLong } from "../../lib/dates";
 import { formatPrice } from "../../lib/money";
@@ -46,6 +47,12 @@ export function ConnectionPanel({ instance }: { instance: Instance }) {
       <h2 id="panel-conn" className="panel-title">{t("srv.connection")}</h2>
       <span className="kv-title" id="conn-addr-label" style={{ fontSize: "var(--fs-small)", color: "var(--text-2)" }}>{t("srv.serverAddress")}</span>
       <AddressRow address={c?.address} placeholder={t("dash.addressAfterSetup")} />
+      {extraEndpoints(instance).length > 0 && (
+        <>
+          <span className="kv-title" style={{ fontSize: "var(--fs-small)", color: "var(--text-2)" }}>{t("srv.otherPorts")}</span>
+          {extraEndpoints(instance).map((ep) => <AddressRow key={ep.id} address={endpointAddress(instance, ep)} />)}
+        </>
+      )}
       {c?.ip && <div className="kv"><span>{t("srv.ip")}</span><span className="mono">{c.ip}</span></div>}
       {c?.host && <div className="kv"><span>{t("srv.node")}</span><span className="mono">{c.host}</span></div>}
     </section>

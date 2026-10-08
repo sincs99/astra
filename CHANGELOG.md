@@ -21,6 +21,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Dev-Compose bindet PostgreSQL (5432, Passwort `astra`), Redis (6379, ohne Passwort) und Backend (5000) nur noch an `127.0.0.1` statt an alle Schnittstellen; Hinweis im README. `RUNNER_ADAPTER` ist aus der Umgebung ueberschreibbar (`RUNNER_ADAPTER=wings docker compose up`)
 - README und Runbook (Abschnitt 6, Fehlersuche): mit `RUNNER_ADAPTER=stub` meldet ein Agent `daemon_version: "stub"` und wirkt `healthy`, obwohl Wings nie angesprochen wird; fuer Wings-Tests `wings` setzen und `daemon_version` im Monitoring pruefen
 
+### Added (Frontend – M81 mehrere Ports pro Server)
+- Instanzen tragen `endpoints[]` (primaerer zuerst); neue API-Aufrufe `addInstanceEndpoint` (POST), `removeInstanceEndpoint` (DELETE), `setPrimaryInstanceEndpoint` (PATCH) unter `/admin/instances/<uuid>/endpoints`
+- Admin-Instanzliste: Spalte "Endpoint" zeigt alle Ports ("node1:9876 · +9877"); Aktion "Ports verwalten" oeffnet einen Bereich unter der Zeile mit den zugeordneten Endpoints ("Primaer setzen", "Entfernen" – beim primaeren deaktiviert mit Hinweis), Auswahl freier Endpoints desselben Agents mit "Hinzufuegen", Hinweis "Portaenderungen wirken nach einem Neustart des Servers" und Fehleranzeige bei 409
+- Kundenseite: unter "Serveradresse" erscheint "Weitere Ports" mit Kopierknopf je Host:Port (nur wenn vorhanden)
+
 ### Fixed (Frontend – M79 Pilot-Fehler)
 - Agent anlegen: "Arbeitsspeicher gesamt (MB)" und "Festplatte gesamt (MB)" sind beim Anlegen Pflicht (> 0, leeres Feld mit Platzhalter, Hinweistext zu Kapazitaetsplanung und Auslastungsanzeige); beim Bearbeiten bleibt 0 erlaubt, wird aber als "noch nicht hinterlegt" gekennzeichnet. Monitoring und Uebersicht zeigen bei fehlender Kapazitaet "Kapazitaet nicht hinterlegt" (Uebersicht mit Link "Kapazitaet eintragen") statt "0 %"; CPU bleibt "kein Limit"
 - Serveradresse: Kunden-Detailseite beschriftet die Verbindungsadresse als "Serveradresse" (mit Kopierknopf); die Admin-Instanzliste zeigt die oeffentliche Adresse (Host:Port aus `connection`), auch wenn der Endpoint automatisch gewaehlt wurde, mit der Endpoint-Bind-IP darunter

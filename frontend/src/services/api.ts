@@ -564,6 +564,15 @@ export interface Instance {
   role?: "owner" | "collaborator" | "none";
   /** Verbindungsadresse (FQDN des Agents + Port des primaeren Endpoints); null ohne Endpoint */
   connection?: InstanceConnection | null;
+  /** Alle zugeordneten Endpoints (M80), primaerer zuerst; aeltere Antworten ohne das Feld */
+  endpoints?: InstanceEndpoint[];
+}
+
+export interface InstanceEndpoint {
+  id: number;
+  ip: string;
+  port: number;
+  is_primary: boolean;
 }
 
 export interface InstanceConnection {
@@ -1134,6 +1143,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ target_agent_id: targetAgentId }),
     }),
+  addInstanceEndpoint: (uuid: string, endpointId: number) =>
+    request<Instance>(`/admin/instances/${uuid}/endpoints`, {
+      method: "POST",
+      body: JSON.stringify({ endpoint_id: endpointId }),
+    }),
+  removeInstanceEndpoint: (uuid: string, endpointId: number) =>
+    request<Instance>(`/admin/instances/${uuid}/endpoints/${endpointId}`, { method: "DELETE" }),
+  setPrimaryInstanceEndpoint: (uuid: string, endpointId: number) =>
+    request<Instance>(`/admin/instances/${uuid}/endpoints/${endpointId}/primary`, { method: "PATCH" }),
 
   // ── Client: Instances ────────────────────────────────
   getClientInstances: () => request<Instance[]>("/client/instances"),
