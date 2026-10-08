@@ -67,6 +67,9 @@ describe("InstanceDetailPage", () => {
     expect(screen.getByText("8k2f91ab")).toBeTruthy();
     const aside = screen.getByRole("complementary", { name: "Server" });
     expect(within(aside).getByText("mc.example:25565")).toBeTruthy();
+    // Beschriftet "Serveradresse" und mit Kopierknopf
+    expect(within(aside).getByText("Serveradresse")).toBeTruthy();
+    expect(within(aside).getByRole("button", { name: /mc\.example:25565 kopieren/ })).toBeTruthy();
     expect(within(aside).getByText("198.51.100.24")).toBeTruthy();
     expect(await within(aside).findByText("38 %")).toBeTruthy();
     expect(within(aside).getByRole("progressbar", { name: "RAM" }).getAttribute("aria-valuenow")).toBe("63");

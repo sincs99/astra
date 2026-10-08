@@ -32,7 +32,7 @@ export const aagents: Record<keyof typeof de, string> = {
   "aagents.f.sftp": "SFTP port",
   "aagents.f.base": "Data directory",
   "aagents.f.upload": "Max. upload (MB)",
-  "aagents.f.capacity": "Capacity (0 = no limit)",
+  "aagents.f.capacity": "Capacity",
   "aagents.f.memTotal": "Total memory (MB)",
   "aagents.f.diskTotal": "Total disk (MB)",
   "aagents.f.cpuTotal": "Total CPU (%)",
@@ -141,4 +141,8 @@ export const aagents: Record<keyof typeof de, string> = {
   "aagents.m.maint.disableConfirm": "Disable maintenance for \"{name}\"?",
   "aagents.m.maint.reason": "Reason (optional):",
   "aagents.m.maint.failed": "Error",
+  "aagents.f.capacityPurpose": "The node's memory and disk in MB. They are used for capacity planning (automatic placement of new servers) and for the utilisation display in monitoring and the overview. Both are required when creating an agent (greater than 0); CPU: 0 = no limit.",
+  "aagents.f.capacityMissingEdit": "Not set yet: without this value monitoring cannot show utilisation.",
+  "aagents.capacityMissing": "Capacity not set",
+  "aagents.capacityMissingUsed": "Capacity not set ({used} used)",
 };

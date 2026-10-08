@@ -29,7 +29,7 @@ export const EMPTY_AGENT_FORM: AgentFormValues = {
   name: "", fqdn: "", scheme: "https", behindProxy: false,
   connect: "8080", listen: "8080", sftp: "2022",
   base: "/var/lib/pterodactyl/volumes", uploadSize: "100",
-  memoryTotal: "0", diskTotal: "0", cpuTotal: "0",
+  memoryTotal: "", diskTotal: "", cpuTotal: "0",
   memoryOveralloc: "0", diskOveralloc: "0", cpuOveralloc: "0",
   isActive: true, connectTouched: false,
 };
@@ -50,8 +50,11 @@ export function validPort(value: string): number | null {
   return Number.isInteger(n) && n >= 1 && n <= 65535 ? n : null;
 }
 
-/** Liefert den API-Payload oder eine Fehlermeldung (string). */
-export function toAgentPayload(v: AgentFormValues): AgentUpdate | string {
+/**
+ * Liefert den API-Payload oder eine Fehlermeldung (string). Beim Anlegen (`requireCapacity`) sind Arbeitsspeicher und Festplatte
+ * Pflicht (> 0): ohne sie gibt es keine Kapazitätsplanung und das Monitoring zeigt keine Auslastung.
+ */
+export function toAgentPayload(v: AgentFormValues, opts: { requireCapacity?: boolean } = {}): AgentUpdate | string {
   if (!v.name.trim() || !v.fqdn.trim()) return t("sform.agentNameFqdn");
   const connect = validPort(v.connect);
   const listen = validPort(v.listen);
@@ -68,6 +71,8 @@ export function toAgentPayload(v: AgentFormValues): AgentUpdate | string {
   if (memoryTotal === null) return t("sform.agentTotal", { field: "Memory" });
   if (diskTotal === null) return t("sform.agentTotal", { field: "Disk" });
   if (cpuTotal === null) return t("sform.agentTotal", { field: "CPU" });
+  if (opts.requireCapacity && memoryTotal === 0) return t("sform.agentCapacityRequired", { field: "Memory" });
+  if (opts.requireCapacity && diskTotal === 0) return t("sform.agentCapacityRequired", { field: "Disk" });
   const memoryOveralloc = over(v.memoryOveralloc);
   const diskOveralloc = over(v.diskOveralloc);
   const cpuOveralloc = over(v.cpuOveralloc);

@@ -136,6 +136,21 @@ describe("AdminInstancesPage Liste", () => {
     expect(screen.getByRole("region", { name: "Instances-Tabelle" })).toBeTruthy();
   });
 
+  it("zeigt die öffentliche Verbindungsadresse (Host:Port), auch bei automatisch gewähltem Endpoint; die Bind-IP steht darunter", async () => {
+    const auto = { ...inst, connection: { host: "node1.example.com", ip: "203.0.113.5", port: 25565, address: "node1.example.com:25565" } };
+    (api.getInstances as ReturnType<typeof vi.fn>).mockResolvedValue([auto]);
+    render(<MemoryRouter><AdminInstancesPage /></MemoryRouter>);
+    expect(await screen.findByText("node1.example.com:25565")).toBeTruthy();
+    expect(screen.getByText("0.0.0.0:25565")).toBeTruthy();
+  });
+
+  it("fällt ohne Verbindungsadresse auf den Endpoint (ip:port) zurück, ohne beides auf '–'", async () => {
+    (api.getInstances as ReturnType<typeof vi.fn>).mockResolvedValue([inst, { ...inst, id: 2, uuid: "bbbbbbbb-0000", name: "Neu", primary_endpoint_id: null }]);
+    render(<MemoryRouter><AdminInstancesPage /></MemoryRouter>);
+    expect(await screen.findByText("0.0.0.0:25565")).toBeTruthy();
+    expect(await screen.findByText("Neu")).toBeTruthy();
+  });
+
   it("sperrt eine Instance nach Bestaetigung", async () => {
     (api.getInstances as ReturnType<typeof vi.fn>).mockResolvedValue([inst]);
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);

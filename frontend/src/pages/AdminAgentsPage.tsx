@@ -73,7 +73,7 @@ export function AdminAgentsPage() {
 
   const handleAgentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = toAgentPayload(form);
+    const payload = toAgentPayload(form, { requireCapacity: true });
     if (typeof payload === "string") { toast.error(payload); return; }
     try {
       setSubmitting(true);
@@ -464,15 +464,24 @@ function AgentFormFields({ values, onChange, idPrefix, showActive }: AgentFormFi
         <legend className="panel-title" style={{ marginBottom: 10 }}>{t("aagents.f.capacity")}</legend>
         <div style={GRID}>
           {([
-            ["memory-total", t("aagents.f.memTotal"), "memoryTotal"],
-            ["disk-total", t("aagents.f.diskTotal"), "diskTotal"],
-            ["cpu-total", t("aagents.f.cpuTotal"), "cpuTotal"],
-          ] as const).map(([key, label, field]) => (
-            <div className="field" key={key}>
-              <label htmlFor={id(key)}>{label}</label>
-              <input id={id(key)} className="inp mono" type="number" min={0} value={values[field]} onChange={e => set(field, e.target.value)} />
-            </div>
-          ))}
+            ["memory-total", t("aagents.f.memTotal"), "memoryTotal", true],
+            ["disk-total", t("aagents.f.diskTotal"), "diskTotal", true],
+            ["cpu-total", t("aagents.f.cpuTotal"), "cpuTotal", false],
+          ] as const).map(([key, label, field, needed]) => {
+            // Beim Anlegen Pflicht (> 0); beim Bearbeiten bleibt 0 erlaubt, wird aber als fehlend gekennzeichnet
+            const required = needed && !showActive;
+            const missing = needed && showActive && Number(values[field]) === 0;
+            return (
+              <div className="field" key={key}>
+                <label htmlFor={id(key)}>{label}{required ? " *" : ""}</label>
+                <input id={id(key)} className="inp mono" type="number" min={required ? 1 : 0} required={required} aria-required={required || undefined}
+                  placeholder={needed ? (field === "memoryTotal" ? "16384" : "512000") : undefined}
+                  aria-describedby={missing ? `${id(key)}-missing` : undefined}
+                  value={values[field]} onChange={e => set(field, e.target.value)} />
+                {missing && <small id={`${id(key)}-missing`} className="hint">{t("aagents.f.capacityMissingEdit")}</small>}
+              </div>
+            );
+          })}
           {([
             ["memory-over", t("aagents.f.memOver"), "memoryOveralloc"],
             ["disk-over", t("aagents.f.diskOver"), "diskOveralloc"],
@@ -484,6 +493,7 @@ function AgentFormFields({ values, onChange, idPrefix, showActive }: AgentFormFi
             </div>
           ))}
         </div>
+        <p className="hint">{t("aagents.f.capacityPurpose")}</p>
         <p className="hint">{t("aagents.f.capacityHint")}</p>
       </fieldset>
       <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>

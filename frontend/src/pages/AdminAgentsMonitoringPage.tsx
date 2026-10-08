@@ -236,10 +236,10 @@ function AgentRow({ agent, onRefresh, onError }: { agent: AgentMonitoringEntry; 
       </td>
       <td data-label={t("aagents.m.colInstances")}>{agent.instance_count}</td>
       <td data-label={t("aagents.m.colMemory")}>
-        <LoadBar label={t("aagents.memory")} used={u.used_memory_mb} total={c.effective_memory_mb} percent={u.memory_utilization} unit="MB" />
+        <LoadBar label={t("aagents.memory")} used={u.used_memory_mb} total={c.effective_memory_mb} percent={u.memory_utilization} unit="MB" capacityRequired />
       </td>
       <td data-label={t("aagents.m.colDisk")}>
-        <LoadBar label={t("aagents.disk")} used={u.used_disk_mb} total={c.effective_disk_mb} percent={u.disk_utilization} unit="MB" />
+        <LoadBar label={t("aagents.disk")} used={u.used_disk_mb} total={c.effective_disk_mb} percent={u.disk_utilization} unit="MB" capacityRequired />
       </td>
       <td data-label={t("aagents.m.colCpu")}>
         <LoadBar label={t("aagents.cpu")} used={u.used_cpu_percent} total={c.effective_cpu_percent} percent={u.cpu_utilization} unit="%" />

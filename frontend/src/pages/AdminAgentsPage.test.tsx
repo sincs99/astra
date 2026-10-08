@@ -62,11 +62,44 @@ describe("AdminAgentsPage", () => {
     expect(await screen.findByText("Noch keine Agents vorhanden.")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Name *", { selector: "#new-name" }), { target: { value: "n1" } });
     fireEvent.change(screen.getByLabelText("FQDN *", { selector: "#new-fqdn" }), { target: { value: "n1.example.org" } });
+    fireEvent.change(screen.getByLabelText("Arbeitsspeicher gesamt (MB) *", { selector: "#new-memory-total" }), { target: { value: "16384" } });
+    fireEvent.change(screen.getByLabelText("Festplatte gesamt (MB) *", { selector: "#new-disk-total" }), { target: { value: "512000" } });
     fireEvent.click(screen.getByRole("button", { name: "Agent erstellen" }));
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
-    expect(create.mock.calls[0][0]).toMatchObject({ name: "n1", fqdn: "n1.example.org" });
+    expect(create.mock.calls[0][0]).toMatchObject({ name: "n1", fqdn: "n1.example.org", memory_total: 16384, disk_total: 512000 });
     expect(await screen.findByText(/Agent erstellt/)).toBeTruthy();
     await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+  });
+
+  it("verlangt beim Anlegen Arbeitsspeicher und Festplatte (> 0) und erklärt, wofür sie dienen", async () => {
+    vi.spyOn(api, "getAgents").mockResolvedValue([]);
+    vi.spyOn(api, "getEndpoints").mockResolvedValue([]);
+    const create = vi.spyOn(api, "createAgent").mockResolvedValue(agent as never);
+    mountAgents();
+    await screen.findByText("Noch keine Agents vorhanden.");
+    expect(screen.getByText(/Kapazitätsplanung \(automatische Platzierung neuer Server\)/)).toBeTruthy();
+    const memory = screen.getByLabelText("Arbeitsspeicher gesamt (MB) *", { selector: "#new-memory-total" }) as HTMLInputElement;
+    expect(memory.required).toBe(true);
+    expect(memory.value).toBe("");
+    fireEvent.change(screen.getByLabelText("Name *", { selector: "#new-name" }), { target: { value: "n1" } });
+    fireEvent.change(screen.getByLabelText("FQDN *", { selector: "#new-fqdn" }), { target: { value: "n1.example.org" } });
+    fireEvent.change(memory, { target: { value: "0" } });
+    fireEvent.submit(memory.closest("form") as HTMLFormElement);
+    expect(await screen.findByText(/Memory gesamt muss größer als 0 sein/)).toBeTruthy();
+    fireEvent.change(memory, { target: { value: "8192" } });
+    fireEvent.submit(memory.closest("form") as HTMLFormElement);
+    expect(await screen.findByText(/Disk gesamt muss größer als 0 sein/)).toBeTruthy();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("kennzeichnet beim Bearbeiten eine fehlende Kapazität (0) mit Hinweis, erlaubt aber das Speichern", async () => {
+    vi.spyOn(api, "getAgents").mockResolvedValue([{ ...agent, memory_total: 0, disk_total: 100000 } as never]);
+    vi.spyOn(api, "getEndpoints").mockResolvedValue([]);
+    mountAgents();
+    fireEvent.click(await screen.findByRole("button", { name: /bearbeiten/i }));
+    const memory = await screen.findByLabelText("Arbeitsspeicher gesamt (MB)", { selector: "#edit-memory-total" });
+    expect((memory as HTMLInputElement).required).toBe(false);
+    expect(screen.getAllByText(/Noch nicht hinterlegt/)).toHaveLength(1);
   });
 
   it("rotiert Credentials nach Bestaetigung", async () => {
@@ -128,6 +161,19 @@ describe("AdminAgentsPage", () => {
 });
 
 describe("AdminAgentsMonitoringPage", () => {
+  it("zeigt bei fehlender Kapazität (0) einen klaren Hinweis statt '0 %'; CPU bleibt 'kein Limit'", async () => {
+    const noCapacity: AgentMonitoringEntry = {
+      ...mon,
+      capacity: { ...mon.capacity, memory_total_mb: 0, disk_total_mb: 0, effective_memory_mb: 0, effective_disk_mb: 0, cpu_total_percent: 0, effective_cpu_percent: 0 },
+      utilization: { ...mon.utilization, memory_utilization: 0, disk_utilization: 0, cpu_utilization: 0, used_cpu_percent: 0 },
+    };
+    vi.spyOn(api, "getAgentsMonitoring").mockResolvedValue([noCapacity]);
+    mountMon();
+    expect(await screen.findAllByText(/Kapazität nicht hinterlegt/)).toHaveLength(2);
+    expect(screen.getByText("kein Limit")).toBeTruthy();
+    expect(screen.queryByText(/\(0 %\)/)).toBeNull();
+  });
+
   it("listet Agents mit Kennzahlen", async () => {
     vi.spyOn(api, "getAgentsMonitoring").mockResolvedValue([mon]);
     mountMon();
