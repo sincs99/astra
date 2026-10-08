@@ -524,6 +524,8 @@ export interface Endpoint {
   ip: string;
   port: number;
   is_locked: boolean;
+  /** false: wird nie automatisch vergeben, nur manuell (M82); aeltere Antworten ohne das Feld gelten als true */
+  auto_assign?: boolean;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -531,6 +533,12 @@ export interface Endpoint {
 export interface EndpointCreate {
   ip?: string;
   port: number;
+  is_locked?: boolean;
+  auto_assign?: boolean;
+}
+
+export interface EndpointUpdate {
+  auto_assign?: boolean;
   is_locked?: boolean;
 }
 
@@ -1119,8 +1127,11 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  updateEndpoint: (id: number, data: EndpointUpdate) =>
+    request<Endpoint>(`/admin/endpoints/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+
   /** Port-Bereich als Endpoints anlegen; bereits vorhandene ip:port werden uebersprungen. */
-  createEndpointsBulk: (agentId: number, data: { ip?: string; port_start: number; port_end: number }) =>
+  createEndpointsBulk: (agentId: number, data: { ip?: string; port_start: number; port_end: number; auto_assign?: boolean }) =>
     request<{ created: number; skipped: number; endpoints: Endpoint[] }>(
       `/admin/agents/${agentId}/endpoints/bulk`,
       { method: "POST", body: JSON.stringify(data) },

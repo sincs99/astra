@@ -218,4 +218,5 @@ export const ainst = {
   "ainst.ports.removed": "Port {address} entfernt",
   "ainst.ports.primarySet": "Port {address} ist jetzt primär",
   "ainst.ports.failed": "Aktion fehlgeschlagen",
+  "ainst.ports.manualSuffix": "(manuell)",
 } as const;

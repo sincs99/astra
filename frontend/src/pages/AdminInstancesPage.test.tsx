@@ -195,6 +195,7 @@ describe("AdminInstancesPage Ports verwalten", () => {
       { id: 23, agent_id: 7, instance_id: null, is_locked: false, ip: "0.0.0.0", port: 9878 },
       { id: 24, agent_id: 8, instance_id: null, is_locked: false, ip: "0.0.0.0", port: 9879 },
       { id: 25, agent_id: 7, instance_id: null, is_locked: true, ip: "0.0.0.0", port: 9880 },
+      { id: 26, agent_id: 7, instance_id: null, is_locked: false, auto_assign: false, ip: "0.0.0.0", port: 9881 },
     ]);
     (api.getInstances as ReturnType<typeof vi.fn>).mockResolvedValue([multi]);
   });
@@ -226,11 +227,21 @@ describe("AdminInstancesPage Ports verwalten", () => {
     const add = vi.spyOn(api, "addInstanceEndpoint").mockResolvedValue({ ...multi, endpoints: eps([[21, 9876, true], [22, 9877, false], [23, 9878, false]]) } as never);
     const dlg = await openPorts();
     const select = await dlg.findByLabelText("Freien Endpoint hinzufügen") as HTMLSelectElement;
-    await waitFor(() => expect(Array.from(select.options).map(o => o.textContent)).toEqual(["Endpoint wählen…", "0.0.0.0:9878"]));
+    await waitFor(() => expect(Array.from(select.options).map(o => o.textContent)).toEqual(["Endpoint wählen…", "0.0.0.0:9878", "0.0.0.0:9881 (manuell)"]));
     fireEvent.change(select, { target: { value: "23" } });
     fireEvent.click(dlg.getByRole("button", { name: "Hinzufügen" }));
     await waitFor(() => expect(add).toHaveBeenCalledWith("u-1", 23));
     expect(await dlg.findByRole("button", { name: "n1.x.de:9878 entfernen" })).toBeTruthy();
+  });
+
+  it("laesst manuelle Endpoints (mit Zusatz) auswaehlen und fuegt sie per POST hinzu", async () => {
+    const add = vi.spyOn(api, "addInstanceEndpoint").mockResolvedValue(multi as never);
+    const dlg = await openPorts();
+    const select = await dlg.findByLabelText("Freien Endpoint hinzufügen") as HTMLSelectElement;
+    await waitFor(() => expect(select.querySelector('option[value="26"]')?.textContent).toBe("0.0.0.0:9881 (manuell)"));
+    fireEvent.change(select, { target: { value: "26" } });
+    fireEvent.click(dlg.getByRole("button", { name: "Hinzufügen" }));
+    await waitFor(() => expect(add).toHaveBeenCalledWith("u-1", 26));
   });
 
   it("ruft beim Entfernen DELETE und beim Primaer-setzen PATCH", async () => {
