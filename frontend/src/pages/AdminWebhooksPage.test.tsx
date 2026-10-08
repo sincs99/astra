@@ -67,7 +67,9 @@ describe("AdminWebhooksPage", () => {
     expect(screen.getByRole("heading", { name: "Webhook bearbeiten" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Webhook aktualisieren" }));
     await waitFor(() => expect(update).toHaveBeenCalledWith(3, expect.objectContaining({ endpoint_url: "https://hook.example/a" })));
-    // Nach dem Speichern lädt die Liste neu: den Zeilen-Button erst abfragen, wenn sie wieder da ist
+    // Nach dem Speichern wird das Formular zurückgesetzt und die Liste neu geladen (gleicher Render).
+    // Erst auf den Reset warten, sonst trifft der Klick den alten, gleich entfernten Zeilen-Button.
+    expect(await screen.findByRole("heading", { name: "Neuer Webhook" })).toBeTruthy();
     fireEvent.click(await screen.findByRole("button", { name: "Löschen" }));
     await waitFor(() => expect(del).toHaveBeenCalledWith(3));
     expect(window.confirm).toHaveBeenCalledWith('Webhook "https://hook.example/a" löschen?');
