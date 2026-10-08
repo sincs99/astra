@@ -63,7 +63,7 @@ describe("AdminSystemPage", () => {
     vi.spyOn(api, "getPreflight").mockResolvedValue(preflight);
     mount();
     expect(await screen.findByRole("heading", { name: "Migration & upgrade" })).toBeTruthy();
-    expect(screen.getByText("2 migration(s)")).toBeTruthy();
+    expect(await screen.findByText("2 migration(s)")).toBeTruthy();
     expect(screen.getAllByText("n/a").length).toBeGreaterThan(0);
   });
 });

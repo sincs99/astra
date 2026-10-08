@@ -152,7 +152,7 @@ describe("AdminInstancesPage Liste", () => {
     render(<MemoryRouter><AdminInstancesPage /></MemoryRouter>);
     expect(await screen.findByRole("heading", { name: "New instance" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Create instance" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Suspend" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Suspend" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "Resources" })).toBeTruthy();
     expect(screen.getByLabelText("Agent")).toBeTruthy();
     expect(screen.queryByText("Instance erstellen")).toBeNull();
