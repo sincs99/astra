@@ -799,16 +799,47 @@ def create_endpoint(agent_id: int):
     if existing:
         return jsonify({"error": f"Endpoint {ip}:{port} existiert bereits auf diesem Agent"}), 409
 
+    auto_assign = data.get("auto_assign", True)
+    if not isinstance(auto_assign, bool):
+        return jsonify({"error": "Field 'auto_assign' must be a boolean"}), 400
+
     endpoint = Endpoint(
         agent_id=agent_id,
         ip=ip,
         port=port,
         is_locked=data.get("is_locked", False),
+        auto_assign=auto_assign,
     )
     db.session.add(endpoint)
     db.session.commit()
 
     return jsonify(endpoint.to_dict()), 201
+
+
+@admin_bp.route("/endpoints/<int:endpoint_id>", methods=["PATCH"])
+def update_endpoint(endpoint_id: int):
+    """Aendert die Flags eines Endpoints (M82). Body: {"auto_assign": bool, "is_locked": bool}, mindestens eines.
+
+    `auto_assign: false` nimmt den Endpoint aus der automatischen Vergabe (z.B. Query-Port eines Spiels), er bleibt aber
+    explizit zuweisbar. `is_locked: true` sperrt ihn auch fuer die explizite Zuweisung. Bereits zugewiesene Endpoints
+    bleiben bei der Instance. 200 mit dem Endpoint, 400 (kein Boolean, nichts zu aendern), 404 unbekannt.
+    """
+    endpoint = db.session.get(Endpoint, endpoint_id)
+    if not endpoint:
+        return jsonify({"error": f"Endpoint mit ID {endpoint_id} nicht gefunden"}), 404
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body is required"}), 400
+    fields = [f for f in ("auto_assign", "is_locked") if f in data]
+    if not fields:
+        return jsonify({"error": "Provide at least one of 'auto_assign', 'is_locked'"}), 400
+    for field in fields:
+        if not isinstance(data[field], bool):
+            return jsonify({"error": f"Field '{field}' must be a boolean"}), 400
+    for field in fields:
+        setattr(endpoint, field, data[field])
+    db.session.commit()
+    return jsonify(endpoint.to_dict())
 
 
 MAX_BULK_ENDPOINTS = 1000
@@ -824,7 +855,7 @@ def _instance_conn_load():
 def create_endpoints_bulk(agent_id: int):
     """Legt einen Port-Bereich als Endpoints an (M39).
 
-    Body: {"ip": "0.0.0.0", "port_start": 25565, "port_end": 25600}
+    Body: {"ip": "0.0.0.0", "port_start": 25565, "port_end": 25600, "auto_assign": true}  (auto_assign optional, Standard true)
     Bereits vorhandene Kombinationen aus ip und port werden uebersprungen.
     Antwort: {"created": n, "skipped": n, "endpoints": [<neu angelegte>]}
     """
@@ -854,13 +885,17 @@ def create_endpoints_bulk(agent_id: int):
     except (ValueError, TypeError):
         return jsonify({"error": "Field 'ip' must be a valid IPv4/IPv6 address"}), 400
 
+    auto_assign = data.get("auto_assign", True)
+    if not isinstance(auto_assign, bool):
+        return jsonify({"error": "Field 'auto_assign' must be a boolean"}), 400
+
     existing = {
         port for (port,) in db.session.query(Endpoint.port).filter(
             Endpoint.agent_id == agent_id, Endpoint.ip == ip,
             Endpoint.port >= start, Endpoint.port <= end,
         )
     }
-    new = [Endpoint(agent_id=agent_id, ip=ip, port=port)
+    new = [Endpoint(agent_id=agent_id, ip=ip, port=port, auto_assign=auto_assign)
            for port in range(start, end + 1) if port not in existing]
     db.session.add_all(new)
     db.session.commit()

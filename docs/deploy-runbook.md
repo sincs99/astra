@@ -155,6 +155,8 @@ Dann **Endpoints** anlegen: Agent `node1`, IP `0.0.0.0`, Port-Bereich `25565-256
 Ports werden übersprungen). Per API: `POST /api/admin/agents/1/endpoints/bulk` mit
 `{"ip": "0.0.0.0", "port_start": 25565, "port_end": 25600}`.
 
+**Query-Ports nur manuell:** Astra vergibt freie Endpoints automatisch (niedrigster Port zuerst). Ports, die ein Spiel zusätzlich braucht (z. B. der Query-Port 9877 von V Rising), legst du deshalb mit `"auto_assign": false` an: `POST /api/admin/agents/1/endpoints` bzw. `.../endpoints/bulk` mit `{"ip": "0.0.0.0", "port": 9877, "auto_assign": false}`. Solche Endpoints werden nie automatisch vergeben (weder bei der Anlage ohne `endpoint_id` noch bei der Platzierung oder einem Transfer), bleiben aber ohne Sperre explizit zuweisbar (`endpoint_id` bei der Anlage oder `POST /api/admin/instances/<uuid>/endpoints`). Bestehende Endpoints stellst du mit `PATCH /api/admin/endpoints/<id>` und `{"auto_assign": false}` um; derselbe Aufruf sperrt (`{"is_locked": true}`) auch für die explizite Vergabe. `auto_assign: false` ist nicht dasselbe wie gesperrt: gesperrte Endpoints lassen sich nirgends zuweisen.
+
 Für die Skripte in Abschnitt 6 brauchst du einen Admin-Token:
 
 ```bash
@@ -214,9 +216,13 @@ Die Egg-Sammlung `parkervcp/eggs` ist nach [`pelican-eggs/eggs`](https://github.
 
 Wer den Blueprint von Hand anlegen will, braucht mindestens: Docker-Image
 `ghcr.io/pterodactyl/yolks:java_25` (für Paper 26.x, für Versionen bis 1.21 `java_21`), Startup-Befehl mit `{{SERVER_JARFILE}}`, Install-Container
-`ghcr.io/pterodactyl/installers:debian`, Stop-Befehl `stop`, Startup-Erkennung `)! For help, type `
+`ghcr.io/parkervcp/installers:debian`, Stop-Befehl `stop`, Startup-Erkennung `)! For help, type `
 und ein Install-Script, das die Paper-Jar nach `/mnt/server` lädt (ohne `eula.txt`).
 Details zu den Feldern: `docs/wings-remote-api.md`.
+
+**Paper-Versionen und Kanäle:** Die Variable `BUILD_CHANNEL` (Standard `STABLE`, erlaubt `STABLE`, `BETA`, `ALPHA`) bestimmt, welche Builds `latest` nimmt. Bei `MINECRAFT_VERSION=latest` nimmt das Install-Script die neueste Version, die mindestens einen Build im gewünschten Kanal (oder einem stabileren) hat, und darin den neuesten solchen Build. Ist die neueste Hauptversion nur als BETA oder ALPHA verfügbar, fällt es automatisch auf die letzte Version mit einem stabilen Build zurück. Mit `BUILD_CHANNEL=BETA` nimmt es auch BETA-Builds. Eine feste `BUILD_NUMBER` gilt unabhängig vom Kanal. Das Install-Log nennt Version, Build und Kanal. Bestehende Instanzen haben die Variable nicht und verhalten sich wie `STABLE`.
+
+**Bestehende Blueprints umstellen:** Der Standard für das Install-Image ist seit M82 `ghcr.io/parkervcp/installers:debian` (Debian 12). Das frühere `ghcr.io/pterodactyl/installers:debian` ist Debian 11, dort scheitert `apt-get install jq unzip` mit 404 aus `debian-security`. Blueprints in der Datenbank behalten ihren gespeicherten Wert. Umstellen geht mit `docker compose exec backend python cli.py update-install-container --dry-run` (zeigt die betroffenen Blueprints) und danach ohne `--dry-run`; es ändert nur Blueprints, die genau das alte Image gespeichert haben. Einzeln: `PATCH /api/admin/blueprints/<id>` mit `{"install_container": "ghcr.io/parkervcp/installers:debian"}` oder im Blueprint-Formular.
 
 Dann unter **Admin → Instances** eine Instanz anlegen: Blueprint Paper, Agent node1, 2048 MB RAM, 5120 MB Disk, Endpoint 25565. Ablauf, den du beobachten kannst:
 
@@ -230,7 +236,7 @@ Dann unter **Admin → Instances** eine Instanz anlegen: Blueprint Paper, Agent 
 
 Manche Spiele brauchen mehr als einen Port, zum Beispiel V Rising (Spiel 9876 und Query 9877, beide UDP). Eine Instanz kann deshalb mehrere Endpoints haben; Wings veröffentlicht alle als Port-Mappings des Containers.
 
-1. Endpoints für beide Ports auf dem Agent anlegen (Abschnitt 5, z. B. Bereich `9876-9877`).
+1. Endpoints für beide Ports auf dem Agent anlegen (Abschnitt 5). Den zusätzlichen Port (Query 9877) mit `"auto_assign": false`, damit Astra ihn nicht an eine andere Instanz vergibt.
 2. Instanz mit dem ersten Endpoint anlegen. Das ist der **primäre** Endpoint: seine IP und sein Port werden als `SERVER_IP` und `SERVER_PORT` an den Server übergeben und erscheinen unter *Verbindung*.
 3. Weitere Endpoints zuweisen (Admin-API; die Antwort ist die Instanz mit der Liste `endpoints: [{id, ip, port, is_primary}]`, primärer zuerst):
    - `POST /api/admin/instances/<uuid>/endpoints` mit `{"endpoint_id": 13}` weist einen freien, nicht gesperrten Endpoint desselben Agents zu (409, wenn er zu einem anderen Agent gehört, gesperrt oder schon vergeben ist)

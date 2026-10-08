@@ -833,9 +833,9 @@ def _resolve_endpoint(agent_id: int, endpoint_id: int | None) -> Endpoint:
             )
         return endpoint
 
-    # Automatisch ersten freien Endpoint finden
+    # Automatisch ersten freien Endpoint finden (M82: Endpoints mit auto_assign=false werden nur explizit vergeben)
     endpoint = (
-        Endpoint.query.filter_by(agent_id=agent_id, instance_id=None, is_locked=False)
+        Endpoint.query.filter_by(agent_id=agent_id, instance_id=None, is_locked=False, auto_assign=True)
         .order_by(Endpoint.port.asc())
         .first()
     )

@@ -111,8 +111,13 @@ def build(vid="26.1.1", bid=7, sha=SHA, url=DL, channel="STABLE"):
     return json.dumps({"id": bid, "channel": channel, "downloads": {"server:default": {"name": f"paper-{vid}-{bid}.jar", "url": url, "checksums": {"sha256": sha}}}})
 
 
+def blist(*builds):
+    """Build-Liste einer Version (GET .../versions/<v>/builds), jedes Element ein JSON-String aus build()."""
+    return "[" + ",".join(builds) + "]"
+
+
 def routes(**over):
-    r = {API: PROJECT, f"{API}/versions/26.1.1/builds/latest": build(), DL: JAR, PROPS: "server-port=25565\n"}
+    r = {API: PROJECT, f"{API}/versions/26.1.1/builds": blist(build()), DL: JAR, PROPS: "server-port=25565\n"}
     r.update(over)
     return r
 
@@ -120,7 +125,7 @@ def routes(**over):
 print("Paper-Install: Erfolg")
 rc, out, files, reqs, _ = run_install(routes())
 check("latest: Exit 0, server.jar ist das Jar", rc == 0 and files.get("server.jar") == JAR, out[-400:])
-check("latest loest 26.1.1 auf (nicht 1.21.8, Vorabversionen ignoriert)", f"{API}/versions/26.1.1/builds/latest" in reqs and "Using the latest paper version 26.1.1" in out, out[-400:])
+check("latest loest 26.1.1 auf (nicht 1.21.8, Vorabversionen ignoriert)", f"{API}/versions/26.1.1/builds" in reqs and "Using the latest paper version 26.1.1" in out, out[-400:])
 check("Checksumme geprueft", "Checksum OK" in out)
 check("kein eula.txt, keine Fehlerseite, server.properties geladen", "eula.txt" not in files and files.get("server.properties") == b"server-port=25565\n", str(list(files)))
 check("keine temporaere Datei bleibt liegen", not [n for n in files if n.startswith(".download")], str(list(files)))
@@ -128,24 +133,24 @@ check("Hinweis zur EULA in der Ausgabe", "Accept the Minecraft EULA" in out)
 check("nur Fill-Hosts angefragt (kein api.papermc.io)", all("api.papermc.io" not in u for u in reqs), str(reqs))
 
 print("Paper-Install: Version und Build")
-r2 = routes(**{f"{API}/versions/1.21.8/builds/100": build("1.21.8", 100, url=DL), f"{API}/versions/1.21.8/builds/latest": build("1.21.8", 99)})
+r2 = routes(**{f"{API}/versions/1.21.8/builds/100": build("1.21.8", 100, url=DL), f"{API}/versions/1.21.8/builds": blist(build("1.21.8", 99))})
 rc, out, files, reqs, _ = run_install(r2, {"MINECRAFT_VERSION": "1.21.8", "BUILD_NUMBER": "100"})
 check("feste Version + Build 100 wird angefragt", rc == 0 and f"{API}/versions/1.21.8/builds/100" in reqs and "Version is valid" in out, out[-300:])
 rc, out, files, reqs, _ = run_install(r2, {"MINECRAFT_VERSION": "1.21.8", "BUILD_NUMBER": "latest"})
-check("Build latest bei fester Version", rc == 0 and f"{API}/versions/1.21.8/builds/latest" in reqs, str(reqs))
+check("Build latest bei fester Version", rc == 0 and f"{API}/versions/1.21.8/builds" in reqs, str(reqs))
 rc, out, files, reqs, _ = run_install(routes(), {"MINECRAFT_VERSION": "9.9.9"})
 check("unbekannte Version: Hinweis und Rueckfall auf die neueste", rc == 0 and "not found. Defaulting to the latest" in out and files.get("server.jar") == JAR, out[-300:])
 rc, out, files, reqs, _ = run_install(routes(), {"BUILD_NUMBER": "424242"})
-check("unbekannter Build: Rueckfall auf die neueste", rc == 0 and "Using the latest build" in out and files.get("server.jar") == JAR, out[-300:])
+check("unbekannter Build: Rueckfall auf die neueste", rc == 0 and "Using the newest STABLE build" in out and files.get("server.jar") == JAR, out[-300:])
 rc, out, files, reqs, _ = run_install(routes(), {"BUILD_NUMBER": "abc; rm -rf /"})
-check("Build-Nummer mit Muell: kein Angriff, neueste Build", rc == 0 and "is not a number" in out, out[-300:])
+check("Build-Nummer mit Muell: kein Angriff, neueste Build", rc == 0 and "is not a number" in out and "newest STABLE build" in out, out[-300:])
 rc, out, files, reqs, _ = run_install(routes(), {"MINECRAFT_VERSION": "", "BUILD_NUMBER": ""})
 check("leere Variablen gelten als latest", rc == 0 and files.get("server.jar") == JAR, out[-300:])
 flat = routes()
 flat[API] = json.dumps({"versions": ["1.21.7", "1.21.8", "1.9"]})
-flat[f"{API}/versions/1.21.8/builds/latest"] = build("1.21.8", 5)
+flat[f"{API}/versions/1.21.8/builds"] = blist(build("1.21.8", 5))
 rc, out, files, reqs, _ = run_install(flat)
-check("flache Versionsliste: 1.21.8 > 1.9 (Versionssortierung)", rc == 0 and f"{API}/versions/1.21.8/builds/latest" in reqs, str(reqs))
+check("flache Versionsliste: 1.21.8 > 1.9 (Versionssortierung)", rc == 0 and f"{API}/versions/1.21.8/builds" in reqs, str(reqs))
 
 print("Paper-Install: Fehler duerfen nie still 'ready' melden")
 old = {"server.jar": b"ALTES-JAR"}
@@ -157,9 +162,9 @@ rc, out, files, _, _ = run_install(routes(**{DL: '{"ok":false,"error":"sunset"}'
 check("Download liefert Fehlerseite (143-Byte-Fall): Exit != 0, kein ZIP, altes Jar bleibt", rc != 0 and files.get("server.jar") == b"ALTES-JAR" and "not a jar" in out, f"{rc} {out[-300:]}")
 rc, out, files, _, _ = run_install(routes(**{DL: b"PK\x03\x04kaputt"}), preexisting=old)
 check("Jar mit PK-Kopf aber beschaedigt: Exit != 0", rc != 0 and files.get("server.jar") == b"ALTES-JAR", f"{rc} {out[-300:]}")
-rc, out, files, _, _ = run_install(routes(**{f"{API}/versions/26.1.1/builds/latest": build(sha="0" * 64)}), preexisting=old)
+rc, out, files, _, _ = run_install(routes(**{f"{API}/versions/26.1.1/builds": blist(build(sha="0" * 64))}), preexisting=old)
 check("falsche Pruefsumme: Exit != 0", rc != 0 and "Checksum mismatch" in out and files.get("server.jar") == b"ALTES-JAR", f"{rc} {out[-300:]}")
-rc, out, files, _, _ = run_install(routes(**{f"{API}/versions/26.1.1/builds/latest": json.dumps({"id": 7, "downloads": {}})}))
+rc, out, files, _, _ = run_install(routes(**{f"{API}/versions/26.1.1/builds": json.dumps([{"id": 7, "channel": "STABLE", "downloads": {}}])}))
 check("Build ohne server-Download: Exit != 0", rc != 0 and "No server download" in out, f"{rc} {out[-200:]}")
 rc, out, files, _, _ = run_install(routes(**{DL: b""}))
 check("leerer Download: Exit != 0", rc != 0 and "server.jar" not in files, f"{rc} {out[-200:]}")
