@@ -185,7 +185,7 @@ Im Panel unter **Admin → Fleet Monitoring** muss `node1` jetzt `healthy` sein.
 ## 7. Blueprint und erster Server
 
 Blueprints (Server-Vorlagen) kommen am schnellsten per Egg-Import. Im Repo liegt ein fertiges
-Paper-Egg (`blueprints/minecraft-paper.json`, Pterodactyl-Format PTDL_v2):
+Paper-Egg (`blueprints/minecraft-paper.json`, Pterodactyl-Format PTDL_v2). Das Install-Script lädt die Jar über die PaperMC-Fill-API (v3), prüft, dass wirklich ein Jar (ZIP) mit passender Prüfsumme ankommt, und bricht sonst mit Fehler ab (der Install meldet dann nicht `ready`). Es schreibt **kein** `eula.txt`: die Minecraft-EULA muss der Kunde selbst akzeptieren (siehe Ablauf unten):
 
 ```bash
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
@@ -199,16 +199,16 @@ auf demselben Weg importieren. Image, Startup, Install-Script, Startup-Erkennung
 Variablen und `server.properties`-Platzhalter werden übernommen.
 
 Wer den Blueprint von Hand anlegen will, braucht mindestens: Docker-Image
-`ghcr.io/pterodactyl/yolks:java_21`, Startup-Befehl mit `{{SERVER_JARFILE}}`, Install-Container
+`ghcr.io/pterodactyl/yolks:java_25` (für Paper 26.x, für Versionen bis 1.21 `java_21`), Startup-Befehl mit `{{SERVER_JARFILE}}`, Install-Container
 `ghcr.io/pterodactyl/installers:debian`, Stop-Befehl `stop`, Startup-Erkennung `)! For help, type `
-und ein Install-Script, das die Paper-Jar nach `/mnt/server` lädt und `eula=true` schreibt.
+und ein Install-Script, das die Paper-Jar nach `/mnt/server` lädt (ohne `eula.txt`).
 Details zu den Feldern: `docs/wings-remote-api.md`.
 
 Dann unter **Admin → Instances** eine Instanz anlegen: Blueprint Paper, Agent node1, 2048 MB RAM, 5120 MB Disk, Endpoint 25565. Ablauf, den du beobachten kannst:
 
 1. Instanz steht auf `provisioning`, Wings holt `GET /api/remote/servers/{uuid}/install`.
 2. Install-Container läuft, lädt Paper, meldet `POST .../install` → Status `ready`.
-3. Start über die Konsole, Container-Status `starting` → nach der Zeile `)! For help, type ` → `running`.
+3. Start über die Konsole. Beim **ersten Start** beendet sich Paper mit „You need to agree to the EULA“, weil `eula.txt` mit `eula=false` entsteht. Der Kunde setzt im Dateimanager (**Dateien**) in `eula.txt` den Wert `eula=true` (oder in der Konsole `echo eula=true > eula.txt`, falls die Konsole Shell-Befehle erlaubt) und startet den Server erneut. Danach geht der Container-Status `starting` → nach der Zeile `)! For help, type ` → `running`.
 4. Mit dem Minecraft-Client auf die Adresse verbinden, die die Instanz-Detailseite unter
    *Verbindung* anzeigt (`node1.deinedomain.de:25565`, Kopier-Button).
 

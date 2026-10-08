@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed (M78 – Pilot-Fehler vom 08.10.2026)
+- **Paper-Blueprint:** Die PaperMC-API `api.papermc.io/v2` ist stillgelegt (`{"ok":false,"error":"sunset"}`); das Install-Script lud eine 143-Byte-Fehlerseite als `server.jar` und meldete Erfolg. Neu über die Fill-API v3 (`fill.papermc.io`): „latest“ wird aus der Versionsliste aufgelöst (Versionssortierung, Vorabversionen ausgeschlossen, auch `26.x`), Build `latest` oder feste Nummer, Download-URL aus `downloads["server:default"]`. Das Script läuft mit `set -euo pipefail` und `curl -f`, prüft ZIP-Kopf, `unzip -t` und die SHA-256-Summe und bricht sonst mit Exit != 0 ab (ein bestehendes `server.jar` bleibt dann erhalten, sonst wird es zu `.old`). `DL_PATH` wird nicht mehr per `eval` ausgeführt und muss http(s) sein. Docker-Images: `java_25` (Standard, für Paper 26.x) und `java_21`. Das Script schreibt weiterhin kein `eula.txt`; Runbook korrigiert und beschreibt, wie der Kunde `eula=true` setzt
+
 ### Added (Frontend – `npm run test:slow`)
 - `npm run test:slow` fuehrt die Suite mit verzoegert aufloesenden Mocks aus (`vitest --mode slow`, `src/test/delay.setup.ts`, Verzoegerung ueber `TEST_MOCK_DELAY_MS`, Standard 30 ms), um Ladephasen-Rennen zu finden; `npm test` bleibt unveraendert. Doku in `frontend/README.md` und `docs/ui-conventions.md`
 
