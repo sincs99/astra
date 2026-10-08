@@ -28,8 +28,8 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Build-Artefakte kopieren
 COPY --from=builder /build/dist /usr/share/nginx/html
 
-# Healthcheck
+# Healthcheck: 127.0.0.1 statt localhost, weil Alpine localhost auf ::1 aufloest
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD wget -qO- http://localhost:80/ || exit 1
+    CMD wget -qO- http://127.0.0.1:80/ || exit 1
 
 EXPOSE 80

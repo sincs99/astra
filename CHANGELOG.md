@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed (Pilot 08.10.2026 – Frontend-Container `unhealthy`)
+- Der Healthcheck im `frontend/Dockerfile` rief `http://localhost:80/` auf; in Alpine loest `localhost` auf `::1` auf, Nginx lauschte aber nur auf IPv4 (`listen 80;`), der Container blieb seit dem ersten Commit `unhealthy`, obwohl die Seite mit 200 antwortete. Jetzt `listen [::]:80;` zusaetzlich in `frontend/nginx.conf` und der Healthcheck geht auf `127.0.0.1`
+
 ### Docs (M80)
 - Runbook: Egg-Quellen (`parkervcp/eggs` ist nach `pelican-eggs/eggs` umgezogen, alte URLs leiten weiter; SteamCMD-Eggs wie V Rising importieren ohne Anpassung, Beispielpfad und Image) und der Hinweis, die Agent-Kapazität gleich beim Anlegen anzugeben, weil `capacity_problem` Limit 0 bewusst überspringt (ohne Kapazität keine Platzierungsprüfung)
 
