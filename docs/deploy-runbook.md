@@ -148,6 +148,8 @@ Im Panel unter **Admin → Agents → Neuer Agent**:
 Beim Anlegen erzeugt Astra die Node-Credentials (Token-ID sichtbar, Secret nur in der config.yml).
 Alle Felder lassen sich später über *Bearbeiten* ändern.
 
+**Kapazität gleich beim Anlegen angeben** (`memory_total` in MB, `disk_total` in MB, `cpu_total` in %, z. B. 400 = 4 Kerne). Bei `0` gilt die Dimension als „ohne Limit“ und Astra führt dafür **keine Platzierungsprüfung** durch: Instanzen werden dann angenommen, bis der Node real voll läuft. Im Pilot passten Paper (2 GB) und V Rising (5 GB) nicht in die 8 GB des Nodes, das hätte mit eingetragener Kapazität schon beim Anlegen eine Fehlermeldung ergeben.
+
 Dann **Endpoints** anlegen: Agent `node1`, IP `0.0.0.0`, Port-Bereich `25565-25600`
 (ein Endpoint = ein Gameserver-Port; der Bereich wird in einem Schritt angelegt, vorhandene
 Ports werden übersprungen). Per API: `POST /api/admin/agents/1/endpoints/bulk` mit
@@ -208,6 +210,8 @@ Egg aus [pterodactyl/eggs](https://github.com/pterodactyl/eggs) bzw. [pelican-eg
 auf demselben Weg importieren. Image, Startup, Install-Script, Startup-Erkennung, Stop-Befehl,
 Variablen und `server.properties`-Platzhalter werden übernommen.
 
+Die Egg-Sammlung `parkervcp/eggs` ist nach [`pelican-eggs/eggs`](https://github.com/pelican-eggs/eggs) umgezogen (alte URLs leiten weiter). **SteamCMD-Eggs** lassen sich ohne Anpassung importieren; Beispiel V Rising: `game_eggs/steamcmd_servers/v_rising/v_rising_vanilla/egg-v-rising.json` (Image `ghcr.io/parkervcp/yolks:wine_staging`, Spiel-Port 9876 und Query-Port 9877 per UDP, siehe „Spiele mit mehreren Ports“ unten). Das `server.properties`, das das Paper-Script nachlädt, liegt weiterhin unter `parkervcp/eggs` (der Pfad existiert in `pelican-eggs/eggs` nicht).
+
 Wer den Blueprint von Hand anlegen will, braucht mindestens: Docker-Image
 `ghcr.io/pterodactyl/yolks:java_25` (für Paper 26.x, für Versionen bis 1.21 `java_21`), Startup-Befehl mit `{{SERVER_JARFILE}}`, Install-Container
 `ghcr.io/pterodactyl/installers:debian`, Stop-Befehl `stop`, Startup-Erkennung `)! For help, type `
@@ -221,6 +225,19 @@ Dann unter **Admin → Instances** eine Instanz anlegen: Blueprint Paper, Agent 
 3. Start über die Konsole. Beim **ersten Start** beendet sich Paper mit „You need to agree to the EULA“, weil `eula.txt` mit `eula=false` entsteht. Der Kunde setzt im Dateimanager (**Dateien**) in `eula.txt` den Wert `eula=true` (oder in der Konsole `echo eula=true > eula.txt`, falls die Konsole Shell-Befehle erlaubt) und startet den Server erneut. Danach geht der Container-Status `starting` → nach der Zeile `)! For help, type ` → `running`.
 4. Mit dem Minecraft-Client auf die Adresse verbinden, die die Instanz-Detailseite unter
    *Verbindung* anzeigt (`node1.deinedomain.de:25565`, Kopier-Button).
+
+### Spiele mit mehreren Ports
+
+Manche Spiele brauchen mehr als einen Port, zum Beispiel V Rising (Spiel 9876 und Query 9877, beide UDP). Eine Instanz kann deshalb mehrere Endpoints haben; Wings veröffentlicht alle als Port-Mappings des Containers.
+
+1. Endpoints für beide Ports auf dem Agent anlegen (Abschnitt 5, z. B. Bereich `9876-9877`).
+2. Instanz mit dem ersten Endpoint anlegen. Das ist der **primäre** Endpoint: seine IP und sein Port werden als `SERVER_IP` und `SERVER_PORT` an den Server übergeben und erscheinen unter *Verbindung*.
+3. Weitere Endpoints zuweisen (Admin-API; die Antwort ist die Instanz mit der Liste `endpoints: [{id, ip, port, is_primary}]`, primärer zuerst):
+   - `POST /api/admin/instances/<uuid>/endpoints` mit `{"endpoint_id": 13}` weist einen freien, nicht gesperrten Endpoint desselben Agents zu (409, wenn er zu einem anderen Agent gehört, gesperrt oder schon vergeben ist)
+   - `DELETE /api/admin/instances/<uuid>/endpoints/<endpoint_id>` gibt einen Endpoint wieder frei (er wird nicht gelöscht; der primäre Endpoint lässt sich nicht entfernen, erst den primären wechseln)
+   - `PATCH /api/admin/instances/<uuid>/endpoints/<endpoint_id>/primary` macht einen zugewiesenen Endpoint zum primären (`SERVER_PORT` und *Verbindung* wechseln)
+4. **Egg-Variablen setzen:** Astra übergibt dem Server nur `SERVER_IP` und `SERVER_PORT` (wie das Referenz-Panel). Variablen wie `QUERY_PORT` werden nicht automatisch gesetzt: beim Instance die Variable auf **denselben Port** wie den zweiten Endpoint stellen (V Rising: `QUERY_PORT=9877`). Die Mappings reichen für das Port-Publishing, das Egg muss den Port nur selbst kennen.
+5. **Server neu starten.** Astra synchronisiert die Konfiguration nach jeder Änderung sofort zu Wings (Antwortfeld `sync`), Wings veröffentlicht neue Ports aber erst beim Erstellen des Containers: Portänderungen wirken erst nach einem Neustart (Antwortfeld `restart_required`). Auch die Firewall muss die Ports (und bei UDP-Spielen das Protokoll UDP) freigeben.
 
 ---
 
