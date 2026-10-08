@@ -143,8 +143,8 @@ Der Stub-Adapter meldet weiterhin synchron (`completed: true`).
 
 1. **Agent anlegen** unter *Admin → Agents*. Pflicht: Name und FQDN (DNS-Name des Nodes).
    Optional: Scheme (`https`), `behind_proxy`, Ports (`daemon_listen` 8080, `daemon_sftp` 2022),
-   Datenverzeichnis (`daemon_base`, Standard `/var/lib/pterodactyl/volumes`, bei Pelican
-   `/var/lib/pelican/volumes`).
+   Datenverzeichnis (`daemon_base`, Standard `/var/lib/astra/volumes`; Nodes unter
+   `/var/lib/pterodactyl` bzw. `/var/lib/pelican` behalten die alten Namen, siehe `docs/deploy-runbook.md`).
 2. **config.yml holen**: Button *config.yml* beim Agent oder
    `GET /api/admin/agents/{id}/configuration` (`yaml`-Feld). Das Feld `remote` ist die
    `BASE_URL` des Panels. Sie muss vom Node aus erreichbar sein.
@@ -152,8 +152,8 @@ Der Stub-Adapter meldet weiterhin synchron (`completed: true`).
    ```bash
    curl -L -o /usr/local/bin/wings "https://github.com/pterodactyl/wings/releases/latest/download/wings_linux_amd64"
    chmod u+x /usr/local/bin/wings
-   mkdir -p /etc/pterodactyl
-   # Inhalt aus Schritt 2 nach /etc/pterodactyl/config.yml
+   mkdir -p /etc/astra
+   # Inhalt aus Schritt 2 nach /etc/astra/config.yml; Start mit: wings --config /etc/astra/config.yml
    ```
    Docker muss installiert sein. TLS: entweder Let's-Encrypt-Zertifikat unter dem in der
    config.yml angegebenen Pfad oder `behind_proxy = true` mit TLS-terminierendem Reverse Proxy.

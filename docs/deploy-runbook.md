@@ -140,8 +140,10 @@ Im Panel unter **Admin → Agents → Neuer Agent**:
 | Connect-Port | `443` | Port, über den das Panel Wings erreicht (Caddy) |
 | Listen-Port | `8080` | Port, auf dem Wings lokal lauscht |
 | SFTP-Port | `2022` | |
-| Datenverzeichnis | `/var/lib/pterodactyl/volumes` | Pelican: `/var/lib/pelican/volumes` |
+| Datenverzeichnis | `/var/lib/astra/volumes` | Standard für neue Nodes. Nodes mit `/var/lib/pterodactyl/volumes` bzw. `/var/lib/pelican/volumes` behalten ihre alten Namen (siehe unten) |
 | Hinter Reverse Proxy | **an** | Wings ohne eigenes SSL, Caddy davor |
+
+**Namen auf dem Node (White-Label, M78):** Für neue Nodes setzt der Konfig-Export eigene Namen: `system.root_directory: /var/lib/astra`, Daten `/var/lib/astra/volumes`, Archive `/var/lib/astra/archives`, Backups `/var/lib/astra/backups`, Logs `/var/log/astra`, temporär `/tmp/astra`, Systembenutzer `astra`, Docker-Netz `astra_nw`; `install-wings.sh` legt die Konfiguration unter `/etc/astra/config.yml` ab und startet Wings mit `wings --config /etc/astra/config.yml`. **Bestehende Nodes laufen unverändert weiter:** ein Agent, dessen Datenverzeichnis unter `/var/lib/pterodactyl` (oder `/var/lib/pelican`) liegt, bekommt im Export weiterhin die alten Pfade, den alten Benutzer und das alte Netz, damit Backups und Archive nicht auseinanderlaufen. Nur neue Installationen bekommen die `astra`-Namen. Wer einen bestehenden Node umstellen will, ändert das Datenverzeichnis des Agents bewusst (Daten vorher verschieben) und führt `install-wings.sh` erneut aus. Bekannte Einschränkung: der Konsolen-Prompt `container@pterodactyl~` stammt aus den yolks-Images und lässt sich nur mit eigenen Images ändern.
 
 Beim Anlegen erzeugt Astra die Node-Credentials (Token-ID sichtbar, Secret nur in der config.yml).
 Alle Felder lassen sich später über *Bearbeiten* ändern.
@@ -170,6 +172,11 @@ sudo ./scripts/install-wings.sh --panel https://panel.deinedomain.de --agent-id 
 
 Das Skript installiert Wings, holt die `config.yml` direkt aus dem Panel (Node-Token, `remote`, Ports), legt den systemd-Dienst an und startet ihn. Für Pelican-Wings `--pelican` anhängen.
 
+Das Skript ändert nichts still am System: **Docker** installiert es nur mit `--install-docker` (sonst bricht es mit einem Hinweis ab, wenn Docker fehlt), die **GRUB-Option `swapaccount=1`** setzt es nur mit `--grub-swapaccount` (nur auf Systemen mit cgroup v1 nötig, auf Ubuntu 22.04+ nicht; wirkt nach einem Reboot). `--no-docker` ist veraltet und ohne Wirkung. 
+**Panel und Wings auf demselben Host:** Docker Compose legt für das Panel ein eigenes Netz an (`astra_default`, meist `172.18.0.0/16`), und `172.18.0.0/16` ist zugleich der Standard von Wings. Dann bricht Wings mit „Pool overlaps with other one on this address space“ ab. Astra vermeidet das: der Konfig-Export setzt für Wings ein eigenes Docker-Netz (`docker.network.interfaces.v4` auf `172.30.0.0/16`, Gateway `172.30.0.1`; änderbar über `WINGS_DOCKER_SUBNET` in der `.env` des Panels). Das Installationsskript vergleicht das Subnetz aus der `config.yml` mit den vorhandenen Docker-Netzen (`docker network ls/inspect`) und warnt bei einer Überlappung. Ist Wings schon mit dem alten Netz gescheitert: Skript erneut ausführen (holt die neue `config.yml`) und das angelegte, leere Netz `pterodactyl_nw` mit `docker network rm pterodactyl_nw` entfernen.
+
+Auf einem frischen Server also: `sudo ./scripts/install-wings.sh --install-docker --panel ... --agent-id 1 --token "$TOKEN"`.
+
 Prüfen:
 
 ```bash
@@ -188,7 +195,7 @@ aber nie angesprochen. In `.env` muss `RUNNER_ADAPTER=wings` stehen (so in `.env
 ## 7. Blueprint und erster Server
 
 Blueprints (Server-Vorlagen) kommen am schnellsten per Egg-Import. Im Repo liegt ein fertiges
-Paper-Egg (`blueprints/minecraft-paper.json`, Pterodactyl-Format PTDL_v2):
+Paper-Egg (`blueprints/minecraft-paper.json`, Pterodactyl-Format PTDL_v2). Das Install-Script lädt die Jar über die PaperMC-Fill-API (v3), prüft, dass wirklich ein Jar (ZIP) mit passender Prüfsumme ankommt, und bricht sonst mit Fehler ab (der Install meldet dann nicht `ready`). Es schreibt **kein** `eula.txt`: die Minecraft-EULA muss der Kunde selbst akzeptieren (siehe Ablauf unten):
 
 ```bash
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
@@ -202,16 +209,16 @@ auf demselben Weg importieren. Image, Startup, Install-Script, Startup-Erkennung
 Variablen und `server.properties`-Platzhalter werden übernommen.
 
 Wer den Blueprint von Hand anlegen will, braucht mindestens: Docker-Image
-`ghcr.io/pterodactyl/yolks:java_21`, Startup-Befehl mit `{{SERVER_JARFILE}}`, Install-Container
+`ghcr.io/pterodactyl/yolks:java_25` (für Paper 26.x, für Versionen bis 1.21 `java_21`), Startup-Befehl mit `{{SERVER_JARFILE}}`, Install-Container
 `ghcr.io/pterodactyl/installers:debian`, Stop-Befehl `stop`, Startup-Erkennung `)! For help, type `
-und ein Install-Script, das die Paper-Jar nach `/mnt/server` lädt und `eula=true` schreibt.
+und ein Install-Script, das die Paper-Jar nach `/mnt/server` lädt (ohne `eula.txt`).
 Details zu den Feldern: `docs/wings-remote-api.md`.
 
 Dann unter **Admin → Instances** eine Instanz anlegen: Blueprint Paper, Agent node1, 2048 MB RAM, 5120 MB Disk, Endpoint 25565. Ablauf, den du beobachten kannst:
 
 1. Instanz steht auf `provisioning`, Wings holt `GET /api/remote/servers/{uuid}/install`.
 2. Install-Container läuft, lädt Paper, meldet `POST .../install` → Status `ready`.
-3. Start über die Konsole, Container-Status `starting` → nach der Zeile `)! For help, type ` → `running`.
+3. Start über die Konsole. Beim **ersten Start** beendet sich Paper mit „You need to agree to the EULA“, weil `eula.txt` mit `eula=false` entsteht. Der Kunde setzt im Dateimanager (**Dateien**) in `eula.txt` den Wert `eula=true` (oder in der Konsole `echo eula=true > eula.txt`, falls die Konsole Shell-Befehle erlaubt) und startet den Server erneut. Danach geht der Container-Status `starting` → nach der Zeile `)! For help, type ` → `running`.
 4. Mit dem Minecraft-Client auf die Adresse verbinden, die die Instanz-Detailseite unter
    *Verbindung* anzeigt (`node1.deinedomain.de:25565`, Kopier-Button).
 
