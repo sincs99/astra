@@ -372,5 +372,30 @@ with tempfile.TemporaryDirectory() as tmp:
 check("Upgrade: Spalte NOT NULL mit Standard true, bestehende Endpoints bekommen true", up0.returncode == 0 and up.returncode == 0 and col is not None and col[3] == 1 and old_row == (1,), f"{up0.stderr[-200:]} {up.stderr[-200:]} {col} {old_row}")
 check("Downgrade entfernt die Spalte, erneutes Upgrade und genau ein Head", down.returncode == 0 and gone and up2.returncode == 0 and heads.stdout.count("(head)") == 1, down.stderr[-300:])
 
+# ── Punkt 4: kein Feld endpoint_id in Antworten ─────────
+print("kein endpoint_id in Instanz-Antworten (Punkt 4)")
+
+
+def has_key(obj, name):
+    if isinstance(obj, dict):
+        return name in obj or any(has_key(v, name) for v in obj.values())
+    if isinstance(obj, list):
+        return any(has_key(v, name) for v in obj)
+    return False
+
+
+ep_free = mk(N2, 9950).json["id"]
+ok = create("p4-ok", agent_id=N2, endpoint_id=ep_free)
+bad_agent = create("p4-bad1", agent_id=N1, endpoint_id=ep_free)
+bad_missing = c.post("/api/admin/instances", json={"name": "p4"}, headers=AH)
+bad_unknown = create("p4-bad3", agent_id=N2, endpoint_id=424242)
+no_agent = create("p4-bad4", endpoint_id=ep_free)
+check("Erfolg: primary_endpoint_id gesetzt, kein Feld endpoint_id (auch nicht verschachtelt)", ok.status_code == 201 and ok.json["primary_endpoint_id"] == ep_free and not has_key(ok.json, "endpoint_id"), str(ok.json))
+check("Fehlerpfade (falscher Agent, fehlende Felder, unbekannter Endpoint, ohne agent_id): keine endpoint_id-Felder",
+      all(r.status_code in (400, 404, 409) and not has_key(r.json, "endpoint_id") for r in (bad_agent, bad_missing, bad_unknown, no_agent)),
+      str([(r.status_code, r.get_data(as_text=True)[:80]) for r in (bad_agent, bad_missing, bad_unknown, no_agent)]))
+lists = [c.get("/api/admin/instances", headers=AH).json, c.get("/api/client/instances", headers=OH).json]
+check("Listen (Admin und Kunde): kein endpoint_id-Feld", not any(has_key(x, "endpoint_id") for x in lists))
+
 print(f"\n{passed} OK, {failed} FAIL")
 sys.exit(1 if failed else 0)
