@@ -181,6 +181,8 @@ Das Skript ändert nichts still am System: **Docker** installiert es nur mit `--
 
 Auf einem frischen Server also: `sudo ./scripts/install-wings.sh --install-docker --panel ... --agent-id 1 --token "$TOKEN"`.
 
+**Warnungen beim Abruf:** `GET /api/admin/agents/<id>/configuration` liefert neben `yaml` und `config` das Feld `warnings` (Liste von Strings, leer wenn alles passt), und `install-wings.sh` gibt sie nach dem Abruf gelb aus (kein Abbruch). Typisch: „remote zeigt auf http://localhost:5000“ – ein Node auf einem anderen Host erreicht das Panel dort nie; dann `BASE_URL` in der `.env` des Panels auf die öffentliche Adresse setzen und die `config.yml` neu holen. Dasselbe prüft das Skript bei `--config` selbst, und `python cli.py check-config` meldet `BASE_URL`/`FRONTEND_URL` mit localhost als WARNUNG.
+
 **Konsole und Origins:** Die Konsole läuft über einen WebSocket vom Browser direkt zu Wings. Wings erlaubt dafür nur Seiten, deren Origin in `remote` oder `allowed_origins` steht. Der Konfig-Export trägt deshalb automatisch die Origins aus `FRONTEND_URL`, `BASE_URL` und `CORS_ORIGINS` ein (ohne Pfad, ohne Duplikate, `*` wird ignoriert). Weiterleitungs-Domains (`REDIRECT_DOMAINS`) stehen bewusst nicht darin: sie leiten per 301 auf `PANEL_DOMAIN`, die Seite wird also immer dort geöffnet. Ändert sich eine dieser Adressen, die `config.yml` neu holen und Wings neu starten.
 
 Prüfen:

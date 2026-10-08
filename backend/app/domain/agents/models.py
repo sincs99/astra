@@ -119,6 +119,35 @@ class Agent(db.Model):
         host = f"[{host}]" if ":" in host else host
         return f"{parts.scheme}://{host}" + (f":{port}" if port is not None else "")
 
+    @staticmethod
+    def is_local_url(value) -> bool:
+        """True, wenn die URL auf localhost / Loopback zeigt (von einem anderen Host aus nicht erreichbar)."""
+        from urllib.parse import urlsplit
+        try:
+            host = (urlsplit(str(value or "").strip()).hostname or "").lower()
+        except ValueError:
+            return False
+        return host in ("localhost", "::1", "0.0.0.0") or host.endswith(".localhost") or host.startswith("127.")
+
+    @classmethod
+    def wings_export_warnings(cls, remote_url: str, origins: list[str]) -> list[str]:
+        """Warnungen zum Konfig-Export (M84), Liste von Strings; leer, wenn alles passt."""
+        out: list[str] = []
+        if cls.is_local_url(remote_url):
+            out.append(
+                f"remote zeigt auf {remote_url} (localhost). Wings auf einem anderen Host erreicht das Panel unter dieser "
+                "Adresse nicht; BASE_URL in der .env des Panels auf die öffentliche Adresse setzen "
+                "(z. B. https://panel.example.com) und die config.yml neu holen."
+            )
+        if not origins:
+            out.append("allowed_origins ist leer. Die Konsole im Browser wird von Wings abgelehnt; FRONTEND_URL und BASE_URL setzen.")
+        elif all(cls.is_local_url(o) for o in origins):
+            out.append(
+                f"allowed_origins enthält nur localhost-Einträge ({', '.join(origins)}). Die Konsole funktioniert dann nur im "
+                "Browser auf demselben Rechner; FRONTEND_URL und BASE_URL auf die öffentliche Adresse setzen."
+            )
+        return out
+
     @classmethod
     def wings_allowed_origins(cls) -> list[str]:
         """Erlaubte Browser-Origins fuer die Konsole (Wings `allowed_origins`, M84).

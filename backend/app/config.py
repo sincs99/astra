@@ -218,6 +218,15 @@ class Config:
                 "Registrierung und Passwort-Reset sind dann nicht nutzbar (503 captcha_unavailable)."
             )
 
+        for name in ("BASE_URL", "FRONTEND_URL"):
+            from app.domain.agents.models import Agent
+            if Agent.is_local_url(getattr(cls, name, "")):
+                issues.append(
+                    f"WARNUNG: {name} zeigt auf localhost ({getattr(cls, name)}). Ein Wings-Node auf einem anderen Host erreicht "
+                    "das Panel nicht (remote in der config.yml), und die Konsole im Browser wird abgelehnt (allowed_origins). "
+                    f"{name} auf die öffentliche Adresse setzen."
+                )
+
         try:
             net = ipaddress.IPv4Network(cls.WINGS_DOCKER_SUBNET, strict=True)
             if not 8 <= net.prefixlen <= 24:
