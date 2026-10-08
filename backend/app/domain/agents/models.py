@@ -99,6 +99,84 @@ class Agent(db.Model):
 
     DEFAULT_DAEMON_BASE = "/var/lib/astra/volumes"
 
+    @staticmethod
+    def normalize_origin(value) -> str | None:
+        """Browser-Origin (scheme://host[:port]) aus einer URL: ohne Pfad, Query und Standardport, Schema und Host klein.
+        None bei Platzhaltern ("*"), leeren oder ungueltigen Werten."""
+        from urllib.parse import urlsplit
+        text = str(value or "").strip()
+        if not text or text == "*":
+            return None
+        try:
+            parts = urlsplit(text)
+            host, port = parts.hostname, parts.port
+        except ValueError:
+            return None
+        if parts.scheme not in ("http", "https") or not host:
+            return None
+        if port is not None and port == {"http": 80, "https": 443}[parts.scheme]:
+            port = None
+        host = f"[{host}]" if ":" in host else host
+        return f"{parts.scheme}://{host}" + (f":{port}" if port is not None else "")
+
+    @staticmethod
+    def is_local_url(value) -> bool:
+        """True, wenn die URL auf localhost / Loopback zeigt (von einem anderen Host aus nicht erreichbar)."""
+        from urllib.parse import urlsplit
+        try:
+            host = (urlsplit(str(value or "").strip()).hostname or "").lower()
+        except ValueError:
+            return False
+        return host in ("localhost", "::1", "0.0.0.0") or host.endswith(".localhost") or host.startswith("127.")
+
+    @classmethod
+    def wings_export_warnings(cls, remote_url: str, origins: list[str]) -> list[str]:
+        """Warnungen zum Konfig-Export (M84), Liste von Strings; leer, wenn alles passt."""
+        out: list[str] = []
+        if cls.is_local_url(remote_url):
+            out.append(
+                f"remote zeigt auf {remote_url} (localhost). Wings auf einem anderen Host erreicht das Panel unter dieser "
+                "Adresse nicht; BASE_URL in der .env des Panels auf die öffentliche Adresse setzen "
+                "(z. B. https://panel.example.com) und die config.yml neu holen."
+            )
+        if not origins:
+            out.append("allowed_origins ist leer. Die Konsole im Browser wird von Wings abgelehnt; FRONTEND_URL und BASE_URL setzen.")
+        elif all(cls.is_local_url(o) for o in origins):
+            out.append(
+                f"allowed_origins enthält nur localhost-Einträge ({', '.join(origins)}). Die Konsole funktioniert dann nur im "
+                "Browser auf demselben Rechner; FRONTEND_URL und BASE_URL auf die öffentliche Adresse setzen."
+            )
+        return out
+
+    @classmethod
+    def wings_allowed_origins(cls) -> list[str]:
+        """Erlaubte Browser-Origins fuer die Konsole (Wings `allowed_origins`, M84).
+
+        Der Browser verbindet sich fuer die Konsole direkt mit Wings; Wings prueft den Origin gegen `remote` und
+        `allowed_origins` (sonst 403 "request origin not allowed"). Eindeutige Liste in stabiler Reihenfolge:
+        FRONTEND_URL, BASE_URL, dann die Eintraege von CORS_ORIGINS ("*" wird ignoriert). Weiterleitungs-Domains
+        (REDIRECT_DOMAINS) fehlen bewusst: sie leiten per 301 auf PANEL_DOMAIN, die Seite liegt immer dort.
+        """
+        from flask import current_app, has_app_context
+        cfg = current_app.config if has_app_context() else {}
+        candidates = [cfg.get("FRONTEND_URL"), cfg.get("BASE_URL")] + str(cfg.get("CORS_ORIGINS") or "").split(",")
+        out: list[str] = []
+        for value in candidates:
+            origin = cls.normalize_origin(value)
+            if origin and origin not in out:
+                out.append(origin)
+        return out
+
+    @staticmethod
+    def wings_system_user() -> str:
+        """Systembenutzer fuer neue Nodes (WINGS_SYSTEM_USER, Standard "astra", M84). Ungueltige Werte gelten als "astra"."""
+        import re
+        from flask import current_app, has_app_context
+        name = str((current_app.config.get("WINGS_SYSTEM_USER") if has_app_context() else "") or "").strip()
+        if not re.fullmatch(r"[a-z_][a-z0-9_-]{0,31}", name) or name in ("root", "nobody", "daemon"):
+            return "astra"
+        return name
+
     def wings_brand(self) -> str:
         """Namensraum der Wings-Pfade, Benutzer und Netze (M78 White-Label): "astra" fuer neue Nodes. Nodes mit
         Datenverzeichnis unter /var/lib/pterodactyl oder /var/lib/pelican behalten ihre bisherigen Namen, damit bestehende
@@ -140,7 +218,7 @@ class Agent(db.Model):
                 "archive_directory": f"{root}/archives",
                 "backup_directory": f"{root}/backups",
                 "tmp_directory": f"/tmp/{brand}",
-                "username": brand,
+                "username": self.wings_system_user() if brand == "astra" else brand,
                 "sftp": {
                     "bind_port": self.daemon_sftp or 2022,
                 },
@@ -155,6 +233,7 @@ class Agent(db.Model):
                 },
             },
             "allowed_mounts": [],
+            "allowed_origins": self.wings_allowed_origins(),
             "remote": remote_url.rstrip("/"),
         }
 

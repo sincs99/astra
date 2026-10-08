@@ -282,7 +282,7 @@ def agent_configuration(agent_id: int):
     """Liefert die Wings config.yml fuer einen Agent (M33).
 
     Enthaelt das Node-Secret – nur fuer Admins.
-    Antwort: {"agent_id", "yaml", "config"}
+    Antwort: {"agent_id", "yaml", "config", "warnings"}  (warnings: Liste von Strings, M84)
     """
     _, err = _require_admin_user()
     if err:
@@ -304,10 +304,13 @@ def agent_configuration(agent_id: int):
     from flask import current_app
     remote_url = current_app.config.get("BASE_URL", "http://localhost:5000")
 
+    config = agent.get_wings_configuration(remote_url)
     return jsonify({
         "agent_id": agent.id,
         "yaml": agent.get_wings_configuration_yaml(remote_url),
-        "config": agent.get_wings_configuration(remote_url),
+        "config": config,
+        # M84: Hinweise zum Export (z.B. remote zeigt auf localhost); Liste von Strings, leer wenn alles passt
+        "warnings": Agent.wings_export_warnings(config["remote"], config["allowed_origins"]),
     })
 
 

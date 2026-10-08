@@ -30,6 +30,8 @@
 set -euo pipefail
 
 log() { echo "[wings] $(date '+%H:%M:%S') $*"; }
+# Warnungen gelb ausgeben (nur auf einem Terminal), kein Abbruch
+warn() { if [ -t 1 ]; then printf '\033[33m[wings] WARNUNG: %s\033[0m\n' "$*"; else echo "[wings] WARNUNG: $*"; fi; }
 die() { echo "[wings] FEHLER: $*" >&2; exit 1; }
 
 PANEL=""; AGENT_ID=""; TOKEN=""; CONFIG_SRC=""
@@ -117,14 +119,25 @@ log "Wings: $(/usr/local/bin/wings version 2>/dev/null | head -1 || echo 'instal
 if [ -n "$CONFIG_SRC" ]; then
     cp "$CONFIG_SRC" "$CONF_DIR/config.yml"
     log "config.yml aus $CONFIG_SRC uebernommen."
+    # NOTE_LOCAL_BEGIN
+    LOCAL_REMOTE=$(grep -E '^remote:' "$CONF_DIR/config.yml" | awk '{print $2}' | head -1)
+    case "$LOCAL_REMOTE" in
+        *://localhost*|*://127.*|*://0.0.0.0*|*://\[::1\]*)
+            warn "remote in der config.yml zeigt auf $LOCAL_REMOTE (localhost). Wings auf einem anderen Host erreicht das Panel dort nicht; BASE_URL im Panel setzen und die config.yml neu holen." ;;
+    esac
+    # NOTE_LOCAL_END
 else
     log "Hole config.yml fuer Agent $AGENT_ID von $PANEL ..."
     RESP=$(curl -fsS -m 15 -H "Authorization: Bearer $TOKEN" "$PANEL/api/admin/agents/$AGENT_ID/configuration") \
         || die "config.yml konnte nicht geladen werden (Token, Agent-ID, Panel-URL pruefen)."
     # Hinweis: Heredoc und Here-String zugleich funktionieren nicht (die Antwort wuerde als Python-Code gelesen)
-    printf '%s' "$RESP" | python3 -c 'import json, sys; open(sys.argv[1], "w").write(json.load(sys.stdin)["yaml"])' "$CONF_DIR/config.yml" \
+    # Das Skript schreibt die YAML-Datei und gibt die Warnungen des Panels (Feld "warnings", eine pro Zeile) aus
+    WARNINGS=$(printf '%s' "$RESP" | python3 -c 'import json, sys; d = json.load(sys.stdin); open(sys.argv[1], "w").write(d["yaml"]); print("\n".join(str(w) for w in d.get("warnings") or []))' "$CONF_DIR/config.yml") \
         || die "Antwort des Panels konnte nicht gelesen werden."
     log "config.yml geschrieben."
+    printf '%s\n' "$WARNINGS" | while IFS= read -r w; do
+        if [ -n "$w" ]; then warn "$w"; fi
+    done
 fi
 chmod 600 "$CONF_DIR/config.yml"
 

@@ -5,6 +5,15 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (M84 – Wings-Systembenutzer)
+- `WINGS_SYSTEM_USER` (Standard `astra`; klein, Ziffern, `_`, `-`, höchstens 32 Zeichen, nicht `root`/`nobody`/`daemon`; im Produktions-Check ungültig = KRITISCH, zur Laufzeit gilt dann `astra`) setzt `system.username` im Konfig-Export neuer Nodes. Wings legt diesen Systembenutzer an (uid 999, `/home/<name>`); der Name `astra` ist ein gängiger Login-Name und kollidierte mit dem Admin-Konto. Bestandsnodes (Datenverzeichnis unter `/var/lib/pterodactyl` bzw. `/var/lib/pelican`) behalten `pterodactyl`/`pelican`. Dokumentiert in `.env.prod.example`, `docker-compose.prod.yml`, `docs/operations.md`; Runbook Abschnitt 1 und 6: den Admin-Login auf dem Node nicht gleich nennen (Beispiel `nodeadmin`)
+
+### Added (M84 – Warnungen im Konfig-Export)
+- **`remote` zeigt auf localhost:** Ohne `BASE_URL` lieferte der Export `remote: http://localhost:5000`; ein entfernter Node erreicht das Panel damit nie. `GET /api/admin/agents/<id>/configuration` hat jetzt das Feld `warnings` (Liste von Strings, `[]` wenn nichts auffällt; nicht in `config`/`yaml`): eine Warnung, wenn `remote` auf localhost/127.x/::1/0.0.0.0/`*.localhost` zeigt („… BASE_URL setzen“), und eine, wenn `allowed_origins` leer ist oder nur localhost-Einträge enthält. `install-wings.sh` gibt die Warnungen nach dem Abruf gelb aus (kein Abbruch) und prüft bei `--config` das `remote` der Datei selbst. Der Produktions-Check (`check-config`) warnt, wenn `BASE_URL` oder `FRONTEND_URL` auf localhost zeigen
+
+### Fixed (M84 – Konfig-Export)
+- **Konsole tot (`allowed_origins` fehlte):** Der Browser verbindet sich für die Konsole direkt mit Wings; Wings prüft den Origin gegen `remote` und `allowed_origins` und lehnte `http://192.168.1.7:3000` mit 403 „request origin not allowed by Upgrader.CheckOrigin“ ab, weil der Export `allowed_origins` nicht schrieb (leere Liste). Der Export trägt jetzt eine eindeutige Liste in stabiler Reihenfolge ein: `FRONTEND_URL`, `BASE_URL`, dann die Einträge von `CORS_ORIGINS` (`*` wird ignoriert), jeweils in Origin-Form (`scheme://host[:port]`, ohne Pfad, Standardports entfernt). localhost-Einträge bleiben (Dev). Weiterleitungs-Domains fehlen bewusst (301 auf `PANEL_DOMAIN`). Runbook Abschnitt 6 und Fehlersuche
+
 ### Changed (Dev-Compose – Multi-Node-Tests)
 - `docker-compose.yml` reicht `BASE_URL`, `FRONTEND_URL` und `CORS_ORIGINS` aus der Umgebung durch (Standard wie bisher localhost). README erklaert, dass Wings auf einem anderen Host die LAN-Adresse des Panels braucht (`remote` und `allowed_origins` in der exportierten `config.yml`)
 

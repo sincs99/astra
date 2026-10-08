@@ -7,6 +7,7 @@ In Produktion wird bei fehlenden Secrets ein Fehler erzeugt.
 
 import ipaddress
 import os
+import re
 import warnings
 from dotenv import load_dotenv
 
@@ -140,6 +141,9 @@ class Config:
     # INVOICE_SMALL_BUSINESS_NOTE leer = landesueblicher Standardtext; ein gesetzter Text gilt in beiden Sprachen.
     # M78: Docker-Netz fuer Wings (Konfig-Export). Der Wings-Standard 172.18.0.0/16 kollidiert mit dem Netz von
     # docker compose, wenn Panel und Wings auf demselben Host laufen. Gateway = erste Adresse des Subnetzes.
+    # M84: Name des Systembenutzers, den Wings auf dem Node anlegt (system.username, uid 999, /home/<name>). Gilt fuer neue Nodes;
+    # Bestandsnodes unter /var/lib/pterodactyl bzw. /var/lib/pelican behalten ihren Namen. Nicht wie ein Login-Konto nennen.
+    WINGS_SYSTEM_USER = (os.getenv("WINGS_SYSTEM_USER") or "astra").strip()
     WINGS_DOCKER_SUBNET = (os.getenv("WINGS_DOCKER_SUBNET") or "172.30.0.0/16").strip()
     INVOICE_COUNTRY = (os.getenv("INVOICE_COUNTRY") or "DE").strip().upper()
     INVOICE_SMALL_BUSINESS_NOTE = os.getenv("INVOICE_SMALL_BUSINESS_NOTE", "").replace("\\n", "\n").strip()
@@ -217,6 +221,21 @@ class Config:
                 f"WARNUNG: CAPTCHA_PROVIDER={cls.CAPTCHA_PROVIDER}, aber CAPTCHA_SITE_KEY und/oder CAPTCHA_SECRET fehlen: "
                 "Registrierung und Passwort-Reset sind dann nicht nutzbar (503 captcha_unavailable)."
             )
+
+        if not re.fullmatch(r"[a-z_][a-z0-9_-]{0,31}", cls.WINGS_SYSTEM_USER) or cls.WINGS_SYSTEM_USER in ("root", "nobody", "daemon"):
+            issues.append(
+                f"KRITISCH: WINGS_SYSTEM_USER '{cls.WINGS_SYSTEM_USER}' ist kein gueltiger Benutzername "
+                "(klein, Ziffern, _ und -, hoechstens 32 Zeichen, nicht root/nobody/daemon)."
+            )
+
+        for name in ("BASE_URL", "FRONTEND_URL"):
+            from app.domain.agents.models import Agent
+            if Agent.is_local_url(getattr(cls, name, "")):
+                issues.append(
+                    f"WARNUNG: {name} zeigt auf localhost ({getattr(cls, name)}). Ein Wings-Node auf einem anderen Host erreicht "
+                    "das Panel nicht (remote in der config.yml), und die Konsole im Browser wird abgelehnt (allowed_origins). "
+                    f"{name} auf die öffentliche Adresse setzen."
+                )
 
         try:
             net = ipaddress.IPv4Network(cls.WINGS_DOCKER_SUBNET, strict=True)

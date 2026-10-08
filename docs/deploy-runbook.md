@@ -29,6 +29,8 @@ apt install -y git curl ufw
 timedatectl set-timezone Europe/Zurich
 ```
 
+**Benennung auf dem Node:** Wings legt beim ersten Start einen eigenen Systembenutzer an (Standard `astra`, uid 999, Home `/home/astra`, einstellbar mit `WINGS_SYSTEM_USER` in der `.env` des Panels). Nenne deinen eigenen Admin-Login auf dem Server deshalb **nicht** ebenso (zum Beispiel `nodeadmin` statt `astra`), sonst kollidieren Konto und Wings-Benutzer. Alternativ den Wings-Benutzer mit `WINGS_SYSTEM_USER=wingsd` umbenennen, bevor du die `config.yml` holst.
+
 Docker:
 
 ```bash
@@ -180,6 +182,12 @@ Das Skript ändert nichts still am System: **Docker** installiert es nur mit `--
 **Panel und Wings auf demselben Host:** Docker Compose legt für das Panel ein eigenes Netz an (`astra_default`, meist `172.18.0.0/16`), und `172.18.0.0/16` ist zugleich der Standard von Wings. Dann bricht Wings mit „Pool overlaps with other one on this address space“ ab. Astra vermeidet das: der Konfig-Export setzt für Wings ein eigenes Docker-Netz (`docker.network.interfaces.v4` auf `172.30.0.0/16`, Gateway `172.30.0.1`; änderbar über `WINGS_DOCKER_SUBNET` in der `.env` des Panels). Das Installationsskript vergleicht das Subnetz aus der `config.yml` mit den vorhandenen Docker-Netzen (`docker network ls/inspect`) und warnt bei einer Überlappung. Ist Wings schon mit dem alten Netz gescheitert: Skript erneut ausführen (holt die neue `config.yml`) und das angelegte, leere Netz `pterodactyl_nw` mit `docker network rm pterodactyl_nw` entfernen.
 
 Auf einem frischen Server also: `sudo ./scripts/install-wings.sh --install-docker --panel ... --agent-id 1 --token "$TOKEN"`.
+
+Der Systembenutzer `astra` (oder `WINGS_SYSTEM_USER`) entsteht beim ersten Start von Wings. Gibt es auf dem Server schon ein Konto mit diesem Namen, den Namen vor dem Abruf der `config.yml` ändern (siehe Abschnitt 1, Benennung auf dem Node).
+
+**Warnungen beim Abruf:** `GET /api/admin/agents/<id>/configuration` liefert neben `yaml` und `config` das Feld `warnings` (Liste von Strings, leer wenn alles passt), und `install-wings.sh` gibt sie nach dem Abruf gelb aus (kein Abbruch). Typisch: „remote zeigt auf http://localhost:5000“ – ein Node auf einem anderen Host erreicht das Panel dort nie; dann `BASE_URL` in der `.env` des Panels auf die öffentliche Adresse setzen und die `config.yml` neu holen. Dasselbe prüft das Skript bei `--config` selbst, und `python cli.py check-config` meldet `BASE_URL`/`FRONTEND_URL` mit localhost als WARNUNG.
+
+**Konsole und Origins:** Die Konsole läuft über einen WebSocket vom Browser direkt zu Wings. Wings erlaubt dafür nur Seiten, deren Origin in `remote` oder `allowed_origins` steht. Der Konfig-Export trägt deshalb automatisch die Origins aus `FRONTEND_URL`, `BASE_URL` und `CORS_ORIGINS` ein (ohne Pfad, ohne Duplikate, `*` wird ignoriert). Weiterleitungs-Domains (`REDIRECT_DOMAINS`) stehen bewusst nicht darin: sie leiten per 301 auf `PANEL_DOMAIN`, die Seite wird also immer dort geöffnet. Ändert sich eine dieser Adressen, die `config.yml` neu holen und Wings neu starten.
 
 Prüfen:
 
@@ -381,7 +389,7 @@ Panel und Node können ab dann auch getrennt laufen: kleiner VPS für das Panel,
 | Instanz hängt in `provisioning` | `journalctl -u wings`: Install-Container-Fehler, Docker-Image-Pull, Netzwerk |
 | Backend-Container: `exec: "./entrypoint.sh": permission denied` | Checkout ohne Ausführrecht (ältere Klone, Windows): `git pull`, oder `chmod +x backend/entrypoint.sh`; das Dev-Compose startet das Script seit M78 über `bash` |
 | Server bleibt `starting` | Startup-Erkennung im Blueprint passt nicht zur Konsolenausgabe |
-| Konsole lädt nicht | Browser erreicht `wss://node1…/api/servers/<uuid>/ws`? Caddy-Site `deploy/sites/node.caddy` vorhanden? |
+| Konsole lädt nicht, WebSocket schließt mit 1006 oder 403 „request origin not allowed by Upgrader.CheckOrigin“ | Der Browser verbindet sich für die Konsole **direkt** mit Wings (`wss://node1…/api/servers/<uuid>/ws`), und Wings prüft den Origin der Seite gegen `remote` und `allowed_origins` aus der `config.yml`. Seit M84 schreibt der Export `allowed_origins` aus `FRONTEND_URL`, `BASE_URL` und `CORS_ORIGINS`. `allowed_origins` und `remote` in `/etc/astra/config.yml` prüfen: steht dort die Adresse, unter der du das Panel im Browser öffnest? Wenn nicht: `FRONTEND_URL`/`BASE_URL` in der `.env` des Panels korrigieren, `config.yml` neu holen (`install-wings.sh` erneut ausführen) und Wings neu starten (`systemctl restart wings`). Außerdem: erreicht der Browser Wings überhaupt (Caddy-Site `deploy/sites/node.caddy`, Port 8080 bzw. 443)? |
 | Spieler können nicht joinen | Firewall-Port, Endpoint-Port = Port in `server.properties` (Platzhalter im Blueprint) |
 
 Weitere Details zur Wings-Anbindung: `docs/wings-remote-api.md`.
