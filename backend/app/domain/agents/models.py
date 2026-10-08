@@ -99,6 +99,45 @@ class Agent(db.Model):
 
     DEFAULT_DAEMON_BASE = "/var/lib/astra/volumes"
 
+    @staticmethod
+    def normalize_origin(value) -> str | None:
+        """Browser-Origin (scheme://host[:port]) aus einer URL: ohne Pfad, Query und Standardport, Schema und Host klein.
+        None bei Platzhaltern ("*"), leeren oder ungueltigen Werten."""
+        from urllib.parse import urlsplit
+        text = str(value or "").strip()
+        if not text or text == "*":
+            return None
+        try:
+            parts = urlsplit(text)
+            host, port = parts.hostname, parts.port
+        except ValueError:
+            return None
+        if parts.scheme not in ("http", "https") or not host:
+            return None
+        if port is not None and port == {"http": 80, "https": 443}[parts.scheme]:
+            port = None
+        host = f"[{host}]" if ":" in host else host
+        return f"{parts.scheme}://{host}" + (f":{port}" if port is not None else "")
+
+    @classmethod
+    def wings_allowed_origins(cls) -> list[str]:
+        """Erlaubte Browser-Origins fuer die Konsole (Wings `allowed_origins`, M84).
+
+        Der Browser verbindet sich fuer die Konsole direkt mit Wings; Wings prueft den Origin gegen `remote` und
+        `allowed_origins` (sonst 403 "request origin not allowed"). Eindeutige Liste in stabiler Reihenfolge:
+        FRONTEND_URL, BASE_URL, dann die Eintraege von CORS_ORIGINS ("*" wird ignoriert). Weiterleitungs-Domains
+        (REDIRECT_DOMAINS) fehlen bewusst: sie leiten per 301 auf PANEL_DOMAIN, die Seite liegt immer dort.
+        """
+        from flask import current_app, has_app_context
+        cfg = current_app.config if has_app_context() else {}
+        candidates = [cfg.get("FRONTEND_URL"), cfg.get("BASE_URL")] + str(cfg.get("CORS_ORIGINS") or "").split(",")
+        out: list[str] = []
+        for value in candidates:
+            origin = cls.normalize_origin(value)
+            if origin and origin not in out:
+                out.append(origin)
+        return out
+
     def wings_brand(self) -> str:
         """Namensraum der Wings-Pfade, Benutzer und Netze (M78 White-Label): "astra" fuer neue Nodes. Nodes mit
         Datenverzeichnis unter /var/lib/pterodactyl oder /var/lib/pelican behalten ihre bisherigen Namen, damit bestehende
@@ -155,6 +194,7 @@ class Agent(db.Model):
                 },
             },
             "allowed_mounts": [],
+            "allowed_origins": self.wings_allowed_origins(),
             "remote": remote_url.rstrip("/"),
         }
 

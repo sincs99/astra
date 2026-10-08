@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed (M84 – Konfig-Export)
+- **Konsole tot (`allowed_origins` fehlte):** Der Browser verbindet sich für die Konsole direkt mit Wings; Wings prüft den Origin gegen `remote` und `allowed_origins` und lehnte `http://192.168.1.7:3000` mit 403 „request origin not allowed by Upgrader.CheckOrigin“ ab, weil der Export `allowed_origins` nicht schrieb (leere Liste). Der Export trägt jetzt eine eindeutige Liste in stabiler Reihenfolge ein: `FRONTEND_URL`, `BASE_URL`, dann die Einträge von `CORS_ORIGINS` (`*` wird ignoriert), jeweils in Origin-Form (`scheme://host[:port]`, ohne Pfad, Standardports entfernt). localhost-Einträge bleiben (Dev). Weiterleitungs-Domains fehlen bewusst (301 auf `PANEL_DOMAIN`). Runbook Abschnitt 6 und Fehlersuche
+
 ### Added (M82 – Endpoints aus der automatischen Vergabe nehmen)
 - Astra vergab den als V-Rising-Query-Port gedachten Endpoint 9877 automatisch an eine Paper-Instanz; es gab nur „gesperrt“, was auch die explizite Zuweisung verbietet. Neu: `endpoints.auto_assign` (Boolean, NOT NULL, Standard true; Migration `z6u7v8w9x0y1`, bestehende Endpoints bekommen true). Mit `false` wird ein Endpoint nur noch explizit vergeben (`endpoint_id` bei der Anlage, `POST /api/admin/instances/<uuid>/endpoints`); die automatische Vergabe (Anlage ohne `endpoint_id`, Platzierung `has_free_endpoint`, Transfer) und die Zahl `free` im Endpoint-Überblick des Monitorings zählen ihn nicht mehr (neu: `manual`). Gesperrte Endpoints bleiben überall 409/400. API: `POST /api/admin/agents/<id>/endpoints` und `.../endpoints/bulk` nehmen `auto_assign` (optional, Boolean, Standard true; sonst 400), `Endpoint.to_dict()` liefert `auto_assign`, neu `PATCH /api/admin/endpoints/<id>` mit `{auto_assign, is_locked}` (mindestens eines, Booleans; 200 mit dem Endpoint, 400, 404). Runbook: Query-Ports als „nur manuell“ anlegen
 

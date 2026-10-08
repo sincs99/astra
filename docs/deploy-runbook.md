@@ -181,6 +181,8 @@ Das Skript ändert nichts still am System: **Docker** installiert es nur mit `--
 
 Auf einem frischen Server also: `sudo ./scripts/install-wings.sh --install-docker --panel ... --agent-id 1 --token "$TOKEN"`.
 
+**Konsole und Origins:** Die Konsole läuft über einen WebSocket vom Browser direkt zu Wings. Wings erlaubt dafür nur Seiten, deren Origin in `remote` oder `allowed_origins` steht. Der Konfig-Export trägt deshalb automatisch die Origins aus `FRONTEND_URL`, `BASE_URL` und `CORS_ORIGINS` ein (ohne Pfad, ohne Duplikate, `*` wird ignoriert). Weiterleitungs-Domains (`REDIRECT_DOMAINS`) stehen bewusst nicht darin: sie leiten per 301 auf `PANEL_DOMAIN`, die Seite wird also immer dort geöffnet. Ändert sich eine dieser Adressen, die `config.yml` neu holen und Wings neu starten.
+
 Prüfen:
 
 ```bash
@@ -381,7 +383,7 @@ Panel und Node können ab dann auch getrennt laufen: kleiner VPS für das Panel,
 | Instanz hängt in `provisioning` | `journalctl -u wings`: Install-Container-Fehler, Docker-Image-Pull, Netzwerk |
 | Backend-Container: `exec: "./entrypoint.sh": permission denied` | Checkout ohne Ausführrecht (ältere Klone, Windows): `git pull`, oder `chmod +x backend/entrypoint.sh`; das Dev-Compose startet das Script seit M78 über `bash` |
 | Server bleibt `starting` | Startup-Erkennung im Blueprint passt nicht zur Konsolenausgabe |
-| Konsole lädt nicht | Browser erreicht `wss://node1…/api/servers/<uuid>/ws`? Caddy-Site `deploy/sites/node.caddy` vorhanden? |
+| Konsole lädt nicht, WebSocket schließt mit 1006 oder 403 „request origin not allowed by Upgrader.CheckOrigin“ | Der Browser verbindet sich für die Konsole **direkt** mit Wings (`wss://node1…/api/servers/<uuid>/ws`), und Wings prüft den Origin der Seite gegen `remote` und `allowed_origins` aus der `config.yml`. Seit M84 schreibt der Export `allowed_origins` aus `FRONTEND_URL`, `BASE_URL` und `CORS_ORIGINS`. `allowed_origins` und `remote` in `/etc/astra/config.yml` prüfen: steht dort die Adresse, unter der du das Panel im Browser öffnest? Wenn nicht: `FRONTEND_URL`/`BASE_URL` in der `.env` des Panels korrigieren, `config.yml` neu holen (`install-wings.sh` erneut ausführen) und Wings neu starten (`systemctl restart wings`). Außerdem: erreicht der Browser Wings überhaupt (Caddy-Site `deploy/sites/node.caddy`, Port 8080 bzw. 443)? |
 | Spieler können nicht joinen | Firewall-Port, Endpoint-Port = Port in `server.properties` (Platzhalter im Blueprint) |
 
 Weitere Details zur Wings-Anbindung: `docs/wings-remote-api.md`.
