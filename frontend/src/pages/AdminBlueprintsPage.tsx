@@ -431,7 +431,7 @@ function WingsProcessFields({
       <div style={fieldGrid(240)}>
         <Field label={t("ainst.bp.installContainer")}>
           <input className="inp mono" type="text" value={installContainer} onChange={e => onInstallContainer(e.target.value)}
-            placeholder="ghcr.io/pterodactyl/installers:debian" />
+            placeholder="ghcr.io/parkervcp/installers:debian" />
         </Field>
         <Field label={t("ainst.bp.configStop")}>
           <input className="inp mono" type="text" value={configStop} onChange={e => onConfigStop(e.target.value)} placeholder="stop" />
