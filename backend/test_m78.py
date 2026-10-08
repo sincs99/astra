@@ -333,5 +333,47 @@ check("Installer: Fallback-Datenordner /var/lib/astra/volumes", '"${DATA_DIR:-/v
 check("Installer: kein /etc/pterodactyl als Ziel mehr (nur als Hinweis auf Altbestand)", "CONF_DIR=/etc/pterodactyl" not in WINGS_SH and "for old in /etc/pterodactyl /etc/pelican" in WINGS_SH)
 check("Installer: Hinweis auf Altbestand", "aeltere Konfiguration" in WINGS_SH)
 
+# ── Agent-Kapazitaet und Endpoint-Zuweisung (Pruefung, M78) ──
+print("Agent-Kapazitaet")
+from app.domain.blueprints.models import Blueprint
+with app.app_context():
+    kd = User(username="kd", email="kd@t.local")
+    kd.set_password("test1234")
+    bp = Blueprint(name="mc", docker_image="img", startup_command="run")
+    db.session.add_all([kd, bp])
+    db.session.commit()
+    KD_ID, BP_ID = kd.id, bp.id
+    KD = {"X-User-Id": str(kd.id)}
+r = c.post("/api/admin/agents", json={"name": "cap1", "fqdn": "cap1.t.local", "memory_total": 8192, "disk_total": 100000, "cpu_total": 400, "memory_overalloc": 10}, headers=ADMIN)
+check("POST /api/admin/agents nimmt memory_total/disk_total/cpu_total (+ *_overalloc) an und gibt sie unter denselben Namen zurueck",
+      r.status_code == 201 and (r.json["memory_total"], r.json["disk_total"], r.json["cpu_total"], r.json["memory_overalloc"]) == (8192, 100000, 400, 10), str(r.json))
+CAP = r.json["id"]
+r = c.patch(f"/api/admin/agents/{CAP}", json={"memory_total": 16384, "disk_total": 200000}, headers=ADMIN)
+check("PATCH /api/admin/agents/<id> aendert die Kapazitaet", r.status_code == 200 and r.json["memory_total"] == 16384 and r.json["disk_total"] == 200000 and r.json["cpu_total"] == 400, str(r.json))
+lst = c.get("/api/admin/agents", headers=ADMIN).json
+check("GET /api/admin/agents (Liste) enthaelt die Felder", any(a["id"] == CAP and a["memory_total"] == 16384 for a in lst))
+check("negative Kapazitaet -> 400", c.patch(f"/api/admin/agents/{CAP}", json={"memory_total": -1}, headers=ADMIN).status_code == 400)
+check("Text statt Zahl -> 400", c.patch(f"/api/admin/agents/{CAP}", json={"disk_total": "viel"}, headers=ADMIN).status_code == 400)
+with app.app_context():
+    capsum = db.session.get(Agent, CAP).get_capacity_summary()
+check("Kapazitaets-Zusammenfassung (Fleet/Monitoring) nutzt memory_total_mb/disk_total_mb/cpu_total_percent", (capsum["memory_total_mb"], capsum["disk_total_mb"], capsum["cpu_total_percent"]) == (16384, 200000, 400), str(capsum))
+
+print("Endpoint-Zuweisung")
+r = c.post(f"/api/admin/agents/{CAP}/endpoints/bulk", json={"ip": "0.0.0.0", "port_start": 25565, "port_end": 25567}, headers=ADMIN)
+check("Endpoints anlegen (Bereich)", r.status_code == 201 and r.json["created"] == 3)
+r = c.post("/api/admin/instances", json={"name": "s1", "owner_id": KD_ID, "blueprint_id": BP_ID, "agent_id": CAP, "memory": 512, "disk": 1000, "cpu": 50}, headers=ADMIN)
+check("Instance ohne endpoint_id: primary_endpoint_id gesetzt (niedrigster freier Port)", r.status_code == 201 and r.json["primary_endpoint_id"] is not None, str(r.json))
+conn = r.json["connection"]
+check("connection = {host, ip, port, sftp_port, address} im POST-Ergebnis", conn == {"host": "cap1.t.local", "ip": "0.0.0.0", "port": 25565, "sftp_port": 2022, "address": "cap1.t.local:25565"}, str(conn))
+UUID = r.json["uuid"]
+one = c.get(f"/api/client/instances/{UUID}", headers=KD)
+check("GET /api/client/instances/<uuid>: primary_endpoint_id und connection", one.status_code == 200 and one.json["primary_endpoint_id"] == r.json["primary_endpoint_id"] and one.json["connection"] == conn, str(one.json.get("connection")))
+lst = c.get("/api/client/instances", headers=KD).json
+check("GET /api/client/instances (Liste): connection je Instance", lst and lst[0]["connection"] == conn)
+adm_list = c.get("/api/admin/instances", headers=ADMIN).json
+check("GET /api/admin/instances (Liste): connection und primary_endpoint_id", any(i["uuid"] == UUID and i["connection"] == conn and i["primary_endpoint_id"] for i in adm_list))
+r2 = c.post("/api/admin/instances", json={"name": "s2", "owner_id": KD_ID, "blueprint_id": BP_ID, "agent_id": CAP, "memory": 512, "disk": 1000, "cpu": 50}, headers=ADMIN)
+check("zweite Instance bekommt den naechsten freien Endpoint (25566)", r2.status_code == 201 and r2.json["connection"]["port"] == 25566, str(r2.json.get("connection")))
+
 print(f"\n{passed} OK, {failed} FAIL")
 sys.exit(1 if failed else 0)
