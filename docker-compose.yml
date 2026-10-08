@@ -13,7 +13,7 @@ services:
       POSTGRES_USER: astra
       POSTGRES_PASSWORD: astra
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"   # nur lokal, kein LAN-Zugriff auf die Dev-Datenbank
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -27,7 +27,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"   # nur lokal (Redis ohne Passwort)
     volumes:
       - redis_data:/data
     healthcheck:
@@ -42,7 +42,7 @@ services:
       context: ./backend
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"   # nur lokal; das Frontend-Image spricht das Backend intern an
     environment:
       APP_ENV: development
       FLASK_ENV: development
@@ -50,7 +50,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: dev-secret-key-docker
       JWT_SECRET_KEY: dev-jwt-secret-docker
-      RUNNER_ADAPTER: stub
+      RUNNER_ADAPTER: ${RUNNER_ADAPTER:-stub}   # fuer Tests gegen echtes Wings: RUNNER_ADAPTER=wings docker compose up
       AUTO_MIGRATE: "true"
     depends_on:
       postgres:
