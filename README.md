@@ -32,6 +32,14 @@ Backend, PostgreSQL und Redis sind nur auf `127.0.0.1` gebunden (die Dev-Zugangs
 
 Im Entwicklungs-Compose läuft das Backend mit `RUNNER_ADAPTER=stub` und `AUTO_MIGRATE=true`, es wird also kein echter Gameserver gestartet. Ein Agent meldet dann im Fleet Monitoring `daemon_version: "stub"` und wirkt `healthy`, obwohl Wings nie angesprochen wird. Für Tests gegen ein echtes Wings: `RUNNER_ADAPTER=wings docker compose up` und im Monitoring prüfen, dass `daemon_version` die Wings-Version zeigt.
 
+Läuft Wings auf einem anderen Rechner (Multi-Node-Test), muss das Panel unter seiner LAN-Adresse bekannt sein, sonst steht in der exportierten `config.yml` `remote: http://localhost:5000` und der Node erreicht das Panel nie; außerdem lehnt Wings die Konsole im Browser ab, wenn dessen Origin nicht zu `remote` bzw. `allowed_origins` passt. Dafür `BASE_URL` und `FRONTEND_URL` auf die Adresse setzen, unter der du das Panel im Browser öffnest (das Frontend-Nginx leitet `/api` ans Backend weiter), z. B.:
+
+```bash
+BASE_URL=http://192.168.1.7:3000 FRONTEND_URL=http://192.168.1.7:3000 RUNNER_ADAPTER=wings docker compose up
+```
+
+Danach die `config.yml` des Agents neu holen (`install-wings.sh` erneut ausführen) und Wings neu starten.
+
 Ohne Docker: Anleitung in [backend/README.md](backend/README.md) und [frontend/README.md](frontend/README.md).
 
 ## Produktion

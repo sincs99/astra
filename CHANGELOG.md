@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (Dev-Compose – Multi-Node-Tests)
+- `docker-compose.yml` reicht `BASE_URL`, `FRONTEND_URL` und `CORS_ORIGINS` aus der Umgebung durch (Standard wie bisher localhost). README erklaert, dass Wings auf einem anderen Host die LAN-Adresse des Panels braucht (`remote` und `allowed_origins` in der exportierten `config.yml`)
+
 ### Added (M82 – Endpoints aus der automatischen Vergabe nehmen)
 - Astra vergab den als V-Rising-Query-Port gedachten Endpoint 9877 automatisch an eine Paper-Instanz; es gab nur „gesperrt“, was auch die explizite Zuweisung verbietet. Neu: `endpoints.auto_assign` (Boolean, NOT NULL, Standard true; Migration `z6u7v8w9x0y1`, bestehende Endpoints bekommen true). Mit `false` wird ein Endpoint nur noch explizit vergeben (`endpoint_id` bei der Anlage, `POST /api/admin/instances/<uuid>/endpoints`); die automatische Vergabe (Anlage ohne `endpoint_id`, Platzierung `has_free_endpoint`, Transfer) und die Zahl `free` im Endpoint-Überblick des Monitorings zählen ihn nicht mehr (neu: `manual`). Gesperrte Endpoints bleiben überall 409/400. API: `POST /api/admin/agents/<id>/endpoints` und `.../endpoints/bulk` nehmen `auto_assign` (optional, Boolean, Standard true; sonst 400), `Endpoint.to_dict()` liefert `auto_assign`, neu `PATCH /api/admin/endpoints/<id>` mit `{auto_assign, is_locked}` (mindestens eines, Booleans; 200 mit dem Endpoint, 400, 404). Runbook: Query-Ports als „nur manuell“ anlegen
 
