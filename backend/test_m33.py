@@ -106,7 +106,7 @@ with app.app_context():
         docker_image="ghcr.io/pterodactyl/yolks:java_21",
         startup_command="java -Xmx{{SERVER_MEMORY}}M -jar server.jar",
         install_script="#!/bin/bash\necho install",
-        install_container="ghcr.io/pterodactyl/installers:debian",
+        install_container="ghcr.io/parkervcp/installers:debian",
         install_entrypoint="bash",
         variables=[
             {"name": "Version", "env_var": "MC_VERSION", "default_value": "latest",
@@ -285,7 +285,7 @@ check("Details fremder Server mit richtigem Agent -> 200", resp.status_code == 2
 resp = client.get(f"/api/remote/servers/{_inst_uuid}/install", headers=NODE_AUTH)
 inst_body = resp.get_json()
 check("Install GET -> 200", resp.status_code == 200)
-check("Install: container_image", inst_body["container_image"] == "ghcr.io/pterodactyl/installers:debian")
+check("Install: container_image", inst_body["container_image"] == "ghcr.io/parkervcp/installers:debian")
 check("Install: entrypoint", inst_body["entrypoint"] == "bash")
 check("Install: script", inst_body["script"].startswith("#!/bin/bash"))
 
@@ -422,9 +422,9 @@ with app.app_context():
     b.install_entrypoint = None
     db.session.commit()
     payload = build_install_payload(i)
-    check("Install-Defaults: container", payload["container_image"] == "ghcr.io/pterodactyl/installers:debian")
+    check("Install-Defaults: container", payload["container_image"] == "ghcr.io/parkervcp/installers:debian")
     check("Install-Defaults: entrypoint", payload["entrypoint"] == "bash")
-    b.install_container = "ghcr.io/pterodactyl/installers:debian"
+    b.install_container = "ghcr.io/parkervcp/installers:debian"
     b.install_entrypoint = "bash"
     db.session.commit()
 

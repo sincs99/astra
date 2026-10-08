@@ -214,9 +214,11 @@ Die Egg-Sammlung `parkervcp/eggs` ist nach [`pelican-eggs/eggs`](https://github.
 
 Wer den Blueprint von Hand anlegen will, braucht mindestens: Docker-Image
 `ghcr.io/pterodactyl/yolks:java_25` (für Paper 26.x, für Versionen bis 1.21 `java_21`), Startup-Befehl mit `{{SERVER_JARFILE}}`, Install-Container
-`ghcr.io/pterodactyl/installers:debian`, Stop-Befehl `stop`, Startup-Erkennung `)! For help, type `
+`ghcr.io/parkervcp/installers:debian`, Stop-Befehl `stop`, Startup-Erkennung `)! For help, type `
 und ein Install-Script, das die Paper-Jar nach `/mnt/server` lädt (ohne `eula.txt`).
 Details zu den Feldern: `docs/wings-remote-api.md`.
+
+**Bestehende Blueprints umstellen:** Der Standard für das Install-Image ist seit M82 `ghcr.io/parkervcp/installers:debian` (Debian 12). Das frühere `ghcr.io/pterodactyl/installers:debian` ist Debian 11, dort scheitert `apt-get install jq unzip` mit 404 aus `debian-security`. Blueprints in der Datenbank behalten ihren gespeicherten Wert. Umstellen geht mit `docker compose exec backend python cli.py update-install-container --dry-run` (zeigt die betroffenen Blueprints) und danach ohne `--dry-run`; es ändert nur Blueprints, die genau das alte Image gespeichert haben. Einzeln: `PATCH /api/admin/blueprints/<id>` mit `{"install_container": "ghcr.io/parkervcp/installers:debian"}` oder im Blueprint-Formular.
 
 Dann unter **Admin → Instances** eine Instanz anlegen: Blueprint Paper, Agent node1, 2048 MB RAM, 5120 MB Disk, Endpoint 25565. Ablauf, den du beobachten kannst:
 

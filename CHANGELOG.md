@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed (M82 – zweite Pilot-Liste)
+- **Install-Image:** `ghcr.io/pterodactyl/installers:debian` ist Debian 11; `apt-get install jq unzip` scheitert dort mit 404 aus `debian-security`, jede neue Paper-Instanz brach ab. Standard jetzt `ghcr.io/parkervcp/installers:debian` (Debian 12): Paper-Blueprint, `DEFAULT_INSTALL_CONTAINER`, Fallback im Config-Builder, Doku. **Bestehende Blueprints in der DB behalten ihren gespeicherten `install_container`** (Blueprints ohne gespeicherten Wert nutzen sofort den neuen Standard). Umstellen: `python cli.py update-install-container [--dry-run]` (nur Blueprints mit genau dem alten Image; `--from`/`--to` für andere Images) oder `PATCH /api/admin/blueprints/<id>` mit `install_container`
+
 ### Docs (M80)
 - Runbook: Egg-Quellen (`parkervcp/eggs` ist nach `pelican-eggs/eggs` umgezogen, alte URLs leiten weiter; SteamCMD-Eggs wie V Rising importieren ohne Anpassung, Beispielpfad und Image) und der Hinweis, die Agent-Kapazität gleich beim Anlegen anzugeben, weil `capacity_problem` Limit 0 bewusst überspringt (ohne Kapazität keine Platzierungsprüfung)
 

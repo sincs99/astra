@@ -102,7 +102,7 @@ Kommt aus den neuen Blueprint-Feldern (M33):
 | `config_stop` | `stop` | `"stop"` → `{"type": "command", "value": "stop"}`; `"^SIGTERM"` → `{"type": "signal", "value": "SIGTERM"}` |
 | `config_files` | `configs[]` | `{"server.properties": {"parser": "properties", "find": {"server-port": "{{server.build.default.port}}"}}}` |
 | `file_denylist` | `settings.egg.file_denylist` | `["*.jar"]` |
-| `install_container` | `container_image` (Install) | `ghcr.io/pterodactyl/installers:debian` |
+| `install_container` | `container_image` (Install) | `ghcr.io/parkervcp/installers:debian` |
 | `install_entrypoint` | `entrypoint` (Install) | `bash` |
 
 Platzhalter in `config_files` werden wie im Referenz-Panel ersetzt:

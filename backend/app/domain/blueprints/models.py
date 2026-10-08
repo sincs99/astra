@@ -24,7 +24,8 @@ from app.extensions import db
 from datetime import datetime, timezone
 from app.utils.timeutil import iso_utc
 
-DEFAULT_INSTALL_CONTAINER = "ghcr.io/pterodactyl/installers:debian"
+DEFAULT_INSTALL_CONTAINER = "ghcr.io/parkervcp/installers:debian"  # M82: Debian 12 (das pterodactyl-Image ist Debian 11, apt scheitert)
+LEGACY_INSTALL_CONTAINER = "ghcr.io/pterodactyl/installers:debian"
 DEFAULT_INSTALL_ENTRYPOINT = "bash"
 DEFAULT_CONFIG_STOP = "stop"
 
