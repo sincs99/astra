@@ -24,6 +24,7 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 ### Fixed (Frontend – M79 Pilot-Fehler)
 - Agent anlegen: "Arbeitsspeicher gesamt (MB)" und "Festplatte gesamt (MB)" sind beim Anlegen Pflicht (> 0, leeres Feld mit Platzhalter, Hinweistext zu Kapazitaetsplanung und Auslastungsanzeige); beim Bearbeiten bleibt 0 erlaubt, wird aber als "noch nicht hinterlegt" gekennzeichnet. Monitoring und Uebersicht zeigen bei fehlender Kapazitaet "Kapazitaet nicht hinterlegt" (Uebersicht mit Link "Kapazitaet eintragen") statt "0 %"; CPU bleibt "kein Limit"
 - Serveradresse: Kunden-Detailseite beschriftet die Verbindungsadresse als "Serveradresse" (mit Kopierknopf); die Admin-Instanzliste zeigt die oeffentliche Adresse (Host:Port aus `connection`), auch wenn der Endpoint automatisch gewaehlt wurde, mit der Endpoint-Bind-IP darunter
+- M79b: Standard fuer das Datenverzeichnis neuer Agents ist `/var/lib/astra/volumes` (das Backend behandelt `/var/lib/pterodactyl`/`/var/lib/pelican` als Bestandsnodes mit alten Namen; andere Pfade erhalten die White-Label-Konfiguration); Hinweistext der Konfigurationsdatei nennt `/etc/astra/config.yml`
 
 ### Added (Frontend – `npm run test:slow`)
 - `npm run test:slow` fuehrt die Suite mit verzoegert aufloesenden Mocks aus (`vitest --mode slow`, `src/test/delay.setup.ts`, Verzoegerung ueber `TEST_MOCK_DELAY_MS`, Standard 30 ms), um Ladephasen-Rennen zu finden; `npm test` bleibt unveraendert. Doku in `frontend/README.md` und `docs/ui-conventions.md`
