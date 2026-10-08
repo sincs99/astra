@@ -36,6 +36,15 @@ describe("toAgentPayload", () => {
       .toMatchObject({ memory_total: 16384, disk_total: 500000, cpu_total: 800, memory_overalloc: 50, cpu_overalloc: 100 });
   });
 
+  it("verlangt beim Anlegen Arbeitsspeicher und Festplatte größer als 0, CPU bleibt optional", () => {
+    const create = { requireCapacity: true };
+    expect(toAgentPayload(valid, create)).toMatch(/Memory gesamt muss größer als 0/);
+    expect(toAgentPayload({ ...valid, memoryTotal: "8192" }, create)).toMatch(/Disk gesamt muss größer als 0/);
+    expect(toAgentPayload({ ...valid, memoryTotal: "8192", diskTotal: "100000" }, create)).toMatchObject({ memory_total: 8192, disk_total: 100000, cpu_total: 0 });
+    // Beim Bearbeiten bleibt 0 erlaubt (ältere Agents ohne hinterlegte Kapazität)
+    expect(toAgentPayload(valid)).toMatchObject({ memory_total: 0, disk_total: 0 });
+  });
+
   it("lehnt ungueltige Kapazitaetswerte mit Meldung ab", () => {
     expect(toAgentPayload({ ...valid, memoryTotal: "-1" })).toMatch(/Memory gesamt/);
     expect(toAgentPayload({ ...valid, diskTotal: "1.5" })).toMatch(/Disk gesamt/);
@@ -47,7 +56,7 @@ describe("toAgentPayload", () => {
 
   it("nutzt Defaults für leeres Datenverzeichnis und ungueltige Upload-Groesse", () => {
     const payload = toAgentPayload({ ...valid, base: "  ", uploadSize: "-5" });
-    expect(payload).toMatchObject({ daemon_base: "/var/lib/pterodactyl/volumes", upload_size: 100 });
+    expect(payload).toMatchObject({ daemon_base: "/var/lib/astra/volumes", upload_size: 100 });
   });
 });
 

@@ -5,6 +5,7 @@ Alle kritischen Betriebsparameter sind ueber Umgebungsvariablen konfigurierbar.
 In Produktion wird bei fehlenden Secrets ein Fehler erzeugt.
 """
 
+import ipaddress
 import os
 import warnings
 from dotenv import load_dotenv
@@ -137,6 +138,9 @@ class Config:
     INVOICE_SELLER_VAT_ID = os.getenv("INVOICE_SELLER_VAT_ID", "").strip()
     # M74: Land des Betreibers ("DE"|"CH"): Standardhinweis, Beschriftung (USt/MWST) und Betragsformat (CHF) der Rechnung.
     # INVOICE_SMALL_BUSINESS_NOTE leer = landesueblicher Standardtext; ein gesetzter Text gilt in beiden Sprachen.
+    # M78: Docker-Netz fuer Wings (Konfig-Export). Der Wings-Standard 172.18.0.0/16 kollidiert mit dem Netz von
+    # docker compose, wenn Panel und Wings auf demselben Host laufen. Gateway = erste Adresse des Subnetzes.
+    WINGS_DOCKER_SUBNET = (os.getenv("WINGS_DOCKER_SUBNET") or "172.30.0.0/16").strip()
     INVOICE_COUNTRY = (os.getenv("INVOICE_COUNTRY") or "DE").strip().upper()
     INVOICE_SMALL_BUSINESS_NOTE = os.getenv("INVOICE_SMALL_BUSINESS_NOTE", "").replace("\\n", "\n").strip()
     # M46: Erinnerungsmail so viele Tage vor Laufzeitende (0 = keine Erinnerung)
@@ -213,6 +217,16 @@ class Config:
                 f"WARNUNG: CAPTCHA_PROVIDER={cls.CAPTCHA_PROVIDER}, aber CAPTCHA_SITE_KEY und/oder CAPTCHA_SECRET fehlen: "
                 "Registrierung und Passwort-Reset sind dann nicht nutzbar (503 captcha_unavailable)."
             )
+
+        try:
+            net = ipaddress.IPv4Network(cls.WINGS_DOCKER_SUBNET, strict=True)
+            if not 8 <= net.prefixlen <= 24:
+                raise ValueError("Praefixlaenge muss zwischen /8 und /24 liegen")
+            for taken in ("172.17.0.0/16", "172.18.0.0/16"):
+                if net.overlaps(ipaddress.IPv4Network(taken)):
+                    issues.append(f"WARNUNG: WINGS_DOCKER_SUBNET {net} ueberlappt {taken} (Docker-/Compose-Standardnetz).")
+        except ValueError as e:
+            issues.append(f"KRITISCH: WINGS_DOCKER_SUBNET ist ungueltig: {e}")
 
         if len(cls.SITE_NAME) > 60 or any(ord(ch) < 32 for ch in cls.SITE_NAME):
             issues.append("KRITISCH: SITE_NAME ist zu lang (max. 60 Zeichen) oder enthaelt Steuerzeichen.")

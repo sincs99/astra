@@ -195,6 +195,7 @@ in der Agents-Ansicht. Details: `docs/wings-remote-api.md`.
 | `ADMIN_ALERT_RECOVERY` | Einmalige Entwarnung, wenn die Störung behoben ist | true |
 | `INVOICE_NUMBER_FORMAT` | Format der Belegnummer (`{year}`, `{seq}`), nach dem Start nicht mehr ändern | `AST-{year}-{seq:05d}` |
 | `INVOICE_SELLER` / `RECEIPT_FOOTER` | Anbieter-Kopf (Name, Anschrift) und Fußzeile der Rechnungen (`\n` = Zeilenumbruch) | – |
+| `WINGS_DOCKER_SUBNET` | Docker-Netz, das der Konfig-Export (`GET /api/admin/agents/<id>/configuration`) für Wings setzt: `docker.network.interfaces.v4.subnet`, Gateway = erste Adresse. Vermeidet den Konflikt mit dem Compose-Netz (172.18.0.0/16) auf demselben Host; IPv4, /8 bis /24 | 172.30.0.0/16 |
 | `INVOICE_COUNTRY` | Land des Betreibers `DE` oder `CH` (M74): Standardhinweis, Beschriftung USt/MWST, CHF-Format; unbekannter Wert ist im Produktions-Check KRITISCH | DE |
 | `VAT_RATE` | Umsatzsteuersatz in Prozent auf Rechnungen (Preise sind Brutto), `0` = Kleinunternehmer | 0 |
 | `INVOICE_SELLER_VAT_ID` | USt-IdNr. bzw. in der Schweiz MWST-Nr. des Anbieters (optional, wird nur gedruckt, nicht geprüft) | – |

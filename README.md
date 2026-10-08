@@ -25,10 +25,12 @@ docker compose up --build
 |---|---|
 | Frontend | http://localhost:3000 |
 | Backend | http://localhost:5000 |
-| PostgreSQL | localhost:5432 |
-| Redis | localhost:6379 |
+| PostgreSQL | 127.0.0.1:5432 |
+| Redis | 127.0.0.1:6379 |
 
-Im Entwicklungs-Compose läuft das Backend mit `RUNNER_ADAPTER=stub` und `AUTO_MIGRATE=true`, es wird also kein echter Gameserver gestartet.
+Backend, PostgreSQL und Redis sind nur auf `127.0.0.1` gebunden (die Dev-Zugangsdaten sind öffentlich bekannt, Redis hat kein Passwort). Wer sie aus dem LAN erreichen will, setzt die Ports in einer `docker-compose.override.yml` um.
+
+Im Entwicklungs-Compose läuft das Backend mit `RUNNER_ADAPTER=stub` und `AUTO_MIGRATE=true`, es wird also kein echter Gameserver gestartet. Ein Agent meldet dann im Fleet Monitoring `daemon_version: "stub"` und wirkt `healthy`, obwohl Wings nie angesprochen wird. Für Tests gegen ein echtes Wings: `RUNNER_ADAPTER=wings docker compose up` und im Monitoring prüfen, dass `daemon_version` die Wings-Version zeigt.
 
 Ohne Docker: Anleitung in [backend/README.md](backend/README.md) und [frontend/README.md](frontend/README.md).
 

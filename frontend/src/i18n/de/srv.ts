@@ -56,4 +56,5 @@ export const srv = {
   "srv.suspendedDelete": "Gesperrt, bitte Support kontaktieren.",
   "srv.deleteBtn": "Server löschen…",
   "srv.deleted": "Server \"{name}\" wurde gelöscht.",
+  "srv.serverAddress": "Serveradresse",
 } as const;

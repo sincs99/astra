@@ -35,7 +35,7 @@ class Agent(db.Model):
     daemon_connect = db.Column(db.Integer, default=8080)
     daemon_listen = db.Column(db.Integer, default=8080)
     daemon_sftp = db.Column(db.Integer, default=2022)          # M33: SFTP-Port von Wings
-    daemon_base = db.Column(db.String(255), default="/var/lib/pterodactyl/volumes")  # M33: Daten-Verzeichnis
+    daemon_base = db.Column(db.String(255), default="/var/lib/astra/volumes")  # M33: Daten-Verzeichnis (M78: neu astra, alt pterodactyl)
     upload_size = db.Column(db.Integer, default=256)           # M33: Upload-Limit in MB
     # Node-Credentials: Wings authentifiziert sich am Panel mit "Bearer {token_id}.{token}"
     daemon_token_id = db.Column(db.String(16), nullable=True)
@@ -85,13 +85,39 @@ class Agent(db.Model):
     def has_daemon_credentials(self) -> bool:
         return bool(self.daemon_token_id and self.daemon_token)
 
+    @staticmethod
+    def wings_docker_network() -> tuple[str, str]:
+        """(Subnetz, Gateway) fuer das Docker-Netz von Wings (M78): WINGS_DOCKER_SUBNET, Gateway = erste Hostadresse."""
+        import ipaddress
+        from flask import current_app, has_app_context
+        raw = (current_app.config.get("WINGS_DOCKER_SUBNET") if has_app_context() else None) or "172.30.0.0/16"
+        try:
+            net = ipaddress.IPv4Network(str(raw).strip(), strict=True)
+        except ValueError:
+            net = ipaddress.IPv4Network("172.30.0.0/16")
+        return str(net), str(net.network_address + 1)
+
+    DEFAULT_DAEMON_BASE = "/var/lib/astra/volumes"
+
+    def wings_brand(self) -> str:
+        """Namensraum der Wings-Pfade, Benutzer und Netze (M78 White-Label): "astra" fuer neue Nodes. Nodes mit
+        Datenverzeichnis unter /var/lib/pterodactyl oder /var/lib/pelican behalten ihre bisherigen Namen, damit bestehende
+        Installationen (Backups, Archive, Docker-Netz) bei einem erneuten Export nicht auseinanderlaufen."""
+        import re
+        m = re.match(r"^/var/lib/(pterodactyl|pelican)(/|$)", self.daemon_base or "")
+        return m.group(1) if m else "astra"
+
     def get_wings_configuration(self, remote_url: str) -> dict:
-        """Erzeugt die Wings-Konfiguration (Inhalt von /etc/pterodactyl/config.yml).
+        """Erzeugt die Wings-Konfiguration (Inhalt von /etc/astra/config.yml).
 
         Format entspricht Node::getConfiguration() im Referenz-Panel.
         """
         fqdn = (self.fqdn or "").lower()
         scheme = self.scheme or "https"
+        subnet, gateway = self.wings_docker_network()
+        brand = self.wings_brand()
+        root = f"/var/lib/{brand}"
+        network_name = f"{brand}_nw"
         return {
             "debug": False,
             "uuid": self.uuid,
@@ -108,9 +134,24 @@ class Agent(db.Model):
                 "upload_limit": self.upload_size or 256,
             },
             "system": {
-                "data": self.daemon_base or "/var/lib/pterodactyl/volumes",
+                "root_directory": root,
+                "log_directory": f"/var/log/{brand}",
+                "data": self.daemon_base or self.DEFAULT_DAEMON_BASE,
+                "archive_directory": f"{root}/archives",
+                "backup_directory": f"{root}/backups",
+                "tmp_directory": f"/tmp/{brand}",
+                "username": brand,
                 "sftp": {
                     "bind_port": self.daemon_sftp or 2022,
+                },
+            },
+            # M78: eigenes Docker-Netz, damit Wings nicht mit dem Netz von docker compose (172.18.0.0/16) kollidiert
+            "docker": {
+                "network": {
+                    "interface": gateway,
+                    "name": network_name,
+                    "network_mode": network_name,
+                    "interfaces": {"v4": {"subnet": subnet, "gateway": gateway}},
                 },
             },
             "allowed_mounts": [],

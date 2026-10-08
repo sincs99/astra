@@ -1,0 +1,2 @@
+# Shell-Skripte immer mit LF-Zeilenenden auschecken (Linux-Container, Windows-Klone)
+*.sh text eol=lf

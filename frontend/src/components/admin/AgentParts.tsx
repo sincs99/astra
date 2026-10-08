@@ -23,14 +23,19 @@ function fmt(value: number, unit: string): string {
 }
 
 /** Auslastungsbalken (.bar): ab 80 % --warn, über 100 % --danger; ohne Kapazität "kein Limit". */
-export function LoadBar({ label, used, total, percent, unit, showLabel = false }: {
+export function LoadBar({ label, used, total, percent, unit, showLabel = false, capacityRequired = false }: {
   label: string; used: number; total: number; percent: number; unit: string; showLabel?: boolean;
+  /** Memory/Disk brauchen eine hinterlegte Kapazität: bei 0 steht ein klarer Hinweis statt "0 %" ("kein Limit" gilt nur für CPU) */
+  capacityRequired?: boolean;
 }) {
   if (total <= 0) {
+    const text = capacityRequired
+      ? (used > 0 ? t("aagents.capacityMissingUsed", { used: fmt(used, unit) }) : t("aagents.capacityMissing"))
+      : (used > 0 ? t("aagents.noLimitUsed", { used: fmt(used, unit) }) : t("aagents.noLimit"));
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 120 }}>
         {showLabel && <span className="hint">{label}</span>}
-        <span className="hint">{used > 0 ? t("aagents.noLimitUsed", { used: fmt(used, unit) }) : t("aagents.noLimit")}</span>
+        <span className={capacityRequired ? "hint text-warn" : "hint"}>{text}</span>
       </div>
     );
   }

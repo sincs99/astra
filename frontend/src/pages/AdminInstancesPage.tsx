@@ -249,7 +249,11 @@ export function AdminInstancesPage() {
                           <td data-label={col.status}><StatusBadge status={inst.status ?? "ready"} size="sm" /></td>
                           <td data-label={col.owner}>{owner?.username ?? t("ainst.none")}</td>
                           <td data-label={col.agent}>{agent?.name ?? t("ainst.none")}</td>
-                          <td data-label={col.endpoint}><span className="mono">{ep ? `${ep.ip}:${ep.port}` : t("ainst.none")}</span></td>
+                          <td data-label={col.endpoint}>
+                            {/* Öffentliche Verbindungsadresse (Host:Port), auch wenn der Endpoint automatisch gewählt wurde; die Endpoint-Liste zeigt nur die Bind-IP */}
+                            <span className="mono">{inst.connection?.address ?? (ep ? `${ep.ip}:${ep.port}` : t("ainst.none"))}</span>
+                            {inst.connection?.address && ep && <div className="hint mono">{`${ep.ip}:${ep.port}`}</div>}
+                          </td>
                           <td data-label={col.resources}>
                             <span className="mono hint">{inst.memory} MB / {inst.disk} MB / {inst.cpu}%</span>
                           </td>
