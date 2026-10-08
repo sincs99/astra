@@ -219,5 +219,84 @@ if os.geteuid() == 0:
                            env={"PATH": bindir}, capture_output=True, text=True)
         check("ohne Docker und ohne Flag: Abbruch mit Hinweis, nichts installiert", r.returncode != 0 and "Docker fehlt" in r.stderr and "--install-docker" in r.stderr and "get.docker.com" not in r.stdout, r.stdout + r.stderr)
 
+# ── Docker-Netz (M78): Konfig-Export und Ueberlappungs-Warnung ──
+print("Docker-Netz")
+import ipaddress
+import yaml as _yaml
+from app import create_app
+from app.extensions import db
+from app.domain.agents.models import Agent
+from app.domain.users.models import User
+
+app = create_app("testing")
+with app.app_context():
+    db.create_all()
+    adm = User(username="adm", email="adm@t.local", is_admin=True)
+    adm.set_password("test1234")
+    db.session.add(adm)
+    db.session.commit()
+    ADMIN = {"X-User-Id": str(adm.id)}
+c = app.test_client()
+
+
+def agent_config(**fields):
+    r = c.post("/api/admin/agents", json={"name": f"n{abs(hash(str(fields)))}", "fqdn": f"n{abs(hash(str(fields)))}.t.local", **fields}, headers=ADMIN)
+    assert r.status_code == 201, r.get_data(as_text=True)
+    cfg = c.get(f"/api/admin/agents/{r.json['id']}/configuration", headers=ADMIN).json
+    return cfg["config"], cfg["yaml"]
+
+
+cfg, yml = agent_config()
+v4 = cfg["docker"]["network"]["interfaces"]["v4"]
+check("Export: Subnetz 172.30.0.0/16, Gateway 172.30.0.1", v4 == {"subnet": "172.30.0.0/16", "gateway": "172.30.0.1"}, str(cfg["docker"]))
+check("Export: docker.network.interface = Gateway-Adresse (Wings erwartet hier eine IP)", cfg["docker"]["network"]["interface"] == "172.30.0.1")
+check("Export: YAML identisch zur Config und ohne 172.18", _yaml.safe_load(yml) == cfg and "172.18" not in yml)
+app.config["WINGS_DOCKER_SUBNET"] = "10.77.0.0/20"
+cfg, _ = agent_config(daemon_listen=8081)
+check("WINGS_DOCKER_SUBNET aenderbar, Gateway = erste Hostadresse", cfg["docker"]["network"]["interfaces"]["v4"] == {"subnet": "10.77.0.0/20", "gateway": "10.77.0.1"})
+app.config["WINGS_DOCKER_SUBNET"] = "kaputt"
+cfg, _ = agent_config(daemon_listen=8082)
+check("ungueltiger Wert im laufenden Betrieb: Rueckfall auf 172.30.0.0/16", cfg["docker"]["network"]["interfaces"]["v4"]["subnet"] == "172.30.0.0/16")
+app.config["WINGS_DOCKER_SUBNET"] = "172.30.0.0/16"
+
+from app.config import ProductionConfig
+mk = lambda **kw: type("C", (ProductionConfig,), kw)
+iss = lambda **kw: [i for i in mk(**kw).validate_production() if "WINGS_DOCKER_SUBNET" in i]
+check("Produktions-Check: Standard ok", ProductionConfig.WINGS_DOCKER_SUBNET == "172.30.0.0/16" and not iss())
+check("Produktions-Check: ungueltig (kein Netz, Host-Bits, IPv6, /32, /4) ist KRITISCH",
+      all(len(iss(WINGS_DOCKER_SUBNET=v)) == 1 and iss(WINGS_DOCKER_SUBNET=v)[0].startswith("KRITISCH") for v in ("abc", "172.30.0.5/16", "fd00::/64", "172.30.0.1/32", "10.0.0.0/4")))
+check("Produktions-Check: 172.18.0.0/16 und 172.17.0.0/16 sind eine WARNUNG", all(iss(WINGS_DOCKER_SUBNET=v)[0].startswith("WARNUNG") for v in ("172.18.0.0/16", "172.17.0.0/20")))
+
+# Ueberlappungs-Pruefung des Installers mit einem Fake-docker
+nc = re.search(r"# NETCHECK_BEGIN\nread -r -d '' NETCHECK <<'PY' \|\| true\n(.*?)\nPY\n# NETCHECK_END", WINGS_SH, re.S)
+check("Ueberlappungs-Pruefung im Installer vorhanden", nc is not None)
+if nc:
+    def netcheck(config_yml, networks):
+        with tempfile.TemporaryDirectory() as td:
+            bindir = os.path.join(td, "bin")
+            os.makedirs(bindir)
+            nets = [{"Name": n, "Id": f"id{i}", "IPAM": {"Config": [{"Subnet": sn} for sn in subs]}} for i, (n, subs) in enumerate(networks)]
+            open(os.path.join(td, "nets.json"), "w").write(json.dumps(nets))
+            open(os.path.join(bindir, "docker"), "w").write("#!/bin/bash\nif [ \"$2\" = ls ]; then for i in $(seq 0 %d); do echo id$i; done; else cat %s/nets.json; fi\n" % (max(len(nets) - 1, 0), td))
+            os.chmod(os.path.join(bindir, "docker"), 0o755)
+            cfgf = os.path.join(td, "config.yml")
+            open(cfgf, "w").write(config_yml)
+            r = subprocess.run([sys.executable, "-c", nc.group(1), cfgf], env={**os.environ, "PATH": bindir + os.pathsep + os.environ["PATH"]}, capture_output=True, text=True)
+            return r.returncode, [ln.split("|") for ln in r.stdout.splitlines()]
+    base = "docker:\n  network:\n    name: %s\n    interfaces:\n      v4:\n        subnet: %s\n        gateway: %s\n"
+    compose = [("astra_default", ["172.18.0.0/16"]), ("bridge", ["172.17.0.0/16"]), ("host", [])]
+    rc, hits = netcheck(base % ("pterodactyl_nw", "172.18.0.0/16", "172.18.0.1"), compose)
+    check("Pilot-Fall: 172.18.0.0/16 ueberlappt astra_default -> Warnung", rc == 0 and hits == [["172.18.0.0/16", "astra_default", "172.18.0.0/16"]], str(hits))
+    rc, hits = netcheck(base % ("pterodactyl_nw", "172.30.0.0/16", "172.30.0.1"), compose)
+    check("172.30.0.0/16 ist frei -> keine Warnung", rc == 0 and hits == [], str(hits))
+    rc, hits = netcheck(base % ("pterodactyl_nw", "172.18.0.0/16", "172.18.0.1"), [("pterodactyl_nw", ["172.18.0.0/16"])])
+    check("das eigene Wings-Netz zaehlt nicht als Konflikt", rc == 0 and hits == [], str(hits))
+    rc, hits = netcheck(base % ("astra_nw", "172.30.5.0/24", "172.30.5.1"), [("andere", ["172.30.0.0/16"])])
+    check("kleineres Subnetz innerhalb eines groesseren Netzes -> Warnung", rc == 0 and len(hits) == 1 and hits[0][1] == "andere", str(hits))
+    rc, hits = netcheck("debug: false\n", compose)
+    check("config.yml ohne Subnetz: keine Ausgabe, kein Fehler", rc == 0 and hits == [])
+    rc, hits = netcheck(base % ("x", "172.18.0.0/16", "172.18.0.1"), [("v6", ["fd00::/64"]), ("kaputt", ["nicht-ip"])])
+    check("IPv6- und kaputte Eintraege stoeren nicht", rc == 0 and hits == [], str(hits))
+
 print(f"\n{passed} OK, {failed} FAIL")
 sys.exit(1 if failed else 0)

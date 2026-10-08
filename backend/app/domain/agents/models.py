@@ -85,6 +85,18 @@ class Agent(db.Model):
     def has_daemon_credentials(self) -> bool:
         return bool(self.daemon_token_id and self.daemon_token)
 
+    @staticmethod
+    def wings_docker_network() -> tuple[str, str]:
+        """(Subnetz, Gateway) fuer das Docker-Netz von Wings (M78): WINGS_DOCKER_SUBNET, Gateway = erste Hostadresse."""
+        import ipaddress
+        from flask import current_app, has_app_context
+        raw = (current_app.config.get("WINGS_DOCKER_SUBNET") if has_app_context() else None) or "172.30.0.0/16"
+        try:
+            net = ipaddress.IPv4Network(str(raw).strip(), strict=True)
+        except ValueError:
+            net = ipaddress.IPv4Network("172.30.0.0/16")
+        return str(net), str(net.network_address + 1)
+
     def get_wings_configuration(self, remote_url: str) -> dict:
         """Erzeugt die Wings-Konfiguration (Inhalt von /etc/pterodactyl/config.yml).
 
@@ -92,6 +104,7 @@ class Agent(db.Model):
         """
         fqdn = (self.fqdn or "").lower()
         scheme = self.scheme or "https"
+        subnet, gateway = self.wings_docker_network()
         return {
             "debug": False,
             "uuid": self.uuid,
@@ -111,6 +124,13 @@ class Agent(db.Model):
                 "data": self.daemon_base or "/var/lib/pterodactyl/volumes",
                 "sftp": {
                     "bind_port": self.daemon_sftp or 2022,
+                },
+            },
+            # M78: eigenes Docker-Netz, damit Wings nicht mit dem Netz von docker compose (172.18.0.0/16) kollidiert
+            "docker": {
+                "network": {
+                    "interface": gateway,
+                    "interfaces": {"v4": {"subnet": subnet, "gateway": gateway}},
                 },
             },
             "allowed_mounts": [],

@@ -170,7 +170,10 @@ sudo ./scripts/install-wings.sh --panel https://panel.deinedomain.de --agent-id 
 
 Das Skript installiert Wings, holt die `config.yml` direkt aus dem Panel (Node-Token, `remote`, Ports), legt den systemd-Dienst an und startet ihn. Für Pelican-Wings `--pelican` anhängen.
 
-Das Skript ändert nichts still am System: **Docker** installiert es nur mit `--install-docker` (sonst bricht es mit einem Hinweis ab, wenn Docker fehlt), die **GRUB-Option `swapaccount=1`** setzt es nur mit `--grub-swapaccount` (nur auf Systemen mit cgroup v1 nötig, auf Ubuntu 22.04+ nicht; wirkt nach einem Reboot). `--no-docker` ist veraltet und ohne Wirkung. Auf einem frischen Server also: `sudo ./scripts/install-wings.sh --install-docker --panel ... --agent-id 1 --token "$TOKEN"`.
+Das Skript ändert nichts still am System: **Docker** installiert es nur mit `--install-docker` (sonst bricht es mit einem Hinweis ab, wenn Docker fehlt), die **GRUB-Option `swapaccount=1`** setzt es nur mit `--grub-swapaccount` (nur auf Systemen mit cgroup v1 nötig, auf Ubuntu 22.04+ nicht; wirkt nach einem Reboot). `--no-docker` ist veraltet und ohne Wirkung. 
+**Panel und Wings auf demselben Host:** Docker Compose legt für das Panel ein eigenes Netz an (`astra_default`, meist `172.18.0.0/16`), und `172.18.0.0/16` ist zugleich der Standard von Wings. Dann bricht Wings mit „Pool overlaps with other one on this address space“ ab. Astra vermeidet das: der Konfig-Export setzt für Wings ein eigenes Docker-Netz (`docker.network.interfaces.v4` auf `172.30.0.0/16`, Gateway `172.30.0.1`; änderbar über `WINGS_DOCKER_SUBNET` in der `.env` des Panels). Das Installationsskript vergleicht das Subnetz aus der `config.yml` mit den vorhandenen Docker-Netzen (`docker network ls/inspect`) und warnt bei einer Überlappung. Ist Wings schon mit dem alten Netz gescheitert: Skript erneut ausführen (holt die neue `config.yml`) und das angelegte, leere Netz `pterodactyl_nw` mit `docker network rm pterodactyl_nw` entfernen.
+
+Auf einem frischen Server also: `sudo ./scripts/install-wings.sh --install-docker --panel ... --agent-id 1 --token "$TOKEN"`.
 
 Prüfen:
 

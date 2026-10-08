@@ -127,6 +127,46 @@ else
 fi
 chmod 600 "$CONF_DIR/config.yml"
 
+# ── Docker-Netz: Ueberlappung mit bestehenden Netzen erkennen (M78) ──
+# Wings legt sein Netz mit dem Subnetz aus der config.yml an. Ueberlappt es mit einem anderen Docker-Netz
+# (z.B. dem von docker compose, 172.18.0.0/16), stirbt Wings mit "Pool overlaps with other one on this address space".
+# NETCHECK_BEGIN
+read -r -d '' NETCHECK <<'PY' || true
+import ipaddress, json, re, subprocess, sys
+cfg = open(sys.argv[1]).read()
+m = re.search(r"^\s*subnet:\s*([0-9.]+/[0-9]+)", cfg, re.M)
+if not m:
+    sys.exit(0)
+mine = ipaddress.ip_network(m.group(1), strict=False)
+n = re.search(r"^\s+name:\s*(\S+)", cfg, re.M)
+own = n.group(1) if n else "pterodactyl_nw"
+try:
+    ids = subprocess.run(["docker", "network", "ls", "-q"], capture_output=True, text=True, check=True).stdout.split()
+    nets = json.loads(subprocess.run(["docker", "network", "inspect"] + ids, capture_output=True, text=True, check=True).stdout) if ids else []
+except Exception:
+    sys.exit(0)
+for net in nets:
+    if net.get("Name") == own:
+        continue  # das Netz von Wings selbst
+    for c in (net.get("IPAM") or {}).get("Config") or []:
+        try:
+            other = ipaddress.ip_network(c.get("Subnet"), strict=False)
+        except (TypeError, ValueError):
+            continue
+        if other.version == mine.version and other.overlaps(mine):
+            print(f"{mine}|{net.get('Name')}|{other}")
+PY
+# NETCHECK_END
+if command -v docker >/dev/null && command -v python3 >/dev/null; then
+    while IFS='|' read -r mine other_name other_subnet; do
+        [ -n "$mine" ] || continue
+        log "WARNUNG: Das Docker-Subnetz $mine aus der config.yml ueberlappt mit dem Docker-Netz '$other_name' ($other_subnet)."
+        log "         Wings wuerde mit 'Pool overlaps with other one on this address space' abbrechen."
+        log "         Abhilfe: im Panel auf dem Server WINGS_DOCKER_SUBNET auf einen freien Bereich setzen (z.B. 172.30.0.0/16),"
+        log "         config.yml neu holen (dieses Skript erneut starten) oder docker.network.interfaces.v4 in $CONF_DIR/config.yml anpassen."
+    done < <(python3 -c "$NETCHECK" "$CONF_DIR/config.yml" 2>/dev/null || true)
+fi
+
 REMOTE=$(grep -E '^remote:' "$CONF_DIR/config.yml" | awk '{print $2}')
 SFTP_PORT=$(grep -E 'bind_port:' "$CONF_DIR/config.yml" | awk '{print $2}')
 API_PORT=$(grep -E '^\s+port:' "$CONF_DIR/config.yml" | head -1 | awk '{print $2}')
