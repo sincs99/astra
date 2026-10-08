@@ -140,8 +140,10 @@ Im Panel unter **Admin → Agents → Neuer Agent**:
 | Connect-Port | `443` | Port, über den das Panel Wings erreicht (Caddy) |
 | Listen-Port | `8080` | Port, auf dem Wings lokal lauscht |
 | SFTP-Port | `2022` | |
-| Datenverzeichnis | `/var/lib/pterodactyl/volumes` | Pelican: `/var/lib/pelican/volumes` |
+| Datenverzeichnis | `/var/lib/astra/volumes` | Standard für neue Nodes. Nodes mit `/var/lib/pterodactyl/volumes` bzw. `/var/lib/pelican/volumes` behalten ihre alten Namen (siehe unten) |
 | Hinter Reverse Proxy | **an** | Wings ohne eigenes SSL, Caddy davor |
+
+**Namen auf dem Node (White-Label, M78):** Für neue Nodes setzt der Konfig-Export eigene Namen: `system.root_directory: /var/lib/astra`, Daten `/var/lib/astra/volumes`, Archive `/var/lib/astra/archives`, Backups `/var/lib/astra/backups`, Logs `/var/log/astra`, temporär `/tmp/astra`, Systembenutzer `astra`, Docker-Netz `astra_nw`; `install-wings.sh` legt die Konfiguration unter `/etc/astra/config.yml` ab und startet Wings mit `wings --config /etc/astra/config.yml`. **Bestehende Nodes laufen unverändert weiter:** ein Agent, dessen Datenverzeichnis unter `/var/lib/pterodactyl` (oder `/var/lib/pelican`) liegt, bekommt im Export weiterhin die alten Pfade, den alten Benutzer und das alte Netz, damit Backups und Archive nicht auseinanderlaufen. Nur neue Installationen bekommen die `astra`-Namen. Wer einen bestehenden Node umstellen will, ändert das Datenverzeichnis des Agents bewusst (Daten vorher verschieben) und führt `install-wings.sh` erneut aus. Bekannte Einschränkung: der Konsolen-Prompt `container@pterodactyl~` stammt aus den yolks-Images und lässt sich nur mit eigenen Images ändern.
 
 Beim Anlegen erzeugt Astra die Node-Credentials (Token-ID sichtbar, Secret nur in der config.yml).
 Alle Felder lassen sich später über *Bearbeiten* ändern.

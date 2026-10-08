@@ -55,11 +55,12 @@ done
 [ -n "$CONFIG_SRC" ] || { [ -n "$PANEL" ] && [ -n "$AGENT_ID" ] && [ -n "$TOKEN" ]; } \
     || die "Entweder --config <datei> oder --panel + --agent-id + --token angeben."
 
+# Konfigurationsordner (M78): /etc/astra fuer neue Installationen. Aeltere Nodes hatten /etc/pterodactyl bzw. /etc/pelican;
+# das Skript schreibt die config.yml jetzt nach /etc/astra und zeigt die systemd-Unit dorthin (siehe Hinweis unten).
+CONF_DIR=/etc/astra
 if [ "$FLAVOR" = "pelican" ]; then
-    CONF_DIR=/etc/pelican
     RELEASE_URL="https://github.com/pelican-dev/wings/releases/latest/download"
 else
-    CONF_DIR=/etc/pterodactyl
     RELEASE_URL="https://github.com/pterodactyl/wings/releases/latest/download"
 fi
 
@@ -139,7 +140,7 @@ if not m:
     sys.exit(0)
 mine = ipaddress.ip_network(m.group(1), strict=False)
 n = re.search(r"^\s+name:\s*(\S+)", cfg, re.M)
-own = n.group(1) if n else "pterodactyl_nw"
+own = n.group(1) if n else "astra_nw"
 try:
     ids = subprocess.run(["docker", "network", "ls", "-q"], capture_output=True, text=True, check=True).stdout.split()
     nets = json.loads(subprocess.run(["docker", "network", "inspect"] + ids, capture_output=True, text=True, check=True).stdout) if ids else []
@@ -171,7 +172,12 @@ REMOTE=$(grep -E '^remote:' "$CONF_DIR/config.yml" | awk '{print $2}')
 SFTP_PORT=$(grep -E 'bind_port:' "$CONF_DIR/config.yml" | awk '{print $2}')
 API_PORT=$(grep -E '^\s+port:' "$CONF_DIR/config.yml" | head -1 | awk '{print $2}')
 DATA_DIR=$(grep -E '^\s+data:' "$CONF_DIR/config.yml" | awk '{print $2}')
-mkdir -p "${DATA_DIR:-/var/lib/pterodactyl/volumes}"
+mkdir -p "${DATA_DIR:-/var/lib/astra/volumes}"
+for old in /etc/pterodactyl /etc/pelican; do
+    if [ -f "$old/config.yml" ]; then
+        log "Hinweis: Eine aeltere Konfiguration liegt in $old/config.yml. Wings nutzt ab jetzt $CONF_DIR/config.yml; die alte Datei kann nach erfolgreichem Start geloescht werden."
+    fi
+done
 
 # ── systemd ─────────────────────────────────────────────
 cat > /etc/systemd/system/wings.service <<UNIT
@@ -186,7 +192,7 @@ User=root
 WorkingDirectory=$CONF_DIR
 LimitNOFILE=4096
 PIDFile=/var/run/wings/daemon.pid
-ExecStart=/usr/local/bin/wings
+ExecStart=/usr/local/bin/wings --config $CONF_DIR/config.yml
 Restart=on-failure
 StartLimitInterval=180
 StartLimitBurst=30

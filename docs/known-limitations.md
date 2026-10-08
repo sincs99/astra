@@ -7,6 +7,7 @@
 - Seit M33 stellt Astra die Wings Remote-API (`/api/remote`) bereit; S3-Presigned-Uploads und Mounts sind nicht enthalten (siehe `docs/wings-remote-api.md`).
 - Die Remote-API wurde gegen den Vertrag des Referenz-Panels gebaut und per Tests abgesichert, aber noch nicht gegen einen laufenden Wings-Daemon abgenommen (Teil des Pilot-Go/No-Go).
 - Konsolen-Websocket funktioniert nur mit echtem Wings-Daemon (im Stub simuliert).
+- Der Konsolen-Prompt `container@pterodactyl~` kommt aus den yolks-Images und bleibt, solange keine eigenen Images verwendet werden. Pfade, Benutzer und Docker-Netz auf dem Node heißen seit M78 `astra`; bestehende Nodes mit Pterodactyl-Pfaden behalten ihre Namen.
 - Dateioperationen im Stub-Modus liefern simulierte Daten.
 
 ### Queue / Background Jobs

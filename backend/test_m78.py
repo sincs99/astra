@@ -239,8 +239,13 @@ with app.app_context():
 c = app.test_client()
 
 
+_agent_n = [0]
+
+
 def agent_config(**fields):
-    r = c.post("/api/admin/agents", json={"name": f"n{abs(hash(str(fields)))}", "fqdn": f"n{abs(hash(str(fields)))}.t.local", **fields}, headers=ADMIN)
+    _agent_n[0] += 1
+    n = _agent_n[0]
+    r = c.post("/api/admin/agents", json={"name": f"n{n}", "fqdn": f"n{n}.t.local", **fields}, headers=ADMIN)
     assert r.status_code == 201, r.get_data(as_text=True)
     cfg = c.get(f"/api/admin/agents/{r.json['id']}/configuration", headers=ADMIN).json
     return cfg["config"], cfg["yaml"]
@@ -297,6 +302,36 @@ if nc:
     check("config.yml ohne Subnetz: keine Ausgabe, kein Fehler", rc == 0 and hits == [])
     rc, hits = netcheck(base % ("x", "172.18.0.0/16", "172.18.0.1"), [("v6", ["fd00::/64"]), ("kaputt", ["nicht-ip"])])
     check("IPv6- und kaputte Eintraege stoeren nicht", rc == 0 and hits == [], str(hits))
+
+# ── White-Label der Wings-Konfiguration (M78) ───────────
+print("White-Label")
+cfg, yml = agent_config()
+sysd = cfg["system"]
+check("neuer Agent: Standard-Datenverzeichnis /var/lib/astra/volumes", sysd["data"] == "/var/lib/astra/volumes", sysd["data"])
+check("system.*: astra-Pfade und -Benutzer", (sysd["root_directory"], sysd["log_directory"], sysd["archive_directory"], sysd["backup_directory"], sysd["tmp_directory"], sysd["username"])
+      == ("/var/lib/astra", "/var/log/astra", "/var/lib/astra/archives", "/var/lib/astra/backups", "/tmp/astra", "astra"), str(sysd))
+net = cfg["docker"]["network"]
+check("docker.network: Name und network_mode astra_nw, interface bleibt eine IP", net["name"] == "astra_nw" and net["network_mode"] == "astra_nw" and net["interface"] == "172.30.0.1", str(net))
+check("kein 'pterodactyl' im Export eines neuen Agents (auch nicht im YAML)", "pterodactyl" not in yml.lower() and "pelican" not in yml.lower(), yml)
+check("SFTP/API-Felder unveraendert", sysd["sftp"]["bind_port"] == 2022 and cfg["api"]["port"] == 8080)
+cfg, yml = agent_config(daemon_base="/var/lib/pterodactyl/volumes", daemon_listen=8090)
+check("Bestandsnode /var/lib/pterodactyl/volumes: alte Namen bleiben (root, Logs, Benutzer, Netz)",
+      (cfg["system"]["root_directory"], cfg["system"]["log_directory"], cfg["system"]["backup_directory"], cfg["system"]["username"], cfg["docker"]["network"]["name"])
+      == ("/var/lib/pterodactyl", "/var/log/pterodactyl", "/var/lib/pterodactyl/backups", "pterodactyl", "pterodactyl_nw"), str(cfg["system"]))
+check("... aber das Docker-Subnetz ist trotzdem der freie Bereich", cfg["docker"]["network"]["interfaces"]["v4"]["subnet"] == "172.30.0.0/16")
+cfg, yml = agent_config(daemon_base="/var/lib/pelican/volumes", daemon_listen=8091)
+check("Bestandsnode Pelican: pelican-Namen", cfg["system"]["root_directory"] == "/var/lib/pelican" and cfg["system"]["username"] == "pelican" and cfg["docker"]["network"]["name"] == "pelican_nw", str(cfg["system"]))
+cfg, yml = agent_config(daemon_base="/srv/wings", daemon_listen=8092)
+check("eigenes Datenverzeichnis (/srv/wings): data bleibt, sonst astra-Namen", cfg["system"]["data"] == "/srv/wings" and cfg["system"]["root_directory"] == "/var/lib/astra" and cfg["system"]["username"] == "astra")
+cfg, yml = agent_config(daemon_base="/var/lib/pterodactyl2/volumes", daemon_listen=8093)
+check("aehnlicher Praefix (/var/lib/pterodactyl2) gilt nicht als Bestandsnode", cfg["system"]["username"] == "astra")
+check("Export-YAML ist mit PyYAML lesbar und identisch", _yaml.safe_load(yml) == cfg)
+
+check("Installer: Konfigurationsordner /etc/astra", re.search(r"^CONF_DIR=/etc/astra$", WINGS_SH, re.M) is not None)
+check("Installer: systemd-Unit startet wings --config $CONF_DIR/config.yml", "ExecStart=/usr/local/bin/wings --config $CONF_DIR/config.yml" in WINGS_SH)
+check("Installer: Fallback-Datenordner /var/lib/astra/volumes", '"${DATA_DIR:-/var/lib/astra/volumes}"' in WINGS_SH)
+check("Installer: kein /etc/pterodactyl als Ziel mehr (nur als Hinweis auf Altbestand)", "CONF_DIR=/etc/pterodactyl" not in WINGS_SH and "for old in /etc/pterodactyl /etc/pelican" in WINGS_SH)
+check("Installer: Hinweis auf Altbestand", "aeltere Konfiguration" in WINGS_SH)
 
 print(f"\n{passed} OK, {failed} FAIL")
 sys.exit(1 if failed else 0)
