@@ -5,6 +5,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed (Pilot 08.10.2026 – M78 Integration)
+- `backend/entrypoint.sh`, `scripts/backup.sh`, `scripts/restore.sh` tragen im Git-Index das Ausfuehrrecht (vorher 100644: der Bind-Mount `./backend:/app` im Dev-Compose ueberdeckte das Image, Backend startete mit `permission denied` nicht). `.gitattributes` erzwingt LF fuer `*.sh`; das Dev-Compose startet den Entrypoint zusaetzlich ueber `bash`
+- Dev-Compose bindet PostgreSQL (5432, Passwort `astra`), Redis (6379, ohne Passwort) und Backend (5000) nur noch an `127.0.0.1` statt an alle Schnittstellen; Hinweis im README. `RUNNER_ADAPTER` ist aus der Umgebung ueberschreibbar (`RUNNER_ADAPTER=wings docker compose up`)
+- README und Runbook (Abschnitt 6, Fehlersuche): mit `RUNNER_ADAPTER=stub` meldet ein Agent `daemon_version: "stub"` und wirkt `healthy`, obwohl Wings nie angesprochen wird; fuer Wings-Tests `wings` setzen und `daemon_version` im Monitoring pruefen
+
 ### Added (Frontend – `npm run test:slow`)
 - `npm run test:slow` fuehrt die Suite mit verzoegert aufloesenden Mocks aus (`vitest --mode slow`, `src/test/delay.setup.ts`, Verzoegerung ueber `TEST_MOCK_DELAY_MS`, Standard 30 ms), um Ladephasen-Rennen zu finden; `npm test` bleibt unveraendert. Doku in `frontend/README.md` und `docs/ui-conventions.md`
 

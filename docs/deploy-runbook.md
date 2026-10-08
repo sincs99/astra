@@ -178,7 +178,10 @@ journalctl -u wings -n 20 --no-pager      # keine 401/403 gegen das Panel
 curl -s https://node1.deinedomain.de/api/system    # 401 = Caddy→Wings funktioniert (Auth fehlt absichtlich)
 ```
 
-Im Panel unter **Admin → Fleet Monitoring** muss `node1` jetzt `healthy` sein.
+Im Panel unter **Admin → Fleet Monitoring** muss `node1` jetzt `healthy` sein und `daemon_version`
+die Wings-Version zeigen (z. B. `v1.13.3`). Steht dort `stub`, läuft das Backend mit
+`RUNNER_ADAPTER=stub` (Standard im Entwicklungs-Compose): Der Agent wirkt dann gesund, Wings wird
+aber nie angesprochen. In `.env` muss `RUNNER_ADAPTER=wings` stehen (so in `.env.prod.example`).
 
 ---
 
@@ -344,7 +347,9 @@ Panel und Node können ab dann auch getrennt laufen: kleiner VPS für das Panel,
 | `curl https://panel…/health` schlägt fehl | `docker compose logs caddy`: DNS zeigt auf den Server? Ports 80/443 offen? |
 | Wings-Log `401`/`403` | Token in `config.yml` ≠ Agent im Panel → `install-wings.sh` erneut ausführen |
 | Agent bleibt `unreachable` | Wings erreicht `remote` nicht: `curl https://panel…/api/remote/servers` vom Node aus muss 401 liefern |
+| Agent `healthy`, aber kein Container entsteht | Fleet Monitoring zeigt `daemon_version: stub` → Backend läuft mit `RUNNER_ADAPTER=stub`, in `.env` auf `wings` stellen und Backend neu starten |
 | Instanz hängt in `provisioning` | `journalctl -u wings`: Install-Container-Fehler, Docker-Image-Pull, Netzwerk |
+| Backend-Container: `exec: "./entrypoint.sh": permission denied` | Checkout ohne Ausführrecht (ältere Klone, Windows): `git pull`, oder `chmod +x backend/entrypoint.sh`; das Dev-Compose startet das Script seit M78 über `bash` |
 | Server bleibt `starting` | Startup-Erkennung im Blueprint passt nicht zur Konsolenausgabe |
 | Konsole lädt nicht | Browser erreicht `wss://node1…/api/servers/<uuid>/ws`? Caddy-Site `deploy/sites/node.caddy` vorhanden? |
 | Spieler können nicht joinen | Firewall-Port, Endpoint-Port = Port in `server.properties` (Platzhalter im Blueprint) |
