@@ -59,6 +59,8 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+    # Der Bind-Mount ueberdeckt das Image; "bash" davor, falls der Checkout kein Ausfuehrrecht traegt
+    entrypoint: ["bash", "./entrypoint.sh"]
     command: ["serve"]
 
   # ── Frontend (Dev) ────────────────────────────────────
