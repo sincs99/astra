@@ -52,7 +52,7 @@ check("config_stop", bp["config_stop"] == "stop")
 check("config_files (JSON-String -> dict)", bp["config_files"]["server.properties"]["parser"] == "properties")
 check("Platzhalter unveraendert", bp["config_files"]["server.properties"]["find"]["server-port"] == "{{server.build.default.port}}")
 v = {x["env_var"]: x for x in bp["variables"]}
-check("Variablen env_variable -> env_var", set(v) == {"MINECRAFT_VERSION", "SERVER_JARFILE", "DL_PATH", "BUILD_NUMBER"})
+check("Variablen env_variable -> env_var", set(v) == {"MINECRAFT_VERSION", "SERVER_JARFILE", "DL_PATH", "BUILD_NUMBER", "BUILD_CHANNEL"})
 check("Variable default_value", v["SERVER_JARFILE"]["default_value"] == "server.jar")
 
 print("Varianten / Randfaelle")

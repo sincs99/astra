@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed (M82 – Paper-Kanal)
+- **Paper `latest` nimmt nur noch stabile Builds:** Der Install-Log zeigte „26.3 / Build 159 (channel BETA)“. Neue Blueprint-Variable `BUILD_CHANNEL` (Standard `STABLE`, erlaubt `STABLE|BETA|ALPHA`, `user_editable`, Regel `required|string|in:STABLE,BETA,ALPHA`). Bei `latest` geht das Script die Versionen absteigend durch und nimmt die neueste mit mindestens einem Build im Kanal oder einem stabileren (`RECOMMENDED` zählt wie `STABLE`), darin den neuesten solchen Build (`/versions/<v>/builds`). Eine feste `BUILD_NUMBER` gilt unabhängig vom Kanal; eine feste Version ohne passenden Build nimmt mit Warnung den neuesten Build irgendeines Kanals. Das Log nennt Version, Build und Kanal; ungültige Kanäle brechen vor jedem Download ab. Bestehende Blueprints in der DB haben die Variable nicht (Standard STABLE greift im Script); neu importieren oder die Variable im Blueprint ergänzen, um sie in der Oberfläche zu sehen. Hinweis: neue Paper-Instanzen nutzen `yolks:java_25` und ziehen beim ersten Start ein neues Docker-Image
+
 ### Fixed (M82 – zweite Pilot-Liste)
 - **Install-Image:** `ghcr.io/pterodactyl/installers:debian` ist Debian 11; `apt-get install jq unzip` scheitert dort mit 404 aus `debian-security`, jede neue Paper-Instanz brach ab. Standard jetzt `ghcr.io/parkervcp/installers:debian` (Debian 12): Paper-Blueprint, `DEFAULT_INSTALL_CONTAINER`, Fallback im Config-Builder, Doku. **Bestehende Blueprints in der DB behalten ihren gespeicherten `install_container`** (Blueprints ohne gespeicherten Wert nutzen sofort den neuen Standard). Umstellen: `python cli.py update-install-container [--dry-run]` (nur Blueprints mit genau dem alten Image; `--from`/`--to` für andere Images) oder `PATCH /api/admin/blueprints/<id>` mit `install_container`
 
