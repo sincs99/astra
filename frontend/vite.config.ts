@@ -25,7 +25,8 @@ export default defineConfig(({ mode }) => ({
   },
   test: {
     globalSetup: ["./src/test/tz.ts"],
-    setupFiles: ["./src/test/setup.ts"],
+    // `npm run test:slow` (--mode slow): zusätzlich verzögerte Mocks, um Ladephasen-Rennen zu finden
+    setupFiles: ["./src/test/setup.ts", ...(mode === "slow" ? ["./src/test/delay.setup.ts"] : [])],
   },
   // Build-Konfiguration fuer Produktion
   build: {

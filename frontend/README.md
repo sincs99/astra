@@ -16,6 +16,7 @@ npm install
 npm run dev        # http://localhost:3000, /api wird an http://localhost:5000 weitergeleitet
 npm run build      # tsc -b && vite build
 npm test           # Vitest (jsdom, @testing-library/react), Zeitzone fest auf UTC
+npm run test:slow  # dieselbe Suite mit verzögert auflösenden Mocks (TEST_MOCK_DELAY_MS, Standard 30 ms): findet Ladephasen-Rennen
 ```
 
 ## Routen
