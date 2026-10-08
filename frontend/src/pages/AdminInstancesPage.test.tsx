@@ -22,7 +22,12 @@ afterEach(() => { cleanup(); localStorage.clear(); setLang("de"); });
 
 async function fillBasics() {
   fireEvent.change(await screen.findByLabelText("Name *"), { target: { value: "Srv" } });
+  // Die Auswahllisten werden asynchron befüllt: erst wenn die Option da ist, lässt sich ein Wert wählen
+  const hasOption = (label: string, value: string) => () =>
+    expect((screen.getByLabelText(label) as HTMLSelectElement).querySelector(`option[value="${value}"]`)).toBeTruthy();
+  await waitFor(hasOption("Owner *", "3"));
   fireEvent.change(screen.getByLabelText("Owner *"), { target: { value: "3" } });
+  await waitFor(hasOption("Blueprint *", "2"));
   fireEvent.change(screen.getByLabelText("Blueprint *"), { target: { value: "2" } });
 }
 
@@ -44,8 +49,11 @@ describe("AdminInstancesPage Erstellformular", () => {
     const create = vi.spyOn(api, "createInstance").mockResolvedValue({} as never);
     render(<MemoryRouter><AdminInstancesPage /></MemoryRouter>);
     await fillBasics();
+    await waitFor(() => expect((screen.getByLabelText("Agent") as HTMLSelectElement).querySelector('option[value="7"]')).toBeTruthy());
     fireEvent.change(screen.getByLabelText("Agent"), { target: { value: "7" } });
-    fireEvent.change(await screen.findByLabelText(/^Endpoint/), { target: { value: "11" } });
+    const endpoint = await screen.findByLabelText(/^Endpoint/);
+    await waitFor(() => expect((endpoint as HTMLSelectElement).querySelector('option[value="11"]')).toBeTruthy());
+    fireEvent.change(endpoint, { target: { value: "11" } });
     fireEvent.click(screen.getByRole("button", { name: "Instance erstellen" }));
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(create.mock.calls[0][0]).toMatchObject({ agent_id: 7, endpoint_id: 11 });

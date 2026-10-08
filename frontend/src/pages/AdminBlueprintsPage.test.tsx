@@ -102,6 +102,7 @@ describe("AdminBlueprintsPage", () => {
     mount();
     expect(await screen.findByRole("heading", { name: "New blueprint" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Import blueprint" })).toBeTruthy();
+    // Zeilen-Buttons kommen aus dem asynchron geladenen Blueprint-Abruf
     expect(await screen.findByRole("button", { name: "Edit" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "ENV variable" })).toBeTruthy();
     expect(screen.getByText("Startup detection")).toBeTruthy();

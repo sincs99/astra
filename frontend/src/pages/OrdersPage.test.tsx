@@ -300,7 +300,7 @@ describe("OrdersPage", () => {
       expect(await screen.findByText("Bestellung ist nicht zahlbar")).toBeTruthy();
       await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
       // invalid_status ist kein manueller Zahlungsweg: Button bleibt
-      expect(screen.getByRole("button", { name: "Jetzt bezahlen" })).toBeTruthy();
+      expect(await screen.findByRole("button", { name: "Jetzt bezahlen" })).toBeTruthy();
     });
 
     it("zeigt bei manuellem Zahlungsweg den zentralen Hinweistext statt aller Bezahl-Buttons", async () => {

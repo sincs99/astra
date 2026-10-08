@@ -31,3 +31,7 @@ vi.mock("../legal/operator", () => {
     isPlaceholder: (value: string) => value === PLACEHOLDER,
   };
 });
+
+// Auf langsamen CI-Runnern darf ein findBy…/waitFor länger warten (Standard 1 s); bei schnellen Läufen kostet das nichts.
+import { configure } from "@testing-library/react";
+configure({ asyncUtilTimeout: 4000 });
