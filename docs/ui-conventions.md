@@ -105,5 +105,7 @@ Farbige Ereignis-Badges im Aktivitätslog entfallen (keine Tokens dafür), ebens
 
 ## Tests
 
+- Tests dürfen nie vom Inhalt von `legal/operator.ts` abhängen (der Betreiber trägt dort echte Daten ein): `src/test/setup.ts` ersetzt das Modul in allen Tests durch eine Fixture (brand „Astra“, jurisdiction „DE“, Platzhalter). Wer einen anderen Wert braucht, setzt ihn im Test gezielt (`OPERATOR.jurisdiction = "CH"`) und danach zurück; `legal/operator.test.ts` prüft nur die Form der echten Datei.
+
 - Vitest + Testing Library + jsdom (`vitest run`); API per `vi.spyOn(api, …)`, Sprache per `setLang` und in `afterEach` zurück auf `de`.
 - `e2e/flow.mjs` (Kundenfluss gegen das echte Backend) und `e2e/a11y.mjs` (axe A/AA) über `./e2e/run-local.sh`, siehe `frontend/e2e/README.md`.
