@@ -240,5 +240,137 @@ check("Regel erlaubt STABLE|BETA|ALPHA", var is not None and "in:STABLE,BETA,ALP
 r = c.post("/api/admin/blueprints/import", json=EGG, headers=AH)
 check("Egg-Import uebernimmt die Variable", r.status_code == 201 and "BUILD_CHANNEL" in {v["env_var"] for v in r.json["variables"]}, r.get_data(as_text=True)[:200])
 
+# ── Endpoint-Auto-Vergabe (Punkt 3) ─────────────────────
+print("Endpoint auto_assign (Punkt 3)")
+import sqlite3
+from app.domain.agents.models import Agent
+from app.domain.agents import placement
+from app.domain.agents.monitoring_service import _get_endpoint_summary
+from app.domain.endpoints.models import Endpoint
+from app.domain.instances.models import Instance
+
+with app.app_context():
+    own = User(username="own", email="own@t.local")
+    own.set_password("test1234")
+    bp = Blueprint(name="vrising", docker_image="img", startup_command="run")
+    ag1 = Agent(name="n1", fqdn="n1.t.local", memory_total=8192, disk_total=100000, cpu_total=800)
+    ag2 = Agent(name="n2", fqdn="n2.t.local", memory_total=8192, disk_total=100000, cpu_total=800)
+    db.session.add_all([own, bp, ag1, ag2])
+    db.session.commit()
+    OWN, BP, N1, N2 = own.id, bp.id, ag1.id, ag2.id
+OH = {"X-User-Id": str(OWN)}
+
+
+def mk(agent, port, **extra):
+    r = c.post(f"/api/admin/agents/{agent}/endpoints", json={"ip": "0.0.0.0", "port": port, **extra}, headers=AH)
+    return r
+
+
+r = mk(N1, 9876)
+check("neuer Endpoint: auto_assign standardmaessig true", r.status_code == 201 and r.json["auto_assign"] is True, str(r.json))
+E_GAME = r.json["id"]
+r = mk(N1, 9877, auto_assign=False)
+check("POST /agents/<id>/endpoints mit auto_assign=false", r.status_code == 201 and r.json["auto_assign"] is False, str(r.json))
+E_QUERY = r.json["id"]
+E_THIRD = mk(N1, 9878).json["id"]
+check("auto_assign kein Boolean -> 400", mk(N1, 9879, auto_assign="nein").status_code == 400 and mk(N1, 9879, auto_assign=0).status_code == 400)
+r = c.post(f"/api/admin/agents/{N1}/endpoints/bulk", json={"ip": "0.0.0.0", "port_start": 9890, "port_end": 9892}, headers=AH)
+check("bulk: Standard auto_assign true", r.status_code == 201 and all(e["auto_assign"] is True for e in r.json["endpoints"]))
+r = c.post(f"/api/admin/agents/{N1}/endpoints/bulk", json={"ip": "0.0.0.0", "port_start": 9900, "port_end": 9901, "auto_assign": False}, headers=AH)
+check("bulk mit auto_assign=false", r.status_code == 201 and r.json["created"] == 2 and all(e["auto_assign"] is False for e in r.json["endpoints"]), str(r.json))
+check("bulk: auto_assign kein Boolean -> 400", c.post(f"/api/admin/agents/{N1}/endpoints/bulk", json={"port_start": 9910, "port_end": 9911, "auto_assign": "x"}, headers=AH).status_code == 400)
+lst = c.get("/api/admin/endpoints", headers=AH).json
+check("GET /api/admin/endpoints liefert auto_assign", all(isinstance(e["auto_assign"], bool) for e in lst) and any(e["id"] == E_QUERY and e["auto_assign"] is False for e in lst))
+
+print("PATCH /api/admin/endpoints/<id>")
+R = c.patch(f"/api/admin/endpoints/{E_THIRD}", json={"auto_assign": False}, headers=AH)
+check("auto_assign=false -> 200 mit Endpoint-Dict", R.status_code == 200 and R.json["id"] == E_THIRD and R.json["auto_assign"] is False and R.json["is_locked"] is False, str(R.json))
+R = c.patch(f"/api/admin/endpoints/{E_THIRD}", json={"auto_assign": True, "is_locked": True}, headers=AH)
+check("beide Flags zusammen", R.status_code == 200 and R.json["auto_assign"] is True and R.json["is_locked"] is True)
+R = c.patch(f"/api/admin/endpoints/{E_THIRD}", json={"is_locked": False}, headers=AH)
+check("nur is_locked: auto_assign bleibt", R.status_code == 200 and R.json["is_locked"] is False and R.json["auto_assign"] is True)
+check("unbekannter Endpoint -> 404", c.patch("/api/admin/endpoints/99999", json={"auto_assign": False}, headers=AH).status_code == 404)
+check("leerer Body / ohne Felder -> 400", c.patch(f"/api/admin/endpoints/{E_THIRD}", json={}, headers=AH).status_code == 400 and c.patch(f"/api/admin/endpoints/{E_THIRD}", headers=AH).status_code == 400
+      and c.patch(f"/api/admin/endpoints/{E_THIRD}", json={"port": 1}, headers=AH).status_code == 400)
+check("kein Boolean -> 400 (nichts geaendert)", c.patch(f"/api/admin/endpoints/{E_THIRD}", json={"auto_assign": "false"}, headers=AH).status_code == 400
+      and c.patch(f"/api/admin/endpoints/{E_THIRD}", json={"auto_assign": False, "is_locked": 1}, headers=AH).status_code == 400
+      and c.get("/api/admin/endpoints", headers=AH).json[[e["id"] for e in c.get("/api/admin/endpoints", headers=AH).json].index(E_THIRD)]["auto_assign"] is True)
+
+print("automatische Vergabe uebergeht auto_assign=false")
+for e in [E_THIRD]:
+    pass
+# Agent 1: 9876 (auto), 9877 (nur manuell), 9878 (auto), 9890-9892 (auto), 9900-9901 (nur manuell). Erst die 9890er sperren, damit der Fall klar bleibt.
+for ep in c.get("/api/admin/endpoints", headers=AH).json:
+    if 9890 <= ep["port"] <= 9892:
+        c.patch(f"/api/admin/endpoints/{ep['id']}", json={"is_locked": True}, headers=AH)
+
+
+def create(name, **extra):
+    return c.post("/api/admin/instances", json={"name": name, "owner_id": OWN, "blueprint_id": BP, "memory": 512, "disk": 1000, "cpu": 50, **extra}, headers=AH)
+
+
+a = create("a", agent_id=N1)
+b = create("b", agent_id=N1)
+check("erste Instanz bekommt 9876", a.status_code == 201 and a.json["connection"]["port"] == 9876, str(a.json.get("connection")))
+check("zweite Instanz bekommt 9878 (9877 ist nur manuell)", b.status_code == 201 and b.json["connection"]["port"] == 9878, str(b.json.get("connection")))
+cc = create("c", agent_id=N1)
+check("dritte Instanz: nur noch manuelle/gesperrte Endpoints -> 409", cc.status_code == 409, cc.get_data(as_text=True))
+with app.app_context():
+    check("placement.has_free_endpoint: false, wenn nur manuelle uebrig sind", placement.has_free_endpoint(N1) is False)
+    summ = _get_endpoint_summary(db.session.get(Agent, N1))
+check("Endpoint-Zusammenfassung des Monitorings: manual gezaehlt, free ohne manuelle", summ["manual"] == 3 and summ["free"] == 0, str(summ))
+
+print("explizite Zuweisung bleibt moeglich")
+d = create("d", agent_id=N1, endpoint_id=E_QUERY)
+check("endpoint_id bei der Anlage: auch mit auto_assign=false", d.status_code == 201 and d.json["primary_endpoint_id"] == E_QUERY and d.json["connection"]["port"] == 9877, d.get_data(as_text=True)[:200])
+manual2 = next(e["id"] for e in c.get("/api/admin/endpoints", headers=AH).json if e["port"] == 9900)
+r = c.post(f"/api/admin/instances/{a.json['uuid']}/endpoints", json={"endpoint_id": manual2}, headers=AH)
+check("POST .../endpoints (M80) weist einen auto_assign=false-Endpoint zu", r.status_code == 201 and any(e["port"] == 9900 for e in r.json["endpoints"]), r.get_data(as_text=True)[:200])
+locked_manual = next(e["id"] for e in c.get("/api/admin/endpoints", headers=AH).json if e["port"] == 9901)
+c.patch(f"/api/admin/endpoints/{locked_manual}", json={"is_locked": True}, headers=AH)
+r = c.post(f"/api/admin/instances/{a.json['uuid']}/endpoints", json={"endpoint_id": locked_manual}, headers=AH)
+check("gesperrt bleibt gesperrt (409), auch bei explizitem Zuweisen", r.status_code == 409)
+check("gesperrter Endpoint bei der Anlage -> 400", create("e", agent_id=N1, endpoint_id=locked_manual).status_code == 400)
+
+print("Platzierung und Transfer beachten auto_assign")
+mk(N2, 9876, auto_assign=False)
+r = create("auto-placement")
+check("Anlage ohne agent_id: Agent 2 hat nur einen manuellen Endpoint -> keine Platzierung (409/400)", r.status_code in (400, 409), f"{r.status_code} {r.get_data(as_text=True)[:200]}")
+mk(N2, 9877)
+r = create("auto-placement-2")
+check("... sobald Agent 2 einen automatisch vergebbaren Endpoint hat, wird platziert", r.status_code == 201 and r.json["agent_id"] == N2 and r.json["connection"]["port"] == 9877, f"{r.status_code} {r.get_data(as_text=True)[:200]}")
+tr = c.post(f"/api/admin/instances/{b.json['uuid']}/transfer", json={"target_agent_id": N2}, headers=AH)
+check("Transfer zu Agent 2: ohne freien automatischen Endpoint abgelehnt", tr.status_code in (400, 409), f"{tr.status_code} {tr.get_data(as_text=True)[:200]}")
+
+print("Rechte")
+app.config["ADMIN_GUARD_ENABLED"] = True
+check("PATCH ohne Anmeldung -> 401", c.patch(f"/api/admin/endpoints/{E_THIRD}", json={"auto_assign": False}).status_code == 401)
+check("PATCH als Kunde -> 403", c.patch(f"/api/admin/endpoints/{E_THIRD}", json={"auto_assign": False}, headers=OH).status_code == 403)
+app.config["ADMIN_GUARD_ENABLED"] = False
+
+print("Migration auto_assign")
+cwd = os.path.dirname(__file__)
+with tempfile.TemporaryDirectory() as tmp:
+    dbp = f"{tmp}/t.db"
+    menv = {**os.environ, "APP_ENV": "development", "DATABASE_URL": f"sqlite:///{dbp}", "RUNNER_ADAPTER": "stub", "FLASK_APP": "app:create_app"}
+    mrun = lambda *a_: subprocess.run([sys.executable, "-m", "flask", "db", *a_], env=menv, capture_output=True, text=True, cwd=cwd)
+    # Zustand vor M82: bis M70 migrieren, einen Endpoint anlegen, dann hochziehen
+    up0 = mrun("upgrade", "y5t6u7v8w9x0")
+    con = sqlite3.connect(dbp)
+    con.execute("insert into agents (id, uuid, name, fqdn) values (1, 'u-1', 'n1', 'n1.t.local')")
+    con.execute("insert into endpoints (agent_id, ip, port) values (1, '0.0.0.0', 25565)")
+    con.commit()
+    con.close()
+    up = mrun("upgrade")
+    cols = lambda: {r_[1]: r_ for r_ in sqlite3.connect(dbp).execute("pragma table_info(endpoints)")}
+    col = cols().get("auto_assign")
+    old_row = sqlite3.connect(dbp).execute("select auto_assign from endpoints where port = 25565").fetchone()
+    down = mrun("downgrade", "y5t6u7v8w9x0")
+    gone = "auto_assign" not in cols()
+    up2 = mrun("upgrade")
+    heads = mrun("heads")
+check("Upgrade: Spalte NOT NULL mit Standard true, bestehende Endpoints bekommen true", up0.returncode == 0 and up.returncode == 0 and col is not None and col[3] == 1 and old_row == (1,), f"{up0.stderr[-200:]} {up.stderr[-200:]} {col} {old_row}")
+check("Downgrade entfernt die Spalte, erneutes Upgrade und genau ein Head", down.returncode == 0 and gone and up2.returncode == 0 and heads.stdout.count("(head)") == 1, down.stderr[-300:])
+
 print(f"\n{passed} OK, {failed} FAIL")
 sys.exit(1 if failed else 0)

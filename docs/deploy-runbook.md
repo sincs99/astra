@@ -155,6 +155,8 @@ Dann **Endpoints** anlegen: Agent `node1`, IP `0.0.0.0`, Port-Bereich `25565-256
 Ports werden übersprungen). Per API: `POST /api/admin/agents/1/endpoints/bulk` mit
 `{"ip": "0.0.0.0", "port_start": 25565, "port_end": 25600}`.
 
+**Query-Ports nur manuell:** Astra vergibt freie Endpoints automatisch (niedrigster Port zuerst). Ports, die ein Spiel zusätzlich braucht (z. B. der Query-Port 9877 von V Rising), legst du deshalb mit `"auto_assign": false` an: `POST /api/admin/agents/1/endpoints` bzw. `.../endpoints/bulk` mit `{"ip": "0.0.0.0", "port": 9877, "auto_assign": false}`. Solche Endpoints werden nie automatisch vergeben (weder bei der Anlage ohne `endpoint_id` noch bei der Platzierung oder einem Transfer), bleiben aber ohne Sperre explizit zuweisbar (`endpoint_id` bei der Anlage oder `POST /api/admin/instances/<uuid>/endpoints`). Bestehende Endpoints stellst du mit `PATCH /api/admin/endpoints/<id>` und `{"auto_assign": false}` um; derselbe Aufruf sperrt (`{"is_locked": true}`) auch für die explizite Vergabe. `auto_assign: false` ist nicht dasselbe wie gesperrt: gesperrte Endpoints lassen sich nirgends zuweisen.
+
 Für die Skripte in Abschnitt 6 brauchst du einen Admin-Token:
 
 ```bash
@@ -234,7 +236,7 @@ Dann unter **Admin → Instances** eine Instanz anlegen: Blueprint Paper, Agent 
 
 Manche Spiele brauchen mehr als einen Port, zum Beispiel V Rising (Spiel 9876 und Query 9877, beide UDP). Eine Instanz kann deshalb mehrere Endpoints haben; Wings veröffentlicht alle als Port-Mappings des Containers.
 
-1. Endpoints für beide Ports auf dem Agent anlegen (Abschnitt 5, z. B. Bereich `9876-9877`).
+1. Endpoints für beide Ports auf dem Agent anlegen (Abschnitt 5). Den zusätzlichen Port (Query 9877) mit `"auto_assign": false`, damit Astra ihn nicht an eine andere Instanz vergibt.
 2. Instanz mit dem ersten Endpoint anlegen. Das ist der **primäre** Endpoint: seine IP und sein Port werden als `SERVER_IP` und `SERVER_PORT` an den Server übergeben und erscheinen unter *Verbindung*.
 3. Weitere Endpoints zuweisen (Admin-API; die Antwort ist die Instanz mit der Liste `endpoints: [{id, ip, port, is_primary}]`, primärer zuerst):
    - `POST /api/admin/instances/<uuid>/endpoints` mit `{"endpoint_id": 13}` weist einen freien, nicht gesperrten Endpoint desselben Agents zu (409, wenn er zu einem anderen Agent gehört, gesperrt oder schon vergeben ist)

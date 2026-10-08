@@ -105,13 +105,16 @@ def _get_endpoint_summary(agent: Agent) -> dict:
     total = len(endpoints)
     assigned = sum(1 for ep in endpoints if ep.instance_id is not None)
     locked = sum(1 for ep in endpoints if ep.is_locked)
-    free = total - assigned - locked
+    # M82: "manual" = frei und nicht gesperrt, aber nur explizit vergebbar (auto_assign=false); "free" = automatisch vergebbar
+    manual = sum(1 for ep in endpoints if ep.instance_id is None and not ep.is_locked and ep.auto_assign is False)
+    free = total - assigned - locked - manual
 
     return {
         "total": total,
         "assigned": assigned,
         "free": max(free, 0),
         "locked": locked,
+        "manual": manual,
     }
 
 
