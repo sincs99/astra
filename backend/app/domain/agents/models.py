@@ -167,6 +167,16 @@ class Agent(db.Model):
                 out.append(origin)
         return out
 
+    @staticmethod
+    def wings_system_user() -> str:
+        """Systembenutzer fuer neue Nodes (WINGS_SYSTEM_USER, Standard "astra", M84). Ungueltige Werte gelten als "astra"."""
+        import re
+        from flask import current_app, has_app_context
+        name = str((current_app.config.get("WINGS_SYSTEM_USER") if has_app_context() else "") or "").strip()
+        if not re.fullmatch(r"[a-z_][a-z0-9_-]{0,31}", name) or name in ("root", "nobody", "daemon"):
+            return "astra"
+        return name
+
     def wings_brand(self) -> str:
         """Namensraum der Wings-Pfade, Benutzer und Netze (M78 White-Label): "astra" fuer neue Nodes. Nodes mit
         Datenverzeichnis unter /var/lib/pterodactyl oder /var/lib/pelican behalten ihre bisherigen Namen, damit bestehende
@@ -208,7 +218,7 @@ class Agent(db.Model):
                 "archive_directory": f"{root}/archives",
                 "backup_directory": f"{root}/backups",
                 "tmp_directory": f"/tmp/{brand}",
-                "username": brand,
+                "username": self.wings_system_user() if brand == "astra" else brand,
                 "sftp": {
                     "bind_port": self.daemon_sftp or 2022,
                 },

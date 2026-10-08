@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (M84 – Wings-Systembenutzer)
+- `WINGS_SYSTEM_USER` (Standard `astra`; klein, Ziffern, `_`, `-`, höchstens 32 Zeichen, nicht `root`/`nobody`/`daemon`; im Produktions-Check ungültig = KRITISCH, zur Laufzeit gilt dann `astra`) setzt `system.username` im Konfig-Export neuer Nodes. Wings legt diesen Systembenutzer an (uid 999, `/home/<name>`); der Name `astra` ist ein gängiger Login-Name und kollidierte mit dem Admin-Konto. Bestandsnodes (Datenverzeichnis unter `/var/lib/pterodactyl` bzw. `/var/lib/pelican`) behalten `pterodactyl`/`pelican`. Dokumentiert in `.env.prod.example`, `docker-compose.prod.yml`, `docs/operations.md`; Runbook Abschnitt 1 und 6: den Admin-Login auf dem Node nicht gleich nennen (Beispiel `nodeadmin`)
+
 ### Added (M84 – Warnungen im Konfig-Export)
 - **`remote` zeigt auf localhost:** Ohne `BASE_URL` lieferte der Export `remote: http://localhost:5000`; ein entfernter Node erreicht das Panel damit nie. `GET /api/admin/agents/<id>/configuration` hat jetzt das Feld `warnings` (Liste von Strings, `[]` wenn nichts auffällt; nicht in `config`/`yaml`): eine Warnung, wenn `remote` auf localhost/127.x/::1/0.0.0.0/`*.localhost` zeigt („… BASE_URL setzen“), und eine, wenn `allowed_origins` leer ist oder nur localhost-Einträge enthält. `install-wings.sh` gibt die Warnungen nach dem Abruf gelb aus (kein Abbruch) und prüft bei `--config` das `remote` der Datei selbst. Der Produktions-Check (`check-config`) warnt, wenn `BASE_URL` oder `FRONTEND_URL` auf localhost zeigen
 

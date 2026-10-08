@@ -166,5 +166,24 @@ if loc and wfun:
     rc, out = local("https://panel.astrahost.ch")
     check("--config mit oeffentlichem remote: keine Warnung", rc == 0 and "WARNUNG" not in out)
 
+# ── Systembenutzer (Punkt 3) ────────────────────────────
+print("WINGS_SYSTEM_USER (Punkt 3)")
+app.config.update(DEV, WINGS_SYSTEM_USER="astra")
+check("Standard: system.username = astra", export()["config"]["system"]["username"] == "astra")
+app.config.update(WINGS_SYSTEM_USER="wingsd")
+cfg = export()["config"]
+check("WINGS_SYSTEM_USER=wingsd wirkt im Export (YAML identisch)", cfg["system"]["username"] == "wingsd" and cfg["system"]["root_directory"] == "/var/lib/astra")
+check("Bestandsnode (/var/lib/pterodactyl) bleibt pterodactyl", export(daemon_base="/var/lib/pterodactyl/volumes")["config"]["system"]["username"] == "pterodactyl")
+check("Bestandsnode (/var/lib/pelican) bleibt pelican", export(daemon_base="/var/lib/pelican/volumes")["config"]["system"]["username"] == "pelican")
+for bad in ("", "Root", "root", "nobody", "daemon", "9abc", "a b", "x" * 33, "ad;min", "/etc"):
+    app.config.update(WINGS_SYSTEM_USER=bad)
+    check(f"ungueltiger Wert {bad!r} im laufenden Betrieb: Rueckfall auf astra", export()["config"]["system"]["username"] == "astra")
+app.config.update(WINGS_SYSTEM_USER="node_1-svc")
+check("Unterstrich, Bindestrich und Ziffern erlaubt", export()["config"]["system"]["username"] == "node_1-svc")
+app.config.update(WINGS_SYSTEM_USER="astra")
+bad_user = lambda v: [i for i in mk(WINGS_SYSTEM_USER=v).validate_production() if "WINGS_SYSTEM_USER" in i]
+check("Produktions-Check: Standard ok", ProductionConfig.WINGS_SYSTEM_USER == "astra" and not bad_user("astra") and not bad_user("wingsd"))
+check("Produktions-Check: ungueltig ist KRITISCH", all(len(bad_user(v)) == 1 and bad_user(v)[0].startswith("KRITISCH") for v in ("root", "Admin", "1abc", "a b", "x" * 40, "nobody", "daemon")))
+
 print(f"\n{passed} OK, {failed} FAIL")
 sys.exit(1 if failed else 0)

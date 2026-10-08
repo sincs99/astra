@@ -29,6 +29,8 @@ apt install -y git curl ufw
 timedatectl set-timezone Europe/Zurich
 ```
 
+**Benennung auf dem Node:** Wings legt beim ersten Start einen eigenen Systembenutzer an (Standard `astra`, uid 999, Home `/home/astra`, einstellbar mit `WINGS_SYSTEM_USER` in der `.env` des Panels). Nenne deinen eigenen Admin-Login auf dem Server deshalb **nicht** ebenso (zum Beispiel `nodeadmin` statt `astra`), sonst kollidieren Konto und Wings-Benutzer. Alternativ den Wings-Benutzer mit `WINGS_SYSTEM_USER=wingsd` umbenennen, bevor du die `config.yml` holst.
+
 Docker:
 
 ```bash
@@ -180,6 +182,8 @@ Das Skript ändert nichts still am System: **Docker** installiert es nur mit `--
 **Panel und Wings auf demselben Host:** Docker Compose legt für das Panel ein eigenes Netz an (`astra_default`, meist `172.18.0.0/16`), und `172.18.0.0/16` ist zugleich der Standard von Wings. Dann bricht Wings mit „Pool overlaps with other one on this address space“ ab. Astra vermeidet das: der Konfig-Export setzt für Wings ein eigenes Docker-Netz (`docker.network.interfaces.v4` auf `172.30.0.0/16`, Gateway `172.30.0.1`; änderbar über `WINGS_DOCKER_SUBNET` in der `.env` des Panels). Das Installationsskript vergleicht das Subnetz aus der `config.yml` mit den vorhandenen Docker-Netzen (`docker network ls/inspect`) und warnt bei einer Überlappung. Ist Wings schon mit dem alten Netz gescheitert: Skript erneut ausführen (holt die neue `config.yml`) und das angelegte, leere Netz `pterodactyl_nw` mit `docker network rm pterodactyl_nw` entfernen.
 
 Auf einem frischen Server also: `sudo ./scripts/install-wings.sh --install-docker --panel ... --agent-id 1 --token "$TOKEN"`.
+
+Der Systembenutzer `astra` (oder `WINGS_SYSTEM_USER`) entsteht beim ersten Start von Wings. Gibt es auf dem Server schon ein Konto mit diesem Namen, den Namen vor dem Abruf der `config.yml` ändern (siehe Abschnitt 1, Benennung auf dem Node).
 
 **Warnungen beim Abruf:** `GET /api/admin/agents/<id>/configuration` liefert neben `yaml` und `config` das Feld `warnings` (Liste von Strings, leer wenn alles passt), und `install-wings.sh` gibt sie nach dem Abruf gelb aus (kein Abbruch). Typisch: „remote zeigt auf http://localhost:5000“ – ein Node auf einem anderen Host erreicht das Panel dort nie; dann `BASE_URL` in der `.env` des Panels auf die öffentliche Adresse setzen und die `config.yml` neu holen. Dasselbe prüft das Skript bei `--config` selbst, und `python cli.py check-config` meldet `BASE_URL`/`FRONTEND_URL` mit localhost als WARNUNG.
 
