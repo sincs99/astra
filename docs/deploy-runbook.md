@@ -222,6 +222,19 @@ Dann unter **Admin → Instances** eine Instanz anlegen: Blueprint Paper, Agent 
 4. Mit dem Minecraft-Client auf die Adresse verbinden, die die Instanz-Detailseite unter
    *Verbindung* anzeigt (`node1.deinedomain.de:25565`, Kopier-Button).
 
+### Spiele mit mehreren Ports
+
+Manche Spiele brauchen mehr als einen Port, zum Beispiel V Rising (Spiel 9876 und Query 9877, beide UDP). Eine Instanz kann deshalb mehrere Endpoints haben; Wings veröffentlicht alle als Port-Mappings des Containers.
+
+1. Endpoints für beide Ports auf dem Agent anlegen (Abschnitt 5, z. B. Bereich `9876-9877`).
+2. Instanz mit dem ersten Endpoint anlegen. Das ist der **primäre** Endpoint: seine IP und sein Port werden als `SERVER_IP` und `SERVER_PORT` an den Server übergeben und erscheinen unter *Verbindung*.
+3. Weitere Endpoints zuweisen (Admin-API; die Antwort ist die Instanz mit der Liste `endpoints: [{id, ip, port, is_primary}]`, primärer zuerst):
+   - `POST /api/admin/instances/<uuid>/endpoints` mit `{"endpoint_id": 13}` weist einen freien, nicht gesperrten Endpoint desselben Agents zu (409, wenn er zu einem anderen Agent gehört, gesperrt oder schon vergeben ist)
+   - `DELETE /api/admin/instances/<uuid>/endpoints/<endpoint_id>` gibt einen Endpoint wieder frei (er wird nicht gelöscht; der primäre Endpoint lässt sich nicht entfernen, erst den primären wechseln)
+   - `PATCH /api/admin/instances/<uuid>/endpoints/<endpoint_id>/primary` macht einen zugewiesenen Endpoint zum primären (`SERVER_PORT` und *Verbindung* wechseln)
+4. **Egg-Variablen setzen:** Astra übergibt dem Server nur `SERVER_IP` und `SERVER_PORT` (wie das Referenz-Panel). Variablen wie `QUERY_PORT` werden nicht automatisch gesetzt: beim Instance die Variable auf **denselben Port** wie den zweiten Endpoint stellen (V Rising: `QUERY_PORT=9877`). Die Mappings reichen für das Port-Publishing, das Egg muss den Port nur selbst kennen.
+5. **Server neu starten.** Astra synchronisiert die Konfiguration nach jeder Änderung sofort zu Wings (Antwortfeld `sync`), Wings veröffentlicht neue Ports aber erst beim Erstellen des Containers: Portänderungen wirken erst nach einem Neustart (Antwortfeld `restart_required`). Auch die Firewall muss die Ports (und bei UDP-Spielen das Protokoll UDP) freigeben.
+
 ---
 
 ## 8. Abnahme-Checkliste (Phase 2 fertig, wenn alles abgehakt)

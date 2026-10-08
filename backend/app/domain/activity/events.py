@@ -17,6 +17,10 @@ INSTANCE_REINSTALL_STARTED = "instance:reinstall_started"
 INSTANCE_REINSTALL_COMPLETED = "instance:reinstall_completed"
 INSTANCE_REINSTALL_FAILED = "instance:reinstall_failed"
 INSTANCE_SYNCED = "instance:synced"
+# M80: mehrere Endpoints pro Instance
+INSTANCE_ENDPOINT_ADDED = "instance:endpoint_added"
+INSTANCE_ENDPOINT_REMOVED = "instance:endpoint_removed"
+INSTANCE_ENDPOINT_PRIMARY = "instance:endpoint_primary"
 INSTANCE_SYNC_FAILED = "instance:sync_failed"
 
 # M17/M19: Auth-Events

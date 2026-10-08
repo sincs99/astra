@@ -83,6 +83,12 @@ class Instance(db.Model):
             "address": f"{host or ep.ip}:{ep.port}",
         }
 
+    def endpoints_info(self) -> list[dict]:
+        """Alle Endpoints der Instance (M80), primaerer zuerst, dann nach Port."""
+        primary_id = self.primary_endpoint_id
+        eps = sorted(self.endpoints or [], key=lambda e: (e.id != primary_id, e.port, e.id))
+        return [{"id": e.id, "ip": e.ip, "port": e.port, "is_primary": e.id == primary_id} for e in eps]
+
     def to_dict(self) -> dict:
         return {
             "id": self.id,
@@ -95,6 +101,7 @@ class Instance(db.Model):
             "blueprint_name": self.blueprint.name if self.blueprint else None,
             "primary_endpoint_id": self.primary_endpoint_id,
             "connection": self.connection_info(),
+            "endpoints": self.endpoints_info(),
             "status": self.status,
             "container_state": self.container_state,
             "installed_at": iso_utc(self.installed_at),
