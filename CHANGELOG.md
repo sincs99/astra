@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added (Frontend – `npm run test:slow`)
+- `npm run test:slow` fuehrt die Suite mit verzoegert aufloesenden Mocks aus (`vitest --mode slow`, `src/test/delay.setup.ts`, Verzoegerung ueber `TEST_MOCK_DELAY_MS`, Standard 30 ms), um Ladephasen-Rennen zu finden; `npm test` bleibt unveraendert. Doku in `frontend/README.md` und `docs/ui-conventions.md`
+
 ### Fixed (Frontend – M77 Ladephasen-Rennen in Tests)
 - Neun Tests fragten Elemente aus asynchron geladenen Daten direkt mit `getBy…` ab (BackupManager, AdminOverview, AccountPage, AdminBlueprints/Instances/System, OrdersPage); sie sind auf `findBy…`/`waitFor` umgestellt, bei Auswahllisten wird auf die Option gewartet. Die Suite ist damit auch mit kuenstlich verzoegerten Mocks (5, 30 und 100 ms) und mehrfach hintereinander gruen. Muster und Nachweis in `docs/ui-conventions.md` unter "Tests"
 
