@@ -148,6 +148,8 @@ Im Panel unter **Admin → Agents → Neuer Agent**:
 Beim Anlegen erzeugt Astra die Node-Credentials (Token-ID sichtbar, Secret nur in der config.yml).
 Alle Felder lassen sich später über *Bearbeiten* ändern.
 
+**Kapazität gleich beim Anlegen angeben** (`memory_total` in MB, `disk_total` in MB, `cpu_total` in %, z. B. 400 = 4 Kerne). Bei `0` gilt die Dimension als „ohne Limit“ und Astra führt dafür **keine Platzierungsprüfung** durch: Instanzen werden dann angenommen, bis der Node real voll läuft. Im Pilot passten Paper (2 GB) und V Rising (5 GB) nicht in die 8 GB des Nodes, das hätte mit eingetragener Kapazität schon beim Anlegen eine Fehlermeldung ergeben.
+
 Dann **Endpoints** anlegen: Agent `node1`, IP `0.0.0.0`, Port-Bereich `25565-25600`
 (ein Endpoint = ein Gameserver-Port; der Bereich wird in einem Schritt angelegt, vorhandene
 Ports werden übersprungen). Per API: `POST /api/admin/agents/1/endpoints/bulk` mit
@@ -207,6 +209,8 @@ Alternativ im Panel unter **Admin → Blueprints → Import** das JSON einfügen
 Egg aus [pterodactyl/eggs](https://github.com/pterodactyl/eggs) bzw. [pelican-eggs](https://github.com/pelican-eggs)
 auf demselben Weg importieren. Image, Startup, Install-Script, Startup-Erkennung, Stop-Befehl,
 Variablen und `server.properties`-Platzhalter werden übernommen.
+
+Die Egg-Sammlung `parkervcp/eggs` ist nach [`pelican-eggs/eggs`](https://github.com/pelican-eggs/eggs) umgezogen (alte URLs leiten weiter). **SteamCMD-Eggs** lassen sich ohne Anpassung importieren; Beispiel V Rising: `game_eggs/steamcmd_servers/v_rising/v_rising_vanilla/egg-v-rising.json` (Image `ghcr.io/parkervcp/yolks:wine_staging`, Spiel-Port 9876 und Query-Port 9877 per UDP, siehe „Spiele mit mehreren Ports“ unten). Das `server.properties`, das das Paper-Script nachlädt, liegt weiterhin unter `parkervcp/eggs` (der Pfad existiert in `pelican-eggs/eggs` nicht).
 
 Wer den Blueprint von Hand anlegen will, braucht mindestens: Docker-Image
 `ghcr.io/pterodactyl/yolks:java_25` (für Paper 26.x, für Versionen bis 1.21 `java_21`), Startup-Befehl mit `{{SERVER_JARFILE}}`, Install-Container

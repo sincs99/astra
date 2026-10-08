@@ -5,6 +5,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Docs (M80)
+- Runbook: Egg-Quellen (`parkervcp/eggs` ist nach `pelican-eggs/eggs` umgezogen, alte URLs leiten weiter; SteamCMD-Eggs wie V Rising importieren ohne Anpassung, Beispielpfad und Image) und der Hinweis, die Agent-Kapazität gleich beim Anlegen anzugeben, weil `capacity_problem` Limit 0 bewusst überspringt (ohne Kapazität keine Platzierungsprüfung)
+
 ### Added (M80 – mehrere Endpoints pro Instanz)
 - V Rising (zweiter Pilot) braucht Spiel- und Query-Port; Docker veröffentlichte nur den primären Endpoint, weil sich einer Instanz nach dem Anlegen keine weiteren Endpoints zuweisen ließen (der Config-Builder lieferte schon alle Endpoints der Instanz als `allocations.mappings`). Neu: `Instance.to_dict()` enthält `endpoints: [{id, ip, port, is_primary}]` (primärer zuerst, dann nach Port; `primary_endpoint_id` und `connection` bleiben); `POST /api/admin/instances/<uuid>/endpoints` (`{"endpoint_id": n}`, 201; 400 Feld fehlt/ungültig, 404 unbekannt, 409 anderer Agent/gesperrt/schon zugeordnet/Transfer läuft), `DELETE /api/admin/instances/<uuid>/endpoints/<id>` (200, gibt frei statt zu löschen; 409 primärer Endpoint, 404 nicht dieser Instance zugeordnet) und `PATCH …/endpoints/<id>/primary` (200, wechselt `SERVER_PORT`/`connection`; 404 nicht zugeordnet). Die Antwort ist das Instanz-Dict plus `sync` (Ergebnis der Wings-Synchronisation, best effort) und `restart_required`: Portänderungen wirken erst nach einem Neustart. Die Änderungen sind als Activity-Events `instance:endpoint_added/removed/primary` protokolliert. Egg-Variablen wie `QUERY_PORT` werden nicht automatisch gesetzt (Runbook: „Spiele mit mehreren Ports“). Abgesichert: Instanz-Anlage mit `endpoint_id` liefert `primary_endpoint_id` und `connection.port` des Endpoints und setzt `endpoints.instance_id` (die Antwort hat bewusst kein Alias-Feld `endpoint_id`)
 
