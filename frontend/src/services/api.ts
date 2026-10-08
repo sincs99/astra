@@ -451,6 +451,8 @@ export interface AgentConfiguration {
   agent_id: number;
   yaml: string;
   config: Record<string, unknown>;
+  /** Hinweise des Backends zur Konfiguration (deutsche Texte, leer ohne Auffaelligkeiten); aeltere Antworten ohne das Feld */
+  warnings?: string[];
 }
 
 export interface BlueprintVariable {

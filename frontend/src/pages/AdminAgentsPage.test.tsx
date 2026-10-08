@@ -128,6 +128,25 @@ describe("AdminAgentsPage", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("token: SECRET-VALUE"));
   });
 
+  it("zeigt Warnungen der Konfiguration als Hinweis über dem YAML, ohne Warnungen keinen Banner", async () => {
+    vi.spyOn(api, "getAgents").mockResolvedValue([agent]);
+    vi.spyOn(api, "getEndpoints").mockResolvedValue([]);
+    const cfg = vi.spyOn(api, "getAgentConfiguration").mockResolvedValue({
+      yaml: "token: x", warnings: ["remote zeigt auf http://localhost:5000 (localhost).", "Zweite Warnung."],
+    } as never);
+    mountAgents();
+    fireEvent.click(await screen.findByRole("button", { name: "config.yml von node-zh-01 anzeigen" }));
+    expect(await screen.findByText("Hinweise zur Konfiguration")).toBeTruthy();
+    expect(screen.getByText(/remote zeigt auf http:\/\/localhost:5000/)).toBeTruthy();
+    expect(screen.getByText("Zweite Warnung.")).toBeTruthy();
+    // Ohne Warnungen (auch altes Antwortformat ohne Feld) erscheint kein Banner
+    cfg.mockResolvedValue({ yaml: "token: y", warnings: [] } as never);
+    fireEvent.click(screen.getByRole("button", { name: "Schließen" }));
+    fireEvent.click(await screen.findByRole("button", { name: "config.yml von node-zh-01 anzeigen" }));
+    expect(await screen.findByText("token: y")).toBeTruthy();
+    expect(screen.queryByText("Hinweise zur Konfiguration")).toBeNull();
+  });
+
   it("legt einen Endpoint-Bereich an", async () => {
     vi.spyOn(api, "getAgents").mockResolvedValue([agent]);
     vi.spyOn(api, "getEndpoints").mockResolvedValue([]);

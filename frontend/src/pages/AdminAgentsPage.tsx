@@ -39,6 +39,7 @@ export function AdminAgentsPage() {
   // config.yml-Bereich (M33)
   const [configAgent, setConfigAgent] = useState<Agent | null>(null);
   const [configYaml, setConfigYaml] = useState("");
+  const [configWarnings, setConfigWarnings] = useState<string[]>([]);
   const [configLoading, setConfigLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -178,9 +179,11 @@ export function AdminAgentsPage() {
       setConfigLoading(true);
       setConfigAgent(agent);
       setConfigYaml("");
+      setConfigWarnings([]);
       setCopied(false);
       const cfg = await api.getAgentConfiguration(agent.id);
       setConfigYaml(cfg.yaml);
+      setConfigWarnings(cfg.warnings ?? []);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("aagents.cfg.loadFailed"));
       setConfigAgent(null);
@@ -307,6 +310,17 @@ export function AdminAgentsPage() {
               </div>
             </div>
             <div className="panel-body">
+              {!configLoading && configWarnings.length > 0 && (
+                <div role="status" className="banner banner-warn">
+                  <span className="dot dot-warn" aria-hidden="true" />
+                  <div className="banner-text">
+                    <strong>{t("aagents.cfg.warnTitle")}</strong>
+                    <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                      {configWarnings.map((w, i) => <li key={i}>{w}</li>)}
+                    </ul>
+                  </div>
+                </div>
+              )}
               <p className="hint">{t("aagents.cfg.hint")}</p>
               {configLoading ? (
                 <p className="hint" role="status">{t("aagents.cfg.loading")}</p>
