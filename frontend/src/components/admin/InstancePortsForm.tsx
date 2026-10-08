@@ -78,7 +78,9 @@ export function InstancePortsForm({ instance, endpoints, idPrefix, onChanged, on
           <select id={`${idPrefix}-add`} className="inp" value={choice} disabled={busy || free.length === 0}
             onChange={(e) => setChoice(e.target.value ? Number(e.target.value) : "")}>
             <option value="">{t("ainst.ports.choose")}</option>
-            {free.map((ep) => <option key={ep.id} value={ep.id}>{ep.ip}:{ep.port}</option>)}
+            {free.map((ep) => (
+              <option key={ep.id} value={ep.id}>{ep.ip}:{ep.port}{ep.auto_assign === false ? ` ${t("ainst.ports.manualSuffix")}` : ""}</option>
+            ))}
           </select>
           <button type="button" className="btn btn-primary" disabled={busy || choice === ""}
             onClick={() => selected && run(

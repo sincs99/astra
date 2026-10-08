@@ -220,4 +220,5 @@ export const ainst: Record<keyof typeof de, string> = {
   "ainst.ports.removed": "Port {address} removed",
   "ainst.ports.primarySet": "Port {address} is now primary",
   "ainst.ports.failed": "Action failed",
+  "ainst.ports.manualSuffix": "(manual)",
 };

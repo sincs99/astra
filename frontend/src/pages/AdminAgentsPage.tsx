@@ -33,6 +33,7 @@ export function AdminAgentsPage() {
   const [epAgentId, setEpAgentId] = useState<number | "">("");
   const [epIp, setEpIp] = useState("0.0.0.0");
   const [epPort, setEpPort] = useState("");
+  const [epAutoAssign, setEpAutoAssign] = useState(true);
   const [epSubmitting, setEpSubmitting] = useState(false);
 
   // config.yml-Bereich (M33)
@@ -133,24 +134,42 @@ export function AdminAgentsPage() {
     const range = parsePortRange(epPort);
     if (typeof range === "string") { toast.error(range); return; }
     const ip = epIp.trim() || "0.0.0.0";
+    // Standard (an) wird nicht mitgeschickt; nur "manuell" ist eine Abweichung
+    const autoOpt = epAutoAssign ? {} : { auto_assign: false };
     try {
       setEpSubmitting(true);
       setError(null);
       if (range.start === range.end) {
-        await api.createEndpoint(epAgentId as number, { ip, port: range.start });
+        await api.createEndpoint(epAgentId as number, { ip, port: range.start, ...autoOpt });
         toast.success(t("aagents.ep.created"));
       } else {
         const result = await api.createEndpointsBulk(epAgentId as number, {
-          ip, port_start: range.start, port_end: range.end,
+          ip, port_start: range.start, port_end: range.end, ...autoOpt,
         });
         toast.success(t("aagents.ep.bulk", { created: result.created, skipped: result.skipped }));
       }
       setEpPort("");
+      setEpAutoAssign(true);
       await loadAll();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("aagents.createFailed"));
     } finally {
       setEpSubmitting(false);
+    }
+  };
+
+  const [togglingEp, setTogglingEp] = useState<number | null>(null);
+  const toggleAutoAssign = async (ep: Endpoint) => {
+    const next = ep.auto_assign === false;
+    try {
+      setTogglingEp(ep.id);
+      const updated = await api.updateEndpoint(ep.id, { auto_assign: next });
+      setEndpoints(list => list.map(e => (e.id === ep.id ? { ...e, ...updated } : e)));
+      toast.success(t(next ? "aagents.ep.nowAuto" : "aagents.ep.nowManual", { addr: `${ep.ip}:${ep.port}` }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("aagents.ep.toggleFailed"));
+    } finally {
+      setTogglingEp(null);
     }
   };
 
@@ -245,6 +264,11 @@ export function AdminAgentsPage() {
                   placeholder={t("aagents.ep.portPh")} aria-describedby="ep-range-hint" onChange={e => setEpPort(e.target.value)} />
               </div>
             </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "var(--fs-small)" }}>
+              <input type="checkbox" checked={epAutoAssign} aria-describedby="ep-auto-hint" onChange={e => setEpAutoAssign(e.target.checked)} />
+              {t("aagents.ep.autoAssign")}
+            </label>
+            <p id="ep-auto-hint" className="hint">{t("aagents.ep.autoAssignHint")}</p>
             <div className="row-actions">
               <button type="submit" disabled={epSubmitting} className="btn btn-primary">
                 <Icon name="plus" size={14} />{epSubmitting ? t("aagents.saving") : t("aagents.ep.create")}
@@ -366,6 +390,7 @@ export function AdminAgentsPage() {
                             <th scope="col">{t("aagents.ep.colAddr")}</th>
                             <th scope="col">{t("aagents.ep.colStatus")}</th>
                             <th scope="col">{t("aagents.ep.colInstance")}</th>
+                            <th scope="col">{t("aagents.ep.colActions")}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -378,8 +403,16 @@ export function AdminAgentsPage() {
                                   <span className={`dot ${ep.is_locked ? "dot-danger" : ep.instance_id ? "dot-warn" : "dot-ok"}`} aria-hidden="true" />
                                   {ep.is_locked ? t("aagents.ep.locked") : ep.instance_id ? t("aagents.ep.used") : t("aagents.ep.free")}
                                 </span>
+                                {ep.auto_assign === false && <> <StatusBadge status="info" label={t("aagents.ep.manual")} size="sm" /></>}
                               </td>
                               <td data-label={t("aagents.ep.colInstance")}>{ep.instance_id ? t("aagents.ep.instance", { id: ep.instance_id }) : t("aagents.dash")}</td>
+                              <td data-label={t("aagents.ep.colActions")}>
+                                <button type="button" className="btn btn-sm" disabled={togglingEp === ep.id}
+                                  aria-label={t(ep.auto_assign === false ? "aagents.ep.makeAutoAria" : "aagents.ep.makeManualAria", { addr: `${ep.ip}:${ep.port}` })}
+                                  onClick={() => toggleAutoAssign(ep)}>
+                                  {ep.auto_assign === false ? t("aagents.ep.makeAuto") : t("aagents.ep.makeManual")}
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>

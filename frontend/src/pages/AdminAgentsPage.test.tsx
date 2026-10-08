@@ -141,6 +141,47 @@ describe("AdminAgentsPage", () => {
     expect(await screen.findByText("3 angelegt, 1 übersprungen.")).toBeTruthy();
   });
 
+  it("sendet auto_assign=false, wenn 'Automatisch vergeben' abgewählt ist (einzeln und Bereich), sonst nichts", async () => {
+    vi.spyOn(api, "getAgents").mockResolvedValue([agent]);
+    vi.spyOn(api, "getEndpoints").mockResolvedValue([]);
+    const single = vi.spyOn(api, "createEndpoint").mockResolvedValue({} as never);
+    const bulk = vi.spyOn(api, "createEndpointsBulk").mockResolvedValue({ created: 2, skipped: 0 } as never);
+    mountAgents();
+    await screen.findByRole("heading", { name: "node-zh-01" });
+    const auto = screen.getByLabelText("Automatisch vergeben") as HTMLInputElement;
+    expect(auto.checked).toBe(true);
+    fireEvent.change(screen.getByLabelText("Agent *"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Port oder Bereich *"), { target: { value: "9877" } });
+    fireEvent.click(screen.getByRole("button", { name: "Endpoint(s) erstellen" }));
+    await waitFor(() => expect(single).toHaveBeenCalledWith(1, { ip: "0.0.0.0", port: 9877 }));
+    await waitFor(() => expect((screen.getByLabelText("Port oder Bereich *") as HTMLInputElement).value).toBe("")); // Formular zurückgesetzt
+    fireEvent.click(screen.getByLabelText("Automatisch vergeben"));
+    fireEvent.change(screen.getByLabelText("Port oder Bereich *"), { target: { value: "9877" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Endpoint(s) erstellen" })); // heißt während des Speicherns anders
+    await waitFor(() => expect(single).toHaveBeenLastCalledWith(1, { ip: "0.0.0.0", port: 9877, auto_assign: false }));
+    await waitFor(() => expect((screen.getByLabelText("Automatisch vergeben") as HTMLInputElement).checked).toBe(true));
+    await waitFor(() => expect((screen.getByLabelText("Port oder Bereich *") as HTMLInputElement).value).toBe(""));
+    fireEvent.click(screen.getByLabelText("Automatisch vergeben"));
+    fireEvent.change(screen.getByLabelText("Port oder Bereich *"), { target: { value: "9877-9878" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Endpoint(s) erstellen" })); // heißt während des Speicherns anders
+    await waitFor(() => expect(bulk).toHaveBeenCalledWith(1, { ip: "0.0.0.0", port_start: 9877, port_end: 9878, auto_assign: false }));
+  });
+
+  it("kennzeichnet manuelle Endpoints und schaltet per PATCH um", async () => {
+    vi.spyOn(api, "getAgents").mockResolvedValue([agent]);
+    vi.spyOn(api, "getEndpoints").mockResolvedValue([{ ...endpoint, auto_assign: false }, { ...endpoint, id: 6, port: 25566 }]);
+    const update = vi.spyOn(api, "updateEndpoint").mockResolvedValue({ ...endpoint, auto_assign: true } as never);
+    mountAgents();
+    await screen.findByRole("heading", { name: "node-zh-01" });
+    expect(await screen.findByRole("status", { name: "manuell" })).toBeTruthy();
+    expect(screen.getAllByRole("status", { name: "manuell" })).toHaveLength(1); // nur der manuelle Endpoint
+    fireEvent.click(screen.getByRole("button", { name: "0.0.0.0:25565 wieder automatisch vergeben" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith(5, { auto_assign: true }));
+    await waitFor(() => expect(screen.queryByRole("status", { name: "manuell" })).toBeNull());
+    fireEvent.click(await screen.findByRole("button", { name: "0.0.0.0:25566 nur noch manuell vergeben" }));
+    await waitFor(() => expect(update).toHaveBeenLastCalledWith(6, { auto_assign: false }));
+  });
+
   it("zeigt Ladefehler als Alert", async () => {
     vi.spyOn(api, "getAgents").mockRejectedValue(new Error("Backend down"));
     vi.spyOn(api, "getEndpoints").mockResolvedValue([]);

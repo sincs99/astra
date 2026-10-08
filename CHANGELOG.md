@@ -27,6 +27,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/).
 - Dev-Compose bindet PostgreSQL (5432, Passwort `astra`), Redis (6379, ohne Passwort) und Backend (5000) nur noch an `127.0.0.1` statt an alle Schnittstellen; Hinweis im README. `RUNNER_ADAPTER` ist aus der Umgebung ueberschreibbar (`RUNNER_ADAPTER=wings docker compose up`)
 - README und Runbook (Abschnitt 6, Fehlersuche): mit `RUNNER_ADAPTER=stub` meldet ein Agent `daemon_version: "stub"` und wirkt `healthy`, obwohl Wings nie angesprochen wird; fuer Wings-Tests `wings` setzen und `daemon_version` im Monitoring pruefen
 
+### Added (Frontend – M83 Endpoints nur manuell vergeben)
+- Endpoint-Anlage (einzeln und Bereich): Checkbox "Automatisch vergeben" (Standard an, `Assign automatically`) mit Hinweis zum Query-Port-Fall; bei Abwahl geht `auto_assign: false` an `POST /admin/agents/<id>/endpoints` bzw. `/endpoints/bulk`, im Standardfall wird das Feld nicht mitgeschickt
+- Endpoint-Liste der Agents: Badge "manuell" bei `auto_assign=false`, Aktion "Nur manuell"/"Automatisch" ruft `PATCH /admin/endpoints/<id>` (`updateEndpoint`); gesperrt bleibt wie bisher
+- "Ports verwalten": freie manuelle Endpoints stehen mit dem Zusatz "(manuell)" in der Auswahl und sind waehlbar
+- `Endpoint.auto_assign` ist optional (aeltere Antworten gelten als automatisch)
+
 ### Added (Frontend – M81 mehrere Ports pro Server)
 - Instanzen tragen `endpoints[]` (primaerer zuerst); neue API-Aufrufe `addInstanceEndpoint` (POST), `removeInstanceEndpoint` (DELETE), `setPrimaryInstanceEndpoint` (PATCH) unter `/admin/instances/<uuid>/endpoints`
 - Admin-Instanzliste: Spalte "Endpoint" zeigt alle Ports ("node1:9876 · +9877"); Aktion "Ports verwalten" oeffnet einen Bereich unter der Zeile mit den zugeordneten Endpoints ("Primaer setzen", "Entfernen" – beim primaeren deaktiviert mit Hinweis), Auswahl freier Endpoints desselben Agents mit "Hinzufuegen", Hinweis "Portaenderungen wirken nach einem Neustart des Servers" und Fehleranzeige bei 409
